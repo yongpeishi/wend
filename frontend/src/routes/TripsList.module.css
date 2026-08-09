@@ -1,0 +1,178 @@
+.wrap {
+  padding: var(--space-8) var(--gutter-screen) var(--space-16);
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-section);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  flex-wrap: wrap;
+}
+
+.pageTitle {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line);
+  color: var(--text-strong);
+}
+
+.startBox {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 520px;
+}
+
+.startHint {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-6);
+}
+
+/* The card is the link. No underline here — the whole surface is the target,
+   and elevation stays tone-only. */
+.cardLink {
+  display: block;
+  text-decoration: none;
+  border-radius: var(--radius-card);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.cardLink:hover {
+  opacity: 0.85;
+}
+
+.cardLink:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 100%;
+}
+
+.tripTitle {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  color: var(--text-strong);
+  text-wrap: pretty;
+}
+
+.dates {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-data-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-body);
+}
+
+/* A trip without dates is a normal, permanent state — the label states it
+   plainly rather than nagging. */
+.noDates {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.counts {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}
+
+.librarySection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.libraryHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.sectionLabel {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.seeAll {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--action-primary);
+  text-decoration: none;
+  border-bottom: var(--border-width-strong) solid var(--action-primary);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.seeAll:hover {
+  opacity: 0.7;
+}
+
+.seeAll:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.libraryEmpty {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-muted);
+  max-width: var(--measure-body);
+}
+
+.libraryList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-list-row);
+}
+
+@media (max-width: 720px) {
+  .pageTitle {
+    font-size: var(--text-title-size);
+    line-height: var(--text-title-line);
+  }
+}

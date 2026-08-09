@@ -248,8 +248,11 @@ export function seed() {
   addLink(trip.id, dinnerBundle.id, 2);
 
   db.votes = [
-    { id: allocateId(), entry_id: nanzenji.id, user_id: 1, score: 2 },
-    { id: allocateId(), entry_id: kiyamachi.id, user_id: 1, score: 1 },
+    { id: allocateId(), entry_id: nanzenji.id, user_id: 1, user_name: 'Priya', score: 2 },
+    { id: allocateId(), entry_id: kiyamachi.id, user_id: 1, user_name: 'Priya', score: 1 },
+    // A second voice, so the per-user breakdown in the drawer has something
+    // to show — multi-user voting is the point of the feature.
+    { id: allocateId(), entry_id: nanzenji.id, user_id: 2, user_name: 'Sam', score: -1 },
   ];
 
   db.todos = [

@@ -45,7 +45,7 @@ class EntrySerializer
         "parents" => entry.parents.map { |p| summary(p) },
         "children" => list(entry.children.to_a, current_user: current_user),
         "todos" => TodoSerializer.list(entry.todos.order(:position).to_a),
-        "votes" => entry.votes.to_a.map { |v| VoteSerializer.one(v) }
+        "votes" => entry.votes.includes(:user).map { |v| VoteSerializer.one(v) }
       )
     end
 

@@ -285,7 +285,13 @@ export const handlers = [
     if (vote) {
       vote.score = body.score as -2 | -1 | 0 | 1 | 2;
     } else {
-      vote = { id: allocateId(), entry_id: entryId, user_id: auth.id, score: body.score as -2 | -1 | 0 | 1 | 2 };
+      vote = {
+        id: allocateId(),
+        entry_id: entryId,
+        user_id: auth.id,
+        user_name: auth.name,
+        score: body.score as -2 | -1 | 0 | 1 | 2,
+      };
       db.votes.push(vote);
     }
     return HttpResponse.json({ vote, tally: voteTallyFor(entryId) });

@@ -84,6 +84,7 @@ export interface Vote {
   id: number;
   entry_id: number;
   user_id: number;
+  user_name: string | null;
   score: -2 | -1 | 0 | 1 | 2;
 }
 
