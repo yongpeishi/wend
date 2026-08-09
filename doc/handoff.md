@@ -14,6 +14,10 @@ cd backend && bin/rails db:setup && bin/rails server   # :3000
 cd frontend && npm install && npm run dev              # :5173
 ```
 
+**Rails must be running.** MSW mocks used to be on by default in dev, which meant the
+app never reached the API and accounts vanished on reload. They are now opt-in — set
+`VITE_USE_MOCKS=true` only for standalone design work such as `/design`.
+
 Sign in as `priya@example.com` / `password123`, then:
 
 1. **Open `/design`.** Nobody has ever seen this rendered — see gap 1.
@@ -143,8 +147,13 @@ Requirements that are easy to miss:
 2. **No end-to-end click-through has happened.** Key shapes are verified to match
    (see the contract check above), but nobody has driven the real app against the real
    API through a browser. Boot both servers and walk the core flow.
-3. **`Modal`/`Drawer` have no focus-trap loop** — Escape and initial focus work, but Tab
-   can escape the dialog. Worth fixing before anyone calls this accessible.
+3. ~~`Modal` has no focus-trap loop~~ — **fixed.** `Modal` now focuses the first control
+   in its body (it used to focus its own wrapper, which defeated any child `autoFocus`,
+   so form modals opened with focus nowhere useful and could swallow the first
+   keystroke), yields to an explicit `autoFocus`, and wraps Tab/Shift+Tab at both ends.
+   Covered by tests in `src/components/Modal.test.tsx`.
+   **`Drawer` still has no trap** — it shares `Overlay.module.css` with `Modal` but has
+   its own focus handling. Porting the same logic across is the remaining piece.
 4. **Ancestor walks are recursive** (A4). Fine at seed scale; if a trip with hundreds of
    entries feels slow, add a materialised closure table rather than caching in the UI.
 5. **Overnight schedule items and timezone-crossing flights cannot be expressed** in one
