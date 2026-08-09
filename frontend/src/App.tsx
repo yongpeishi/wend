@@ -8,6 +8,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { AppLayout } from './routes/AppLayout';
 import { SignIn } from './routes/SignIn';
 import { TripsList } from './routes/TripsList';
+import { TripLayout } from './routes/TripLayout';
 import { TripBoard } from './routes/TripBoard';
 import { TripMap } from './routes/TripMap';
 import { TripSchedule } from './routes/TripSchedule';
@@ -32,10 +33,12 @@ export function App() {
                   <Route element={<AppLayout />}>
                     <Route path="/" element={<TripsList />} />
                     <Route path="/library" element={<Library />} />
-                    <Route path="/trips/:id" element={<TripBoard />} />
-                    <Route path="/trips/:id/map" element={<TripMap />} />
-                    <Route path="/trips/:id/schedule" element={<TripSchedule />} />
-                    <Route path="/trips/:id/checklist" element={<TripChecklist />} />
+                    <Route path="/trips/:id" element={<TripLayout />}>
+                      <Route index element={<TripBoard />} />
+                      <Route path="map" element={<TripMap />} />
+                      <Route path="schedule" element={<TripSchedule />} />
+                      <Route path="checklist" element={<TripChecklist />} />
+                    </Route>
                     <Route path="/entries/:id" element={<EntryDetail />} />
                   </Route>
                 </Route>
