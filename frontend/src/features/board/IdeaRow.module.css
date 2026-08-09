@@ -1,0 +1,48 @@
+.row {
+  align-items: center;
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  accent-color: var(--wend-leaf);
+  cursor: pointer;
+}
+
+.checkbox:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  flex: 0 0 var(--tap-min);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.grip:active {
+  cursor: grabbing;
+}
+
+.grip:hover {
+  opacity: 0.7;
+}
+
+.grip:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
