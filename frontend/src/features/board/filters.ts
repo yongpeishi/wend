@@ -6,34 +6,25 @@ export interface IdeaFilters {
   category: EntryCategory | null;
   hasLocation: boolean;
   scheduleState: ScheduleState;
-  search: string;
 }
 
 export const EMPTY_FILTERS: IdeaFilters = {
   category: null,
   hasLocation: false,
   scheduleState: 'all',
-  search: '',
 };
 
 export function isNarrowed(filters: IdeaFilters): boolean {
-  return (
-    filters.category !== null ||
-    filters.hasLocation ||
-    filters.scheduleState !== 'all' ||
-    filters.search.trim() !== ''
-  );
+  return filters.category !== null || filters.hasLocation || filters.scheduleState !== 'all';
 }
 
 /** Filters hide, never delete — this only changes what a query returns, nothing is archived. */
 export function applyFilters(entries: Entry[], filters: IdeaFilters): Entry[] {
-  const search = filters.search.trim().toLowerCase();
   return entries.filter((entry) => {
     if (filters.category && entry.category !== filters.category) return false;
     if (filters.hasLocation && !(entry.lat !== null && entry.lng !== null)) return false;
     if (filters.scheduleState === 'scheduled' && !entry.scheduled) return false;
     if (filters.scheduleState === 'potential' && entry.scheduled) return false;
-    if (search && !entry.title.toLowerCase().includes(search)) return false;
     return true;
   });
 }

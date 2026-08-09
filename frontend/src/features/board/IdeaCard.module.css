@@ -1,5 +1,12 @@
-.row {
-  align-items: center;
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.controls {
+  gap: var(--space-2);
 }
 
 .checkbox {
@@ -42,7 +49,6 @@
   outline-offset: var(--focus-offset);
 }
 
-.main {
-  flex: 1;
-  min-width: 0;
+.footer {
+  gap: var(--space-2);
 }

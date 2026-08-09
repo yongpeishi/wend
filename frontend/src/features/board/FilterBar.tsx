@@ -1,5 +1,4 @@
 import { Chip } from '../../design/components/core/Chip';
-import { Input } from '../../design/components/core/Input';
 import { Row } from '../../components/layout/Stack';
 import { MIDDOT } from '../../lib/formatDates';
 import { CATEGORY_LABELS, CATEGORY_ORDER, EMPTY_FILTERS, isNarrowed } from './filters';
@@ -17,6 +16,11 @@ export interface FilterBarProps {
  * Filters hide, never delete: the "Showing N of M" line and its "widen again"
  * escape are always rendered, narrowed or not — every narrowing carries its
  * own way out, per screens.md.
+ *
+ * Text search was removed here (ideas are cards now, not a scannable list —
+ * see TripBoard's card grid) but the escape hatch stays wired exactly the
+ * same: category, "has location" and scheduled/potential still narrow, and
+ * "widen again" still clears whatever is set.
  */
 export function FilterBar({ filters, onChange, visibleCount, totalCount }: FilterBarProps) {
   const narrowed = isNarrowed(filters);
@@ -53,13 +57,6 @@ export function FilterBar({ filters, onChange, visibleCount, totalCount }: Filte
           Potential
         </Chip>
       </Row>
-
-      <Input
-        placeholder="Search ideas"
-        value={filters.search}
-        onChange={(event) => onChange({ ...filters, search: event.target.value })}
-        aria-label="Search ideas"
-      />
 
       <p className={styles.summary}>
         Showing {visibleCount} of {totalCount}

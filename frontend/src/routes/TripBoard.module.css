@@ -48,6 +48,15 @@
   gap: var(--space-4);
 }
 
+/* Ideas as cards: a responsive grid, not a scannable list — it wraps to
+   however many 220px-minimum columns the middle column has room for, one
+   column on narrow viewports. Gap matches the 12px "list rows" spacing. */
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
 /* Between sections the gap is the divider — no rule. */
 .groupLabel {
   margin: var(--space-6) 0 0;

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   DndContext,
@@ -9,20 +9,22 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
-import { Input } from '../design/components/core/Input';
+import { Button } from '../design/components/core/Button';
 import { EntryRow } from '../components/EntryRow';
 import { Card } from '../components/layout/Card';
-import { Stack } from '../components/layout/Stack';
+import { Row, Stack } from '../components/layout/Stack';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
-import { useCreateEntry, useEntries, useRestoreEntry } from '../api';
+import { useEntries, useRestoreEntry } from '../api';
 import type { Entry } from '../api/types';
 import { EntryTree } from '../features/board/EntryTree';
 import { FilterBar } from '../features/board/FilterBar';
-import { IdeaRow } from '../features/board/IdeaRow';
+import { IdeaCard } from '../features/board/IdeaCard';
+import { NewIdeaModal } from '../features/board/NewIdeaModal';
 import { BulkBar } from '../features/board/BulkBar';
 import { BundleCard } from '../features/board/BundleCard';
+import { BundleFormModal } from '../features/board/BundleFormModal';
 import { CompareBundles } from '../features/board/CompareBundles';
 import { SetAsideSection } from '../features/board/SetAsideSection';
 import { useBundleMembers } from '../features/board/useBundleMembers';
@@ -44,14 +46,22 @@ export function TripBoard() {
   const [scope, setScope] = useState<{ id: number; title: string }>({ id: trip.id, title: trip.title });
   const [filters, setFilters] = useState<IdeaFilters>(EMPTY_FILTERS);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [newIdeaTitle, setNewIdeaTitle] = useState('');
+  const [newIdeaOpen, setNewIdeaOpen] = useState(false);
+  const [newBundleOpen, setNewBundleOpen] = useState(false);
   const [compareIds, setCompareIds] = useState<number[]>([]);
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
 
-  const createEntry = useCreateEntry();
   const restoreEntry = useRestoreEntry();
   const { addLink } = useLinkMutations();
+
+  // Stable handles, not inline arrows: NewIdeaModal/BundleFormModal memoize
+  // their own internal onClose forward to keep Modal's focus effect (which
+  // depends on [open, onClose]) from re-firing and stealing focus back from
+  // a field mid-word every time this component happens to re-render — see
+  // NewIdeaModal.tsx's doc comment for the underlying Modal.tsx bug.
+  const closeNewIdea = useCallback(() => setNewIdeaOpen(false), []);
+  const closeNewBundle = useCallback(() => setNewBundleOpen(false), []);
 
   const ideasQuery = useEntries({ trip_id: scope.id, kind: 'idea', include_archived: true });
   const bundlesQuery = useEntries({ trip_id: trip.id, kind: 'bundle', include_archived: true });
@@ -71,18 +81,6 @@ export function TripBoard() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
   );
-
-  function handleAddIdea() {
-    const title = newIdeaTitle.trim();
-    if (!title) return;
-    createEntry.mutate(
-      { entry: { kind: 'idea', title }, parent_id: scope.id },
-      {
-        onSuccess: () => setNewIdeaTitle(''),
-        onError: () => show("That didn't save. It's still here — try again.", 'error'),
-      },
-    );
-  }
 
   function onToggleSelect(id: number, shiftKey: boolean) {
     setSelectedIds((prev) => {
@@ -143,16 +141,10 @@ export function TripBoard() {
         </details>
 
         <section className={styles.ideas} aria-label="Ideas">
-          <Input
-            placeholder="What else would you like to do?"
-            hint="↵"
-            value={newIdeaTitle}
-            onChange={(e) => setNewIdeaTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleAddIdea();
-            }}
-            aria-label="What else would you like to do?"
-          />
+          <Row justify="between" align="center">
+            <Button onClick={() => setNewIdeaOpen(true)}>Add an idea</Button>
+          </Row>
+          <NewIdeaModal open={newIdeaOpen} onClose={closeNewIdea} parentId={scope.id} />
 
           {scope.id !== trip.id && (
             <p className={styles.scopeLine}>
@@ -181,9 +173,9 @@ export function TripBoard() {
               {groups.map((group) => (
                 <Stack gap={3} key={group.key}>
                   <p className={styles.groupLabel}>{group.label}</p>
-                  <Stack gap={3}>
+                  <div className={styles.cardGrid}>
                     {group.entries.map((entry) => (
-                      <IdeaRow
+                      <IdeaCard
                         key={entry.id}
                         entry={entry}
                         bundles={bundles}
@@ -193,7 +185,7 @@ export function TripBoard() {
                         onToast={(message) => show(message, 'success')}
                       />
                     ))}
-                  </Stack>
+                  </div>
                 </Stack>
               ))}
             </Stack>
@@ -206,12 +198,18 @@ export function TripBoard() {
         </section>
 
         <section className={styles.bundles} aria-label="Bundles">
-          <p className={styles.groupLabel}>Bundles</p>
+          <Row justify="between" align="center">
+            <p className={styles.groupLabel}>Bundles</p>
+            <Button variant="secondary" onClick={() => setNewBundleOpen(true)}>
+              New bundle
+            </Button>
+          </Row>
+          <BundleFormModal open={newBundleOpen} onClose={closeNewBundle} tripId={trip.id} />
           {bundlesQuery.isLoading ? (
             <Spinner label="Finding your bundles" />
           ) : bundles.length === 0 ? (
             <p className={styles.emptyBundles}>
-              No bundles yet. Add one from the drawer, or fork an idea into a group once you have one.
+              No bundles yet. Start one above, or fork an idea into a group once you have one.
             </p>
           ) : (
             <Stack gap={4}>
