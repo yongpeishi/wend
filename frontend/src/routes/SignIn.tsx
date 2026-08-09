@@ -89,7 +89,7 @@ export function SignIn() {
           )}
 
           <Button type="submit" variant="primary" disabled={submitting}>
-            {submitting ? 'One moment' : mode === 'signin' ? 'Take the long way in' : 'Create your account'}
+            {submitting ? 'One moment' : mode === 'signin' ? 'Sign in' : 'Create your account'}
           </Button>
         </form>
 

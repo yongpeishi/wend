@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
-import { Input } from '../design/components/core/Input';
 import { Trail } from '../design/components/brand/Trail';
 import type { TrailStopState } from '../design/components/brand/Trail';
 import { Card } from '../components/layout/Card';
 import { EntryRow } from '../components/EntryRow';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
-import { useToast } from '../components/Toast';
-import { useCreateEntry, useEntries } from '../api/entries';
+import { useEntries } from '../api/entries';
 import type { Entry } from '../api/types';
+import { NewTripModal } from '../features/trips/NewTripModal';
 import { formatTripDates, joinMeta } from '../lib/formatDates';
 import styles from './TripsList.module.css';
 
@@ -38,62 +37,30 @@ function countLine(trip: Entry): string {
 /** `/` — trips you're planning, and the ideas you've kept that aren't in one yet. */
 export function TripsList() {
   const navigate = useNavigate();
-  const { show } = useToast();
 
   const tripsQuery = useEntries({ kind: 'trip' });
   const libraryQuery = useEntries({ unassigned: true, kind: 'idea' });
 
   const [starting, setStarting] = useState(false);
-  const [title, setTitle] = useState('');
-  const createEntry = useCreateEntry();
 
   const trips = (tripsQuery.data ?? []).filter((t) => !t.archived_at);
   const library = (libraryQuery.data ?? []).filter((e) => !e.archived_at).slice(0, 6);
-
-  function handleStart() {
-    const name = title.trim();
-    if (!name) return;
-    createEntry.mutate(
-      { entry: { kind: 'trip', title: name } },
-      {
-        onSuccess: (entry) => {
-          setTitle('');
-          setStarting(false);
-          navigate(`/trips/${entry.id}`);
-        },
-        onError: () => show("That didn't save. It's still here — try again.", 'error'),
-      },
-    );
-  }
 
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
         <h1 className={styles.pageTitle}>Where you&rsquo;re going</h1>
-        {!starting && (
-          <Button onClick={() => setStarting(true)}>Start something</Button>
-        )}
+        <Button onClick={() => setStarting(true)}>Start something</Button>
       </div>
 
-      {starting && (
-        <div className={styles.startBox}>
-          <Input
-            placeholder="Where are you going?"
-            hint="↵"
-            value={title}
-            autoFocus
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleStart();
-              if (e.key === 'Escape') setStarting(false);
-            }}
-            aria-label="Where are you going?"
-          />
-          <p className={styles.startHint}>
-            A trip can start as one word. Dates can come later, or never.
-          </p>
-        </div>
-      )}
+      <NewTripModal
+        open={starting}
+        onClose={() => setStarting(false)}
+        onCreated={(trip) => {
+          setStarting(false);
+          navigate(`/trips/${trip.id}`);
+        }}
+      />
 
       {tripsQuery.isLoading ? (
         <Spinner label="Finding your trips" />

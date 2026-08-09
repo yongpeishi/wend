@@ -16,16 +16,20 @@ npm run dev
 ```
 
 Vite serves on `:5173` and proxies `/api` to `http://localhost:3000` (the Rails
-backend). If the backend isn't running, the app still works: MSW (Mock Service
-Worker) intercepts every `/api/*` request in dev mode by default and serves it
-from an in-memory fixture store (`src/mocks/`). Set `VITE_USE_MOCKS=false` to
-talk to a real backend instead:
+backend). By default `npm run dev` talks to that real backend — start
+`cd backend && bin/rails server` alongside it. Mocks are **opt-in**, not
+opt-out: set `VITE_USE_MOCKS=true` to run standalone against MSW (Mock
+Service Worker), which intercepts every `/api/*` request and serves it from
+an in-memory fixture store (`src/mocks/`) instead — handy for design work or
+when the Rails API isn't running:
 
 ```
-VITE_USE_MOCKS=false npm run dev
+VITE_USE_MOCKS=true npm run dev
 ```
 
-The seeded mock user is `demo@wend.app` / `password`.
+The seeded mock user is `demo@wend.app` / `password`. (Tests are unaffected
+either way — `src/test/setup.ts` starts its own MSW node server directly from
+`src/mocks/server.ts`.)
 
 ## Test
 

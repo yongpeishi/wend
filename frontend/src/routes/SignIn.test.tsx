@@ -35,7 +35,7 @@ describe('SignIn', () => {
     renderSignIn();
     await userEvent.type(screen.getByLabelText('Email'), 'demo@wend.app');
     await userEvent.type(screen.getByLabelText('Password'), 'password');
-    await userEvent.click(screen.getByRole('button', { name: 'Take the long way in' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByTestId('whoami')).toHaveTextContent('Demo Traveler');
   });
 
@@ -43,7 +43,7 @@ describe('SignIn', () => {
     renderSignIn();
     await userEvent.type(screen.getByLabelText('Email'), 'demo@wend.app');
     await userEvent.type(screen.getByLabelText('Password'), 'wrong-password');
-    await userEvent.click(screen.getByRole('button', { name: 'Take the long way in' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password');
   });
 

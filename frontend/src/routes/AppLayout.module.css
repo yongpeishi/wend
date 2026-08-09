@@ -7,8 +7,15 @@
   background: var(--surface-card);
 }
 
+/* The wordmark is a brand lock-up, not body-copy link text: browsers
+   underline anchor text by default, and that default would otherwise draw a
+   line straight through "WEND". Genuine inline text links (e.g. .signOut
+   below) apply their own border-bottom underline deliberately — this rule
+   only removes the *unstyled* default, scoped to the brand link itself. */
 .brandLink {
   display: inline-flex;
+  text-decoration: none;
+  border-bottom: none;
 }
 
 .brandLink:focus-visible {

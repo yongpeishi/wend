@@ -1,4 +1,5 @@
-import { useId } from 'react';
+import { cloneElement, isValidElement, useId } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { Input } from '../design/components/core/Input';
 import type { InputProps } from '../design/components/core/Input';
 import styles from './Field.module.css';
@@ -11,10 +12,18 @@ export interface FieldProps extends Omit<InputProps, 'id' | 'error'> {
    * bold --text-strong rather than an invented error colour — see frontend README. */
   error?: string;
   id?: string;
+  /**
+   * A control to label instead of the built-in <Input> — a textarea, a select,
+   * or an input that needs its own props. It is given the generated id and
+   * aria-describedby so the label and error text still point at the right
+   * element. Omit this and the field renders its own <Input>, as before.
+   */
+  children?: ReactNode;
 }
 
-/** A labelled form field wrapping <Input>, with description/error text below. */
-export function Field({ label, description, error, id, ...inputProps }: FieldProps) {
+/** A labelled form field wrapping <Input> (or a supplied control), with
+ * description/error text below. */
+export function Field({ label, description, error, id, children, ...inputProps }: FieldProps) {
   const generatedId = useId();
   const fieldId = id ?? generatedId;
   const errorId = `${fieldId}-error`;
@@ -26,7 +35,18 @@ export function Field({ label, description, error, id, ...inputProps }: FieldPro
       <label className={styles.label} htmlFor={fieldId}>
         {label}
       </label>
-      <Input id={fieldId} error={Boolean(error)} aria-describedby={describedBy} {...inputProps} />
+      {children ? (
+        isValidElement(children) ? (
+          cloneElement(children as ReactElement<Record<string, unknown>>, {
+            id: fieldId,
+            'aria-describedby': describedBy,
+          })
+        ) : (
+          children
+        )
+      ) : (
+        <Input id={fieldId} error={Boolean(error)} aria-describedby={describedBy} {...inputProps} />
+      )}
       {error ? (
         <p className={styles.error} id={errorId} role="alert">
           {error}
