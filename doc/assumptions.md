@@ -7,6 +7,11 @@ Open questions live in `.claude/interaction/Q_*.md`.
 
 ---
 
+### A0 · Auth model — **CONFIRMED by the user (Q1 → option a)**
+Email + password accounts, signed session cookie, trips shared by default among all
+signed-in users, no invite flow or permissions model in the MVP. Votes are keyed by
+`user_id` so multi-user voting works at the data layer from day one.
+
 ### A1 · SQLite, not Postgres
 No Postgres server or `psql` client on this machine; Docker is available but adds a
 setup step for you. Rails 8 treats SQLite as production-capable. Queries stay portable;
