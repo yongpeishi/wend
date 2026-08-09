@@ -1,4 +1,29 @@
-# Handoff — remaining work
+# Handoff
+
+**The MVP is built.** Every screen in `doc/screens.md` exists and is wired to the real
+API. Backend: 83 tests green, Sorbet clean. Frontend: 145 tests green, strict `tsc`
+clean, production build succeeds. No route is a placeholder.
+
+What remains is verification and polish, not construction — start at
+**"What to do first"** below, then **"Known gaps and risks"**.
+
+## What to do first
+
+```bash
+cd backend && bin/rails db:setup && bin/rails server   # :3000
+cd frontend && npm install && npm run dev              # :5173
+```
+
+Sign in as `priya@example.com` / `password123`, then:
+
+1. **Open `/design`.** Nobody has ever seen this rendered — see gap 1.
+2. **Walk the core flow** against the real API: home → open the Japan trip → add an idea
+   → drag it onto a bundle → vote → open the map → place something on the schedule →
+   check the checklist. This is the end-to-end pass that has not happened.
+
+---
+
+# Original plan — remaining work
 
 **Branch:** `worktree-wend-mvp`, in the worktree at `.claude/worktrees/wend-mvp`.
 **Tree state: green.** `npm run build`, `npm run typecheck`, `npm test` (84), and
@@ -24,7 +49,8 @@ UX spec). Those two plus this file are enough to continue without re-deriving an
 | `/trips/:id/checklist` — unified todos | **Done** |
 | `/` home — trips + library strip | **Done** |
 | `/entries/:id` detail drawer | **Done** |
-| `/trips/:id/map`, `/library` | **In progress** — last piece |
+| `/trips/:id/map` — brand pins, clustering, filters | **Done** |
+| `/library` — synced split view, "Take these somewhere" | **Done** |
 
 **Contract drift check: passed.** The real Rails API's JSON keys were compared against
 `src/api/types.ts` on every endpoint (entries list, entry detail, votes, schedule items,
@@ -125,6 +151,18 @@ Requirements that are easy to miss:
    row (A6). A 23:00–01:00 item must be split across two days.
 6. **Sorbet runs at default `typed: false`** — syntax and constant resolution only, not
    full inference. Adding `sig`s and raising files to `typed: true` is real future work.
+7. **`MapView` has no render test.** jsdom cannot lay out a real Leaflet map, so its
+   logic (clustering, bounds, pin state, geocoding throttle) is unit-tested separately
+   and the route tests mock the component. The map's actual rendering is unverified.
+8. **Nominatim coverage is the known weak point** of the free maps stack (A0c), and it
+   bites hardest on exactly the case that started this project — finding individual Daiso
+   branches in Japan. Manual pin-drop and pasted coordinates always work. If adding places
+   turns out to be tedious in practice, swapping to a keyed provider is a two-file change:
+   only `features/map/MapView.tsx` and `features/map/markerIcon.ts` import Leaflet, and
+   `features/map/geocode.ts` is the only geocoder. Verified by grep, not by assertion.
+9. **The vote UI never ranks.** This is deliberate (the brief asks for a voting system,
+   not an optimiser, and the voice guide rejects "optimise"). If you later want sorting by
+   score, it should be an explicit user action, not a default.
 
 ---
 
