@@ -180,8 +180,16 @@ Desktop-first. All ideas with no trip ancestor.
 - **Zoom to a cluster → "Start a trip from these nine"**. This is the brief's exact
   inspiration→trip flow and it is the screen's reason to exist. Selecting entries (by map
   region, by chip filter, or by hand) enables one button: **"Take these somewhere"** →
-  creates a trip with the selected ideas linked into it. The ideas stay in the library too
-  — nothing is discarded, and one idea can serve two trips.
+  creates a trip with the selected ideas linked into it.
+- **What happens to those ideas afterwards.** They leave the library listing, and that is
+  correct: the library *is* "kept, not yet in a trip", so an idea that is now in a trip no
+  longer belongs to it. Nothing is discarded — the entry is untouched, still reachable
+  under its new trip, and still linkable into further trips, because links are additive
+  and an idea can serve two trips at once. Taking ideas somewhere **links, never moves**:
+  the operation only ever POSTs a link, and never deletes, archives or detaches anything.
+  An earlier draft of this document said the ideas "stay in the library too". That was
+  wrong — it conflated *nothing is discarded* (true) with *stays in the unassigned list*
+  (neither true nor desirable, since the library would then never empty).
 - Quick-add box that accepts a pasted URL: store it as `source_url` and let the user title
   it. No unfurling in the MVP (see `.claude/interaction/Q_03`).
 

@@ -88,6 +88,23 @@ interchangeable options, a Kyoto day with dinner alternatives, and a Malaysia tr
 Penang / Melaka / Bali as sibling ideas to exercise lift-out and absorb. Two users so
 vote tallies show more than one voice.
 
+### A11 · Ideas leave the library once they are in a trip
+`doc/screens.md` originally claimed that ideas taken into a trip "stay in the library
+too". That contradicted architecture.md §3 rule 2, which defines the library as entries
+with **no trip ancestor** — a definition the backend and the UI both already implement.
+
+Resolved in favour of the architecture: the library is "kept, not yet in a trip", so an
+idea that is now in a trip correctly leaves that listing. Nothing is discarded — the
+entry is untouched, reachable under its trip, and still linkable into further trips,
+since links are additive. "Take these somewhere" only ever POSTs links; it never
+deletes, archives or detaches. Both behaviours are covered by tests in
+`src/routes/Library.test.tsx`, including one that documents the disappearance from the
+`unassigned=true` listing explicitly rather than leaving it to prose.
+
+**↩ reversible cheaply** — if you'd rather the library keep showing everything, change
+the `library` scope from "no trip ancestor" to "explicitly set aside as inspiration"
+(a flag), which is a backend scope change plus a migration.
+
 ---
 
 ## Recorded by implementation agents

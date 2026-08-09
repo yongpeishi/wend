@@ -1,0 +1,23 @@
+.row {
+  align-items: center;
+  border-radius: var(--radius-card);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  accent-color: var(--wend-leaf);
+  cursor: pointer;
+}
+
+.checkbox:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}

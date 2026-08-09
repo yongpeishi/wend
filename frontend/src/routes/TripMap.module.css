@@ -1,0 +1,25 @@
+/* Desktop-first, like the board: the map wants real screen space to be
+   useful. Below 900px the header stacks instead of sitting side by side. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.mapWrap {
+  height: 560px;
+}
+
+@media (max-width: 900px) {
+  .mapWrap {
+    height: 380px;
+  }
+}

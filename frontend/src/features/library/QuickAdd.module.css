@@ -1,0 +1,9 @@
+.wrap {
+  max-width: 640px;
+}
+
+.urlInput,
+.titleInput {
+  min-width: 220px;
+  flex: 1;
+}
