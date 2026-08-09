@@ -7,10 +7,31 @@ Open questions live in `.claude/interaction/Q_*.md`.
 
 ---
 
+> **All three open questions are answered. Q1 → (a), Q2 → (a), Q3 → see A0b.**
+> Every answer matched the assumption already in place, so nothing below was reworked.
+
 ### A0 · Auth model — **CONFIRMED by the user (Q1 → option a)**
 Email + password accounts, signed session cookie, trips shared by default among all
 signed-in users, no invite flow or permissions model in the MVP. Votes are keyed by
 `user_id` so multi-user voting works at the data layer from day one.
+
+### A0b · Scope cuts — **CONFIRMED by the user (Q3)**
+- **No photo upload, ever** — not deferred, cut. The `--placeholder-hatch` diagonal is the
+  final treatment for entry imagery, not a stand-in. Entries carry `source_url` as their
+  only external reference. Do not build upload affordances or design around future photos.
+- **Instagram / social import: out.** Paste a URL, title it yourself.
+- **Offline / PWA: out.**
+- **No dedicated trip-option compare screen.** Trip options are sibling `kind: "trip"`
+  entries with descriptions; bundle-vs-bundle compare on the planning board covers the
+  side-by-side need.
+
+### A0c · Maps — **CONFIRMED by the user (Q2 → option a)**
+Leaflet + OpenStreetMap tiles for rendering, Nominatim for geocoding. No API key, no
+billing — the app runs for anyone who clones it. Accepted trade-off: Nominatim's coverage
+of small Japanese businesses is patchier than Google's, and its policy caps requests at
+~1/second, so geocoding is debounced and every entry also supports a manually dropped pin
+or pasted coordinates. Keep `<MapView>` and `<PlaceSearch>` as seams so a keyed provider
+can be swapped in later without touching call sites.
 
 ### A1 · SQLite, not Postgres
 No Postgres server or `psql` client on this machine; Docker is available but adds a

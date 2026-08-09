@@ -48,3 +48,7 @@ polishing any one stage. Here's what's in and what's deliberately out.
 
 **Answer here:**
 
+- No need for photo upload at all.
+- Instagram and offline is out.
+- 3. Is fine.
+
