@@ -18,6 +18,12 @@
   animation: pulse calc(var(--motion-fade-duration) * 6) ease-in-out infinite;
 }
 
+/* Leaf green disappears against deep leaf, so the dots take the soft leaf
+   used for the trail on dark. */
+.onDark .dot {
+  background: var(--trail-line-on-dark);
+}
+
 .dot:nth-child(1) {
   animation-delay: 0ms;
 }

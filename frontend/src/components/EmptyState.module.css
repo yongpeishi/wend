@@ -15,3 +15,9 @@
   line-height: var(--text-body-line);
   color: var(--text-body);
 }
+
+/* On the schedule's dark surface the copy inverts; the waiting dot is handled
+   by Trail's own onDark prop. */
+.onDark .message {
+  color: var(--text-on-dark-muted);
+}
