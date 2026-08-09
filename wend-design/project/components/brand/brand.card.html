@@ -1,0 +1,36 @@
+<!-- @dsCard group="Components" viewport="700x300" name="Brand — Logo & Trail" subtitle="Michikusa mark, lock-up and the three-pass trail" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  body { margin: 0; background: var(--surface-page); font-family: var(--font-sans); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Logo, Trail } = window.Wend;
+function Card() {
+  return (
+    <div style={{ padding: 24, display: 'grid', gap: 24 }}>
+      <div style={{ display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Logo size={40} />
+        <div style={{ background: 'var(--surface-inverse)', padding: '14px 18px', borderRadius: 'var(--radius-card)' }}>
+          <Logo variant="reversed" size={30} />
+        </div>
+        <Logo size={26} showWordmark={false} />
+      </div>
+      <Trail stops={['decided', 'open', 'waiting']} labels={['Explore', 'Shortlist', 'Day plan']} />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Card />);
+</script>
+</body>
+</html>

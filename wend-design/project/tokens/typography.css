@@ -1,0 +1,32 @@
+:root {
+  --font-sans: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+
+  --weight-regular: 400;
+  --weight-bold: 700;
+
+  /* Wordmark: tracking is fixed at every size — it is the signature */
+  --wordmark-tracking: 0.26em;
+
+  --text-display-size: 40px;
+  --text-display-line: 1.2;
+  --text-title-size: 26px;
+  --text-title-line: 1.3;
+  --text-subtitle-size: 20px;
+  --text-subtitle-line: 1.4;
+  --text-body-size: 17px;
+  --text-body-line: 1.7;
+  --text-small-size: 15px;
+  --text-small-line: 1.7;
+
+  /* Data: times, platforms, addresses. Slight tracking, never mono. */
+  --text-data-size: 17px;
+  --text-data-tracking: 0.04em;
+
+  --text-label-size: 12px;
+  --text-label-tracking: 0.12em;
+  --text-code-size: 13px;
+
+  --text-min-size: 15px;
+  --measure-body: 66ch;
+}
