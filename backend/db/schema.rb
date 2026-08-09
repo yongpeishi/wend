@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_133406) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_140000) do
   create_table "entries", force: :cascade do |t|
     t.string "address"
     t.datetime "archived_at"
@@ -49,6 +49,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_133406) do
     t.index ["child_id"], name: "index_entry_links_on_child_id"
     t.index ["parent_id", "child_id"], name: "index_entry_links_on_parent_id_and_child_id", unique: true
     t.index ["parent_id"], name: "index_entry_links_on_parent_id"
+  end
+
+  create_table "feedbacks", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "element_label"
+    t.string "element_selector"
+    t.text "message", null: false
+    t.string "path"
+    t.string "status", default: "new", null: false
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.integer "user_id", null: false
+    t.index ["created_at"], name: "index_feedbacks_on_created_at"
+    t.index ["status"], name: "index_feedbacks_on_status"
+    t.index ["user_id"], name: "index_feedbacks_on_user_id"
   end
 
   create_table "schedule_items", force: :cascade do |t|
@@ -106,6 +121,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_133406) do
   add_foreign_key "entries", "users", column: "created_by_id"
   add_foreign_key "entry_links", "entries", column: "child_id"
   add_foreign_key "entry_links", "entries", column: "parent_id"
+  add_foreign_key "feedbacks", "users"
   add_foreign_key "schedule_items", "entries"
   add_foreign_key "schedule_items", "entries", column: "chosen_entry_id"
   add_foreign_key "schedule_items", "entries", column: "trip_id"

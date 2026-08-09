@@ -1,6 +1,7 @@
 import { Link, Outlet } from 'react-router-dom';
 import { Logo } from '../design/components/brand/Logo';
 import { useAuth } from '../auth/AuthContext';
+import { FeedbackButton } from '../features/feedback/FeedbackButton';
 import styles from './AppLayout.module.css';
 
 /** Shell for every authenticated route: a slim top bar, then the route's own content. */
@@ -18,6 +19,9 @@ export function AppLayout() {
         </button>
       </header>
       <Outlet />
+      {/* Inside the authenticated shell so feedback always has an author, and
+          outside <Outlet> so it survives route changes. */}
+      <FeedbackButton />
     </div>
   );
 }

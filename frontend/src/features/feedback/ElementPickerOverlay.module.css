@@ -1,0 +1,89 @@
+/* Sits above page content but below the toast stack (200), and above the
+   Modal overlay (100) is deliberately NOT needed — the composer unmounts
+   while picking, so nothing of it is on screen to cover. */
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  pointer-events: none;
+}
+
+/* The one place an outline is drawn over live content. Apricot is the system's
+   attention colour (it is the focus ring), and it is never used as text here —
+   only as a drawn edge, per the brand rules. */
+.highlight {
+  position: fixed;
+  border: var(--border-width-strong) solid var(--focus-ring);
+  border-radius: var(--radius-card);
+  background: var(--focus-ring-wash);
+  pointer-events: none;
+  transition:
+    top var(--motion-fade-duration) var(--motion-fade-ease),
+    left var(--motion-fade-duration) var(--motion-fade-ease),
+    width var(--motion-fade-duration) var(--motion-fade-ease),
+    height var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.tag {
+  position: fixed;
+  max-width: 40ch;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-card);
+  background: var(--surface-inverse);
+  color: var(--text-on-dark);
+  font-family: var(--font-sans);
+  /* --text-min-size is the floor the system sets for readable text; the label
+     chip is real content, so it does not get to go smaller. */
+  font-size: var(--text-small-size);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.banner {
+  position: fixed;
+  top: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: calc(100vw - 2 * var(--gutter-screen));
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-inverse);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+}
+
+.bannerText {
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-on-dark);
+}
+
+.cancel {
+  pointer-events: auto;
+  flex-shrink: 0;
+  min-height: var(--space-8);
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: var(--border-width) solid var(--trail-line-on-dark);
+  border-radius: var(--radius-pill);
+  color: var(--text-on-dark);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  cursor: pointer;
+}
+
+/* Solid, not a white veil: --focus-ring-wash is the only translucent value the
+   system defines, so hover states are a tone change instead. */
+.cancel:hover {
+  background: var(--action-primary);
+}
+
+.cancel:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

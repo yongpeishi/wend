@@ -28,6 +28,8 @@ Rails.application.routes.draw do
 
     resources :todos, only: [:index, :create, :update, :destroy]
 
+    resources :feedbacks, only: [:index, :create]
+
     get "trips/:trip_id/schedule", to: "schedule_items#index"
     post "trips/:trip_id/schedule", to: "schedule_items#create"
     patch "schedule_items/:id", to: "schedule_items#update"

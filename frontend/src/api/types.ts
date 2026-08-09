@@ -119,6 +119,27 @@ export interface User {
   email: string;
 }
 
+export type FeedbackStatus = 'new' | 'triaged' | 'done';
+
+/**
+ * Feedback about the app itself. Not an Entry — see backend
+ * `app/models/feedback.rb`. `user_agent` is stored server-side for diagnosis
+ * but deliberately not serialized back, so it is absent here too.
+ */
+export interface Feedback {
+  id: number;
+  message: string;
+  user_id: number;
+  /** The client route the user was on, e.g. "/trips/3/schedule". */
+  path: string | null;
+  /** Set only when the user pointed at something. */
+  element_selector: string | null;
+  element_label: string | null;
+  status: FeedbackStatus;
+  created_at: string;
+  updated_at: string;
+}
+
 // ---- Request payloads --------------------------------------------------
 
 export type EntryWritePayload = Partial<
@@ -178,6 +199,10 @@ export type ScheduleItemWritePayload = Partial<
     'entry_id' | 'chosen_entry_id' | 'day' | 'starts_at_minutes' | 'ends_at_minutes' | 'note' | 'position'
   >
 >;
+
+/** Only what the reporter may set — `status` and `user_id` are server-owned. */
+export type FeedbackWritePayload = Pick<Feedback, 'message'> &
+  Partial<Pick<Feedback, 'path' | 'element_selector' | 'element_label'>>;
 
 export interface NearbyQuery {
   lat: number;

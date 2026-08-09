@@ -207,3 +207,33 @@ carries the meaning for screen readers.
 The motion vocabulary is exhaustive: the trail's dot-by-dot draw, and "everything else is a
 160 ms opacity change — no bounces, no scale, no spring." A rotate is not one of the two
 named motions, so the loading affordance is built from the primitive the system defines.
+
+## 8. Feedback
+
+**Feedback is its own table, not an Entry.** Everything in this app is an Entry — so the
+obvious move was to make feedback one more `kind`. It was rejected. An Entry is travel
+content: it can be voted on, linked into bundles, lifted into its own trip, scheduled at
+09:00 and shown on a map. None of that is meaningful for a bug report, and every one of
+those code paths would have to grow a "...unless it's feedback" branch. The Entry graph
+earns its generality by everything in it obeying the same rules; feedback obeys none of
+them. So `feedbacks` is a flat table with a `user_id`, and it touches nothing else.
+**↩ reversible cheaply** — nothing else reads the table, so it can be folded into
+`entries` (or dropped) with one migration.
+
+**You can read your own feedback, nobody else's.** `GET /api/feedbacks` is scoped to the
+signed-in user. Who is allowed to read the whole pile is a real product question — this app
+has no admin role, and the two seeded users are peers, so any answer inventing one would be
+a guess. Scoping to the author is the only answer that cannot be wrong, and it keeps the
+endpoint useful (the composer can show you what you already said). Triage lives in the
+`status` column (`new` / `triaged` / `done`), which the API deliberately does **not** let
+the reporter set — there is no update endpoint yet, so today status changes happen in the
+console. **↩ reversible cheaply** — an admin flag on `users` plus a branch in
+`FeedbacksController#index`, once there is an answer about who the reader is.
+
+**The feedback button sits bottom-left.** The toast stack owns bottom-right, and a button
+that transient messages slide over is unpressable at exactly the moment something just went
+wrong. **↩ reversible cheaply** — one CSS module.
+
+**Element selectors are built from id / data-testid / nth-child only, never class names.**
+CSS Modules hash class names at build time, so a class-based selector would be dead on the
+next deploy; the human-readable label captured alongside it is the durable artifact.

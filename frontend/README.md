@@ -139,6 +139,25 @@ src/
 | `TabBar` | `tabs: {key,label}[]`, `activeKey`, `onChange`, `aria-label` | Segmented control, full roving-tabindex arrow-key support. |
 | `TrailNav` | `current: 'brainstorm'\|'gather'\|'schedule'`, `onSelect?`, `onDark?` | Wraps `Trail` as real trip navigation. |
 
+### Feedback (`src/features/feedback/`)
+
+Mounted once in `AppLayout`, so it rides along on every authenticated screen and can
+record which one the user was on.
+
+| Module | What it is |
+| --- | --- |
+| `FeedbackButton` | The floating button. Bottom-**left**, because the toast stack owns bottom-right — a button that transient messages slide over is unpressable exactly when something has just gone wrong. Collapses to a 48px circle under 600px. |
+| `FeedbackComposer` | The dialog: textarea, optional element capture, submit. Holds the draft, so it survives the picker round trip. |
+| `useElementPicker` | "Point at something" mode. Listens in the **capture** phase and swallows the event, so clicking a link to complain about it doesn't navigate away and bin the draft. Escape and window-blur cancel; Enter/Space picks whatever has focus, so it works without a mouse. |
+| `ElementPickerOverlay` | The apricot highlight + label chip + instruction banner. All `pointer-events: none` and tagged `data-feedback-picker-ignore` so the picker can't select its own chrome. |
+| `describeElement` | Turns a DOM node into `{ selector, label }`. |
+
+The selector is built from `id` and `data-testid` only, **never class names** — CSS
+Modules rehash every class at build time, so a class-based selector would point at
+nothing by the time anyone read the report. It falls back to an `nth-child` path capped
+at 5 levels. Treat it as a debugging hint; `label` ("the 'Set aside' button") is what
+actually makes a report legible.
+
 ## Where I had to invent something
 
 The design bundle's own README says application components were deliberately
@@ -192,6 +211,16 @@ can revisit if a screen needs something different:
 - **`unassigned=true` overrides `kind`.** Same assumptions.md entry: the
   library scope always wins over any `kind` param also passed. The MSW mock
   mirrors this.
+- **There is no multi-line input in the system.** The bundle ships `Input`
+  (single-line) only, and feedback needs a paragraph. `FeedbackComposer`'s
+  `<textarea>` reuses `Input`'s exact treatment — card fill, `--border-subtle`
+  edge, apricot focus ring — rather than introducing a second text-entry look.
+  If a second screen ever needs one, promote it to `src/components/Textarea`.
+- **The picker highlight is the one outline drawn over live content.** Apricot
+  is the system's attention colour (it *is* the focus ring), and
+  `--focus-ring-wash` is the single sanctioned translucent value — so the
+  highlight is that wash plus an apricot border, and apricot still never
+  renders as text.
 
 ## Known gaps
 

@@ -19,6 +19,9 @@ module GeneratedUrlHelpersModule
   def api_entry_url(*args); end
 
   sig { params(args: T.untyped).returns(String) }
+  def api_feedbacks_url(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
   def api_me_url(*args); end
 
   sig { params(args: T.untyped).returns(String) }

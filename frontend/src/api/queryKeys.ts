@@ -18,4 +18,8 @@ export const queryKeys = {
     day: (tripId: number, day?: string) => ['schedule', tripId, day ?? null] as const,
   },
   nearby: (tripId: number, query: NearbyQuery) => ['nearby', tripId, query] as const,
+  feedback: {
+    all: ['feedback'] as const,
+    list: () => ['feedback', 'list'] as const,
+  },
 };
