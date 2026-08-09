@@ -93,3 +93,79 @@ vote tallies show more than one voice.
 ## Recorded by implementation agents
 
 <!-- Agents append here: what you assumed, why, and what it would cost to change. -->
+
+### Backend agent · Phase 1
+
+**A2 outcome: Sorbet + Tapioca, no fallback needed.** Ruby 4.0.3 was not a
+problem — `tapioca init` (which drives `srb rbi` under the hood) and
+`tapioca dsl` generated gem/DSL RBIs cleanly with `--parser=prism`, and
+`srb tc` passed with zero errors once one thing was suppressed: Sorbet's own
+bundled stdlib payload for `net-imap` (pulled in transitively via Action
+Mailer, unused by this app) disagrees with the `net-imap` gem version in
+`Gemfile.lock` about two classes' superclass. Fixed with the two
+`--suppress-payload-superclass-redefinition-for=...` lines Sorbet's own error
+message suggested, in `sorbet/config` — a stdlib/gem-version mismatch, not an
+app bug. `bin/typecheck` runs `bundle exec srb tc` and exits 0. App files
+carry no `# typed:` sigil (so they type-check at Sorbet's default "false"
+strictness — syntax and constant resolution, not full inference); adding
+`sig`s and bumping files to `true` is future work, not required for this
+phase. **↩ reversible cheaply** — RBS + Steep remains the documented fallback
+if Sorbet ever becomes a problem on a later Ruby, but wasn't needed here.
+
+**`GET /api/entries/:id` response shape.** §4 has two descriptions that
+don't quite agree: the endpoint line says `-> 200 { entry, parents, children,
+votes, todos }` (four keys as siblings of `entry`), while the serializer-shapes
+section says "Entry (detail form) adds `parents`, `children`, `todos`,
+`votes`" (implying they nest inside the `entry` object). I implemented the
+literal endpoint signature — top-level siblings, `entry` itself in list form
+— since that's the more concrete, copy-pasteable line and avoids a
+frontend dev having to guess between two different places the same data
+might live. `EntrySerializer.detail` (nested form) still exists and computes
+the same sub-parts; the controller just flattens it. **↩ reversible cheaply**
+— it's a one-line change in `Api::EntriesController#show` if the frontend
+agent already built against the nested reading.
+
+**"Scheduled" (§3 rule 8).** Defined an entry as scheduled when some
+`schedule_item` has `entry_id == entry.id` (placed directly, including a
+bundle placed as a whole) OR `chosen_entry_id == entry.id` (picked as the
+option within a scheduled bundle). When a `trip_id` is available (the
+`GET /api/entries?trip_id=` filter, or any endpoint naturally scoped to one
+trip), the check is scoped to that trip's `schedule_items` only; otherwise
+it's global. This is the reading that makes "bundle member" concrete without
+guessing at UI-only state.
+
+**Haversine `nearby` — verified in SQL.** This SQLite build (via the
+`sqlite3` gem, confirmed both from the `sqlite3` CLI and from
+`ActiveRecord::Base.connection.select_value`) exposes `sqrt`, `sin`, `cos`,
+`asin`, `atan2`, `radians`, and `power` as SQL functions, so the full
+Haversine formula runs as one query, no Ruby-side distance loop. One wrinkle:
+this SQLite rejects a bare `HAVING` clause that isn't inside an
+aggregate/`GROUP BY` query, even when it only filters a `SELECT` alias — so
+the distance filter is applied in an outer `WHERE` around a subquery instead
+of a `HAVING` directly on the computed column. See
+`app/controllers/api/nearby_controller.rb`.
+
+**`fork` (§3 rule 7) re-parents the copy alongside the original.** "Lets two
+versions sit side by side" was read as: the new entry should land under the
+same parent(s) the original has, not just carry the same children. So `fork`
+copies every column (title gets a " (copy)" suffix), duplicates the child
+links (shallow — same child ids, new positions preserved), and also
+duplicates the parent links. Not restricted to `kind: "bundle"` even though
+the prose example is a bundle — forking a plain idea works the same way,
+since nothing in the contract says it shouldn't.
+
+**`POST /api/entries?unassigned=true` overrides `kind`.** The library is
+ideas-only by definition, so `unassigned=true` always applies the `library`
+scope (which already filters to `kind: idea`) regardless of what `kind` param
+was also passed, rather than erroring or silently ignoring one.
+
+**Archived entries are hidden by default on `GET /api/entries`.** Not stated
+explicitly in §4, but "soft-hide only" (§2) reads as intending exactly that
+— a default list view showing archived rows alongside live ones would defeat
+the point of archiving. `include_archived=true` shows both; there's no
+"only archived" filter since nothing in the contract calls for one.
+
+**Everything not covered above was implemented as written** — table/column
+names, endpoint paths, and JSON key names match §2/§4 exactly, including
+`vote_tally`, `my_vote`, `children_count`, `todos_open_count`. No endpoint
+from §4 was skipped.
