@@ -1,0 +1,66 @@
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-8);
+  border-bottom: var(--border-width-strong) solid var(--text-strong);
+}
+
+.left {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.backButton {
+  flex-shrink: 0;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.backButton:hover {
+  opacity: 0.7;
+}
+
+.backButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.titles {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  color: var(--text-strong);
+}
+
+.description {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-small-size);
+  line-height: var(--text-body-line);
+  color: var(--text-muted);
+}
+
+.actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}

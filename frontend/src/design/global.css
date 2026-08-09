@@ -1,0 +1,61 @@
+/* Base element styles for the Wend app shell.
+   Not part of the read-only design bundle — derived from the token values and the
+   rules in wend-design/project/readme.md ("Visual foundations"). */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+/* Global focus-visible: 3px apricot outline, 3px offset, on every interactive
+   element. Individual components may also set this explicitly, but this catches
+   anything that forwards a native element. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* No emphasis via italics anywhere in the product. */
+em,
+i {
+  font-style: normal;
+  font-weight: var(--weight-bold);
+}

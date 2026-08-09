@@ -1,0 +1,48 @@
+/* Shared by Modal and Drawer. The system defines no translucent value other than
+   --focus-ring-wash, so the overlay is a SOLID paper-tone fill (not a dimmed
+   scrim) — separation from the page underneath comes entirely from card tone
+   and the drawn edge, matching "no shadows, no blur/transparency". */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--surface-page);
+  display: flex;
+  z-index: 100;
+  animation: fade var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.closeButton {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: var(--tap-min);
+  height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.closeButton:hover {
+  opacity: 0.7;
+}
+
+.closeButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

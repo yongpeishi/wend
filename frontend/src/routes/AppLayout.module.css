@@ -1,0 +1,33 @@
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--gutter-screen);
+  border-bottom: var(--border-width) solid var(--border-subtle);
+  background: var(--surface-card);
+}
+
+.brandLink {
+  display: inline-flex;
+}
+
+.brandLink:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.signOut {
+  background: none;
+  border: none;
+  padding: 8px 4px;
+  color: var(--action-primary);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  cursor: pointer;
+  border-bottom: var(--border-width-strong) solid var(--action-primary);
+}
+
+.signOut:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

@@ -1,0 +1,9 @@
+.card {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-none);
+}
+
+.bordered {
+  border: var(--border-width) solid var(--border-subtle);
+}

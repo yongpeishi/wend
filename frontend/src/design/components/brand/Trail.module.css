@@ -1,0 +1,49 @@
+.trail {
+  display: block;
+}
+
+.labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-strong);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: default;
+}
+
+.label[data-on-dark='true'] {
+  color: var(--text-on-dark);
+}
+
+.label[data-waiting='true'] {
+  color: var(--text-muted);
+}
+
+.label[data-on-dark='true'][data-waiting='true'] {
+  color: var(--text-on-dark-muted);
+}
+
+.labelButton {
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+  border-radius: var(--radius-card);
+}
+
+.labelButton:hover {
+  opacity: 0.75;
+}
+
+.labelButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

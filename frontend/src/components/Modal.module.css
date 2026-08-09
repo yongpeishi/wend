@@ -1,0 +1,34 @@
+.modal {
+  position: relative;
+  margin: auto;
+  width: min(560px, calc(100vw - 2 * var(--gutter-screen)));
+  max-height: calc(100vh - 2 * var(--gutter-screen));
+  overflow-y: auto;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-none);
+}
+
+.title {
+  margin: 0 0 var(--space-4);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  color: var(--text-strong);
+  padding-right: var(--space-12);
+}
+
+.body {
+  color: var(--text-body);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+}
+
+.actions {
+  margin-top: var(--space-6);
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+}

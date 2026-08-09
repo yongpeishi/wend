@@ -1,0 +1,52 @@
+:root {
+  /* Base — Sanzo Wada derived */
+  --wend-deep-leaf: #2F4A36;
+  --wend-leaf: #3F6B4A;
+  --wend-leaf-soft: #8FAE93;
+  --wend-apricot: #E89A5E;
+  --wend-plum: #8A4A61;
+  --wend-plum-tint: #E4B5C4;
+  --wend-plum-wash: #F3E3EA;
+  --wend-paper: #F0F3EE;
+  --wend-card: #FBFCFA;
+  --wend-line: #D2DACD;
+  --wend-line-strong: #C3CCBF;
+  --wend-muted: #6A7565;
+  --wend-body: #4B5548;
+  --wend-hatch-a: #DCE4D9;
+  --wend-hatch-b: #E9EFE6;
+
+  /* Semantic */
+  --surface-page: var(--wend-paper);
+  --surface-card: var(--wend-card);
+  --surface-inverse: var(--wend-deep-leaf);
+  --surface-disabled: var(--wend-line-strong);
+
+  --text-strong: var(--wend-deep-leaf);
+  --text-body: var(--wend-body);
+  --text-muted: var(--wend-muted);
+  --text-on-dark: var(--wend-paper);
+  --text-on-dark-muted: #A9BFAC;
+  --text-inverse: var(--wend-paper);
+
+  --action-primary: var(--wend-leaf);
+  --action-primary-text: var(--wend-paper);
+  --action-disabled-text: var(--wend-muted);
+
+  --border-subtle: var(--wend-line);
+  --border-strong: var(--wend-line-strong);
+
+  /* Trail states — the one place the brand carries meaning */
+  --stop-decided: var(--wend-leaf);
+  --stop-open: var(--wend-apricot);
+  --stop-destination: var(--wend-plum);
+  --stop-waiting: #D6DED3;
+  --trail-line: #B9C7B7;
+  --trail-line-on-dark: var(--wend-leaf-soft);
+
+  --focus-ring: var(--wend-apricot);
+  --focus-ring-wash: rgba(232, 154, 94, 0.28);
+
+  /* Placeholder imagery: hatch, never a grey box */
+  --placeholder-hatch: repeating-linear-gradient(135deg, var(--wend-hatch-a) 0 5px, var(--wend-hatch-b) 5px 10px);
+}

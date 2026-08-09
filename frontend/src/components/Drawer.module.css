@@ -1,0 +1,26 @@
+.drawer {
+  position: relative;
+  margin-left: auto;
+  height: 100%;
+  width: min(480px, 100vw);
+  overflow-y: auto;
+  background: var(--surface-card);
+  border-left: var(--border-width) solid var(--border-subtle);
+  padding: var(--space-8);
+  box-shadow: var(--shadow-none);
+}
+
+.title {
+  margin: 0 0 var(--space-6);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  color: var(--text-strong);
+  padding-right: var(--space-12);
+}
+
+.body {
+  color: var(--text-body);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+}

@@ -1,0 +1,135 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-16) var(--gutter-screen) var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-section);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-8);
+  border-bottom: var(--border-width-strong) solid var(--text-strong);
+}
+
+.introTitle {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line);
+  color: var(--text-strong);
+}
+
+.introBody {
+  margin: 0;
+  max-width: var(--measure-body);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-body);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.sectionLabel {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  color: var(--text-strong);
+}
+
+.specimenGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-6);
+}
+
+.specimen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  border: var(--border-width) solid var(--border-subtle);
+}
+
+.specimenLabel {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+}
+
+.specimenNote {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.swatch {
+  height: 88px;
+  border-radius: var(--radius-card);
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-2);
+}
+
+.swatchCaption {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.darkPanel {
+  background: var(--surface-inverse);
+  border-radius: var(--radius-card);
+  padding: var(--space-6);
+}
+
+.typeRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width) solid var(--border-subtle);
+  align-items: baseline;
+}
+
+.typeLabel {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.scaleRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.scaleBlock {
+  background: var(--action-primary);
+}

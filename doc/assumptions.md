@@ -169,3 +169,67 @@ the point of archiving. `include_archived=true` shows both; there's no
 names, endpoint paths, and JSON key names match §2/§4 exactly, including
 `vote_tally`, `my_vote`, `children_count`, `todos_open_count`. No endpoint
 from §4 was skipped.
+
+### Frontend agent · Phase 2
+
+**Typed `GET /api/entries/:id` against the backend agent's confirmed
+behaviour, not the ambiguous §4 prose.** The backend agent's entry above
+flags that §4 reads two ways and records what was actually built: `{ entry,
+parents, children, votes, todos }` as top-level siblings of `entry` (list
+form), not a merge into `entry`. `EntryDetailResponse` in
+`frontend/src/api/types.ts` and the `useEntry` hook are typed against that
+reading. **↩ reversible cheaply** — one type change if the backend's shape
+ever moves to match the other reading instead.
+
+**Chip vs. Tag split.** The prototype's `Chip.jsx` renders both an
+interactive filter toggle and the static "Saved · 12" tag through one
+component. Ported as two: `Chip` (a real `<button>`, `aria-pressed`) and
+`Tag` (a `<span>`, no interaction) — a static label that's focusable and
+clickable but does nothing is a real accessibility bug, not a style choice.
+**↩ reversible cheaply** — both share the same CSS module.
+
+**No error/red colour exists in the token set.** `colors.css` has no
+warning/error hue — apricot is reserved for "where you are now" and can't be
+repurposed. Form validation errors (`Field`, sign-in) render in bold
+`--text-strong`, never colour-coded. `Toast`'s tone is carried by a left
+accent bar only, reusing existing meanings (`success` → leaf/`--stop-decided`,
+`error` → plum/`--stop-destination`) rather than inventing a new hue.
+
+**Modal/Drawer overlay is a solid fill, not a translucent scrim.**
+`wend-design/project/readme.md` states the only translucent value in the
+system is `--focus-ring-wash`. A conventional dimmed backdrop would add a
+second one, so the overlay is `background: var(--surface-page)` at full
+opacity — separation from the page underneath comes from card tone plus a
+drawn border, matching "no shadows, no blur/transparency" literally rather
+than by convention.
+
+**VoteControl (−2..+2 desire rating) has no source in the design bundle.**
+Built it to "read without a legend" per the brief by mirroring `Trail`'s own
+idiom: dot size grows with distance from neutral (strength of feeling), a
+single leaf-green fill marks the current vote regardless of sign (no second
+"negative" hue exists in the palette), and each stop's accessible name (e.g.
+"Really want this") carries the meaning for screen readers.
+
+**Spinner is three dots with staggered 160ms opacity fades, not a rotating
+spinner.** The brief's motion section is exhaustive: the trail's dot-by-dot
+draw, and "everything else is a 160ms opacity change... no bounces, no
+scale, no spring." A spin/rotate animation isn't one of the two named
+motions, so the loading affordance is built from the one primitive the
+system actually defines.
+
+**`frontend/vite.config.ts` and `vitest.config.ts` are two files, not
+one.** Vitest bundles its own nested copy of `vite`; merging a `test` block
+into `vite.config.ts`'s `defineConfig()` (the documented single-file
+pattern) produces a plugin-type conflict between the two `vite` package
+instances under `tsc -b` (`npm run build` fails, `vite`/`vitest` dev/test
+commands are unaffected since they don't type-check). Splitting the configs
+resolves it; noted here since it deviates from the usual one-config-file
+Vite convention. **↩ reversible cheaply** — re-merge if a future
+Vite/Vitest release fixes the duplicate-package type resolution.
+
+**No live browser was available to visually verify `/design`.** This
+environment has no Chrome extension connected. Verified instead via
+`DesignGallery.test.tsx` (renders every section through React Testing
+Library, interacts with the modal trigger) and `npm run build` / `npm run
+dev` + `curl` against the running server. Flagged in
+`frontend/README.md#known-gaps` — worth a real visual pass before shipping.
