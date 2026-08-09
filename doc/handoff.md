@@ -20,11 +20,17 @@ UX spec). Those two plus this file are enough to continue without re-deriving an
 | Auth, routing, app shell, `TripLayout` trip shell | **Done** |
 | `src/lib/formatDates.ts` house formatting | **Done** |
 | `/trips/:id` planning board | **Done** |
-| `/trips/:id/schedule`, `/trips/:id/checklist` | **Logic done, routes not wired** — see below |
-| `/`, `/entries/:id`, `/trips/:id/map`, `/library` | **Placeholders only** |
+| `/trips/:id/schedule` — hourly plan, dark surface, nearby | **Done** |
+| `/trips/:id/checklist` — unified todos | **Done** |
+| `/` home — trips + library strip | **Done** |
+| `/entries/:id` detail drawer | **Done** |
+| `/trips/:id/map`, `/library` | **In progress** — last piece |
 
-Three screen agents were interrupted mid-build by a session limit. Their partial work is
-committed and compiles; nothing is half-written on disk.
+**Contract drift check: passed.** The real Rails API's JSON keys were compared against
+`src/api/types.ts` on every endpoint (entries list, entry detail, votes, schedule items,
+todos). They match exactly, including the `{ entry, parents, children, todos, votes }`
+top-level sibling shape for entry detail. The MSW mocks are a faithful reimplementation,
+not a divergent one.
 
 ---
 
@@ -108,8 +114,9 @@ Requirements that are easy to miss:
    and a brand audit found zero shadows, zero italics, zero emoji and zero hardcoded hex
    outside the token files — but **nobody has looked at a rendered pixel.** Open
    `/design` first thing.
-2. **The frontend has mostly been exercised against MSW, not Rails.** Both implement
-   architecture.md §4, but only the backend is the real thing. Do the integration pass.
+2. **No end-to-end click-through has happened.** Key shapes are verified to match
+   (see the contract check above), but nobody has driven the real app against the real
+   API through a browser. Boot both servers and walk the core flow.
 3. **`Modal`/`Drawer` have no focus-trap loop** — Escape and initial focus work, but Tab
    can escape the dialog. Worth fixing before anyone calls this accessible.
 4. **Ancestor walks are recursive** (A4). Fine at seed scale; if a trip with hundreds of
