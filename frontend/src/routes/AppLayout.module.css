@@ -34,9 +34,13 @@
 }
 
 /* The wordmark is a brand lock-up, not body-copy link text: the default anchor
-   underline would draw a line straight through "Wend". Scoped to the brand link. */
+   underline would draw a line straight through "Wend". Scoped to the brand link.
+   `color` is reset too — Logo paints its own marks today, so nothing renders
+   blue, but without this the anchor still computes to the UA default and any
+   text fallback inside would land on it. Inherits the sidebar's on-dark ink. */
 .brandLink {
   display: inline-flex;
+  color: inherit;
   text-decoration: none;
   border-bottom: none;
   border-radius: var(--radius-card);
