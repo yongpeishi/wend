@@ -55,6 +55,11 @@ export function FeedbackComposer({ open, onClose }: FeedbackComposerProps) {
     onClose();
   }, [onClose, cancelPicking, reset]);
 
+  // Built from the router rather than read off `window.location`, so it is
+  // correct the instant a route changes and stays honest under a MemoryRouter.
+  const route = `${location.pathname}${location.search}${location.hash}`;
+  const url = `${window.location.origin}${route}`;
+
   const handleSubmit = () => {
     const trimmed = message.trim();
     if (!trimmed) {
@@ -66,9 +71,11 @@ export function FeedbackComposer({ open, onClose }: FeedbackComposerProps) {
     createFeedback.mutate(
       {
         message: trimmed,
-        path: location.pathname,
+        url,
         element_selector: capture?.selector,
-        element_label: capture?.label,
+        // Field by field, never `...capture`: the capture also carries a label
+        // read from page text, and that must not leave the browser.
+        element_classes: capture?.classes,
       },
       {
         onSuccess: () => {
@@ -134,7 +141,13 @@ export function FeedbackComposer({ open, onClose }: FeedbackComposerProps) {
       {capture ? (
         <div className={styles.capture}>
           <span className={styles.captureLabel}>About this:</span>
-          <span className={styles.captureValue} title={capture.selector}>
+          {/* The label names the thing on screen so the user can confirm they
+              pointed at the right one. It is not what gets sent — the title
+              spells out what is: the selector and the class attribute. */}
+          <span
+            className={styles.captureValue}
+            title={capture.classes ? `${capture.selector} — ${capture.classes}` : capture.selector}
+          >
             {capture.label}
           </span>
           <button type="button" className={styles.captureClear} onClick={() => setCapture(null)} aria-label="Remove the selected element">
@@ -148,7 +161,7 @@ export function FeedbackComposer({ open, onClose }: FeedbackComposerProps) {
         </Button>
       )}
 
-      <p className={styles.context}>Sent along with the page you are on: {location.pathname}</p>
+      <p className={styles.context}>Sent along with the page you are on: {route}</p>
     </Modal>
   );
 }

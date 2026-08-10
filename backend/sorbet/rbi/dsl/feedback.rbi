@@ -588,49 +588,49 @@ class Feedback
     def created_at_will_change!; end
 
     sig { returns(T.nilable(::String)) }
-    def element_label; end
+    def element_classes; end
 
     sig { params(value: T.nilable(::String)).returns(T.nilable(::String)) }
-    def element_label=(value); end
+    def element_classes=(value); end
 
     sig { returns(T::Boolean) }
-    def element_label?; end
+    def element_classes?; end
 
     sig { returns(T.nilable(::String)) }
-    def element_label_before_last_save; end
+    def element_classes_before_last_save; end
 
     sig { returns(T.untyped) }
-    def element_label_before_type_cast; end
+    def element_classes_before_type_cast; end
 
     sig { returns(T::Boolean) }
-    def element_label_came_from_user?; end
+    def element_classes_came_from_user?; end
 
     sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def element_label_change; end
+    def element_classes_change; end
 
     sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def element_label_change_to_be_saved; end
+    def element_classes_change_to_be_saved; end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def element_label_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+    def element_classes_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable(::String)) }
-    def element_label_in_database; end
+    def element_classes_in_database; end
 
     sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def element_label_previous_change; end
+    def element_classes_previous_change; end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def element_label_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+    def element_classes_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable(::String)) }
-    def element_label_previously_was; end
+    def element_classes_previously_was; end
 
     sig { returns(T.nilable(::String)) }
-    def element_label_was; end
+    def element_classes_was; end
 
     sig { void }
-    def element_label_will_change!; end
+    def element_classes_will_change!; end
 
     sig { returns(T.nilable(::String)) }
     def element_selector; end
@@ -812,56 +812,11 @@ class Feedback
     sig { void }
     def message_will_change!; end
 
-    sig { returns(T.nilable(::String)) }
-    def path; end
-
-    sig { params(value: T.nilable(::String)).returns(T.nilable(::String)) }
-    def path=(value); end
-
-    sig { returns(T::Boolean) }
-    def path?; end
-
-    sig { returns(T.nilable(::String)) }
-    def path_before_last_save; end
-
-    sig { returns(T.untyped) }
-    def path_before_type_cast; end
-
-    sig { returns(T::Boolean) }
-    def path_came_from_user?; end
-
-    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def path_change; end
-
-    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def path_change_to_be_saved; end
-
-    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def path_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
-
-    sig { returns(T.nilable(::String)) }
-    def path_in_database; end
-
-    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def path_previous_change; end
-
-    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def path_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
-
-    sig { returns(T.nilable(::String)) }
-    def path_previously_was; end
-
-    sig { returns(T.nilable(::String)) }
-    def path_was; end
-
-    sig { void }
-    def path_will_change!; end
-
     sig { void }
     def restore_created_at!; end
 
     sig { void }
-    def restore_element_label!; end
+    def restore_element_classes!; end
 
     sig { void }
     def restore_element_selector!; end
@@ -876,13 +831,13 @@ class Feedback
     def restore_message!; end
 
     sig { void }
-    def restore_path!; end
-
-    sig { void }
     def restore_status!; end
 
     sig { void }
     def restore_updated_at!; end
+
+    sig { void }
+    def restore_url!; end
 
     sig { void }
     def restore_user_agent!; end
@@ -897,10 +852,10 @@ class Feedback
     def saved_change_to_created_at?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def saved_change_to_element_label; end
+    def saved_change_to_element_classes; end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def saved_change_to_element_label?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+    def saved_change_to_element_classes?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
     def saved_change_to_element_selector; end
@@ -926,12 +881,6 @@ class Feedback
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def saved_change_to_message?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
-    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def saved_change_to_path; end
-
-    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def saved_change_to_path?(from: T.unsafe(nil), to: T.unsafe(nil)); end
-
     sig { returns(T.nilable([::String, ::String])) }
     def saved_change_to_status; end
 
@@ -943,6 +892,12 @@ class Feedback
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def saved_change_to_updated_at?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
+    def saved_change_to_url; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def saved_change_to_url?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
     def saved_change_to_user_agent; end
@@ -1047,6 +1002,51 @@ class Feedback
     def updated_at_will_change!; end
 
     sig { returns(T.nilable(::String)) }
+    def url; end
+
+    sig { params(value: T.nilable(::String)).returns(T.nilable(::String)) }
+    def url=(value); end
+
+    sig { returns(T::Boolean) }
+    def url?; end
+
+    sig { returns(T.nilable(::String)) }
+    def url_before_last_save; end
+
+    sig { returns(T.untyped) }
+    def url_before_type_cast; end
+
+    sig { returns(T::Boolean) }
+    def url_came_from_user?; end
+
+    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
+    def url_change; end
+
+    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
+    def url_change_to_be_saved; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def url_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable(::String)) }
+    def url_in_database; end
+
+    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
+    def url_previous_change; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def url_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable(::String)) }
+    def url_previously_was; end
+
+    sig { returns(T.nilable(::String)) }
+    def url_was; end
+
+    sig { void }
+    def url_will_change!; end
+
+    sig { returns(T.nilable(::String)) }
     def user_agent; end
 
     sig { params(value: T.nilable(::String)).returns(T.nilable(::String)) }
@@ -1140,7 +1140,7 @@ class Feedback
     def will_save_change_to_created_at?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def will_save_change_to_element_label?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+    def will_save_change_to_element_classes?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_element_selector?(from: T.unsafe(nil), to: T.unsafe(nil)); end
@@ -1155,13 +1155,13 @@ class Feedback
     def will_save_change_to_message?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def will_save_change_to_path?(from: T.unsafe(nil), to: T.unsafe(nil)); end
-
-    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_status?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_updated_at?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def will_save_change_to_url?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_user_agent?(from: T.unsafe(nil), to: T.unsafe(nil)); end

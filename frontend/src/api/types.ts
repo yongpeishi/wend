@@ -130,11 +130,12 @@ export interface Feedback {
   id: number;
   message: string;
   user_id: number;
-  /** The client route the user was on, e.g. "/trips/3/schedule". */
-  path: string | null;
-  /** Set only when the user pointed at something. */
+  /** The full client URL the user was on, e.g. "http://localhost:5173/trips/3/schedule". */
+  url: string | null;
+  /** Both set only when the user pointed at something. */
   element_selector: string | null;
-  element_label: string | null;
+  /** The element's raw class attribute, e.g. "_chip_7ilc4_44" — a grep hint. */
+  element_classes: string | null;
   status: FeedbackStatus;
   created_at: string;
   updated_at: string;
@@ -202,7 +203,7 @@ export type ScheduleItemWritePayload = Partial<
 
 /** Only what the reporter may set — `status` and `user_id` are server-owned. */
 export type FeedbackWritePayload = Pick<Feedback, 'message'> &
-  Partial<Pick<Feedback, 'path' | 'element_selector' | 'element_label'>>;
+  Partial<Pick<Feedback, 'url' | 'element_selector' | 'element_classes'>>;
 
 export interface NearbyQuery {
   lat: number;

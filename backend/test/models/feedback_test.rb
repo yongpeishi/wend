@@ -32,16 +32,17 @@ class FeedbackTest < ActiveSupport::TestCase
 
   test "keeps an element capture when a selector is present" do
     feedback = Feedback.create!(
-      user: @user, message: "This button lies", element_selector: "main > button:nth-child(2)", element_label: "Set aside"
+      user: @user, message: "This button lies", element_selector: "main > button:nth-child(2)",
+      element_classes: "_button_1p9dt_29 _quiet_1p9dt_44"
     )
     assert feedback.element?
-    assert_equal "Set aside", feedback.element_label
+    assert_equal "_button_1p9dt_29 _quiet_1p9dt_44", feedback.element_classes
   end
 
-  test "drops an element label with no selector to keep the capture coherent" do
-    feedback = Feedback.create!(user: @user, message: "General thought", element_label: "Orphan")
+  test "drops element classes with no selector to keep the capture coherent" do
+    feedback = Feedback.create!(user: @user, message: "General thought", element_classes: "_orphan_1p9dt_29")
     assert_not feedback.element?
-    assert_nil feedback.element_label
+    assert_nil feedback.element_classes
   end
 
   test "newest_first returns the most recent submission first" do

@@ -53,12 +53,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_140000) do
 
   create_table "feedbacks", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.string "element_label"
+    t.string "element_classes"
     t.string "element_selector"
     t.text "message", null: false
-    t.string "path"
     t.string "status", default: "new", null: false
     t.datetime "updated_at", null: false
+    t.string "url"
     t.string "user_agent"
     t.integer "user_id", null: false
     t.index ["created_at"], name: "index_feedbacks_on_created_at"

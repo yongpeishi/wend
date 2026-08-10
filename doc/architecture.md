@@ -143,16 +143,23 @@ the Entry graph.
 | id | integer PK | |
 | message | text, not null | max 5000 chars |
 | user_id | integer FK users, not null | always the signed-in user, never the request body |
-| path | string | the **client** route the user was on, e.g. `/trips/3/schedule` |
+| url | string | the full **client** URL, e.g. `http://localhost:5173/trips/3/schedule` |
 | element_selector | string | set only when the user pointed at something |
-| element_label | string | the human name of that element, e.g. "Set aside" |
+| element_classes | string | that element's class attribute, e.g. `_chip_7ilc4_44` |
 | status | string, not null, default `new` | `new` \| `triaged` \| `done` |
 | user_agent | string | captured from the request; **not serialized back** |
 | created_at/updated_at | datetime | |
 
-`element_label` is dropped if `element_selector` is blank — a label alone points at
-nothing. The selector is built from ids and `data-testid` only, never CSS-module class
-names, which are rehashed on every build.
+`element_classes` is dropped if `element_selector` is blank — classes alone point at
+nothing. The selector is built from ids and `data-testid` only, never class names, which
+are rehashed on every build; the class attribute is stored beside it as a *grep hint*
+rather than a locator, since Vite keeps the authored name inside the hash (`.chip` →
+`_chip_7ilc4_44`).
+
+An element capture is three things we authored — a URL, a selector, a class attribute.
+The human label the picker shows on screen ("the 'Set aside' button") is read from page
+text, so it can contain whatever the user typed, and is deliberately **never sent**. The
+only user-written text this table holds is `message`.
 
 ---
 
@@ -262,8 +269,8 @@ GET    /api/feedbacks?limit=50            -> 200 { feedbacks: [Feedback] }
 POST   /api/feedbacks  { feedback: {...} } -> 201 { feedback }
 ```
 `index` returns **only the caller's own** feedback, newest first (`.claude/interaction/wend-mvp/decisions.md` §8);
-`limit` is clamped to 1..200. On `create` the writable fields are `message`, `path`,
-`element_selector` and `element_label` — `user_id`, `status` and `user_agent` are set
+`limit` is clamped to 1..200. On `create` the writable fields are `message`, `url`,
+`element_selector` and `element_classes` — `user_id`, `status` and `user_agent` are set
 from the request and ignored if supplied in the body.
 
 ### Serializer shapes

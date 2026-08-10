@@ -150,13 +150,20 @@ record which one the user was on.
 | `FeedbackComposer` | The dialog: textarea, optional element capture, submit. Holds the draft, so it survives the picker round trip. |
 | `useElementPicker` | "Point at something" mode. Listens in the **capture** phase and swallows the event, so clicking a link to complain about it doesn't navigate away and bin the draft. Escape and window-blur cancel; Enter/Space picks whatever has focus, so it works without a mouse. |
 | `ElementPickerOverlay` | The apricot highlight + label chip + instruction banner. All `pointer-events: none` and tagged `data-feedback-picker-ignore` so the picker can't select its own chrome. |
-| `describeElement` | Turns a DOM node into `{ selector, label }`. |
+| `describeElement` | Turns a DOM node into `{ selector, classes, label }`. |
 
 The selector is built from `id` and `data-testid` only, **never class names** — CSS
 Modules rehash every class at build time, so a class-based selector would point at
 nothing by the time anyone read the report. It falls back to an `nth-child` path capped
-at 5 levels. Treat it as a debugging hint; `label` ("the 'Set aside' button") is what
-actually makes a report legible.
+at 5 levels.
+
+Two of those three fields are sent: `selector` and `classes`. **`label` is display-only
+and never leaves the browser.** It is the human name of the thing ("the 'Set aside'
+button"), which is exactly what makes the on-screen chip readable — and exactly why it
+can't be stored, because it is read from page text and would carry whatever the user had
+typed there. What goes to the server instead is the full page URL and the raw class
+attribute, both authored by us. Vite keeps the source name inside the hash
+(`.chip` → `_chip_7ilc4_44`), so `grep chip src/**/*.module.css` still finds it.
 
 ## Where I had to invent something
 

@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { MAX_LABEL_LENGTH, describeElement, labelFor, selectorFor } from './describeElement';
+import {
+  MAX_CLASSES_LENGTH,
+  MAX_LABEL_LENGTH,
+  classesFor,
+  describeElement,
+  labelFor,
+  selectorFor,
+} from './describeElement';
 
 function mount(html: string): HTMLElement {
   const host = document.createElement('div');
@@ -92,11 +99,44 @@ describe('labelFor', () => {
   });
 });
 
+describe('classesFor', () => {
+  it('keeps the class attribute verbatim — the hashed name is the grep hint', () => {
+    const host = mount('<div><button class="_button_1p9dt_29 _quiet_1p9dt_44">Go</button></div>');
+    expect(classesFor(host.querySelector('button')!)).toBe('_button_1p9dt_29 _quiet_1p9dt_44');
+  });
+
+  it('is empty for an element with no classes rather than undefined', () => {
+    const host = mount('<div><span>x</span></div>');
+    expect(classesFor(host.querySelector('span')!)).toBe('');
+  });
+
+  it('collapses the whitespace a multi-line className leaves behind', () => {
+    const host = mount('<div><i class="  a\n   b  "></i></div>');
+    expect(classesFor(host.querySelector('i')!)).toBe('a b');
+  });
+
+  it('reads an SVG class, where .className is not a string', () => {
+    const host = mount('<div><svg class="_icon_9zz_3"><path /></svg></div>');
+    const svg = host.querySelector('svg')!;
+    // Guard the reason this uses getAttribute: .className here is an object.
+    expect(typeof svg.className).not.toBe('string');
+    expect(classesFor(svg)).toBe('_icon_9zz_3');
+  });
+
+  it('truncates a utility-class pile-up', () => {
+    const host = mount(`<div><b class="${'x '.repeat(200)}"></b></div>`);
+    const classes = classesFor(host.querySelector('b')!);
+    expect(classes).toHaveLength(MAX_CLASSES_LENGTH);
+    expect(classes.endsWith('…')).toBe(true);
+  });
+});
+
 describe('describeElement', () => {
-  it('returns both halves of the capture', () => {
-    const host = mount('<div id="wrap"><button>Save</button></div>');
+  it('returns the selector, the classes and the display-only label', () => {
+    const host = mount('<div id="wrap"><button class="_save_ab12_7">Save</button></div>');
     expect(describeElement(host.querySelector('button')!)).toEqual({
       selector: '#wrap > button:nth-child(1)',
+      classes: '_save_ab12_7',
       label: 'Save',
     });
   });

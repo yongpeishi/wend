@@ -8,26 +8,32 @@ class Api::FeedbacksTest < ActionDispatch::IntegrationTest
 
   test "POST creates feedback attributed to the signed-in user" do
     assert_difference -> { Feedback.count }, 1 do
-      post "/api/feedbacks", params: { feedback: { message: "The schedule scrolls oddly", path: "/trips/1/schedule" } }, as: :json
+      post "/api/feedbacks", params: { feedback: { message: "The schedule scrolls oddly", url: "http://localhost:5173/trips/1/schedule" } }, as: :json
     end
     assert_response :created
 
     body = JSON.parse(response.body)["feedback"]
     assert_equal "The schedule scrolls oddly", body["message"]
-    assert_equal "/trips/1/schedule", body["path"]
+    assert_equal "http://localhost:5173/trips/1/schedule", body["url"]
     assert_equal @user.id, body["user_id"]
     assert_equal "new", body["status"]
   end
 
   test "POST stores an element capture" do
     post "/api/feedbacks",
-         params: { feedback: { message: "This chip is unreadable", element_selector: "#board .chip", element_label: "Food" } },
+         params: { feedback: {
+           message: "This chip is unreadable",
+           url: "http://localhost:5173/trips/3/board",
+           element_selector: "#board > div:nth-child(2)",
+           element_classes: "_chip_7ilc4_44"
+         } },
          as: :json
     assert_response :created
 
     feedback = Feedback.last
-    assert_equal "#board .chip", feedback.element_selector
-    assert_equal "Food", feedback.element_label
+    assert_equal "http://localhost:5173/trips/3/board", feedback.url
+    assert_equal "#board > div:nth-child(2)", feedback.element_selector
+    assert_equal "_chip_7ilc4_44", feedback.element_classes
   end
 
   test "POST records the user agent from the request, not the body" do

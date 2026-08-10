@@ -459,10 +459,10 @@ export const handlers = [
       id: allocateId(),
       message,
       user_id: auth.id,
-      path: body.feedback?.path ?? null,
+      url: body.feedback?.url ?? null,
       element_selector: selector,
-      // Mirrors the model's normaliser: a label with no selector points at nothing.
-      element_label: selector ? (body.feedback?.element_label ?? null) : null,
+      // Mirrors the model's normaliser: classes with no selector point at nothing.
+      element_classes: selector ? (body.feedback?.element_classes ?? null) : null,
       status: 'new',
       created_at: now(),
       updated_at: now(),

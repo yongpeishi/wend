@@ -236,4 +236,18 @@ wrong. **↩ reversible cheaply** — one CSS module.
 
 **Element selectors are built from id / data-testid / nth-child only, never class names.**
 CSS Modules hash class names at build time, so a class-based selector would be dead on the
-next deploy; the human-readable label captured alongside it is the durable artifact.
+next deploy.
+
+**A capture stores the page URL and the element's class attribute — not its label.** The
+picker can read a human name for whatever you point at ("the 'Set aside' button"), and that
+name is what a report *reads* best. But it comes from the page's own text, so pointing at a
+trip title, a note or a filled-in input would post that text back to us. Nobody typed it
+into a feedback box; they typed it into their trip. So the label is computed for the
+on-screen affordance only and never leaves the browser, and the durable reference is two
+things we wrote ourselves: the full URL and the class attribute. Under Vite the class keeps
+its authored name inside the hash (`.chip` → `_chip_7ilc4_44`), so it greps back to source —
+it is a breadcrumb, not a locator, since the hash moves when the stylesheet changes. The
+full URL is safe to keep for the same reason: this app has no query-string state, so a URL
+is pure routing. **↩ reversible cheaply** — `describeElement` already computes the label;
+sending it is one field in `FeedbackComposer`. If query params ever carry user text, revisit
+storing the whole URL.

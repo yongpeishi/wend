@@ -12,9 +12,19 @@
  *   3. `tag:nth-child` — positional, brittle under reordering but never wrong
  *                        about the shape of the tree at capture time
  *
- * The selector is a debugging aid, not a contract. `label` is what actually
- * makes a report readable ("the 'Set aside' button"), which is why it is
- * captured independently rather than derived from the selector.
+ * The selector is a debugging aid, not a contract. `classes` is the second
+ * reference sent alongside it: the raw class attribute, which under Vite reads
+ * `_chip_7ilc4_44` — the authored name (`.chip`) survives the hash, so whoever
+ * reads the report can grep `*.module.css` for it. It is not a *selector* (the
+ * hash moves whenever the stylesheet changes), it is a breadcrumb.
+ *
+ * `label` — the human name of the thing, "the 'Set aside' button" — is computed
+ * for the ON-SCREEN affordance only and is deliberately never persisted. It is
+ * read from the page's own text, so it can contain whatever the user typed
+ * (a trip name, a note, the contents of an input). A report should carry what
+ * the user chose to write in the message box and nothing else they wrote
+ * elsewhere. `FeedbackComposer` therefore builds its payload field by field
+ * rather than spreading a capture; `FeedbackButton.test.tsx` guards it.
  */
 
 /** Depth cap: a path longer than this is noise, not a locator. */
@@ -23,8 +33,17 @@ const MAX_DEPTH = 5;
 /** Labels longer than this get elided — the message field carries the detail. */
 export const MAX_LABEL_LENGTH = 80;
 
+/** A class attribute longer than this is a utility-class pile-up, not a clue. */
+export const MAX_CLASSES_LENGTH = 200;
+
 export interface ElementCapture {
   selector: string;
+  /** The element's raw class attribute. Sent to the server. */
+  classes: string;
+  /**
+   * Display only — NEVER put this in a request body. It is page text, so it
+   * can hold something the user typed. See the note at the top of this file.
+   */
   label: string;
 }
 
@@ -113,6 +132,23 @@ export function labelFor(element: Element): string {
   return `<${element.tagName.toLowerCase()}>`;
 }
 
+/**
+ * The element's class attribute, verbatim bar whitespace tidying.
+ *
+ * Read via `getAttribute` rather than `.className`, because on an SVG node
+ * `className` is an `SVGAnimatedString`, not a string — and this app draws
+ * icons as inline SVG, so pointing at one is entirely likely.
+ */
+export function classesFor(element: Element): string {
+  const raw = collapseWhitespace(element.getAttribute('class') ?? '');
+  if (raw.length <= MAX_CLASSES_LENGTH) return raw;
+  return `${raw.slice(0, MAX_CLASSES_LENGTH - 1).trimEnd()}…`;
+}
+
 export function describeElement(element: Element): ElementCapture {
-  return { selector: selectorFor(element), label: labelFor(element) };
+  return {
+    selector: selectorFor(element),
+    classes: classesFor(element),
+    label: labelFor(element),
+  };
 }

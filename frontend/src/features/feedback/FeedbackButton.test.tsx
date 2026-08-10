@@ -22,12 +22,15 @@ function renderApp(initialPath = '/trips/1/schedule') {
               path="*"
               element={
                 <div>
-                  {/* Stand-ins for real page content, to point at. */}
+                  {/* Stand-ins for real page content, to point at. The class
+                      names imitate what Vite emits for a CSS module. */}
                   <main id="page">
-                    <button type="button" data-testid="set-aside">
+                    <button type="button" data-testid="set-aside" className="_button_1p9dt_29 _quiet_1p9dt_44">
                       Set aside
                     </button>
                     <a href="/somewhere-else">A link that must not be followed</a>
+                    {/* Something the *user* wrote, to prove it never leaves. */}
+                    <input data-testid="note" readOnly value="Anniversary trip — do not tell Sam" />
                   </main>
                   <FeedbackButton />
                 </div>
@@ -62,7 +65,7 @@ describe('FeedbackButton', () => {
     expect(screen.getByLabelText('Tell us what you noticed')).toBeInTheDocument();
   });
 
-  it('sends the message along with the route the user was on', async () => {
+  it('sends the message along with the full URL the user was on', async () => {
     renderApp('/trips/7/checklist');
     await openComposer();
 
@@ -72,7 +75,7 @@ describe('FeedbackButton', () => {
     await waitFor(() => expect(db.feedbacks).toHaveLength(1));
     expect(db.feedbacks[0]).toMatchObject({
       message: 'The checklist scrolls oddly',
-      path: '/trips/7/checklist',
+      url: `${window.location.origin}/trips/7/checklist`,
       element_selector: null,
       status: 'new',
     });
@@ -137,9 +140,27 @@ describe('FeedbackButton element picker', () => {
     await waitFor(() => expect(db.feedbacks).toHaveLength(1));
     expect(db.feedbacks[0]).toMatchObject({
       message: 'This is confusing',
+      url: `${window.location.origin}/trips/1/schedule`,
       element_selector: 'button[data-testid="set-aside"]',
-      element_label: 'Set aside',
+      element_classes: '_button_1p9dt_29 _quiet_1p9dt_44',
     });
+  });
+
+  it('never sends the text on the page, only the class attribute', async () => {
+    // Pointing at a note the user wrote must not post that note back to us.
+    renderApp();
+    await openComposer();
+    await userEvent.type(screen.getByLabelText('Tell us what you noticed'), 'This box is too small');
+    await userEvent.click(screen.getByRole('button', { name: /Point at something/ }));
+    await userEvent.click(screen.getByTestId('note'));
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Send it' }));
+    await waitFor(() => expect(db.feedbacks).toHaveLength(1));
+
+    const sent = JSON.stringify(db.feedbacks[0]);
+    expect(sent).not.toContain('Anniversary trip');
+    expect(sent).not.toContain('do not tell Sam');
+    expect(db.feedbacks[0]?.element_selector).toBe('input[data-testid="note"]');
   });
 
   it('does not follow a link the user points at — that would throw away the draft', async () => {

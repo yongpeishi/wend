@@ -35,7 +35,7 @@ module Api
     # `status` is not permitted: triage is not the reporter's call, and there is
     # no update endpoint yet. `user_id` is not permitted either -- see create.
     def feedback_params
-      params.require(:feedback).permit(:message, :path, :element_selector, :element_label)
+      params.require(:feedback).permit(:message, :url, :element_selector, :element_classes)
     end
   end
 end
