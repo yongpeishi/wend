@@ -19,6 +19,9 @@ module GeneratedPathHelpersModule
   def api_entry_path(*args); end
 
   sig { params(args: T.untyped).returns(String) }
+  def api_feedbacks_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
   def api_me_path(*args); end
 
   sig { params(args: T.untyped).returns(String) }

@@ -7,6 +7,7 @@ import type {
   EntryDetailResponse,
   EntryLink,
   EntrySummary,
+  Feedback,
   ScheduleItem,
   Todo,
   User,
@@ -53,6 +54,7 @@ export const db = {
   votes: [] as Vote[],
   todos: [] as Todo[],
   scheduleItems: [] as ScheduleItem[],
+  feedbacks: [] as Feedback[],
   currentUserId: null as number | null,
 };
 
@@ -259,6 +261,9 @@ export function seed() {
     { id: allocateId(), title: 'Check opening hours', entry_id: nanzenji.id, trip_id: null, done_at: null, due_on: null, position: 0 },
     { id: allocateId(), title: 'Apply for visa', entry_id: null, trip_id: trip.id, done_at: null, due_on: '2026-10-01', position: 0 },
   ];
+
+  // Starts empty: feedback is something the user produces, never seed content.
+  db.feedbacks = [];
 
   db.scheduleItems = [
     {

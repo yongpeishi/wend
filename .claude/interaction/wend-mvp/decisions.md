@@ -207,3 +207,47 @@ carries the meaning for screen readers.
 The motion vocabulary is exhaustive: the trail's dot-by-dot draw, and "everything else is a
 160 ms opacity change — no bounces, no scale, no spring." A rotate is not one of the two
 named motions, so the loading affordance is built from the primitive the system defines.
+
+## 8. Feedback
+
+**Feedback is its own table, not an Entry.** Everything in this app is an Entry — so the
+obvious move was to make feedback one more `kind`. It was rejected. An Entry is travel
+content: it can be voted on, linked into bundles, lifted into its own trip, scheduled at
+09:00 and shown on a map. None of that is meaningful for a bug report, and every one of
+those code paths would have to grow a "...unless it's feedback" branch. The Entry graph
+earns its generality by everything in it obeying the same rules; feedback obeys none of
+them. So `feedbacks` is a flat table with a `user_id`, and it touches nothing else.
+**↩ reversible cheaply** — nothing else reads the table, so it can be folded into
+`entries` (or dropped) with one migration.
+
+**You can read your own feedback, nobody else's.** `GET /api/feedbacks` is scoped to the
+signed-in user. Who is allowed to read the whole pile is a real product question — this app
+has no admin role, and the two seeded users are peers, so any answer inventing one would be
+a guess. Scoping to the author is the only answer that cannot be wrong, and it keeps the
+endpoint useful (the composer can show you what you already said). Triage lives in the
+`status` column (`new` / `triaged` / `done`), which the API deliberately does **not** let
+the reporter set — there is no update endpoint yet, so today status changes happen in the
+console. **↩ reversible cheaply** — an admin flag on `users` plus a branch in
+`FeedbacksController#index`, once there is an answer about who the reader is.
+
+**The feedback button sits bottom-left.** The toast stack owns bottom-right, and a button
+that transient messages slide over is unpressable at exactly the moment something just went
+wrong. **↩ reversible cheaply** — one CSS module.
+
+**Element selectors are built from id / data-testid / nth-child only, never class names.**
+CSS Modules hash class names at build time, so a class-based selector would be dead on the
+next deploy.
+
+**A capture stores the page URL and the element's class attribute — not its label.** The
+picker can read a human name for whatever you point at ("the 'Set aside' button"), and that
+name is what a report *reads* best. But it comes from the page's own text, so pointing at a
+trip title, a note or a filled-in input would post that text back to us. Nobody typed it
+into a feedback box; they typed it into their trip. So the label is computed for the
+on-screen affordance only and never leaves the browser, and the durable reference is two
+things we wrote ourselves: the full URL and the class attribute. Under Vite the class keeps
+its authored name inside the hash (`.chip` → `_chip_7ilc4_44`), so it greps back to source —
+it is a breadcrumb, not a locator, since the hash moves when the stylesheet changes. The
+full URL is safe to keep for the same reason: this app has no query-string state, so a URL
+is pure routing. **↩ reversible cheaply** — `describeElement` already computes the label;
+sending it is one field in `FeedbackComposer`. If query params ever carry user text, revisit
+storing the whole URL.

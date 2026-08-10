@@ -13,7 +13,7 @@ import {
   tripAncestorId,
   voteTallyFor,
 } from './db';
-import type { Entry, EntryCategory, EntryKind, ScheduleItem, Todo, User } from '../api/types';
+import type { Entry, EntryCategory, EntryKind, Feedback, ScheduleItem, Todo, User } from '../api/types';
 
 function currentUser(): User | null {
   const user = db.users.find((u) => u.id === db.currentUserId);
@@ -430,6 +430,45 @@ export const handlers = [
       .sort((a, b) => a.distance_km - b.distance_km);
 
     return HttpResponse.json({ entries: results });
+  }),
+
+  // ---- Feedback ----------------------------------------------------------
+  http.get('/api/feedbacks', () => {
+    const auth = requireAuth();
+    if (auth instanceof HttpResponse) return auth;
+
+    const mine = db.feedbacks
+      .filter((f) => f.user_id === auth.id)
+      .slice()
+      .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id);
+    return HttpResponse.json({ feedbacks: mine });
+  }),
+
+  http.post('/api/feedbacks', async ({ request }) => {
+    const auth = requireAuth();
+    if (auth instanceof HttpResponse) return auth;
+
+    const body = (await request.json()) as { feedback?: Partial<Feedback> };
+    const message = body.feedback?.message?.trim();
+    if (!message) {
+      return HttpResponse.json({ errors: { message: ["can't be blank"] } }, { status: 422 });
+    }
+
+    const selector = body.feedback?.element_selector ?? null;
+    const feedback: Feedback = {
+      id: allocateId(),
+      message,
+      user_id: auth.id,
+      url: body.feedback?.url ?? null,
+      element_selector: selector,
+      // Mirrors the model's normaliser: classes with no selector point at nothing.
+      element_classes: selector ? (body.feedback?.element_classes ?? null) : null,
+      status: 'new',
+      created_at: now(),
+      updated_at: now(),
+    };
+    db.feedbacks.push(feedback);
+    return HttpResponse.json({ feedback }, { status: 201 });
   }),
 ];
 

@@ -132,6 +132,35 @@ At least one of `entry_id` / `trip_id` must be present.
 Storing times as integer minutes avoids timezone grief entirely. The frontend formats
 them as 24-hour `HH:MM`.
 
+### `feedbacks` — what users say about the app
+
+Note this is the one table that is **not** about travel, and the one place a row is not
+an Entry. See `.claude/interaction/wend-mvp/decisions.md` §8 for why it stays outside
+the Entry graph.
+
+| column | type | notes |
+| --- | --- | --- |
+| id | integer PK | |
+| message | text, not null | max 5000 chars |
+| user_id | integer FK users, not null | always the signed-in user, never the request body |
+| url | string | the full **client** URL, e.g. `http://localhost:5173/trips/3/schedule` |
+| element_selector | string | set only when the user pointed at something |
+| element_classes | string | that element's class attribute, e.g. `_chip_7ilc4_44` |
+| status | string, not null, default `new` | `new` \| `triaged` \| `done` |
+| user_agent | string | captured from the request; **not serialized back** |
+| created_at/updated_at | datetime | |
+
+`element_classes` is dropped if `element_selector` is blank — classes alone point at
+nothing. The selector is built from ids and `data-testid` only, never class names, which
+are rehashed on every build; the class attribute is stored beside it as a *grep hint*
+rather than a locator, since Vite keeps the authored name inside the hash (`.chip` →
+`_chip_7ilc4_44`).
+
+An element capture is three things we authored — a URL, a selector, a class attribute.
+The human label the picker shows on screen ("the 'Set aside' button") is read from page
+text, so it can contain whatever the user typed, and is deliberately **never sent**. The
+only user-written text this table holds is `message`.
+
 ---
 
 ## 3. Domain rules
@@ -233,6 +262,16 @@ GET /api/trips/:trip_id/nearby?lat=&lng=&radius_km=2&exclude_scheduled=true
   -> 200 { entries: [Entry with distance_km] }
 ```
 Haversine in SQL. This powers "I have free time here, what's nearby but unscheduled".
+
+### Feedback
+```
+GET    /api/feedbacks?limit=50            -> 200 { feedbacks: [Feedback] }
+POST   /api/feedbacks  { feedback: {...} } -> 201 { feedback }
+```
+`index` returns **only the caller's own** feedback, newest first (`.claude/interaction/wend-mvp/decisions.md` §8);
+`limit` is clamped to 1..200. On `create` the writable fields are `message`, `url`,
+`element_selector` and `element_classes` — `user_id`, `status` and `user_agent` are set
+from the request and ignored if supplied in the body.
 
 ### Serializer shapes
 

@@ -1,0 +1,111 @@
+.label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+}
+
+/* Matches Input's wrapper treatment (card fill, drawn edge, apricot focus
+   wash) — the design system has no multi-line primitive, so this is the
+   single-line one's rules applied to a <textarea>. */
+.textarea {
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  color: var(--text-body);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+}
+
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.textarea:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* No red exists in the token set; errors read as bold strong-text, matching
+   Field.module.css rather than inventing a colour. */
+.error {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+}
+
+.pickButton {
+  margin-top: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.capture {
+  margin-top: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-page);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+}
+
+.captureLabel {
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}
+
+.captureValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+}
+
+.captureClear {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-strong);
+  cursor: pointer;
+}
+
+.captureClear:hover {
+  background: var(--border-subtle);
+}
+
+.captureClear:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.context {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}

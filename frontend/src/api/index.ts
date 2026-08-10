@@ -10,3 +10,4 @@ export { useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo } from './todos';
 export { useSchedule, useCreateScheduleItem, useUpdateScheduleItem, useDeleteScheduleItem, formatMinutes } from './schedule';
 export { useNearby } from './nearby';
 export { useMe, useSignIn, useSignUp, useSignOut } from './session';
+export { useFeedbacks, useCreateFeedback } from './feedback';
