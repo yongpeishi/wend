@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Start backend and frontend together. Ctrl-C stops both.
+#
+#   scripts/start-dev
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_backend
+require_frontend
+
+backend_pid=""
+frontend_pid=""
+
+# Each child runs in its own process group (see `set -m` below), so kill the
+# whole group — otherwise the server survives and keeps holding the port.
+kill_group() {
+  local pid="$1" pgid
+  [ -n "$pid" ] || return 0
+  pgid="$(ps -o pgid= -p "$pid" 2>/dev/null | tr -d ' ')"
+  if [ -n "$pgid" ]; then
+    kill -TERM "-$pgid" 2>/dev/null || true
+  else
+    kill -TERM "$pid" 2>/dev/null || true
+  fi
+}
+
+cleanup() {
+  trap '' INT TERM EXIT   # second signal shouldn't re-enter this
+  echo
+  info "shutting down"
+  kill_group "$backend_pid"
+  kill_group "$frontend_pid"
+  wait 2>/dev/null || true
+}
+
+# On a signal, clean up and leave immediately — otherwise the watch loop below
+# resumes after the handler returns and reports the shutdown as a crash.
+trap 'cleanup; exit 130' INT TERM
+trap cleanup EXIT
+
+# Prefix each server's output so interleaved logs stay readable.
+prefix() {
+  local label="$1" color="$2"
+  while IFS= read -r line; do
+    printf '%s[%s]%s %s\n' "$color" "$label" "$C_RESET" "$line"
+  done
+}
+
+set -m  # own process group per child, so Ctrl-C hits this script, not the servers
+
+"$SCRIPTS_DIR/start-backend" 2>&1 | prefix backend "$C_BLUE" &
+backend_pid=$!
+
+"$SCRIPTS_DIR/start-frontend" 2>&1 | prefix frontend "$C_GREEN" &
+frontend_pid=$!
+
+set +m
+
+info "backend  → http://localhost:$BACKEND_PORT"
+info "frontend → http://localhost:$FRONTEND_PORT"
+echo
+
+# Exit as soon as either side dies, so a crashed server isn't hidden behind
+# the other one still logging. (bash 3.2 on macOS has no `wait -n`.)
+while kill -0 "$backend_pid" 2>/dev/null && kill -0 "$frontend_pid" 2>/dev/null; do
+  sleep 1
+done
+
+warn "one of the servers exited"

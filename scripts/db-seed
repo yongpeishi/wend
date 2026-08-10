@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Run db/seeds.rb over the existing database. Use scripts/db-reset for a clean slate.
+#
+#   scripts/db-seed
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_backend
+
+info "seeding ${RAILS_ENV:-development} database"
+rails_cmd db:seed
+
+ok "seeded"

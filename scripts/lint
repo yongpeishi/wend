@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Lint and type-check both apps: RuboCop + Sorbet, oxlint + tsc.
+#
+#   scripts/lint
+#   scripts/lint --fix        # RuboCop autocorrect (type checks are read-only)
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+fix=false
+case "${1:-}" in
+  --fix) fix=true ;;
+  "") ;;
+  *) die "unknown option: $1 (only --fix is supported)" ;;
+esac
+
+require_backend
+require_frontend
+
+failed=""
+
+info "backend — rubocop"
+if [ "$fix" = true ]; then
+  backend_bin rubocop --autocorrect || failed="$failed rubocop"
+else
+  backend_bin rubocop || failed="$failed rubocop"
+fi
+
+info "backend — sorbet"
+backend_bin typecheck || failed="$failed sorbet"
+
+info "frontend — oxlint"
+npm_run lint || failed="$failed oxlint"
+
+info "frontend — tsc"
+npm_run typecheck || failed="$failed tsc"
+
+echo
+if [ -n "$failed" ]; then
+  die "failing:$failed"
+fi
+ok "lint and types clean"
