@@ -1,4 +1,4 @@
-/* Styling for the parts of the "Start something" form that Field/Input can't
+/* Styling for the parts of the "New trip" form that Field/Input can't
    cover on their own (a multi-line textarea, a side-by-side date pair) —
    built to the same tokens Field.module.css and EntryDetail.module.css use,
    so the form reads as one system with the rest of the app. */

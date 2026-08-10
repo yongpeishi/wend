@@ -1,0 +1,113 @@
+/* Card tone on paper tone with a drawn border — no shadow anywhere. Hover is
+   opacity only. Sizes are the design import's; colours, radii and borders are
+   tokens. */
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 22px;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.card:hover {
+  opacity: 0.96;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  text-wrap: pretty;
+}
+
+/* The title is the link; its ::after covers the card so the quiet areas are
+   clickable too, without wrapping the card's own buttons in an anchor. */
+.titleLink {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: none;
+}
+
+.titleLink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+}
+
+.titleLink:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Everything interactive sits above the link overlay, so it keeps its own click
+   and its own tab stop. */
+.archive,
+.reasons {
+  position: relative;
+  z-index: 1;
+}
+
+.archive {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: var(--border-width) solid var(--border-subtle);
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.archive:hover {
+  opacity: 0.65;
+}
+
+.archive:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.note {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-body-line);
+  color: var(--text-body);
+}
+
+.meta {
+  margin: auto 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-muted);
+}
+
+@media (pointer: coarse) {
+  .archive {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+}

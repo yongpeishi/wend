@@ -161,11 +161,14 @@ module Api
       ActiveModel::Type::Boolean.new.cast(value)
     end
 
+    # pros/cons arrive as the whole array on every write -- there is no
+    # add/remove endpoint. The array-of-hashes permits must trail the scalars.
     def entry_params
       params.require(:entry).permit(
         :kind, :title, :description, :category, :starts_on, :ends_on,
         :location_name, :address, :lat, :lng, :duration_minutes, :source_url,
-        :notes, :from_entry_id, :to_entry_id
+        :notes, :from_entry_id, :to_entry_id,
+        pros: [:id, :text], cons: [:id, :text]
       )
     end
   end

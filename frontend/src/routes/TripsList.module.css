@@ -1,27 +1,56 @@
+/* `/` — the trips grid. Sizes follow the design import; colours, radii, borders,
+   type and motion are tokens. No shadows: elevation is card tone on paper tone.
+   The page sits to the right of the 246px sidebar, so the 1120px measure is the
+   content column, not the window. */
+
 .wrap {
-  padding: var(--space-8) var(--gutter-screen) var(--space-16);
-  max-width: 1360px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-section);
+  padding: 44px var(--space-12) var(--space-16);
+  max-width: 1120px;
 }
 
 .head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: var(--space-8);
-  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.headText {
+  flex: 1;
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
 }
 
 .pageTitle {
-  margin: 0;
+  margin: var(--space-2) 0 6px;
   font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
   font-size: var(--text-display-size);
   line-height: var(--text-display-line);
+  font-weight: var(--weight-bold);
   color: var(--text-strong);
+}
+
+.newTrip {
+  flex: none;
+  white-space: nowrap;
+}
+
+.intro {
+  margin: 0 0 var(--space-8);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-body);
+  max-width: 60ch;
 }
 
 .grid {
@@ -29,76 +58,102 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-6);
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
 }
 
-/* The card is the link. No underline here — the whole surface is the target,
-   and elevation stays tone-only. */
-.cardLink {
-  display: block;
-  text-decoration: none;
-  border-radius: var(--radius-card);
-  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-.cardLink:hover {
-  opacity: 0.85;
-}
-
-.cardLink:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
-.card {
+.gridItem {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  height: 100%;
 }
 
-.tripTitle {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-title-size);
-  line-height: var(--text-title-line);
-  color: var(--text-strong);
-  text-wrap: pretty;
+.gridItem > * {
+  flex: 1;
+  min-width: 0;
 }
 
-.dates {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-data-size);
-  letter-spacing: var(--text-data-tracking);
-  color: var(--text-body);
+/* "Saved for later" and the library strip: a rule above, a quiet label, then the
+   rows. The gap inside a group is the divider — the border only separates the
+   sections themselves. */
+.section {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: var(--border-width) solid var(--border-subtle);
 }
 
-/* A trip without dates is a normal, permanent state — the label states it
-   plainly rather than nagging. */
-.noDates {
-  margin: 0;
+.sectionLabel {
+  margin: 0 0 14px;
   font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
   font-size: var(--text-label-size);
   letter-spacing: var(--text-label-tracking);
   text-transform: uppercase;
+  font-weight: var(--weight-bold);
   color: var(--text-muted);
 }
 
-.counts {
-  margin: 0 0 var(--space-2);
+.savedList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.savedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-4) 20px;
+}
+
+.savedText {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.savedTitle {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+
+.savedNote {
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
   color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.librarySection {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+.bringBack {
+  flex: none;
+  background: none;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 9px 18px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.bringBack:hover {
+  opacity: 0.7;
+}
+
+.bringBack:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .libraryHead {
@@ -106,16 +161,6 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-6);
-}
-
-.sectionLabel {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-label-size);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
-  color: var(--text-muted);
 }
 
 .seeAll {
@@ -155,9 +200,43 @@
   gap: var(--gap-list-row);
 }
 
-@media (max-width: 720px) {
+@media (pointer: coarse) {
+  .bringBack {
+    min-height: var(--tap-min);
+  }
+}
+
+/* Desktop-first, but two cards need room. Below this the grid is one column and
+   the page loses its wide gutters. */
+@media (max-width: 900px) {
+  .wrap {
+    padding: var(--space-8) var(--gutter-screen) var(--space-16);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
   .pageTitle {
     font-size: var(--text-title-size);
     line-height: var(--text-title-line);
+  }
+}
+
+@media (max-width: 600px) {
+  .savedRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .savedText {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .savedTitle,
+  .savedNote {
+    white-space: normal;
   }
 }

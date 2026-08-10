@@ -17,11 +17,15 @@ export interface NewTripModalProps {
 const NAME_FIELD_ID = 'new-trip-name';
 
 /**
- * "Start something" from `/` — screens.md: "A trip needs only a title; dates
+ * "+ New trip" from `/` — screens.md: "A trip needs only a title; dates
  * are optional and stay optional (the brief's Malaysia example starts with no
  * idea how long)." Name is the only required field. A dateless trip isn't an
  * unfinished one — it's a normal, permanent shape, so nothing here nags for
  * dates later.
+ *
+ * The design import asks for a single free-text "Dates" field. Kept as the
+ * structured Starts/Ends pair instead (a user decision): free text can't fill
+ * `starts_on` / `ends_on`, and every date on the schedule reads from those.
  *
  * Follows the Field + Modal idiom EntryDetail.tsx establishes. Description and
  * the date pair need a textarea and a type="date" pair respectively, which
@@ -104,14 +108,14 @@ export function NewTripModal({ open, onClose, onCreated }: NewTripModalProps) {
     <Modal
       open={open}
       onClose={close}
-      title="Start something"
+      title="New trip"
       actions={
         <>
           <Button variant="quiet" onClick={close} disabled={working}>
             Cancel
           </Button>
           <Button onClick={submit} disabled={working}>
-            {working ? 'One moment' : 'Start the trip'}
+            {working ? 'One moment' : 'Add trip'}
           </Button>
         </>
       }

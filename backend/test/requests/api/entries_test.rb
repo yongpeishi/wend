@@ -120,6 +120,86 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     assert_equal "New title", JSON.parse(response.body).dig("entry", "title")
   end
 
+  test "PATCH /api/entries/:id replaces the whole pros and cons arrays" do
+    trip = create_trip(created_by: @user)
+    pros = [{ "id" => "p1", "text" => "Flights are already booked" }, { "id" => "p2", "text" => "Cheap in May" }]
+    cons = [{ "id" => "c1", "text" => "Rainy season" }]
+
+    patch "/api/entries/#{trip.id}", params: { entry: { pros: pros, cons: cons } }, as: :json
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal pros, body.dig("entry", "pros")
+    assert_equal cons, body.dig("entry", "cons")
+    assert_equal pros, trip.reload.pros
+
+    # The array is carried whole, so a shorter one is a removal.
+    patch "/api/entries/#{trip.id}", params: { entry: { pros: [pros.first] } }, as: :json
+    assert_response :success
+    assert_equal [pros.first], JSON.parse(response.body).dig("entry", "pros")
+    assert_equal [pros.first], trip.reload.pros
+    assert_equal cons, trip.cons # untouched by an update that omits it
+  end
+
+  test "PATCH /api/entries/:id pros and cons work on an idea, not just a trip" do
+    idea = create_idea(created_by: @user)
+    pros = [{ "id" => "p1", "text" => "Walking distance from the hotel" }]
+    cons = [{ "id" => "c1", "text" => "Closed on Mondays" }]
+
+    patch "/api/entries/#{idea.id}", params: { entry: { pros: pros, cons: cons } }, as: :json
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal pros, body.dig("entry", "pros")
+    assert_equal cons, body.dig("entry", "cons")
+    assert_equal cons, idea.reload.cons
+  end
+
+  test "PATCH /api/entries/:id drops unpermitted keys and unusable pro/con items" do
+    idea = create_idea(created_by: @user)
+    patch "/api/entries/#{idea.id}", params: { entry: { pros: [
+      { "id" => "p1", "text" => "  Keep me  ", "score" => 99 },
+      { "id" => "p2", "text" => "  " },
+      { "text" => "no id" }
+    ] } }, as: :json
+
+    assert_response :success
+    assert_equal [{ "id" => "p1", "text" => "Keep me" }], JSON.parse(response.body).dig("entry", "pros")
+  end
+
+  test "GET /api/entries and /api/entries/:id always include pros and cons" do
+    idea = create_idea(created_by: @user)
+    idea.update!(cons: [{ "id" => "c1", "text" => "Rainy season" }])
+    bare = create_idea(title: "No reasons yet", created_by: @user)
+
+    get "/api/entries"
+    assert_response :success
+    rows = JSON.parse(response.body)["entries"]
+    row = rows.find { |e| e["id"] == idea.id }
+    assert_equal [], row["pros"]
+    assert_equal [{ "id" => "c1", "text" => "Rainy season" }], row["cons"]
+
+    bare_row = rows.find { |e| e["id"] == bare.id }
+    assert_equal [], bare_row["pros"]
+    assert_equal [], bare_row["cons"]
+
+    get "/api/entries/#{idea.id}"
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal [], body.dig("entry", "pros")
+    assert_equal [{ "id" => "c1", "text" => "Rainy season" }], body.dig("entry", "cons")
+  end
+
+  test "POST /api/entries accepts pros and cons at creation" do
+    post "/api/entries", params: { entry: {
+      kind: "idea", title: "Nanzen-ji", category: "place",
+      pros: [{ "id" => "p1", "text" => "Quiet in the morning" }]
+    } }, as: :json
+
+    assert_response :created
+    body = JSON.parse(response.body)
+    assert_equal [{ "id" => "p1", "text" => "Quiet in the morning" }], body.dig("entry", "pros")
+    assert_equal [], body.dig("entry", "cons")
+  end
+
   test "DELETE /api/entries/:id soft-archives, never destroys" do
     idea = create_idea(created_by: @user)
     delete "/api/entries/#{idea.id}"

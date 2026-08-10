@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { api } from '../api';
 import { AppLayout } from './AppLayout';
 import { AuthProvider, useAuth } from '../auth/AuthContext';
 import { ToastProvider } from '../components/Toast';
@@ -10,9 +11,15 @@ import { ToastProvider } from '../components/Toast';
 // Integration test: the shell against the real session hooks, served by the MSW
 // fixtures (src/mocks) rather than a running Rails backend.
 
-function Whoami() {
+/** Stands in for a routed screen: proves the Outlet renders, and who is signed in. */
+function RouteContent() {
   const { user, isLoading } = useAuth();
-  return <div data-testid="whoami">{isLoading ? 'loading' : (user?.name ?? 'anonymous')}</div>;
+  return (
+    <div>
+      <p>Route content here</p>
+      <p data-testid="whoami">{isLoading ? 'loading' : (user?.name ?? 'anonymous')}</p>
+    </div>
+  );
 }
 
 function renderShell() {
@@ -26,7 +33,7 @@ function renderShell() {
           <AuthProvider>
             <Routes>
               <Route element={<AppLayout />}>
-                <Route path="/" element={<div>Route content here</div>} />
+                <Route path="/" element={<RouteContent />} />
               </Route>
             </Routes>
           </AuthProvider>
@@ -55,7 +62,8 @@ describe('AppLayout', () => {
 
   it('keeps the brand lock-up as a link home', () => {
     renderShell();
-    expect(screen.getByRole('link', { name: 'Wend' })).toHaveAttribute('href', '/');
+    // The lock-up is the mark's aria-label plus the wordmark text, so match loosely.
+    expect(screen.getByRole('link', { name: /wend/i })).toHaveAttribute('href', '/');
   });
 
   it('renders the routed Outlet content beside the sidebar', () => {
@@ -64,12 +72,13 @@ describe('AppLayout', () => {
   });
 
   it('signs out from the sidebar', async () => {
+    // Sign in first: the MSW fixtures start with no session (src/mocks/db.ts).
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
     const user = userEvent.setup();
     renderShell();
-    // Signed in first, via the seeded session fixture.
-    expect(await screen.findByTestId('whoami')).toHaveTextContent('Demo Traveler');
+    await waitFor(() => expect(screen.getByTestId('whoami')).toHaveTextContent('Demo Traveler'));
 
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
-    expect(await screen.findByTestId('whoami')).toHaveTextContent('anonymous');
+    await waitFor(() => expect(screen.getByTestId('whoami')).toHaveTextContent('anonymous'));
   });
 });

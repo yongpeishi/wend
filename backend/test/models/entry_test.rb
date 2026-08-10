@@ -139,6 +139,75 @@ class EntryTest < ActiveSupport::TestCase
     assert_equal ["Trip A", "Trip B"].sort, trip_titles.sort
   end
 
+  test "pros and cons default to empty arrays on every kind" do
+    [create_trip, create_idea, create_bundle].each do |entry|
+      assert_equal [], entry.pros
+      assert_equal [], entry.cons
+      assert_equal [], entry.reload.pros
+      assert_equal [], entry.reload.cons
+    end
+  end
+
+  test "pros round-trip through the database as id/text hashes" do
+    idea = create_idea
+    idea.update!(pros: [{ "id" => "p1", "text" => "Flights are already booked" }])
+
+    assert_equal [{ "id" => "p1", "text" => "Flights are already booked" }], idea.reload.pros
+  end
+
+  test "normalization strips text and keeps only the id and text keys" do
+    entry = Entry.new(pros: [{ "id" => "p1", "text" => "  Cheap in May  ", "votes" => 99 }])
+
+    assert_equal [{ "id" => "p1", "text" => "Cheap in May" }], entry.pros
+  end
+
+  test "normalization accepts symbol keys as well as string keys" do
+    entry = Entry.new(cons: [{ id: "c1", text: "Rainy season" }])
+
+    assert_equal [{ "id" => "c1", "text" => "Rainy season" }], entry.cons
+  end
+
+  test "normalization drops non-hashes and items with blank text or no id" do
+    entry = Entry.new(pros: [
+      { "id" => "p1", "text" => "Keep me" },
+      { "id" => "p2", "text" => "   " },  # blank after strip
+      { "text" => "no id, unremovable" },
+      "just a string",
+      nil,
+      42
+    ])
+
+    assert_equal [{ "id" => "p1", "text" => "Keep me" }], entry.pros
+  end
+
+  test "a non-array assignment normalizes to an empty array" do
+    entry = Entry.new(pros: "nope", cons: { "id" => "c1", "text" => "not in an array" })
+
+    assert_equal [], entry.pros
+    assert_equal [], entry.cons
+  end
+
+  test "pros and cons are capped in item count and text length" do
+    over = (1..(Entry::PRO_CON_LIMIT + 10)).map { |i| { "id" => "p#{i}", "text" => "x" * (Entry::PRO_CON_TEXT_LIMIT + 50) } }
+    entry = Entry.new(pros: over, cons: over)
+
+    assert_equal Entry::PRO_CON_LIMIT, entry.pros.size
+    assert_equal Entry::PRO_CON_LIMIT, entry.cons.size
+    assert_equal Entry::PRO_CON_TEXT_LIMIT, entry.pros.first["text"].length
+  end
+
+  test "a NULL column reads back as an empty array" do
+    # Rows written before the columns existed. The DB has NOT NULL on both, so
+    # the NULL is staged straight onto the attribute rather than through the
+    # writer, which is exactly the shape such a row loads with.
+    entry = create_idea
+    entry[:pros] = nil
+    entry[:cons] = nil
+
+    assert_equal [], entry.pros
+    assert_equal [], entry.cons
+  end
+
   test "a child may have many parents" do
     bundle_a = create_bundle(title: "Day 1")
     bundle_b = create_bundle(title: "Day 2")

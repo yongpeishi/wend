@@ -6,6 +6,7 @@ import type {
   Entry,
   EntryDetailResponse,
   EntryLink,
+  EntryNote,
   EntrySummary,
   Feedback,
   ScheduleItem,
@@ -36,6 +37,8 @@ interface StoredEntry {
   notes: string | null;
   from_entry_id: number | null;
   to_entry_id: number | null;
+  pros: EntryNote[];
+  cons: EntryNote[];
   created_by_id: number;
   archived_at: string | null;
   created_at: string;
@@ -131,6 +134,10 @@ export function toEntry(entry: StoredEntry, currentUserId: number | null): Entry
     notes: entry.notes,
     from_entry_id: entry.from_entry_id,
     to_entry_id: entry.to_entry_id,
+    // Copied, not aliased: handing the stored arrays straight to a caller would
+    // let the UI mutate the "server" in place and hide a missing PATCH.
+    pros: entry.pros.map((n) => ({ ...n })),
+    cons: entry.cons.map((n) => ({ ...n })),
     archived_at: entry.archived_at,
     created_at: entry.created_at,
     updated_at: entry.updated_at,
@@ -185,6 +192,10 @@ export function seed() {
     notes: null,
     from_entry_id: null,
     to_entry_id: null,
+    // A trip that already carries one of each, so the pros/cons control on `/`
+    // has something to remove as well as something to add.
+    pros: [{ id: 'seed-pro-1', text: 'Flights are already booked' }],
+    cons: [{ id: 'seed-con-1', text: 'Nothing sorted yet' }],
     created_by_id: 1,
     archived_at: null,
     created_at: now(),
@@ -197,6 +208,9 @@ export function seed() {
     kind: 'idea',
     title: 'Nanzen-ji',
     description: null,
+    // Fresh arrays: spreading `trip` would alias its notes into every entry.
+    pros: [],
+    cons: [],
     category: 'place',
     starts_on: null,
     ends_on: null,
@@ -213,6 +227,8 @@ export function seed() {
     kind: 'idea',
     title: 'Kiyamachi',
     description: null,
+    pros: [],
+    cons: [],
     category: 'activity',
     location_name: 'Kiyamachi-dori',
     address: 'Kyoto',
@@ -228,6 +244,8 @@ export function seed() {
     title: 'Day one dinner options',
     description: null,
     category: null,
+    pros: [],
+    cons: [],
   };
 
   const library1: StoredEntry = {
@@ -236,6 +254,8 @@ export function seed() {
     kind: 'idea',
     title: 'Fushimi Inari at dawn',
     description: 'Saved from a friend’s trip report.',
+    pros: [],
+    cons: [],
     category: 'place',
     location_name: 'Fushimi Inari Taisha',
     lat: 34.9671,
