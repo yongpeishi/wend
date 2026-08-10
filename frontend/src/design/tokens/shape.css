@@ -1,0 +1,23 @@
+:root {
+  --radius-card: 6px;
+  --radius-media: 14px;
+  --radius-screen: 22px;
+  --radius-pill: 999px;
+
+  --border-width: 1.5px;
+  --border-width-strong: 2px;
+
+  --focus-width: 3px;
+  --focus-offset: 3px;
+
+  /* No shadows anywhere. Elevation is page tone vs card tone. */
+  --shadow-none: none;
+
+  /* Trail geometry */
+  --trail-stroke: 3px;
+  --trail-stroke-small: 5px;
+  --trail-dash: 1 8;
+  --trail-dot-decided: 7;
+  --trail-dot-open: 9;
+  --trail-dot-destination: 6;
+}

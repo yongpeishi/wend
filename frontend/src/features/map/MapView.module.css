@@ -1,0 +1,142 @@
+/* Leaflet ships its own shadow + 12px-radius popup and a bordered zoom
+   control — both violate "no shadows anywhere" and the 6px card radius, so
+   every Leaflet-authored class below is overridden globally (the divIcon
+   markup and Leaflet's own DOM live outside this module's scope, hence
+   :global()). Nothing here reaches for --stop-* semantics except the pins
+   themselves, drawn in markerIcon.ts from the same tokens as <Trail>. */
+
+.wrap {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-media);
+  overflow: hidden;
+  border: var(--border-width) solid var(--border-subtle);
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+  background: var(--surface-page);
+}
+
+.popup :global(.leaflet-popup-content) {
+  margin: 0;
+  min-width: 220px;
+}
+
+:global(.leaflet-popup-content-wrapper) {
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  box-shadow: none;
+  border: var(--border-width) solid var(--border-subtle);
+}
+
+:global(.leaflet-popup-tip) {
+  background: var(--surface-card);
+  box-shadow: none;
+}
+
+:global(.leaflet-popup-close-button) {
+  color: var(--text-muted) !important;
+}
+
+:global(.leaflet-popup-close-button:focus-visible) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+:global(.leaflet-control-zoom) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+:global(.leaflet-control-zoom a) {
+  background: var(--surface-card) !important;
+  color: var(--text-strong) !important;
+  border: var(--border-width) solid var(--border-subtle) !important;
+  box-shadow: none !important;
+}
+
+:global(.leaflet-control-zoom a:focus-visible) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+:global(.leaflet-control-attribution) {
+  background: var(--surface-page) !important;
+  color: var(--text-muted) !important;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  box-shadow: none !important;
+}
+
+/* A single pin — the brand's stop-circle geometry, never Leaflet's default marker. */
+:global(.wend-pin-icon) {
+  background: transparent;
+  border: none;
+}
+
+:global(.wend-pin) {
+  display: block;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+:global(.wend-pin:hover) {
+  opacity: 0.8;
+}
+
+:global(.wend-pin:focus-visible) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: 50%;
+}
+
+/* A cluster mark: card tone, a count, no shadow — "zooms" on click, per screens.md. */
+:global(.wend-cluster-icon) {
+  background: transparent;
+  border: none;
+}
+
+:global(.wend-cluster) {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  border: var(--border-width-strong) solid var(--action-primary);
+  color: var(--text-strong);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+:global(.wend-cluster:hover) {
+  opacity: 0.8;
+}
+
+:global(.wend-cluster:focus-visible) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+:global(.wend-pending-icon) {
+  background: transparent;
+  border: none;
+}
+
+:global(.wend-pending) {
+  display: block;
+  width: 32px;
+  height: 32px;
+}

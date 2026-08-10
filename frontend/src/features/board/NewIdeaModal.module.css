@@ -1,0 +1,44 @@
+/* A local textarea/select pair styled like Field's <Input> — Field only
+   renders a single-line <Input>, so description and category (the two
+   non-text-input fields this form needs) are plain labelled elements here,
+   matching Input.module.css's card-tone wrapper look rather than inventing
+   a new visual language. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.textarea,
+.select {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-strong);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--tap-min);
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.textarea:focus-visible,
+.select:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-color: var(--focus-ring);
+}

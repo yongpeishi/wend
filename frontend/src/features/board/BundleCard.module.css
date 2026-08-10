@@ -1,0 +1,131 @@
+.card {
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.over {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.title {
+  margin: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-subtitle-size);
+  line-height: var(--text-subtitle-line);
+  color: var(--text-strong);
+  cursor: pointer;
+}
+
+.title:hover {
+  opacity: 0.7;
+}
+
+.title:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.emptyDrop {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}
+
+.memberList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border-radius: var(--radius-card);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* The drop target while dragging another member over this row — an outline,
+   never a fill, so it reads the same language as the bundle's own drop state. */
+.dropTarget {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.memberTitle {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: var(--space-2) 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memberTitle:hover {
+  opacity: 0.7;
+}
+
+.memberTitle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.memberActions {
+  flex-shrink: 0;
+}
+
+/* Move up / down / remove — small icon buttons. Visually compact (a bundle
+   card is a narrow column) but never below the 32px pointer minimum; touch
+   layouts get the full 48px via --tap-min like every other icon button on
+   the board. */
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+@media (pointer: coarse) {
+  .iconButton {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+}
+
+.iconButton:hover:not(:disabled) {
+  opacity: 0.7;
+}
+
+.iconButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.iconButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

@@ -1,0 +1,16 @@
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --gutter-screen: 20px;
+  --gap-list-row: var(--space-3);
+  --gap-section: var(--space-12);
+
+  --tap-min: 48px;
+}

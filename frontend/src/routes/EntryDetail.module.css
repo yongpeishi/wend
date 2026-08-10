@@ -1,0 +1,146 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.meta {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-data-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-body);
+}
+
+.note {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+  max-width: var(--measure-body);
+}
+
+/* Set-aside is a state, not a punishment: it reads as a note with a way back,
+   never as a struck-through or greyed-out row. */
+.asideNote {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-strong);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--tap-min);
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-color: var(--focus-ring);
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionLabel {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.linkList,
+.todoList,
+.voteList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.link {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  color: var(--action-primary);
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.link:hover {
+  opacity: 0.7;
+}
+
+.link:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.todoList {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  color: var(--text-body);
+}
+
+/* Dimmed, never struck through. */
+.todoDone {
+  opacity: 0.55;
+}
+
+.voteItem {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-body);
+}
+
+/* Scores are counters — the one place DM Mono is right. */
+.voteScore {
+  font-family: var(--font-mono);
+  font-size: var(--text-code-size);
+  color: var(--text-strong);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}

@@ -1,0 +1,172 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: var(--measure-body);
+}
+
+.addRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.forLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.forLabelText {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.select {
+  flex: 1;
+  min-height: var(--tap-min);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  color: var(--text-strong);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: var(--space-2) var(--space-4);
+}
+
+.select:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-list-row);
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+}
+
+/* Done items dim by opacity only. Never a strikethrough, never grey text:
+   nothing in Wend is struck out, because nothing is rejected. */
+.rowDone {
+  opacity: 0.55;
+}
+
+/* The keep-toggle idiom from the board: ringed when open, filled when done.
+   Visually 28px, but the tap target is a full 48. */
+.toggle {
+  flex: none;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  margin: calc((var(--tap-min) - 28px) / -2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.toggle::before {
+  content: '';
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--border-strong);
+  box-sizing: border-box;
+}
+
+.toggleDone::before {
+  background: var(--stop-decided);
+  border-color: var(--stop-decided);
+}
+
+.toggle:hover {
+  opacity: 0.7;
+}
+
+.toggle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: 50%;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-strong);
+}
+
+.meta {
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}
+
+.doneSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.doneToggle {
+  align-self: flex-start;
+  min-height: var(--tap-min);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.doneToggle:hover {
+  opacity: 0.7;
+}
+
+.doneToggle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

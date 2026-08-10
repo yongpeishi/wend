@@ -1,0 +1,17 @@
+.logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+.wordmark {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--wordmark-tracking);
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--text-strong);
+}
+
+.wordmark[data-variant='reversed'] {
+  color: var(--text-on-dark);
+}

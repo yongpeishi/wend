@@ -1,0 +1,13 @@
+--dir
+.
+--ignore=tmp/
+--ignore=vendor/
+--parser=prism
+# net-imap's bundled RBI payload (part of Sorbet itself) disagrees with the
+# net-imap version resolved by this Gemfile.lock about Net::IMAP::Literal's
+# and Net::IMAP::QuotedString's superclass. This is a stdlib/gem-version
+# mismatch unrelated to any app code -- net-imap is a transitive dependency
+# we don't use directly (it comes in via Action Mailer). Suppressed per
+# Sorbet's own suggested fix rather than fought.
+--suppress-payload-superclass-redefinition-for=Net::IMAP::Literal
+--suppress-payload-superclass-redefinition-for=Net::IMAP::QuotedString

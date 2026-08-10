@@ -1,0 +1,89 @@
+/* Desktop-first, like the board and the map: this is a planning surface,
+   comparing a whole shelf of ideas side by side with where they sit. Below
+   900px the split collapses to one column, list first. */
+.wrap {
+  padding: var(--space-8) var(--gutter-screen) var(--space-16);
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pageTitle {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line);
+  color: var(--text-strong);
+}
+
+.pageDescription {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-muted);
+  max-width: var(--measure-body);
+}
+
+.selectionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.selectionCount {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+
+.list {
+  min-width: 0;
+}
+
+.noneInView {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+  max-width: var(--measure-body);
+}
+
+.mapCell {
+  min-width: 0;
+  height: 640px;
+  position: sticky;
+  top: var(--space-4);
+}
+
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mapCell {
+    height: 380px;
+    position: static;
+  }
+}

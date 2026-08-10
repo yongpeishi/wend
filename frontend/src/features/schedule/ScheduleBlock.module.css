@@ -1,0 +1,117 @@
+.block {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--wend-leaf);
+  overflow: hidden;
+}
+
+.time {
+  font-family: var(--font-sans);
+  font-size: var(--text-data-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-on-dark-muted);
+}
+
+.title {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-body-size);
+  color: var(--text-on-dark);
+  margin: 0;
+}
+
+.meta {
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-on-dark-muted);
+  margin: 0;
+}
+
+.unschedule {
+  align-self: flex-start;
+  margin-top: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-on-dark-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+}
+
+.unschedule:hover,
+.unschedule:focus-visible {
+  opacity: 0.75;
+}
+
+.unschedule:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ---- Options (bundle) block --------------------------------------- */
+
+.optionsTitle {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--text-on-dark-muted);
+  margin: 0;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-card);
+  border: var(--border-width) solid var(--trail-line-on-dark);
+  background: transparent;
+  color: var(--text-on-dark);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  text-align: left;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.option:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.optionDimmed {
+  opacity: 0.5;
+}
+
+.optionChosen {
+  border-color: var(--stop-decided);
+  background: rgba(63, 107, 74, 0.35);
+}
+
+.chosenMark {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-on-dark);
+}

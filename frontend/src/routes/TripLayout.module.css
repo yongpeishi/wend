@@ -1,0 +1,90 @@
+.wrap {
+  padding: var(--space-8) var(--gutter-screen) var(--space-16);
+  max-width: 1360px;
+  margin: 0 auto;
+}
+
+.head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-12);
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line);
+  color: var(--text-strong);
+  text-wrap: pretty;
+}
+
+/* Dates read like an itinerary line: the data type, tracked, never mono. */
+.dates {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-data-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-body);
+}
+
+.noDates {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.trail {
+  flex: 0 0 320px;
+  max-width: 100%;
+}
+
+.tabs {
+  margin-bottom: var(--gap-section);
+}
+
+/* The schedule is the one dark surface in the product: it inverts for
+   outdoor reading. The shell follows it so the page does not sit in two tones. */
+.onDark {
+  background: var(--surface-inverse);
+  min-height: 100vh;
+}
+
+.onDark .title {
+  color: var(--text-on-dark);
+}
+
+.onDark .dates {
+  color: var(--text-on-dark-muted);
+}
+
+.onDark .noDates {
+  color: var(--text-on-dark-muted);
+}
+
+@media (max-width: 720px) {
+  .wrap {
+    padding: var(--space-6) var(--gutter-screen) var(--space-12);
+  }
+
+  .title {
+    font-size: var(--text-title-size);
+    line-height: var(--text-title-line);
+  }
+
+  .trail {
+    flex-basis: 100%;
+  }
+}

@@ -1,0 +1,20 @@
+.dayPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.hint {
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.error {
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  margin: 0;
+}

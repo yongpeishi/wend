@@ -1,0 +1,109 @@
+/* Generalised from the "Place row" specimen in Wend Design System.dc.html §06.
+   Row gap (14px), row padding (8px) and the 28px/3px keep-toggle ring are taken
+   literally from that specimen — they aren't named tokens, just its own geometry. */
+
+.row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 8px;
+}
+
+/* The clickable region (thumbnail + title/metadata). A real <button> sitting
+   alongside — never nested inside — the keep-toggle button. */
+.mainButton {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  border-radius: var(--radius-card);
+  background: transparent;
+  border: none;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.mainButton:hover {
+  opacity: 0.82;
+}
+
+.mainButton:active {
+  opacity: 0.7;
+}
+
+.mainButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-body-size);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metadata {
+  margin: 3px 0 0;
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keep toggle: visually 28px, tap target 48x48. */
+.keepToggle {
+  flex-shrink: 0;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.keepToggle:hover {
+  opacity: 0.75;
+}
+
+.keepToggle:active {
+  opacity: 0.6;
+}
+
+.keepToggle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.keepDot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.keepDot.kept {
+  background: var(--action-primary);
+}
+
+.keepDot.open {
+  background: transparent;
+  border: 3px solid var(--border-strong);
+}

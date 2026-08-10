@@ -1,0 +1,50 @@
+.wrapper {
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
+  min-height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  outline: none;
+  transition: outline var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.wrapper:has(.input:focus) {
+  border-color: var(--focus-ring);
+  outline: var(--focus-width) solid var(--focus-ring-wash);
+  outline-offset: 0;
+}
+
+.wrapper.error {
+  border-color: var(--stop-destination);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  color: var(--text-strong);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:disabled {
+  color: var(--action-disabled-text);
+  cursor: default;
+}
+
+.hint {
+  font-family: var(--font-mono);
+  font-size: var(--text-code-size);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}

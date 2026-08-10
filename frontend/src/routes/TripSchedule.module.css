@@ -1,0 +1,71 @@
+/* The finished day plan is the one dark surface in the product — it inverts
+   for outdoor reading. TripLayout paints the background; this sets the type
+   colours that sit on it. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  color: var(--text-on-dark);
+}
+
+.days {
+  /* Day tabs scroll sideways rather than wrapping: on a phone a two-week trip
+     would otherwise push the plan itself below the fold. */
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+
+.nearby {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.nearbyPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.nearbyNote {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-on-dark-muted);
+  max-width: var(--measure-body);
+}
+
+.nearbyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-list-row);
+}
+
+.nearbyItem {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: var(--tap-min);
+  padding: var(--space-2) 0;
+}
+
+.nearbyTitle {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-body-size);
+  color: var(--text-on-dark);
+}
+
+/* Distances are data: tracked, never mono, sized to read in sun. */
+.nearbyMeta {
+  font-family: var(--font-sans);
+  font-size: var(--text-data-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-on-dark-muted);
+  white-space: nowrap;
+}
