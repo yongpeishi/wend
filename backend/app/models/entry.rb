@@ -5,6 +5,10 @@
 class Entry < ApplicationRecord
   DEFAULT_DEPTH_CAP = 10
 
+  # Bounds on the pros/cons JSON columns -- see the pros/cons section below.
+  PRO_CON_LIMIT = 50
+  PRO_CON_TEXT_LIMIT = 200
+
   belongs_to :created_by, class_name: "User"
   belongs_to :from_entry, class_name: "Entry", optional: true
   belongs_to :to_entry, class_name: "Entry", optional: true
@@ -35,6 +39,35 @@ class Entry < ApplicationRecord
   # The library: ideas with no trip ancestor (collection mode, not yet committed
   # to a trip). Computed with a single bounded recursive query, not per-row.
   scope :library, -> { idea.where.not(id: with_trip_ancestor_ids) }
+
+  # --- Pros / cons -----------------------------------------------------------
+  # The qualitative sibling of Vote: free-text reasons for and against, on every
+  # kind rather than just trips. Each item is {"id" => String, "text" => String}
+  # and the whole array is read and written at once, so it lives in a JSON column
+  # instead of a join table. `id` is client-supplied (React key and removal
+  # handle) -- we never mint one.
+  #
+  # These columns are user-writable JSON arriving verbatim from the client, so
+  # the writers normalize rather than validate: junk is dropped and over-long
+  # input truncated instead of failing the save, which keeps one malformed item
+  # from rejecting an otherwise good list. The two caps are what stop a client
+  # from parking unbounded data on the row.
+
+  def pros
+    coerce_pro_con(super)
+  end
+
+  def cons
+    coerce_pro_con(super)
+  end
+
+  def pros=(value)
+    super(normalize_pro_con(value))
+  end
+
+  def cons=(value)
+    super(normalize_pro_con(value))
+  end
 
   # --- Bulk / class-level tree queries -------------------------------------
   # All use SQLite's WITH RECURSIVE with an explicit depth column capped well
@@ -116,5 +149,32 @@ class Entry < ApplicationRecord
 
   def restore!
     update!(archived_at: nil)
+  end
+
+  private
+
+  # Rows written before the columns existed read back as NULL, and nothing
+  # downstream should have to think about that: always an Array.
+  def coerce_pro_con(value)
+    value.is_a?(Array) ? value : []
+  end
+
+  def normalize_pro_con(value)
+    items = value.is_a?(Array) ? value : []
+    items.filter_map { |item| normalize_pro_con_item(item) }.first(PRO_CON_LIMIT)
+  end
+
+  # Keeps only the two known keys, drops anything that isn't a usable pair, and
+  # clamps both strings. An item with no id is dropped too: without one the
+  # client cannot key or remove it, so storing it would strand junk on the row.
+  def normalize_pro_con_item(item)
+    return nil unless item.is_a?(Hash)
+
+    item = item.symbolize_keys
+    id = item[:id].to_s.strip
+    text = item[:text].to_s.strip
+    return nil if id.blank? || text.blank?
+
+    { "id" => id.first(PRO_CON_TEXT_LIMIT), "text" => text.first(PRO_CON_TEXT_LIMIT) }
   end
 end

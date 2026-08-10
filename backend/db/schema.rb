@@ -10,11 +10,12 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_10_071308) do
   create_table "entries", force: :cascade do |t|
     t.string "address"
     t.datetime "archived_at"
     t.string "category"
+    t.json "cons", default: [], null: false
     t.datetime "created_at", null: false
     t.integer "created_by_id", null: false
     t.text "description"
@@ -26,6 +27,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_140000) do
     t.decimal "lng", precision: 10, scale: 6
     t.string "location_name"
     t.text "notes"
+    t.json "pros", default: [], null: false
     t.string "source_url"
     t.date "starts_on"
     t.string "title", null: false
