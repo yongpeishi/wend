@@ -84,7 +84,7 @@ principle of the design system, enforced at the data layer rather than left to t
 
 **Schedule times are integer minutes from midnight** alongside a date, which sidesteps
 timezones entirely for a hand-authored plan. The trade-off is written up in
-`doc/assumptions.md` A6.
+`.claude/interaction/wend-mvp/decisions.md` §5.
 
 ---
 

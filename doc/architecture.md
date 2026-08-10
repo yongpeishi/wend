@@ -3,7 +3,8 @@
 This is the single source of truth for the MVP build. Backend and frontend agents both
 implement against this document. If something here conflicts with what you think is
 better, **implement what is written here** and note the disagreement in
-`doc/assumptions.md` — a shared contract that is followed beats a better one that isn't.
+`.claude/interaction/wend-mvp/decisions.md` — a shared contract that is followed beats a
+better one that isn't.
 
 ---
 
@@ -27,7 +28,8 @@ Repository layout:
 ```
 backend/     Rails API
 frontend/    Vite React SPA
-doc/         project.md, architecture.md, assumptions.md, handoff.md
+doc/         project.md, architecture.md
+             (.claude/interaction/wend-mvp/ holds decisions.md, screens.md, status.md)
 wend-design/ read-only design bundle (do not modify)
 ```
 
@@ -355,8 +357,8 @@ so a later Postgres migration is a `database.yml` change plus a data copy.
 **ADR-2 · Sorbet first, RBS + Steep as fallback.** The brief says "enable type check".
 Sorbet gives stronger inference and better Rails support via Tapioca. Ruby 4.0.3 is very
 new, so if `sorbet-static` will not install or `srb tc` cannot parse Ruby 4.0 syntax,
-fall back to RBS + Steep (ships with Ruby) and record it in `doc/assumptions.md`.
-Either way `bin/typecheck` must exist and exit 0.
+fall back to RBS + Steep (ships with Ruby). Either way `bin/typecheck` must exist and exit
+0. Outcome: Sorbet + Tapioca worked; see `.claude/interaction/wend-mvp/decisions.md` §4.
 
 **ADR-3 · Plain CSS with tokens, no Tailwind.** The design bundle is expressed as CSS
 custom properties. A utility framework would fight the tokens and invite off-scale
