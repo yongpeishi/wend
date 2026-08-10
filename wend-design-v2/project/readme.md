@@ -20,7 +20,7 @@ Developed in this project from a written brief: adult elegance with energy and p
 
 Playful, forgiving, fond of detours. Second person, short sentences, plain words. Sentence case everywhere except labels (uppercase, tracked) and the wordmark (uppercase, 0.26em). No emoji. No exclamation marks. Never urgent or scarce — no countdowns, no "only 2 left", no "optimise".
 
-Buttons are verbs of movement: "Take the long way", "Widen again", "Keep both for now". Placeholders ask a plain question rather than naming a field: "Where are you going?" not "Destination".
+Buttons are verbs of movement rather than nouns: "Keep both for now", "Take the long way". Placeholders ask a plain question rather than naming a field: "Where are you going?" not "Destination".
 
 - Yes: "You'll get there. Slowly is fine."
 - Yes: "Kept — it's waiting in your shortlist."
@@ -38,7 +38,7 @@ Numbers are written plainly: 24-hour times (`09:40`), en-dash ranges (`10:15–1
 
 **Wordmark.** Bold caps at 0.26em tracking, fixed at every size — the tracking is the signature and makes the letters read as separate steps. Lock-up: mark left, wordmark right, gap equal to the cap height.
 
-**Layout & space.** 4px base: 8 · 12 · 16 · 24 · 32 · 48 · 64. Screen gutter 20px, list rows 12px apart, sections 48px — inside a group, the gap is the divider, not a rule; the group's own edge is drawn. Every tap target is at least 48×48 on touch, including the small circular keep toggles; pointer targets may be smaller but never below 32×32.
+**Layout & space.** 4px base: 8 · 12 · 16 · 24 · 32 · 48 · 64. Screen gutter 20px, list rows 12px apart, sections 48px — the gap is the divider, not a rule. Every tap target is at least 48×48 on touch, including the small circular keep toggles; pointer targets may be smaller but never below 32×32.
 
 **Shape.** Cards 6px, media 14px, buttons and chips full pills, stops and toggles circles, phone surfaces 22px. Borders 1.5px (2px when a border carries an action). **No shadows anywhere** — elevation is page tone versus card tone.
 
@@ -70,7 +70,7 @@ Assets in `assets/`: `michikusa-mark.svg` (primary), `-reversed.svg` (on deep le
 
 ### Intentional additions
 
-- `Input` — no source defined form fields; added because planning begins with a written question.
+- `Input` — no source defined form fields; added because planning begins with a written question. Its leading and trailing slots take any node, so icons are supported without the system owning an icon set.
 
 ### Scope
 

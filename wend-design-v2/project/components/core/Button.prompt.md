@@ -1,8 +1,8 @@
 One primary action per screen; everything else is secondary or quiet.
 
 ```jsx
-<Button>Take the long way</Button>
-<Button variant="secondary">Widen again</Button>
+<Button>Primary action</Button>
+<Button variant="secondary">Secondary action</Button>
 <Button variant="quiet">Skip</Button>
 ```
 
