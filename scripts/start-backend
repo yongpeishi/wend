@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Start the Rails API.
+#
+#   scripts/start-backend
+#   BACKEND_PORT=4000 scripts/start-backend
+#   scripts/start-backend -e production    # extra args go to `rails server`
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_backend
+
+info "Rails API on http://localhost:$BACKEND_PORT"
+rails_cmd server --port "$BACKEND_PORT" --binding 0.0.0.0 "$@"

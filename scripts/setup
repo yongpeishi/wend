@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Install dependencies and prepare the database. Safe to re-run.
+#
+#   scripts/setup
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_backend
+[ -f "$FRONTEND_DIR/package.json" ] || die "no React app at $FRONTEND_DIR"
+
+info "installing gems"
+(cd "$BACKEND_DIR" && run bundle install)
+
+info "preparing database"
+rails_cmd db:prepare   # creates + migrates + seeds a fresh DB, no-op once it exists
+
+info "installing npm packages"
+(cd "$FRONTEND_DIR" && run npm install)
+
+echo
+ok "ready — start both servers with: scripts/start-dev"

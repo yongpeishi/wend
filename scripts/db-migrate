@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Run pending migrations, then show where each one stands.
+#
+#   scripts/db-migrate
+#   scripts/db-migrate VERSION=20260810120000    # migrate up or down to a version
+#   RAILS_ENV=test scripts/db-migrate
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_backend
+
+info "migrating ${RAILS_ENV:-development} database"
+rails_cmd db:migrate "$@"
+rails_cmd db:migrate:status

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# SQL prompt on the app database (sqlite3, via Rails).
+#
+#   scripts/db-console
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_backend
+
+rails_cmd dbconsole "$@"

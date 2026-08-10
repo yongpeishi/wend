@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Run the test suites: Minitest on the backend, Vitest on the frontend.
+#
+#   scripts/test                              # both
+#   scripts/test backend
+#   scripts/test frontend
+#   scripts/test backend test/models/entry_test.rb    # narrow to a file
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+target="${1:-all}"
+if [ $# -gt 0 ]; then shift; fi
+
+failed=""   # space-separated: bash 3.2 chokes on empty arrays under `set -u`
+
+backend_tests() {
+  require_backend
+  info "backend — rails test"
+  rails_cmd test "$@" || failed="$failed backend"
+}
+
+frontend_tests() {
+  require_frontend
+  info "frontend — vitest"
+  npm_run test "$@" || failed="$failed frontend"
+}
+
+case "$target" in
+  backend)  backend_tests "$@" ;;
+  frontend) frontend_tests "$@" ;;
+  all)
+    [ $# -eq 0 ] || die "extra arguments only work with a single target: scripts/test backend <file>"
+    backend_tests
+    frontend_tests
+    ;;
+  *) die "unknown target: $target (backend, frontend, or nothing for both)" ;;
+esac
+
+echo
+if [ -n "$failed" ]; then
+  die "failing:$failed"
+fi
+ok "tests passed"
