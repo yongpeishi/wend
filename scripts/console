@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Rails console.
+#
+#   scripts/console
+#   scripts/console --sandbox     # roll everything back on exit
+#   RAILS_ENV=test scripts/console
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_backend
+
+rails_cmd console "$@"

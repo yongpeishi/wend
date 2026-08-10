@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Production build of the frontend (type-checks as part of the build).
+# Output lands in frontend/dist.
+#
+#   scripts/build
+#   scripts/build --preview     # build, then serve the result
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_frontend
+
+preview=false
+case "${1:-}" in
+  --preview) preview=true ;;
+  "") ;;
+  *) die "unknown option: $1 (only --preview is supported)" ;;
+esac
+
+info "building frontend"
+npm_run build
+
+ok "built to $FRONTEND_DIR/dist"
+
+if [ "$preview" = true ]; then
+  info "serving the build"
+  npm_run preview
+fi

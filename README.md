@@ -9,6 +9,14 @@ street corner and follow.
 
 ## Getting it running
 
+```bash
+scripts/setup        # gems, database, npm packages
+scripts/start-dev    # both servers, prefixed logs, Ctrl-C stops both
+```
+
+Every routine command has a script — see [`scripts/README.md`](scripts/README.md) for the
+full list. The longhand below is the same thing done by hand.
+
 Two processes. Backend first.
 
 ### Backend — Rails API on :3000
@@ -46,6 +54,9 @@ fastest way to check the design system.
 ---
 
 ## Checks
+
+`scripts/test` runs both suites, `scripts/lint` runs RuboCop, Sorbet, oxlint and tsc.
+Individually:
 
 ```bash
 # backend

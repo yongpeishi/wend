@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Drop, recreate, migrate and reseed the database. Destroys all local data.
+#
+#   scripts/db-reset
+#   scripts/db-reset --yes        # no confirmation prompt
+#   RAILS_ENV=test scripts/db-reset
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_backend
+
+env_name="${RAILS_ENV:-development}"
+
+assume_yes=false
+case "${1:-}" in
+  --yes|-y) assume_yes=true ;;
+  "") ;;
+  *) die "unknown option: $1 (only --yes is supported)" ;;
+esac
+
+if [ "$env_name" = "production" ]; then
+  die "refusing to reset the production database"
+fi
+
+if [ "$assume_yes" = false ] && [ -t 0 ]; then
+  printf '%sThis destroys all data in the %s database.%s Continue? [y/N] ' \
+    "$C_YELLOW" "$env_name" "$C_RESET"
+  read -r reply
+  case "$reply" in
+    [yY]|[yY][eE][sS]) ;;
+    *) info "aborted"; exit 1 ;;
+  esac
+fi
+
+info "resetting $env_name database"
+rails_cmd db:drop
+rails_cmd db:create
+rails_cmd db:migrate   # replays migrations rather than loading schema.rb,
+rails_cmd db:seed      # so a migration added since the last dump is picked up
+
+echo
+ok "reset and reseeded — sign in as peter@example.com / password123"

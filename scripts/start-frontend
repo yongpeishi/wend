@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Start the Vite dev server.
+#
+# Runs standalone: without a backend the Mock Service Worker fixtures answer /api,
+# and /design renders every component in every state.
+#
+#   scripts/start-frontend
+#   FRONTEND_PORT=3001 scripts/start-frontend
+#   scripts/start-frontend --host          # extra args go to `vite`
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+require_frontend
+
+info "Vite on http://localhost:$FRONTEND_PORT"
+# --strictPort: fail loudly if the port is taken. Vite's default is to quietly
+# serve on the next free one, which is confusing when several worktrees run at
+# once — you end up looking at another checkout's app. Set FRONTEND_PORT instead.
+npm_run dev --port "$FRONTEND_PORT" --strictPort "$@"
