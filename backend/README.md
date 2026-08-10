@@ -52,8 +52,8 @@ Sorbet + Tapioca (see `doc/assumptions.md` A2). Runs `bundle exec srb tc`.
 bin/rails db:seed
 ```
 
-Idempotent -- safe to run repeatedly. Creates two users (`priya@example.com`,
-`sam@example.com`, both password `password123`), a Japan trip (a bundle of
+Idempotent -- safe to run repeatedly. Creates two users (`peter@example.com`,
+`sarah@example.com`, both password `password123`), a Japan trip (a bundle of
 interchangeable Daiso branches, a Kyoto day with two dinner options, entries
 across all six categories, votes from both users, a trip-level "Apply for
 visa" todo plus entry-level todos, and one scheduled day with real times), a

@@ -1,8 +1,7 @@
 # Wend
 
 A travel planning app that carries a daydream through to something you can hold up on a
-street corner and follow. Planning happens at a desk — comparing and regrouping ideas.
-The finished plan is read on a phone while walking.
+street corner and follow. 
 
 > 道草 *michikusa* — "grass by the road", the Japanese word for dawdling on the way.
 
@@ -33,7 +32,8 @@ Vite proxies `/api` to the Rails server, so run both. Sign in with a seeded acco
 
 | Email | Password |
 | --- | --- |
-| `priya@example.com` | `password123` |
+| `peter@example.com` | `password123` |
+| `sarah@example.com` | `password123` |
 
 The second seeded user exists so vote tallies show more than one voice.
 
@@ -94,14 +94,9 @@ timezones entirely for a hand-authored plan. The trade-off is written up in
 | --- | --- |
 | `doc/project.md` | The original brief — use cases and core flow |
 | `doc/architecture.md` | The build contract: schema, API surface, brand rules, ADRs |
-| `doc/screens.md` | Screen-by-screen UX specs, derived from the brief |
-| `doc/assumptions.md` | Every judgement call made without the author in the room |
-| `.claude/interaction/` | Questions asked during the build, with answers |
 | `frontend/README.md` | Component inventory and design-system usage |
 | `backend/README.md` | API setup and conventions |
 | `wend-design/` | The original design bundle — **read-only reference** |
 
 The design system ships brand identity and primitives only; it deliberately excludes
-application screens so the product UX could be designed fresh. `doc/screens.md` is that
-design work, and `doc/architecture.md` §5 is the distilled set of rules it must obey —
-no shadows, apricot is never text, nothing is struck through.
+application screens so the product UX could be designed fresh. 
