@@ -17,9 +17,6 @@ export interface BundlePanelProps {
   members: Map<number, Entry[]>;
   /** The bundles query is still in flight. */
   loading: boolean;
-  /** The board owns compare selection because it renders CompareBundles. */
-  compareIds: number[];
-  onToggleCompare: (id: number) => void;
   onToast: (message: string) => void;
 }
 
@@ -35,25 +32,20 @@ export interface BundlePanelProps {
  *
  * Order is the reading order of the job: what a bundle IS, then how to start
  * one, then the ones you have, then the ones you set aside. The set-aside
- * disclosure stays at the foot because archiving a bundle is the reversible
- * path everywhere else in the product — nothing here is destroyed, so the way
+ * disclosure stays at the foot and now carries more weight than it did:
+ * removing a bundle from a card archives it, so this disclosure is the undo
+ * for the strongest action on the rail. Nothing here is destroyed, so the way
  * back has to be visible on the same screen as the way out.
+ *
+ * The panel takes no compare selection any more. Compare was a card action
+ * and went with the rest of that row — see BundleCard's doc comment.
  *
  * Restoring is handled here rather than handed up as a prop: the panel already
  * takes `onToast` for its wording, and every other bundle mutation on this
- * rail (rename, fork, ungroup, archive) already lives inside these components.
- * Routing just this one back through the board would be the odd one out.
+ * rail (rename, remove) already lives inside these components. Routing just
+ * this one back through the board would be the odd one out.
  */
-export function BundlePanel({
-  tripId,
-  bundles,
-  archivedBundles,
-  members,
-  loading,
-  compareIds,
-  onToggleCompare,
-  onToast,
-}: BundlePanelProps) {
+export function BundlePanel({ tripId, bundles, archivedBundles, members, loading, onToast }: BundlePanelProps) {
   const restoreEntry = useRestoreEntry();
 
   return (
@@ -77,8 +69,6 @@ export function BundlePanel({
               key={bundle.id}
               bundle={bundle}
               members={members.get(bundle.id) ?? []}
-              compareSelected={compareIds.includes(bundle.id)}
-              onToggleCompare={onToggleCompare}
               onToast={onToast}
             />
           ))

@@ -3,6 +3,24 @@
    The entry-tree column that used to sit on the left is gone — see the doc
    comment on TripBoard.tsx.
 
+   The rail is a proportion of the board — 40% — rather than the fixed 376px it
+   used to be. Both columns are the same job at two scales, so a wider desk
+   should widen both; a fixed rail turned into a sliver next to a 1300px idea
+   list. The clamp is what makes a proportion safe at the two ends.
+
+   The 336px floor is the bundle card's own arithmetic. A member row spends
+   about 224px on chrome that never shrinks: the panel's 24px sides, the card's
+   12px sides and its hairline, the row's own 12/8 padding, the status dot and
+   three 32px icon buttons. 336px is the narrowest rail that still leaves an
+   idea's title roughly 15 characters before the ellipsis — below that a member
+   row is icons and a truncation, which is not a readable list.
+
+   The 480px ceiling is the same arithmetic from the other side: none of that
+   chrome grows, so every pixel past it lands on one line of title text in an
+   increasingly empty card. TripLayout caps the board at 1360px, so an unclamped
+   40% would top out near 528px — wide enough to read as a second page instead
+   of a rail, which is exactly what the fixed width was protecting against.
+
    The gap is zero on purpose. BundlePanel draws the design's rail itself: a
    hairline border-left, the card ground behind it and its own 24px inner
    padding. A grid gap here would leave a strip of paper between the ideas and
@@ -10,7 +28,7 @@
    breathing room goes on the ideas column as padding instead. */
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 376px;
+  grid-template-columns: minmax(0, 1fr) clamp(336px, 40%, 480px);
   gap: 0;
   align-items: start;
 }
@@ -23,6 +41,27 @@
   padding-right: var(--space-8);
 }
 
+/* Touch grows the member row's three icon buttons from 32px to --tap-min, which
+   is 48px more chrome in a row that has none to spare — at the 336px floor a
+   member title would be down to about eight characters, the exact failure the
+   floor exists to prevent. The floor moves by that same 48px so the promise
+   holds for both pointers. A landscape tablet is the case: 1024px wide leaves
+   a 738px board, so 384px still lets the ideas keep 322px. */
+@media (pointer: coarse) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) clamp(384px, 40%, 480px);
+  }
+}
+
+/* The floor cannot push the board sideways on the way down to this
+   breakpoint. At 901px — the last viewport width that still gets two columns —
+   the shell has already spent 246px on the sidebar and 40px on TripLayout's
+   gutters, leaving a 615px grid. The rail takes its floor — 336px, or 384px on
+   touch — and the ideas column, sized minmax(0, 1fr) and carrying min-width: 0,
+   absorbs the rest rather than refusing to shrink. Neither floor is close to
+   615px, so the board never gains a horizontal scrollbar on the way down here;
+   raising a floor past ~570px, or giving the ideas column a min-width, is what
+   would bring one back. */
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);

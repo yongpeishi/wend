@@ -16,9 +16,12 @@
   border-color: var(--focus-ring);
 }
 
+/* Remove (the X), the name, and the open-to-do count, in that order. The X
+   leads because the backlog puts it top left; it sits on the same 32px icon
+   button as the member rows, so the card has one icon-button size, not two. */
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
 }
@@ -49,6 +52,30 @@
 .title:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/* The name mid-edit. It takes the same flex slot as the static name so the
+   card does not jump a pixel when the field opens — the whole point of
+   editing in place is that nothing moves. Input draws its own border and
+   focus wash; only the width is this file's business. */
+.titleInput {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The design's right-hand count, now carrying open to-dos. Deliberately not a
+   Tag: that pill is the product's "kept" badge, and a chore that is still
+   outstanding is a quiet fact next to the name, not a status to celebrate.
+   Same uppercase label token as the meta line so the two agree. */
+.todoCount {
+  flex: none;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* The design's uppercase caption. Carries the scheduled summary — see
@@ -190,20 +217,6 @@
 .iconButton:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
-}
-
-/* Everything a bundle can do, in one quiet row at the foot. Rename, fork,
-   compare, ungroup and set aside all stay reachable in the tighter card — the
-   reversible paths in particular (ungroup, set aside) are never hidden behind
-   a hover or a menu, since they are how a mistake is undone. It wraps rather
-   than scrolls: five actions in a 376px rail will take two lines, and two
-   lines of readable labels beat one line of icons nobody can name. */
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-3);
 }
 
 .srOnly {

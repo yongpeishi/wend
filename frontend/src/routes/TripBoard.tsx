@@ -21,7 +21,6 @@ import { IdeaList } from '../features/board/IdeaList';
 import { NewIdeaModal } from '../features/board/NewIdeaModal';
 import { BulkBar } from '../features/board/BulkBar';
 import { BundlePanel } from '../features/board/BundlePanel';
-import { CompareBundles } from '../features/board/CompareBundles';
 import { SetAsideSection } from '../features/board/SetAsideSection';
 import { useBundleMembers } from '../features/board/useBundleMembers';
 import { useLinkMutations } from '../features/board/useLinkMutations';
@@ -56,7 +55,6 @@ export function TripBoard() {
   const [groupMode, setGroupMode] = useState<GroupMode>('category');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [newIdeaOpen, setNewIdeaOpen] = useState(false);
-  const [compareIds, setCompareIds] = useState<number[]>([]);
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
 
@@ -112,14 +110,6 @@ export function TripBoard() {
     });
   }
 
-  function onToggleCompare(id: number) {
-    setCompareIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length >= 2) return [prev[1] as number, id];
-      return [...prev, id];
-    });
-  }
-
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current as { entryId: number; title: string } | undefined;
     if (data) setActiveDrag(data);
@@ -166,9 +156,6 @@ export function TripBoard() {
       },
     );
   }
-
-  const compareBundleA = compareIds[0] !== undefined ? bundles.find((b) => b.id === compareIds[0]) : undefined;
-  const compareBundleB = compareIds[1] !== undefined ? bundles.find((b) => b.id === compareIds[1]) : undefined;
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDrag(null)}>
@@ -221,8 +208,6 @@ export function TripBoard() {
           archivedBundles={archivedBundles}
           members={members}
           loading={bundlesQuery.isLoading}
-          compareIds={compareIds}
-          onToggleCompare={onToggleCompare}
           onToast={(message) => show(message, 'success')}
         />
       </div>
@@ -230,16 +215,6 @@ export function TripBoard() {
       <DragOverlay>
         {activeDrag && <Card padding={2}><EntryRow title={activeDrag.title} kept={false} /></Card>}
       </DragOverlay>
-
-      {compareBundleA && compareBundleB && (
-        <CompareBundles
-          bundleA={compareBundleA}
-          bundleB={compareBundleB}
-          membersA={members.get(compareBundleA.id) ?? []}
-          membersB={members.get(compareBundleB.id) ?? []}
-          onClose={() => setCompareIds([])}
-        />
-      )}
     </DndContext>
   );
 }
