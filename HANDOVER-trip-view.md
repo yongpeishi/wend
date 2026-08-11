@@ -79,50 +79,44 @@ offset 0. An offset *solid* `--focus-ring` outline on top of an apricot border i
 the bug — it renders as two concentric apricot rings with paper between them.
 Any override must reach (0,2,0) to beat `global.css`'s (0,1,1).
 
-## In flight when the budget ran out
+## All five backlog bullets are now done
 
-Two subagents were still running. **Their edits are already on disk** — check
-`git status` before assuming anything is missing. Neither had reported its final
-verification, so treat the tree as unverified until the three commands are re-run.
+The budget held out. Everything below is committed and verified together:
+`npm run typecheck` clean, `npm run lint` at the 3-warning baseline,
+`npm test` **294 passing across 46 files**.
 
-Files they had created/modified (all under `frontend/src/features/board/`):
+- `5b48d02` — idea listing rebuilt as rows (`IdeaRow` replaces `IdeaCard`),
+  `IdeaList` owns grouping and collapse, `groupByLocation` added alongside the
+  retained `groupByCategory`, rating dropped from the row only.
+- `b392516` — `BundlePanel` (the 376px rail), `NewBundleBox` (drop-to-create
+  plus typed-name placeholder), `useCreateBundle.ts`, `BundleCard` restyled with
+  every behaviour intact, `BundleFormModal` reduced to rename-only.
+- `5ffa71b` — `TripBoard.tsx` wired to both, M:M entry tree removed.
 
-- *Idea listing agent* — deleted `IdeaCard.tsx`/`.module.css`, created
-  `IdeaRow.tsx`/`.module.css` and `IdeaList.tsx`/`.module.css`, modified
-  `filters.ts` (+ new `filters.test.ts`) and `FilterBar.tsx`/`.module.css`.
-- *Bundle panel agent* — created `BundlePanel.tsx`/`.module.css`,
-  `NewBundleBox.tsx`/`.module.css`, `useCreateBundle.ts`. Had not yet reached
-  `BundleCard.tsx`, so that file may still be in its original form.
+### What the wiring actually did
 
-## The one task nobody started: wire `TripBoard.tsx`
+1. **Dropped the M:M hierarchy** — the `<details>` "Trip structure" disclosure,
+   the `EntryTree` import and the whole `scope` state/`showAll` escape are gone;
+   the ideas query always uses `trip.id`. `EntryTree.tsx` is left on disk on
+   purpose: this is "not for now", not "never".
+2. **Two columns, not three** — `grid-template-columns: minmax(0, 1fr) 376px`
+   with `gap: 0`. The zero gap is deliberate: `BundlePanel` draws the rail's own
+   hairline, card ground and inner padding, so a grid gap would leave a strip of
+   paper before the hairline and read as a floating box rather than a rail. The
+   breathing room is `padding-right` on the ideas column instead.
+3. **`handleDragEnd` now serves two drop targets**, told apart by droppable data
+   rather than id parsing: an existing bundle (copies the link, never removes the
+   old one) and the new-bundle box (`{ newBundle: true }` →
+   `useCreateBundleWithIdea`, which owns the create-then-link sequencing because
+   the link needs the id the POST returns).
 
-`TripBoard.tsx` and `TripBoard.module.css` were deliberately held back from every
-agent to avoid concurrent edits to the same file. They are still in their
-**original** state and will not compile against the new components. This is the
-next job. Read the new components' exported prop interfaces directly — do not
-guess them.
+### Only if someone picks this up later
 
-What `TripBoard.tsx` needs:
-
-1. **Drop the M:M hierarchy.** Remove the `<details>` "Trip structure" disclosure
-   and the `EntryTree` import, and remove the `scope` state plus the `scopeLine`/
-   `showAll` markup. The ideas query then always uses `trip.id`. (`EntryTree.tsx`
-   itself can stay on disk — descoped "for now", not deleted.)
-2. **Two columns, not three.** Main content column, then a 376px `<aside>` rail
-   (`border-left: 1.5px solid var(--border-subtle)`, `background: var(--surface-card)`,
-   `padding: 26px 24px 60px`, `flex-direction: column`, `gap: 18px`).
-   Replace the `grid-template-columns: 240px minmax(0,1fr) 320px` rule.
-3. **Swap in the new components** — `IdeaList` for the `groups.map(...)` card grid,
-   `BundlePanel` for the whole existing bundles `<section>`.
-4. **Extend `handleDragEnd` for drop-to-create-bundle.** It currently reads
-   `over.data.current` as `{ bundleId, title }` and calls `addLink`. It must also
-   recognise the `NewBundleBox` droppable and create-then-link instead. The
-   create-then-link sequencing lives in `useCreateBundle.ts` — call that, don't
-   reimplement it. Check the droppable's actual `id`/`data` in `NewBundleBox.tsx`.
-   Idea rows still drag with `data: { entryId, title }` — unchanged contract.
-5. **Fix the stale doc comment** at the top of `TripBoard.tsx`: it describes three
-   columns and says TripLayout "already draws the trip header, dates and TrailNav".
-   TrailNav is gone and the tabs moved to the sidebar.
+- Shift-selecting a range that spans a *collapsed* group still includes the
+  hidden entries, because `orderedVisibleIds` is built from `groupEntries` before
+  collapse is applied. Genuine edge case, left alone deliberately.
+- `IdeaList` renders nothing when filters narrow to zero; `FilterBar`'s
+  "Showing 0 of N · widen again" is the escape hatch.
 
 ### Known, deliberate deviation from the design
 
