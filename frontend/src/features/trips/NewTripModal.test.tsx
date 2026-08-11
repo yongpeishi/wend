@@ -58,6 +58,20 @@ describe('NewTripModal', () => {
     expect(closed).toBe(true);
   });
 
+  it('hides the date inputs behind a disclosure until it is clicked', async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    expect(screen.queryByLabelText('Starts')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Ends')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '+ Add dates' }));
+
+    expect(screen.getByLabelText('Starts')).toBeInTheDocument();
+    expect(screen.getByLabelText('Ends')).toBeInTheDocument();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Starts')));
+  });
+
   it('creates a dateless trip from just a name, and calls onCreated with it', async () => {
     const user = userEvent.setup();
     let created: Entry | null = null;
@@ -85,6 +99,7 @@ describe('NewTripModal', () => {
 
     await user.type(screen.getByLabelText('Name'), 'Japan');
     await user.type(screen.getByLabelText('Short description'), 'Cherry blossoms, if the timing works out.');
+    await user.click(screen.getByRole('button', { name: '+ Add dates' }));
     await user.type(screen.getByLabelText('Starts'), '2026-11-02');
     await user.type(screen.getByLabelText('Ends'), '2026-11-16');
     await user.click(screen.getByRole('button', { name: 'Add trip' }));

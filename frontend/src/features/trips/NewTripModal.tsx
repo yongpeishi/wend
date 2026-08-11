@@ -27,6 +27,12 @@ const NAME_FIELD_ID = 'new-trip-name';
  * structured Starts/Ends pair instead (a user decision): free text can't fill
  * `starts_on` / `ends_on`, and every date on the schedule reads from those.
  *
+ * A native `type="date"` input still shows date-shaped placeholder chrome
+ * ("mm/dd/yyyy", a calendar icon) even while genuinely empty, which reads as
+ * "a date is coming" for a field meant to look as optional as it is. So the
+ * pair starts collapsed behind a quiet "+ Add dates" disclosure and only
+ * mounts once opened — the default form shows no date-shaped UI at all.
+ *
  * Follows the Field + Modal idiom EntryDetail.tsx establishes. Description and
  * the date pair need a textarea and a type="date" pair respectively, which
  * <Field> (a thin label+description wrapper around the single-line <Input>)
@@ -42,6 +48,7 @@ export function NewTripModal({ open, onClose, onCreated }: NewTripModalProps) {
   const [startsOn, setStartsOn] = useState('');
   const [endsOn, setEndsOn] = useState('');
   const [touched, setTouched] = useState(false);
+  const [datesOpen, setDatesOpen] = useState(false);
 
   const trimmedName = name.trim();
   const nameError = touched && !trimmedName ? 'A trip needs a name.' : undefined;
@@ -59,12 +66,20 @@ export function NewTripModal({ open, onClose, onCreated }: NewTripModalProps) {
     document.getElementById(NAME_FIELD_ID)?.focus();
   }, [open]);
 
+  // Runs after the disclosure swaps the button out for the date pair, so the
+  // field it focuses is already in the DOM.
+  useEffect(() => {
+    if (!datesOpen) return;
+    document.getElementById('new-trip-starts')?.focus();
+  }, [datesOpen]);
+
   function reset() {
     setName('');
     setDescription('');
     setStartsOn('');
     setEndsOn('');
     setTouched(false);
+    setDatesOpen(false);
   }
 
   // Modal's own mount effect re-runs whenever its `onClose` prop identity
@@ -150,28 +165,36 @@ export function NewTripModal({ open, onClose, onCreated }: NewTripModalProps) {
           />
         </div>
 
-        <div className={styles.group}>
-          <span className={styles.label} id="new-trip-dates-label">
-            Dates
-          </span>
-          <div className={styles.datePair} role="group" aria-labelledby="new-trip-dates-label">
-            <Field
-              id="new-trip-starts"
-              label="Starts"
-              type="date"
-              value={startsOn}
-              onChange={(e) => setStartsOn(e.target.value)}
-            />
-            <Field
-              id="new-trip-ends"
-              label="Ends"
-              type="date"
-              value={endsOn}
-              onChange={(e) => setEndsOn(e.target.value)}
-            />
+        {datesOpen ? (
+          <div className={styles.group}>
+            <span className={styles.label} id="new-trip-dates-label">
+              Dates
+            </span>
+            <div className={styles.datePair} role="group" aria-labelledby="new-trip-dates-label">
+              <Field
+                id="new-trip-starts"
+                label="Starts"
+                type="date"
+                value={startsOn}
+                onChange={(e) => setStartsOn(e.target.value)}
+              />
+              <Field
+                id="new-trip-ends"
+                label="Ends"
+                type="date"
+                value={endsOn}
+                onChange={(e) => setEndsOn(e.target.value)}
+              />
+            </div>
           </div>
-          <p className={styles.hintText}>A trip can start as one word. Dates can come later, or never.</p>
-        </div>
+        ) : (
+          <div className={styles.group}>
+            <button type="button" className={styles.addDates} onClick={() => setDatesOpen(true)}>
+              + Add dates
+            </button>
+            <p className={styles.hintText}>A trip can start as one word. Dates can come later, or never.</p>
+          </div>
+        )}
       </div>
     </Modal>
   );
