@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
+import { Select } from '../design/components/core/Select';
 import { Drawer } from '../components/Drawer';
 import { Field } from '../components/Field';
 import { Spinner } from '../components/Spinner';
@@ -148,8 +149,11 @@ export function EntryDetail() {
         </Field>
 
         <Field label="What kind of thing?">
-          <select
-            className={styles.input}
+          {/* <Select>, not a bare <select> with .input: .input styles a text
+              field, and a native select ignores that styling entirely unless
+              something resets `appearance`. Field clones this child to inject
+              id/aria-describedby, which Select spreads onto the real control. */}
+          <Select
             value={draft.category ?? ''}
             onChange={(e) => {
               setDraft((d) => ({ ...d, category: e.target.value }));
@@ -162,7 +166,7 @@ export function EntryDetail() {
                 {c}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
 
         <Field label="Where is it?">

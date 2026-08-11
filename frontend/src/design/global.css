@@ -36,13 +36,25 @@ p {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font-family: inherit;
 }
 
 /* Global focus-visible: 3px apricot outline, 3px offset, on every interactive
    element. Individual components may also set this explicitly, but this catches
-   anything that forwards a native element. */
+   anything that forwards a native element.
+
+   Careful: this treatment is for controls with NO border of their own. On a
+   bordered field (Input, Select, the local textareas) an offset solid apricot
+   ring sits outside an already-apricot border and reads as two concentric
+   rings with a strip of paper between them. Those components override it with
+   `border-color: var(--focus-ring)` plus `outline: var(--focus-width) solid
+   var(--focus-ring-wash)` at offset 0 — one ring. The override must be at
+   least (0,2,0) to outrank the selectors below, which score (0,1,1): a bare
+   `.field:focus-visible`-style class rule works, a bare `.field` rule does
+   not. */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,

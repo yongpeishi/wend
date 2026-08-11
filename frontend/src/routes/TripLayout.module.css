@@ -4,13 +4,10 @@
   margin: 0 auto;
 }
 
+/* The header is the title block alone: the tab bar moved to the sidebar and the
+   progress trail was retired, so this carries the full gap to the page body. */
 .head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-12);
-  margin-bottom: var(--space-6);
-  flex-wrap: wrap;
+  margin-bottom: var(--gap-section);
 }
 
 .titleBlock {
@@ -46,15 +43,6 @@
   color: var(--text-muted);
 }
 
-.trail {
-  flex: 0 0 320px;
-  max-width: 100%;
-}
-
-.tabs {
-  margin-bottom: var(--gap-section);
-}
-
 /* The schedule is the one dark surface in the product: it inverts for
    outdoor reading. The shell follows it so the page does not sit in two tones. */
 .onDark {
@@ -82,9 +70,5 @@
   .title {
     font-size: var(--text-title-size);
     line-height: var(--text-title-line);
-  }
-
-  .trail {
-    flex-basis: 100%;
   }
 }

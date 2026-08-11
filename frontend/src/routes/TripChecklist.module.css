@@ -26,21 +26,12 @@
   color: var(--text-muted);
 }
 
-.select {
+/* The field itself — surface, border, radius, chevron and focus ring — is
+   <Select> (design/components/core/Select.tsx). All that is left locally is
+   telling it how much of the "For ___" row to occupy. */
+.selectWrapper {
   flex: 1;
-  min-height: var(--tap-min);
-  font-family: var(--font-sans);
-  font-size: var(--text-body-size);
-  color: var(--text-strong);
-  background: var(--surface-card);
-  border: var(--border-width) solid var(--border-strong);
-  border-radius: var(--radius-card);
-  padding: var(--space-2) var(--space-4);
-}
-
-.select:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
+  min-width: 0;
 }
 
 .list {

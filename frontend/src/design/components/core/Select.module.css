@@ -1,0 +1,92 @@
+/* Positioning context for the chevron only — no border, no background. The
+   field geometry lives on the <select> itself (see the note in Select.tsx:
+   unlike <Input>, a select's text cannot be lifted out of the control, so the
+   control has to be the visible box). */
+.wrapper {
+  position: relative;
+  display: flex;
+  width: 100%;
+}
+
+.select {
+  /* The whole point of this component. Without these three the UA stylesheet
+     paints its own control — on macOS a grey gradient pill with system arrows —
+     and every background/border/radius below is silently discarded. All three
+     are kept: -webkit- covers Safari and older Chrome, -moz- covers Firefox
+     before 63, and the unprefixed property is what modern engines read. */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  /* Field geometry, matching Input.module.css's wrapper so a select and a text
+     input sitting in the same form read as the same kind of thing. */
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  min-height: var(--tap-min);
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: outline var(--motion-fade-duration) var(--motion-fade-ease);
+
+  /* Right padding reserves the chevron's lane (16px glyph inset by --space-4)
+     so a long option label is clipped by the control rather than sliding under
+     the arrow. Left/top/bottom match the other fields' 12px/16px rhythm. */
+  padding: var(--space-3) calc(var(--space-4) * 2 + 16px) var(--space-3) var(--space-4);
+}
+
+/* One ring, not two.
+
+   The border itself goes solid apricot and the outline is the pale wash hugging
+   it at offset 0 — the same treatment as <Input>. The obvious-looking
+   alternative (`outline: solid var(--focus-ring)` at `--focus-offset`) is a bug
+   on any bordered control: it draws a second apricot ring with a strip of paper
+   between it and the apricot border.
+
+   Specificity matters here as much as the declarations. global.css carries a
+   blanket `select:focus-visible` rule applying exactly that offset solid ring,
+   and it scores (0,1,1) — one type, one pseudo-class. `.select:focus-visible`
+   scores (0,2,0) and wins. A bare `.select` rule would score (0,1,0) and LOSE,
+   which is how the two-ring bug got in elsewhere.
+
+   `:focus` is listed alongside `:focus-visible` because <Input> shows its ring
+   on plain focus (`.wrapper:has(.input:focus)`), and a select that only lit up
+   for keyboard users would break that pairing when both are clicked. */
+.select:focus,
+.select:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring-wash);
+  outline-offset: 0;
+  border-color: var(--focus-ring);
+}
+
+.select.error {
+  border-color: var(--stop-destination);
+}
+
+.select:disabled {
+  color: var(--action-disabled-text);
+  cursor: default;
+}
+
+/* Sits in the padding lane reserved above, vertically centred whatever the
+   control's height. Transparent to the mouse so the entire field — glyph
+   included — opens the menu. */
+.chevron {
+  position: absolute;
+  right: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+/* The chevron is a sibling, not a descendant of the control, so it cannot
+   inherit :disabled. Match the text's dimmed ink explicitly. */
+.wrapper:has(.select:disabled) .chevron {
+  color: var(--action-disabled-text);
+}
