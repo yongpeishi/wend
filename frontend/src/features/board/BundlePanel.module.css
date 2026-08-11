@@ -1,14 +1,17 @@
 /* The right-hand rail. Card tone against the board's paper tone, with a single
    hairline on the leading edge — that tone change IS the separation, per the
-   no-shadow rule. It is a fixed-width column on purpose: bundles are read
-   against the idea list, not instead of it, so the rail never grows to take
-   the page. */
+   no-shadow rule. The rail no longer names its own width: the board's grid
+   sizes the column as a clamped 40% and this fills whatever track it is given.
+   Bundles are still read against the idea list rather than instead of it, but
+   that promise is now kept by the ceiling in TripBoard.module.css's clamp, so
+   the reasoning for the bounds lives there, next to the value. */
 .panel {
-  /* The design's rail width. Layout widths are not tokenised in this system
-     (the token set covers type, space, colour and shape), so this is a
-     literal, same as the board's own 240px tree column. */
-  width: 376px;
-  flex: none;
+  /* Stretch to the track. min-width is the load-bearing half: a grid item
+     defaults to min-width: auto, which is its content's minimum size and
+     outranks this width, so a long bundle name or a member row would widen the
+     panel past its column instead of ellipsising inside it. */
+  width: 100%;
+  min-width: 0;
   box-sizing: border-box;
   border-left: var(--border-width) solid var(--border-subtle);
   background: var(--surface-card);
@@ -48,11 +51,13 @@
 }
 
 /* Below the board's own one-column breakpoint the rail stops being a rail: it
-   stacks under the ideas, full width, and the hairline moves to the top edge
-   so it still reads as a separate region rather than more list. */
+   stacks under the ideas and the hairline moves to the top edge so it still
+   reads as a separate region rather than more list. The width is already 100%
+   above; what changes here is that the inner side padding goes too, because
+   stacked the rail shares the ideas' left edge and 24px of inset would set the
+   bundles in from a list they are meant to line up with. */
 @media (max-width: 900px) {
   .panel {
-    width: 100%;
     border-left: none;
     border-top: var(--border-width) solid var(--border-subtle);
     padding: var(--space-6) 0 var(--space-8);

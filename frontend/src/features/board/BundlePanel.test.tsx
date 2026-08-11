@@ -56,8 +56,6 @@ function renderPanel(overrides: Partial<Parameters<typeof BundlePanel>[0]> = {})
               archivedBundles={[ARCHIVED]}
               members={new Map([[BUNDLE.id, MEMBERS]])}
               loading={false}
-              compareIds={[]}
-              onToggleCompare={() => {}}
               onToast={() => {}}
               {...overrides}
             />
@@ -73,7 +71,8 @@ describe('BundlePanel — the bundles-only rail', () => {
     renderPanel();
     expect(screen.getByText(/A bundle is a group of things that go well together/)).toBeInTheDocument();
     expect(screen.getByText('Drop ideas here to start a bundle')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kyoto dinner options' })).toBeInTheDocument();
+    // The card's name is now the rename control itself, so it announces as one.
+    expect(screen.getByRole('button', { name: 'Rename Kyoto dinner options' })).toBeInTheDocument();
   });
 
   // The design's rail had Bundles | Map | This idea tabs; both other views are
@@ -97,6 +96,15 @@ describe('BundlePanel — the bundles-only rail', () => {
     await user.click(screen.getByRole('button', { name: /set aside · 1/i }));
     expect(screen.getByText('Rainy day plan')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pick it back up' })).toBeInTheDocument();
+  });
+
+  // The rail is meant to read as the bundles themselves, not as a stack of
+  // toolbars — the card-level action row was removed wholesale.
+  it('offers no bundle action row on the cards', () => {
+    renderPanel();
+    for (const label of [/^fork$/i, /^compare$/i, /^ungroup$/i, /^set aside$/i]) {
+      expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
+    }
   });
 
   it('invites a first bundle rather than showing an empty column', () => {
