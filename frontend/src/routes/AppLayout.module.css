@@ -113,8 +113,14 @@
 
 /* "You are here" reads as full-strength paper against the muted rest.
    Apricot stays reserved for the focus ring; it is never text. */
+/* "You are here" carries on two signals, not one. Colour alone — muted ink to
+   full-strength paper — tested as too quiet to find: a browser pass over all
+   four trip links read them as identical. The design's own nav marks the
+   current stop with weight as well as colour, so the weight comes with it.
+   Apricot stays reserved for the focus ring; it is never text. */
 .navItemActive {
   color: var(--text-on-dark);
+  font-weight: var(--weight-bold);
 }
 
 .signOut {
