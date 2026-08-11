@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"WendDesignSystem_c7e2ae","components":[{"name":"Logo","sourcePath":"components/brand/Logo.jsx"},{"name":"Placeholder","sourcePath":"components/brand/Placeholder.jsx"},{"name":"Trail","sourcePath":"components/brand/Trail.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"Chip","sourcePath":"components/core/Chip.jsx"},{"name":"Input","sourcePath":"components/core/Input.jsx"},{"name":"KeepToggle","sourcePath":"components/core/KeepToggle.jsx"},{"name":"Label","sourcePath":"components/core/Label.jsx"},{"name":"PlaceCard","sourcePath":"components/travel/PlaceCard.jsx"},{"name":"TimeRow","sourcePath":"components/travel/TimeRow.jsx"}],"sourceHashes":{"components/brand/Logo.jsx":"3394972ce4c0","components/brand/Placeholder.jsx":"df64a99f0de9","components/brand/Trail.jsx":"e04f68718bfb","components/core/Button.jsx":"c55dda00ba0d","components/core/Card.jsx":"930daaead110","components/core/Chip.jsx":"0b725f140c89","components/core/Input.jsx":"2c91f21d837f","components/core/KeepToggle.jsx":"c3b9ac845fe5","components/core/Label.jsx":"0ef89fe0b1b1","components/travel/PlaceCard.jsx":"fdf8bdccb4f1","components/travel/TimeRow.jsx":"d0602ffe9fdd","ui_kits/roadbook/DaysScreen.jsx":"59fb8c6d2bb6","ui_kits/roadbook/KeptScreen.jsx":"97f5c3f9d740","ui_kits/roadbook/Phone.jsx":"42bf724d45b0","ui_kits/roadbook/TodayScreen.jsx":"5d1fd81f1c2b","ui_kits/roadbook/data.js":"daf089a1a6ef"},"inlinedExternals":[],"unexposedExports":[]} */
+/* @ds-bundle: {"format":4,"namespace":"WendDesignSystem_c7e2ae","components":[{"name":"Logo","sourcePath":"components/brand/Logo.jsx"},{"name":"Placeholder","sourcePath":"components/brand/Placeholder.jsx"},{"name":"Trail","sourcePath":"components/brand/Trail.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"Chip","sourcePath":"components/core/Chip.jsx"},{"name":"Input","sourcePath":"components/core/Input.jsx"},{"name":"KeepToggle","sourcePath":"components/core/KeepToggle.jsx"},{"name":"Label","sourcePath":"components/core/Label.jsx"},{"name":"PlaceCard","sourcePath":"components/travel/PlaceCard.jsx"},{"name":"TimeRow","sourcePath":"components/travel/TimeRow.jsx"}],"sourceHashes":{"components/brand/Logo.jsx":"3394972ce4c0","components/brand/Placeholder.jsx":"df64a99f0de9","components/brand/Trail.jsx":"e04f68718bfb","components/core/Button.jsx":"898e066ba020","components/core/Card.jsx":"930daaead110","components/core/Chip.jsx":"0b725f140c89","components/core/Input.jsx":"2c91f21d837f","components/core/KeepToggle.jsx":"c3b9ac845fe5","components/core/Label.jsx":"0ef89fe0b1b1","components/travel/PlaceCard.jsx":"fdf8bdccb4f1","components/travel/TimeRow.jsx":"d0602ffe9fdd","ui_kits/roadbook/DaysScreen.jsx":"59fb8c6d2bb6","ui_kits/roadbook/KeptScreen.jsx":"97f5c3f9d740","ui_kits/roadbook/Phone.jsx":"42bf724d45b0","ui_kits/roadbook/TodayScreen.jsx":"5d1fd81f1c2b","ui_kits/roadbook/data.js":"daf089a1a6ef"},"inlinedExternals":[],"unexposedExports":[]} */
 
 (() => {
 
@@ -216,8 +216,41 @@ Object.assign(__ds_scope, { Trail });
 // components/core/Button.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+const PADDING = {
+  primary: {
+    small: '7px 16px',
+    medium: '14px 26px',
+    large: '18px 34px'
+  },
+  secondary: {
+    small: '5px 14px',
+    medium: '12px 24px',
+    large: '16px 32px'
+  },
+  quiet: {
+    small: '6px 2px',
+    medium: '12px 4px',
+    large: '15px 4px'
+  },
+  onDark: {
+    small: '5px 14px',
+    medium: '12px 24px',
+    large: '16px 32px'
+  }
+};
+const FONT_SIZE = {
+  small: 'var(--text-small-size)',
+  medium: 'var(--text-small-size)',
+  large: 'var(--text-body-size)'
+};
+const MIN_HEIGHT = {
+  small: '36px',
+  medium: 'var(--tap-min)',
+  large: '56px'
+};
 function Button({
   variant = 'primary',
+  size = 'medium',
   disabled = false,
   focused = false,
   children,
@@ -226,8 +259,9 @@ function Button({
   const base = {
     fontFamily: 'var(--font-sans)',
     fontWeight: 'var(--weight-bold)',
-    fontSize: 'var(--text-small-size)',
-    minHeight: 'var(--tap-min)',
+    fontSize: FONT_SIZE[size],
+    minHeight: MIN_HEIGHT[size],
+    padding: PADDING[variant][size],
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -242,27 +276,23 @@ function Button({
     primary: {
       background: disabled ? 'var(--surface-disabled)' : 'var(--action-primary)',
       color: disabled ? 'var(--action-disabled-text)' : 'var(--action-primary-text)',
-      padding: '14px 26px',
       borderRadius: 'var(--radius-card)'
     },
     secondary: {
       background: 'transparent',
       color: 'var(--text-strong)',
-      padding: '12px 24px',
       borderRadius: 'var(--radius-card)',
       border: 'var(--border-width-strong) solid var(--action-primary)'
     },
     quiet: {
       background: 'transparent',
       color: 'var(--action-primary)',
-      padding: '12px 4px',
       borderRadius: 0,
       borderBottom: 'var(--border-width-strong) solid var(--action-primary)'
     },
     onDark: {
       background: 'transparent',
       color: 'var(--text-on-dark)',
-      padding: '12px 24px',
       borderRadius: 'var(--radius-card)',
       border: 'var(--border-width-strong) solid var(--wend-leaf-soft)'
     }

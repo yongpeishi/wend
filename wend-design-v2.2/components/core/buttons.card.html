@@ -1,4 +1,4 @@
-<!-- @dsCard group="Components" viewport="700x175" name="Button" subtitle="Primary, secondary, quiet, on dark — plus focus and disabled" -->
+<!-- @dsCard group="Components" viewport="700x330" name="Button" subtitle="Primary, secondary, quiet, on dark — sizes, focus and disabled" -->
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
@@ -24,6 +24,15 @@ function Demo() {
         <div style={{ background: 'var(--surface-inverse)', padding: 10, borderRadius: 'var(--radius-card)' }}>
           <Button variant="onDark">On dark</Button>
         </div>
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Button size="small">Small</Button>
+        <Button size="medium">Medium (default)</Button>
+        <Button size="large">Large</Button>
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', border: 'var(--border-width) solid var(--border-strong)', borderRadius: 'var(--radius-card)', padding: 10 }}>
+        <div style={{ flex: 1, border: 'var(--border-width) solid var(--border-strong)', borderRadius: 'var(--radius-card)', padding: '10px 14px', color: 'var(--text-strong)', fontFamily: 'var(--font-sans)', fontSize: 'var(--text-body-size)' }}>Seongsu half day</div>
+        <Button size="small" variant="quiet">Start it</Button>
       </div>
     </div>
   );
