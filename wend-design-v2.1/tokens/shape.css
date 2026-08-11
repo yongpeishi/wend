@@ -1,6 +1,6 @@
 :root {
   --radius-card: 12px;
-  --radius-media: 14px;
+  --radius-media: 10px;
   --radius-screen: 22px;
   --radius-pill: 999px;
 
@@ -16,8 +16,8 @@
   /* Trail geometry */
   --trail-stroke: 3px;
   --trail-stroke-small: 5px;
-  --trail-dash: 1 8;
-  --trail-dot-decided: 7;
-  --trail-dot-open: 9;
-  --trail-dot-destination: 6;
+  --trail-dash: 1 8; /* @kind other */
+  --trail-dot-decided: 7; /* @kind other */
+  --trail-dot-open: 9; /* @kind other */
+  --trail-dot-destination: 6; /* @kind other */
 }

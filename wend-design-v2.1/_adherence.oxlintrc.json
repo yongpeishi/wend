@@ -1,0 +1,356 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/brand/**",
+              "components/core/**",
+              "components/travel/**",
+              "ui_kits/roadbook/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Atkinson Hyperlegible|DM Mono))/i]",
+        "message": "Font not provided by the design system. Available: Atkinson Hyperlegible, DM Mono."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|disabled|focused|key|ref|className|style|children)$/]",
+        "message": "<Button> doesn't accept that prop. Declared props: variant, disabled, focused."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|secondary|quiet|onDark)$/]",
+        "message": "<Button> variant must be one of 'primary' | 'secondary' | 'quiet' | 'onDark'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Card'] > JSXAttribute > JSXIdentifier[name!=/^(?:tone|bordered|radius|padding|key|ref|className|style|children)$/]",
+        "message": "<Card> doesn't accept that prop. Declared props: tone, bordered, radius, padding."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Card'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:card|page|inverse)$/]",
+        "message": "<Card> tone must be one of 'card' | 'page' | 'inverse'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Card'] > JSXAttribute[name.name='radius'] > Literal[value!=/^(?:card|media|screen)$/]",
+        "message": "<Card> radius must be one of 'card' | 'media' | 'screen'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Chip'] > JSXAttribute > JSXIdentifier[name!=/^(?:selected|key|ref|className|style|children)$/]",
+        "message": "<Chip> doesn't accept that prop. Declared props: selected."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Input'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|placeholder|focused|leading|trailing|hint|key|ref|className|style|children)$/]",
+        "message": "<Input> doesn't accept that prop. Declared props: value, placeholder, focused, leading, trailing, hint."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='KeepToggle'] > JSXAttribute > JSXIdentifier[name!=/^(?:kept|size|label|onToggle|key|ref|className|style|children)$/]",
+        "message": "<KeepToggle> doesn't accept that prop. Declared props: kept, size, label, onToggle."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Label'] > JSXAttribute > JSXIdentifier[name!=/^(?:tone|as|key|ref|className|style|children)$/]",
+        "message": "<Label> doesn't accept that prop. Declared props: tone, as."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Label'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:muted|strong|onDark|saved)$/]",
+        "message": "<Label> tone must be one of 'muted' | 'strong' | 'onDark' | 'saved'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Logo'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|size|showWordmark|key|ref|className|style|children)$/]",
+        "message": "<Logo> doesn't accept that prop. Declared props: variant, size, showWordmark."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Logo'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|reversed)$/]",
+        "message": "<Logo> variant must be one of 'primary' | 'reversed'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='PlaceCard'] > JSXAttribute > JSXIdentifier[name!=/^(?:name|meta|note|kept|onToggle|key|ref|className|style|children)$/]",
+        "message": "<PlaceCard> doesn't accept that prop. Declared props: name, meta, note, kept, onToggle."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Placeholder'] > JSXAttribute > JSXIdentifier[name!=/^(?:height|radius|caption|key|ref|className|style|children)$/]",
+        "message": "<Placeholder> doesn't accept that prop. Declared props: height, radius, caption."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Placeholder'] > JSXAttribute[name.name='radius'] > Literal[value!=/^(?:media|card|none)$/]",
+        "message": "<Placeholder> radius must be one of 'media' | 'card' | 'none'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='TimeRow'] > JSXAttribute > JSXIdentifier[name!=/^(?:time|title|meta|state|onDark|trailing|key|ref|className|style|children)$/]",
+        "message": "<TimeRow> doesn't accept that prop. Declared props: time, title, meta, state, onDark, trailing."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='TimeRow'] > JSXAttribute[name.name='state'] > Literal[value!=/^(?:decided|open|waiting|destination)$/]",
+        "message": "<TimeRow> state must be one of 'decided' | 'open' | 'waiting' | 'destination'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Trail'] > JSXAttribute > JSXIdentifier[name!=/^(?:stops|labels|onDark|height|key|ref|className|style|children)$/]",
+        "message": "<Trail> doesn't accept that prop. Declared props: stops, labels, onDark, height."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "Button": {
+        "replaces": []
+      },
+      "Card": {
+        "replaces": []
+      },
+      "Chip": {
+        "replaces": []
+      },
+      "Input": {
+        "replaces": []
+      },
+      "KeepToggle": {
+        "replaces": []
+      },
+      "Label": {
+        "replaces": []
+      },
+      "Logo": {
+        "replaces": []
+      },
+      "PlaceCard": {
+        "replaces": []
+      },
+      "Placeholder": {
+        "replaces": []
+      },
+      "TimeRow": {
+        "replaces": []
+      },
+      "Trail": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--action-disabled-text",
+      "--action-primary",
+      "--action-primary-text",
+      "--border-strong",
+      "--border-subtle",
+      "--border-width",
+      "--border-width-strong",
+      "--focus-offset",
+      "--focus-ring",
+      "--focus-ring-wash",
+      "--focus-width",
+      "--font-mono",
+      "--font-sans",
+      "--gap-list-row",
+      "--gap-section",
+      "--gutter-screen",
+      "--measure-body",
+      "--motion-fade-duration",
+      "--motion-fade-ease",
+      "--motion-trail-duration",
+      "--motion-trail-ease",
+      "--placeholder-hatch",
+      "--radius-card",
+      "--radius-media",
+      "--radius-pill",
+      "--radius-screen",
+      "--shadow-none",
+      "--space-1",
+      "--space-12",
+      "--space-16",
+      "--space-2",
+      "--space-3",
+      "--space-4",
+      "--space-6",
+      "--space-8",
+      "--stop-decided",
+      "--stop-destination",
+      "--stop-open",
+      "--stop-waiting",
+      "--surface-card",
+      "--surface-disabled",
+      "--surface-inverse",
+      "--surface-page",
+      "--tap-min",
+      "--text-body",
+      "--text-body-line",
+      "--text-body-size",
+      "--text-code-size",
+      "--text-data-size",
+      "--text-data-tracking",
+      "--text-display-line",
+      "--text-display-size",
+      "--text-inverse",
+      "--text-label-size",
+      "--text-label-tracking",
+      "--text-min-size",
+      "--text-muted",
+      "--text-on-dark",
+      "--text-on-dark-muted",
+      "--text-small-line",
+      "--text-small-size",
+      "--text-strong",
+      "--text-subtitle-line",
+      "--text-subtitle-size",
+      "--text-title-line",
+      "--text-title-size",
+      "--trail-dash",
+      "--trail-dot-decided",
+      "--trail-dot-destination",
+      "--trail-dot-open",
+      "--trail-line",
+      "--trail-line-on-dark",
+      "--trail-stroke",
+      "--trail-stroke-small",
+      "--weight-bold",
+      "--weight-regular",
+      "--wend-apricot",
+      "--wend-body",
+      "--wend-card",
+      "--wend-deep-leaf",
+      "--wend-hatch-a",
+      "--wend-hatch-b",
+      "--wend-leaf",
+      "--wend-leaf-soft",
+      "--wend-line",
+      "--wend-line-strong",
+      "--wend-muted",
+      "--wend-paper",
+      "--wend-plum",
+      "--wend-plum-tint",
+      "--wend-plum-wash",
+      "--wordmark-tracking"
+    ],
+    "tokenKinds": {
+      "--wend-deep-leaf": "color",
+      "--wend-leaf": "color",
+      "--wend-leaf-soft": "color",
+      "--wend-apricot": "color",
+      "--wend-plum": "color",
+      "--wend-plum-tint": "color",
+      "--wend-plum-wash": "color",
+      "--wend-paper": "color",
+      "--wend-card": "color",
+      "--wend-line": "color",
+      "--wend-line-strong": "color",
+      "--wend-muted": "color",
+      "--wend-body": "color",
+      "--wend-hatch-a": "color",
+      "--wend-hatch-b": "color",
+      "--surface-page": "color",
+      "--surface-card": "color",
+      "--surface-inverse": "color",
+      "--surface-disabled": "color",
+      "--text-strong": "font",
+      "--text-body": "font",
+      "--text-muted": "font",
+      "--text-on-dark": "font",
+      "--text-on-dark-muted": "font",
+      "--text-inverse": "font",
+      "--action-primary": "color",
+      "--action-primary-text": "font",
+      "--action-disabled-text": "font",
+      "--border-subtle": "color",
+      "--border-strong": "color",
+      "--stop-decided": "color",
+      "--stop-open": "color",
+      "--stop-destination": "color",
+      "--stop-waiting": "color",
+      "--trail-line": "color",
+      "--trail-line-on-dark": "color",
+      "--focus-ring": "color",
+      "--focus-ring-wash": "color",
+      "--placeholder-hatch": "color",
+      "--font-sans": "font",
+      "--font-mono": "font",
+      "--weight-regular": "font",
+      "--weight-bold": "font",
+      "--wordmark-tracking": "font",
+      "--text-display-size": "font",
+      "--text-display-line": "font",
+      "--text-title-size": "font",
+      "--text-title-line": "font",
+      "--text-subtitle-size": "font",
+      "--text-subtitle-line": "font",
+      "--text-body-size": "font",
+      "--text-body-line": "font",
+      "--text-small-size": "font",
+      "--text-small-line": "font",
+      "--text-data-size": "font",
+      "--text-data-tracking": "font",
+      "--text-label-size": "font",
+      "--text-label-tracking": "font",
+      "--text-code-size": "font",
+      "--text-min-size": "font",
+      "--measure-body": "spacing",
+      "--space-1": "spacing",
+      "--space-2": "spacing",
+      "--space-3": "spacing",
+      "--space-4": "spacing",
+      "--space-6": "spacing",
+      "--space-8": "spacing",
+      "--space-12": "spacing",
+      "--space-16": "spacing",
+      "--gutter-screen": "spacing",
+      "--gap-list-row": "spacing",
+      "--gap-section": "spacing",
+      "--tap-min": "spacing",
+      "--radius-card": "radius",
+      "--radius-media": "radius",
+      "--radius-screen": "radius",
+      "--radius-pill": "radius",
+      "--border-width": "spacing",
+      "--border-width-strong": "spacing",
+      "--focus-width": "spacing",
+      "--focus-offset": "spacing",
+      "--shadow-none": "shadow",
+      "--trail-stroke": "color",
+      "--trail-stroke-small": "color",
+      "--trail-dash": "other",
+      "--trail-dot-decided": "other",
+      "--trail-dot-open": "other",
+      "--trail-dot-destination": "other",
+      "--motion-trail-duration": "other",
+      "--motion-trail-ease": "other",
+      "--motion-fade-duration": "other",
+      "--motion-fade-ease": "other"
+    },
+    "fontFamilies": [
+      "Atkinson Hyperlegible",
+      "DM Mono"
+    ]
+  }
+}

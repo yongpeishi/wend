@@ -37,7 +37,7 @@
   background: var(--action-primary);
   color: var(--action-primary-text);
   padding: 14px 26px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-card);
 }
 
 .primary:disabled {
@@ -49,7 +49,7 @@
   background: transparent;
   color: var(--text-strong);
   padding: 12px 24px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-card);
   border: var(--border-width-strong) solid var(--action-primary);
 }
 
@@ -75,7 +75,7 @@
   background: transparent;
   color: var(--text-on-dark);
   padding: 12px 24px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-card);
   border: var(--border-width-strong) solid var(--wend-leaf-soft);
 }
 
