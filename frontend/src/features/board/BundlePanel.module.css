@@ -1,0 +1,60 @@
+/* The right-hand rail. Card tone against the board's paper tone, with a single
+   hairline on the leading edge — that tone change IS the separation, per the
+   no-shadow rule. It is a fixed-width column on purpose: bundles are read
+   against the idea list, not instead of it, so the rail never grows to take
+   the page. */
+.panel {
+  /* The design's rail width. Layout widths are not tokenised in this system
+     (the token set covers type, space, colour and shape), so this is a
+     literal, same as the board's own 240px tree column. */
+  width: 376px;
+  flex: none;
+  box-sizing: border-box;
+  border-left: var(--border-width) solid var(--border-subtle);
+  background: var(--surface-card);
+  /* Design: 26px 24px 60px. The sides land exactly on --space-6; top and
+     bottom round onto the nearest scale steps rather than carrying two more
+     one-off literals. The deep bottom pad is deliberate — the last bundle
+     should not sit on the fold. */
+  padding: var(--space-6) var(--space-6) var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Design gap is 18px between rail sections and 14px inside the bundle column;
+   both round to the nearest scale step (16px / 12px) rather than inventing
+   two more values. */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.intro {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-body);
+}
+
+.empty {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+/* Below the board's own one-column breakpoint the rail stops being a rail: it
+   stacks under the ideas, full width, and the hairline moves to the top edge
+   so it still reads as a separate region rather than more list. */
+@media (max-width: 900px) {
+  .panel {
+    width: 100%;
+    border-left: none;
+    border-top: var(--border-width) solid var(--border-subtle);
+    padding: var(--space-6) 0 var(--space-8);
+  }
+}

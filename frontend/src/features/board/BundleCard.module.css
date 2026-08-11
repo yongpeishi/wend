@@ -1,13 +1,34 @@
+/* A rail card: 1.5px hairline, 6px radius, tight padding (Card's padding={3}
+   is 12px against the design's 14px — the scale step rather than a fourth
+   one-off literal in this file). Vertical rhythm is set by each block's own
+   margin, not a flex gap, because the design deliberately pulls the meta line
+   up close under the name and then opens up before the members. */
 .card {
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-.over {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
+/* An idea is being dragged over this bundle. Border-colour only: there are no
+   shadows in this system, opacity is spoken for by hover/press, and an offset
+   apricot outline on an already-bordered card reads as two concentric rings.
+   `.card.over` is (0,2,0) so it outranks Card.module.css's `.bordered`
+   whichever order the two modules land in. */
+.card.over {
+  border-color: var(--focus-ring);
 }
 
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* The bundle name — 17px bold in the design, which is --text-body-size, not
+   the 20px subtitle this used to borrow. In a 376px rail the name is the
+   card's anchor, not a section heading. */
 .title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   background: none;
   border: none;
@@ -15,7 +36,7 @@
   text-align: left;
   font-family: var(--font-sans);
   font-weight: var(--weight-bold);
-  font-size: var(--text-subtitle-size);
+  font-size: var(--text-body-size);
   line-height: var(--text-subtitle-line);
   color: var(--text-strong);
   cursor: pointer;
@@ -30,8 +51,22 @@
   outline-offset: var(--focus-offset);
 }
 
+/* The design's uppercase caption. Carries the scheduled summary — see
+   BundleCard.tsx on why that field and not an invented one. Design is 13px;
+   --text-label-size (12px) with the label tracking is the token that means
+   "small uppercase caption", so it wins over a 1px-closer literal. */
+.meta {
+  margin: var(--space-1) 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .emptyDrop {
-  margin: 0;
+  margin: var(--space-2) 0 0;
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
   color: var(--text-muted);
@@ -46,20 +81,44 @@
   gap: var(--space-2);
 }
 
+/* Members sit on paper tone inside a card-tone card — the same one-step tone
+   change the whole product uses instead of elevation. */
 .member {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
-  border-radius: var(--radius-card);
+  background: var(--surface-page);
+  /* The design nests items at a tighter radius than the 6px card; no token
+     sits at 4px, and adding one for a single inner row is not worth it. */
+  border-radius: 4px;
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-/* The drop target while dragging another member over this row — an outline,
-   never a fill, so it reads the same language as the bundle's own drop state. */
+/* The drop target while dragging another member over this row. The row has no
+   border of its own, so a solid ring here is unambiguous — it cannot double up
+   with an edge that is already apricot. */
 .dropTarget {
   outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
+  outline-offset: 0;
+}
+
+/* 7px, from the design. Below the smallest space-scale step by design — it is
+   a status mark, not spacing. Colour is a redundant cue only; the row also
+   carries a visually-hidden phrase saying the same thing. */
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.dotScheduled {
+  background: var(--stop-decided);
+}
+
+.dotWaiting {
+  background: var(--stop-waiting);
 }
 
 .memberTitle {
@@ -71,7 +130,7 @@
   padding: var(--space-2) 0;
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
-  color: var(--text-strong);
+  color: var(--text-body);
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -88,6 +147,9 @@
 }
 
 .memberActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   flex-shrink: 0;
 }
 
@@ -128,4 +190,30 @@
 .iconButton:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/* Everything a bundle can do, in one quiet row at the foot. Rename, fork,
+   compare, ungroup and set aside all stay reachable in the tighter card — the
+   reversible paths in particular (ungroup, set aside) are never hidden behind
+   a hover or a menu, since they are how a mistake is undone. It wraps rather
+   than scrolls: five actions in a 376px rail will take two lines, and two
+   lines of readable labels beat one line of icons nobody can name. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
