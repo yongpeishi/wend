@@ -35,18 +35,18 @@ function renderBox(onToast: (message: string) => void = () => {}) {
   return render(<NewBundleBox tripId={TRIP_ID} onToast={onToast} />, { wrapper: makeWrapper() });
 }
 
-/** Clicks "create new bundle" and hands back the user-event session. */
+/** Clicks "Create new bundle" and hands back the user-event session. */
 async function openNamingBox() {
   const user = userEvent.setup();
-  await user.click(screen.getByRole('button', { name: 'create new bundle' }));
+  await user.click(screen.getByRole('button', { name: 'Create new bundle' }));
   return user;
 }
 
 describe('NewBundleBox — starting a bundle without a modal', () => {
-  it('says both ways in, and offers the second as a text button', () => {
+  it('says both ways in, and offers the second as a quiet button', () => {
     renderBox();
     expect(screen.getByText(/Drop ideas here to start a bundle/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'create new bundle' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create new bundle' })).toBeInTheDocument();
   });
 
   // The dashed box says what it is for in one line; the field for a name is

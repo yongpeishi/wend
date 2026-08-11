@@ -109,12 +109,9 @@ export function NewBundleBox({ tripId, onToast }: NewBundleBoxProps) {
     <div className={styles.wrap}>
       <div ref={setNodeRef} className={[styles.box, isOver ? styles.over : ''].filter(Boolean).join(' ')}>
         <p className={styles.dropLine}>
-          Drop ideas here to start a bundle,
+          Drop ideas here to start a bundle, or{' '}
           <br />
-          or{' '}
-          <button type="button" className={styles.link} onClick={startNaming}>
-            create new bundle
-          </button>
+          <Button variant="quiet" onClick={startNaming}>Create new bundle</Button>
         </p>
       </div>
 

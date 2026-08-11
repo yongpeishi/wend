@@ -71,7 +71,7 @@ describe('BundlePanel — the bundles-only rail', () => {
     renderPanel();
     expect(screen.getByText(/A bundle is a group of things that go well together/)).toBeInTheDocument();
     expect(screen.getByText(/Drop ideas here to start a bundle/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'create new bundle' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create new bundle' })).toBeInTheDocument();
     // The card's name is now the rename control itself, so it announces as one.
     expect(screen.getByRole('button', { name: 'Rename Kyoto dinner options' })).toBeInTheDocument();
   });
@@ -85,14 +85,14 @@ describe('BundlePanel — the bundles-only rail', () => {
   });
 
   // Creating moved inline; the old modal trigger must be gone, not merely
-  // hidden. "create new bundle" is the inline path, not that button — it opens
+  // hidden. "Create new bundle" is the inline path, not that button — it opens
   // a naming box in the rail, never a dialog over it.
   it('has no "New bundle" button opening a modal', async () => {
     const user = userEvent.setup();
     renderPanel();
     expect(screen.queryByRole('button', { name: /^\+? ?new bundle$/i })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'create new bundle' }));
+    await user.click(screen.getByRole('button', { name: 'Create new bundle' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Name a new bundle')).toBeInTheDocument();
