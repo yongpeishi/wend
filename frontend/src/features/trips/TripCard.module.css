@@ -57,15 +57,45 @@
   outline-offset: var(--focus-offset);
 }
 
+/* The title swaps to this input while renaming — same type scale as the link
+   it replaces, so the swap doesn't reflow the card. */
+.titleInput {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: calc(-1 * var(--border-width)) 0 0 calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+
+.titleInput:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
 /* Everything interactive sits above the link overlay, so it keeps its own click
    and its own tab stop. */
-.archive,
+.headActions,
 .reasons {
   position: relative;
   z-index: 1;
 }
 
-.archive {
+.headActions {
+  flex: none;
+  display: flex;
+  gap: var(--space-2);
+}
+
+.archive,
+.editTitle {
   flex: none;
   width: 36px;
   height: 36px;
@@ -80,21 +110,49 @@
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-.archive:hover {
+.archive:hover,
+.editTitle:hover {
   opacity: 0.65;
 }
 
-.archive:focus-visible {
+.archive:focus-visible,
+.editTitle:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
 
-.note {
+/* Borderless by default so the card still reads clean with no description;
+   a border only shows up once you're actually in the field. */
+.description {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0;
+  padding: var(--space-1) var(--space-2);
+  resize: none;
+  overflow: hidden;
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
   line-height: var(--text-body-line);
   color: var(--text-body);
+  background: none;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-card);
+}
+
+.description::placeholder {
+  color: var(--text-muted);
+}
+
+.description:hover {
+  border-color: var(--border-subtle);
+}
+
+.description:focus-visible {
+  border-color: var(--border-subtle);
+  background: var(--surface-card);
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .meta {
@@ -106,7 +164,8 @@
 }
 
 @media (pointer: coarse) {
-  .archive {
+  .archive,
+  .editTitle {
     width: var(--tap-min);
     height: var(--tap-min);
   }
