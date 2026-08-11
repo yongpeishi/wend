@@ -1,0 +1,100 @@
+/*
+ * 10px row gap: between --space-2 (8) and --space-3 (12). The rows sit close
+ * enough to read as one list and far enough apart that each border is its own.
+ */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A real heading for the document outline; the button inside carries the fold. */
+.groupHeading {
+  margin: 0;
+  font-weight: var(--weight-regular);
+  font-size: inherit;
+}
+
+.groupToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: none;
+  border: none;
+  border-bottom: var(--border-width) solid var(--border-subtle);
+  /* 4px horizontal is --space-1; 12px vertical is --space-3. */
+  padding: var(--space-3) var(--space-1);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.groupToggle:hover {
+  opacity: 0.85;
+}
+
+.groupToggle:active {
+  opacity: 0.7;
+}
+
+.groupToggle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.groupName {
+  font-size: var(--text-body-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The design's 14px is below the 15px readable floor architecture.md sets. */
+.groupCount {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.chevron {
+  transition: transform var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* Pointing at the header it would reopen. aria-expanded carries the real state. */
+.chevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.groupBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* 10px top / 4px bottom: the rows hang from the header, then the next header
+     provides its own breathing room above. */
+  padding: 10px 0 var(--space-1);
+}
+
+/* `hidden` alone loses to the display:flex above. */
+.groupBody[hidden] {
+  display: none;
+}

@@ -4,10 +4,52 @@
   gap: var(--space-3);
 }
 
+/* Chips take the room they need; the group toggle keeps its own line's end. */
+.controlRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.chips {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  margin-right: var(--space-1);
+}
+
+.groupToggle {
+  flex: none;
+  white-space: nowrap;
+}
+
+.countRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .summary {
   margin: 0;
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
+  letter-spacing: var(--text-data-tracking);
   color: var(--text-muted);
 }
 
