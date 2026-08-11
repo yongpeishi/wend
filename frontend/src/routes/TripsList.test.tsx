@@ -46,7 +46,7 @@ describe('TripsList', () => {
       'href',
       `/trips/${SEEDED_TRIP_ID}`,
     );
-    expect(screen.getByText('Temples, rivers, and slow mornings.')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Temples, rivers, and slow mornings.')).toBeInTheDocument();
     // 2–8 Nov, and three things linked under the trip.
     expect(screen.getByText('2–8 Nov · 3 ideas')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Where next' })).toBeInTheDocument();
