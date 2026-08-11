@@ -1,120 +1,38 @@
-/* Three columns: tree (nav) · ideas (the working surface) · bundles (grouping).
-   Planning is a desk activity, so this is desktop-first and holds several
-   options side by side. Below 900px it becomes one column and the tree folds
-   into a disclosure — still present, because every view keeps its way back to
-   the wider one. */
+/* Two columns: the ideas (the working surface) and the bundle rail. Planning
+   is a desk activity, so this is desktop-first and holds both side by side.
+   The entry-tree column that used to sit on the left is gone — see the doc
+   comment on TripBoard.tsx.
+
+   The gap is zero on purpose. BundlePanel draws the design's rail itself: a
+   hairline border-left, the card ground behind it and its own 24px inner
+   padding. A grid gap here would leave a strip of paper between the ideas and
+   that hairline, which reads as a floating box rather than a rail, so the
+   breathing room goes on the ideas column as padding instead. */
 .grid {
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 320px;
-  gap: var(--space-12);
+  grid-template-columns: minmax(0, 1fr) 376px;
+  gap: 0;
   align-items: start;
 }
 
-.treeDisclosure {
-  min-width: 0;
-}
-
-/* The disclosure marker is the only affordance here; no icon set ships with
-   the brand, so the triangle stays the browser's own. */
-.treeSummary {
-  font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-label-size);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: var(--space-3) 0;
-  min-height: var(--tap-min);
-  display: flex;
-  align-items: center;
-  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-.treeSummary:hover {
-  opacity: 0.7;
-}
-
-.treeSummary:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
-.ideas,
-.bundles {
+.ideas {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-/* Ideas as cards: a responsive grid, not a scannable list — it wraps to
-   however many 220px-minimum columns the middle column has room for, one
-   column on narrow viewports. Gap matches the 12px "list rows" spacing. */
-.cardGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-3);
-}
-
-/* Between sections the gap is the divider — no rule. */
-.groupLabel {
-  margin: var(--space-6) 0 0;
-  font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-label-size);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.scopeLine {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-small-size);
-  line-height: var(--text-small-line);
-  color: var(--text-body);
-}
-
-.scopeLine strong {
-  color: var(--text-strong);
-}
-
-/* "Show all" is the way back out of a narrowed view — quiet, but always there. */
-.showAll {
-  font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-small-size);
-  color: var(--action-primary);
-  background: none;
-  border: none;
-  border-bottom: var(--border-width-strong) solid var(--action-primary);
-  padding: 0 0 1px;
-  cursor: pointer;
-  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-.showAll:hover {
-  opacity: 0.7;
-}
-
-.showAll:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
-.emptyBundles {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-small-size);
-  line-height: var(--text-small-line);
-  color: var(--text-muted);
-  max-width: var(--measure-body);
+  padding-right: var(--space-8);
 }
 
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-8);
+  }
+
+  /* Stacked, the rail is no longer beside anything, so the reserved strip
+     would just be a ragged right edge. BundlePanel moves its own hairline to
+     its top edge at this width. */
+  .ideas {
+    padding-right: 0;
   }
 }
