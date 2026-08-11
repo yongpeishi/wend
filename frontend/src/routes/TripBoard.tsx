@@ -9,61 +9,70 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
-import { Button } from '../design/components/core/Button';
 import { EntryRow } from '../components/EntryRow';
 import { Card } from '../components/layout/Card';
-import { Row, Stack } from '../components/layout/Stack';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
 import { useEntries, useRestoreEntry } from '../api';
 import type { Entry } from '../api/types';
-import { EntryTree } from '../features/board/EntryTree';
 import { FilterBar } from '../features/board/FilterBar';
-import { IdeaCard } from '../features/board/IdeaCard';
+import { IdeaList } from '../features/board/IdeaList';
 import { NewIdeaModal } from '../features/board/NewIdeaModal';
 import { BulkBar } from '../features/board/BulkBar';
-import { BundleCard } from '../features/board/BundleCard';
-import { BundleFormModal } from '../features/board/BundleFormModal';
+import { BundlePanel } from '../features/board/BundlePanel';
 import { CompareBundles } from '../features/board/CompareBundles';
 import { SetAsideSection } from '../features/board/SetAsideSection';
 import { useBundleMembers } from '../features/board/useBundleMembers';
 import { useLinkMutations } from '../features/board/useLinkMutations';
-import { EMPTY_FILTERS, applyFilters, groupByCategory } from '../features/board/filters';
-import type { IdeaFilters } from '../features/board/filters';
+import { useCreateBundleWithIdea } from '../features/board/useCreateBundle';
+import type { BundleDropData } from '../features/board/useCreateBundle';
+import { EMPTY_FILTERS, applyFilters, groupEntries } from '../features/board/filters';
+import type { GroupMode, IdeaFilters } from '../features/board/filters';
 import styles from './TripBoard.module.css';
 
 /**
- * /trips/:id — the planning board. Three columns: tree (nav), ideas (the
- * working surface), bundles (grouping). Renders inside TripLayout, which
- * already draws the trip header, dates and TrailNav — this only owns the
- * body below the tab bar.
+ * /trips/:id — the planning board. Two columns: the ideas the trip is made of,
+ * and the bundle rail that groups them. Renders inside TripLayout, which draws
+ * the trip title and dates; the trip's own tabs live in the app sidebar, not
+ * here.
+ *
+ * The entry tree that used to occupy a third column is gone. Ideas and bundles
+ * are genuinely many-to-many in the data model — an idea can sit in several
+ * bundles at once — but showing that hierarchy as navigation was descoped, so
+ * the board no longer scopes itself to a sub-entry. EntryTree.tsx is left on
+ * disk deliberately: this is "not for now", not "never".
+ *
+ * Filtering and grouping are separate axes and must stay that way. The category
+ * chips narrow WHICH ideas show; the group mode only changes how the survivors
+ * are arranged. Grouping by location while filtered to Food is a supported
+ * combination, not an accident.
  */
 export function TripBoard() {
   const { trip } = useOutletContext<{ trip: Entry }>();
   const { show } = useToast();
 
-  const [scope, setScope] = useState<{ id: number; title: string }>({ id: trip.id, title: trip.title });
   const [filters, setFilters] = useState<IdeaFilters>(EMPTY_FILTERS);
+  const [groupMode, setGroupMode] = useState<GroupMode>('category');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [newIdeaOpen, setNewIdeaOpen] = useState(false);
-  const [newBundleOpen, setNewBundleOpen] = useState(false);
   const [compareIds, setCompareIds] = useState<number[]>([]);
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
 
   const restoreEntry = useRestoreEntry();
   const { addLink } = useLinkMutations();
+  const createBundleWithIdea = useCreateBundleWithIdea();
 
-  // Stable handles, not inline arrows: NewIdeaModal/BundleFormModal memoize
-  // their own internal onClose forward to keep Modal's focus effect (which
-  // depends on [open, onClose]) from re-firing and stealing focus back from
-  // a field mid-word every time this component happens to re-render — see
-  // NewIdeaModal.tsx's doc comment for the underlying Modal.tsx bug.
+  // Stable handle, not an inline arrow: NewIdeaModal memoizes its own internal
+  // onClose forward to keep Modal's focus effect (which depends on [open,
+  // onClose]) from re-firing and stealing focus back from a field mid-word
+  // every time this component happens to re-render — see NewIdeaModal.tsx's
+  // doc comment for the underlying Modal.tsx bug.
   const closeNewIdea = useCallback(() => setNewIdeaOpen(false), []);
-  const closeNewBundle = useCallback(() => setNewBundleOpen(false), []);
+  const openNewIdea = useCallback(() => setNewIdeaOpen(true), []);
 
-  const ideasQuery = useEntries({ trip_id: scope.id, kind: 'idea', include_archived: true });
+  const ideasQuery = useEntries({ trip_id: trip.id, kind: 'idea', include_archived: true });
   const bundlesQuery = useEntries({ trip_id: trip.id, kind: 'bundle', include_archived: true });
 
   const allIdeas = useMemo(() => (ideasQuery.data ?? []).filter((e) => !e.archived_at), [ideasQuery.data]);
@@ -74,8 +83,13 @@ export function TripBoard() {
   const members = useBundleMembers(bundles);
 
   const visibleIdeas = useMemo(() => applyFilters(allIdeas, filters), [allIdeas, filters]);
-  const groups = useMemo(() => groupByCategory(visibleIdeas), [visibleIdeas]);
-  const orderedVisibleIds = useMemo(() => groups.flatMap((g) => g.entries.map((e) => e.id)), [groups]);
+
+  // Shift-select ranges follow the order the list actually renders in, so the
+  // range a user sees between two clicks is the range they get.
+  const orderedVisibleIds = useMemo(
+    () => groupEntries(visibleIdeas, groupMode).flatMap((group) => group.entries.map((e) => e.id)),
+    [visibleIdeas, groupMode],
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -111,17 +125,43 @@ export function TripBoard() {
     if (data) setActiveDrag(data);
   }
 
+  /**
+   * Two kinds of drop target share this handler: an existing bundle card, and
+   * the new-bundle box at the top of the rail. Both are distinguished by their
+   * droppable data rather than by id parsing — see useCreateBundle.ts.
+   *
+   * Dropping onto a bundle COPIES the link and never removes the old one, so
+   * an idea can belong to several bundles at once. Dropping onto the new-bundle
+   * box creates the bundle and links the idea in one gesture; the create-then-
+   * link sequencing lives in the hook, because the link needs the id the POST
+   * returns.
+   */
   function handleDragEnd(event: DragEndEvent) {
     setActiveDrag(null);
     const { active, over } = event;
     if (!over) return;
     const entryData = active.data.current as { entryId: number; title: string } | undefined;
-    const bundleData = over.data.current as { bundleId: number; title: string } | undefined;
-    if (!entryData || !bundleData) return;
+    const overData = over.data.current as BundleDropData | undefined;
+    if (!entryData || !overData) return;
+
+    if (overData.newBundle) {
+      createBundleWithIdea.mutate(
+        { tripId: trip.id, entryId: entryData.entryId, ideaTitle: entryData.title },
+        {
+          onSuccess: (bundle) =>
+            show(`Started ${bundle.title} with ${entryData.title}. Rename it any time.`, 'success'),
+          onError: () => show("That didn't save. It's still here — try again.", 'error'),
+        },
+      );
+      return;
+    }
+
+    if (overData.bundleId === undefined) return;
+    const bundleTitle = overData.title ?? 'the bundle';
     addLink.mutate(
-      { parentId: bundleData.bundleId, childId: entryData.entryId },
+      { parentId: overData.bundleId, childId: entryData.entryId },
       {
-        onSuccess: () => show(`Added ${entryData.title} to ${bundleData.title}.`, 'success'),
+        onSuccess: () => show(`Added ${entryData.title} to ${bundleTitle}.`, 'success'),
         onError: () => show("That didn't save. It's still here — try again.", 'error'),
       },
     );
@@ -130,32 +170,21 @@ export function TripBoard() {
   const compareBundleA = compareIds[0] !== undefined ? bundles.find((b) => b.id === compareIds[0]) : undefined;
   const compareBundleB = compareIds[1] !== undefined ? bundles.find((b) => b.id === compareIds[1]) : undefined;
 
-  const loading = ideasQuery.isLoading || bundlesQuery.isLoading;
-
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDrag(null)}>
       <div className={styles.grid}>
-        <details className={styles.treeDisclosure} open>
-          <summary className={styles.treeSummary}>Trip structure</summary>
-          <EntryTree trip={trip} selectedId={scope.id} onSelect={(id, title) => setScope({ id, title })} />
-        </details>
-
         <section className={styles.ideas} aria-label="Ideas">
-          <Row justify="between" align="center">
-            <Button onClick={() => setNewIdeaOpen(true)}>Add an idea</Button>
-          </Row>
-          <NewIdeaModal open={newIdeaOpen} onClose={closeNewIdea} parentId={scope.id} />
+          <NewIdeaModal open={newIdeaOpen} onClose={closeNewIdea} parentId={trip.id} />
 
-          {scope.id !== trip.id && (
-            <p className={styles.scopeLine}>
-              Scoped to <strong>{scope.title}</strong>.{' '}
-              <button type="button" className={styles.showAll} onClick={() => setScope({ id: trip.id, title: trip.title })}>
-                Show all
-              </button>
-            </p>
-          )}
-
-          <FilterBar filters={filters} onChange={setFilters} visibleCount={visibleIdeas.length} totalCount={allIdeas.length} />
+          <FilterBar
+            filters={filters}
+            onChange={setFilters}
+            groupMode={groupMode}
+            onGroupModeChange={setGroupMode}
+            onNewIdea={openNewIdea}
+            visibleCount={visibleIdeas.length}
+            totalCount={allIdeas.length}
+          />
 
           <BulkBar
             selectedIds={selectedIds}
@@ -164,31 +193,20 @@ export function TripBoard() {
             onToast={(message) => show(message, 'success')}
           />
 
-          {loading ? (
+          {ideasQuery.isLoading ? (
             <Spinner label="Finding your ideas" />
           ) : allIdeas.length === 0 ? (
             <EmptyState message="This one's still a daydream. Add the first thing you'd like to do." />
           ) : (
-            <Stack gap={12}>
-              {groups.map((group) => (
-                <Stack gap={3} key={group.key}>
-                  <p className={styles.groupLabel}>{group.label}</p>
-                  <div className={styles.cardGrid}>
-                    {group.entries.map((entry) => (
-                      <IdeaCard
-                        key={entry.id}
-                        entry={entry}
-                        bundles={bundles}
-                        members={members}
-                        selected={selectedIds.includes(entry.id)}
-                        onToggleSelect={onToggleSelect}
-                        onToast={(message) => show(message, 'success')}
-                      />
-                    ))}
-                  </div>
-                </Stack>
-              ))}
-            </Stack>
+            <IdeaList
+              entries={visibleIdeas}
+              groupMode={groupMode}
+              bundles={bundles}
+              members={members}
+              selectedIds={selectedIds}
+              onToggleSelect={onToggleSelect}
+              onToast={(message) => show(message, 'success')}
+            />
           )}
 
           <SetAsideSection
@@ -197,39 +215,16 @@ export function TripBoard() {
           />
         </section>
 
-        <section className={styles.bundles} aria-label="Bundles">
-          <Row justify="between" align="center">
-            <p className={styles.groupLabel}>Bundles</p>
-            <Button variant="secondary" onClick={() => setNewBundleOpen(true)}>
-              New bundle
-            </Button>
-          </Row>
-          <BundleFormModal open={newBundleOpen} onClose={closeNewBundle} tripId={trip.id} />
-          {bundlesQuery.isLoading ? (
-            <Spinner label="Finding your bundles" />
-          ) : bundles.length === 0 ? (
-            <p className={styles.emptyBundles}>
-              No bundles yet. Start one above, or fork an idea into a group once you have one.
-            </p>
-          ) : (
-            <Stack gap={4}>
-              {bundles.map((bundle) => (
-                <BundleCard
-                  key={bundle.id}
-                  bundle={bundle}
-                  members={members.get(bundle.id) ?? []}
-                  compareSelected={compareIds.includes(bundle.id)}
-                  onToggleCompare={onToggleCompare}
-                  onToast={(message) => show(message, 'success')}
-                />
-              ))}
-            </Stack>
-          )}
-          <SetAsideSection
-            entries={archivedBundles}
-            onRestore={(id) => restoreEntry.mutate(id, { onSuccess: () => show('Picked back up.', 'success') })}
-          />
-        </section>
+        <BundlePanel
+          tripId={trip.id}
+          bundles={bundles}
+          archivedBundles={archivedBundles}
+          members={members}
+          loading={bundlesQuery.isLoading}
+          compareIds={compareIds}
+          onToggleCompare={onToggleCompare}
+          onToast={(message) => show(message, 'success')}
+        />
       </div>
 
       <DragOverlay>

@@ -33,6 +33,16 @@
   color: var(--text-strong);
 }
 
+/* The wrapper draws focus for this field (apricot border + wash above), so the
+   inner input must not draw one of its own. `.input { outline: none }` alone
+   does not hold: global.css's blanket `input:focus-visible` rule is (0,1,1) and
+   outranks a bare class (0,1,0), so the input was painting a second solid
+   apricot ring at 3px offset INSIDE the apricot border — two outlines on one
+   field. `.input:focus-visible` is (0,2,0) and wins. */
+.input:focus-visible {
+  outline: none;
+}
+
 .input::placeholder {
   color: var(--text-muted);
 }

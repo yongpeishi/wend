@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Input } from '../design/components/core/Input';
+import { Select } from '../design/components/core/Select';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
@@ -80,8 +81,11 @@ export function TripChecklist() {
         />
         <label className={styles.forLabel}>
           <span className={styles.forLabelText}>For</span>
-          <select
-            className={styles.select}
+          {/* wrapperClassName, not className: the wrapper is the flex child of
+              .forLabel, so `flex: 1` has to land there for the field to take
+              the rest of the row. */}
+          <Select
+            wrapperClassName={styles.selectWrapper}
             value={forEntryId}
             onChange={(e) => setForEntryId(e.target.value === '' ? '' : Number(e.target.value))}
           >
@@ -91,7 +95,7 @@ export function TripChecklist() {
                 {entry.title}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
 

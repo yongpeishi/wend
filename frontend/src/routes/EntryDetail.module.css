@@ -52,10 +52,13 @@
   resize: vertical;
 }
 
+/* Matches <Input>: apricot border + pale wash at offset 0, one ring. See the
+   note in NewIdeaModal.module.css — an offset solid ring on top of an apricot
+   border reads as two outlines. */
 .input:focus-visible,
 .textarea:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
+  outline: var(--focus-width) solid var(--focus-ring-wash);
+  outline-offset: 0;
   border-color: var(--focus-ring);
 }
 

@@ -3,6 +3,7 @@ import { Modal } from '../../components/Modal';
 import { Field } from '../../components/Field';
 import { Stack } from '../../components/layout/Stack';
 import { Button } from '../../design/components/core/Button';
+import { Select } from '../../design/components/core/Select';
 import { useToast } from '../../components/Toast';
 import { useCreateEntry } from '../../api';
 import type { Entry, EntryCategory, EntryWritePayload } from '../../api/types';
@@ -159,9 +160,8 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
           <label className={styles.label} htmlFor={categoryId}>
             What kind of thing?
           </label>
-          <select
+          <Select
             id={categoryId}
-            className={styles.select}
             value={draft.category}
             onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value as EntryCategory | '' }))}
           >
@@ -171,7 +171,7 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
                 {CATEGORY_LABELS[category]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <Field

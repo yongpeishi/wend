@@ -9,7 +9,7 @@ import { BundleCard } from './BundleCard';
 import { api } from '../../api';
 import type { Entry } from '../../api/types';
 
-function entry(id: number, title: string, kind: Entry['kind'] = 'idea'): Entry {
+function entry(id: number, title: string, kind: Entry['kind'] = 'idea', scheduled = false): Entry {
   return {
     id,
     kind,
@@ -36,7 +36,7 @@ function entry(id: number, title: string, kind: Entry['kind'] = 'idea'): Entry {
     todos_open_count: 0,
     vote_tally: { total: 0, count: 0, average: 0 },
     my_vote: null,
-    scheduled: false,
+    scheduled,
   };
 }
 
@@ -147,5 +147,41 @@ describe('BundleCard — bundle CRUD', () => {
     // exposes a permanent destroy.
     expect(screen.queryByRole('button', { name: /delete permanently/i })).not.toBeInTheDocument();
     del.mockRestore();
+  });
+});
+
+/**
+ * The design's rail card shows a caption above the members and a coloured dot
+ * beside each one, both driven by a state field our Entry does not have. Both
+ * are derived from `scheduled`, the one real per-entry progress flag — these
+ * tests pin that so nobody quietly swaps in an invented field later.
+ */
+describe('BundleCard — the design anatomy, on real fields only', () => {
+  it('summarises how many members are already on the schedule', () => {
+    renderCard([entry(91, 'Ramen alley', 'idea', true), entry(92, 'Kaiseki counter')]);
+    expect(screen.getByText('1 of 2 on the schedule')).toBeInTheDocument();
+  });
+
+  it('says so plainly when nothing is scheduled, and stays silent for an empty bundle', () => {
+    const { unmount } = renderCard([entry(91, 'Ramen alley')]);
+    expect(screen.getByText('None on the schedule yet')).toBeInTheDocument();
+    unmount();
+
+    renderCard([]);
+    expect(screen.queryByText(/on the schedule/i)).not.toBeInTheDocument();
+  });
+
+  // Colour is never the only carrier of meaning: the dot's state is also text.
+  it('gives each member dot a text equivalent', () => {
+    renderCard([entry(91, 'Ramen alley', 'idea', true), entry(92, 'Kaiseki counter')]);
+    expect(screen.getByText('On the schedule:')).toBeInTheDocument();
+    expect(screen.getByText('Not on the schedule yet:')).toBeInTheDocument();
+  });
+
+  it('keeps every bundle action reachable in the tighter card', () => {
+    renderCard();
+    for (const label of [/^rename/i, /^fork$/i, /^compare$/i, /^ungroup$/i, /^set aside$/i]) {
+      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+    }
   });
 });

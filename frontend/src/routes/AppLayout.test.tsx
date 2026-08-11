@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -22,18 +22,28 @@ function RouteContent() {
   );
 }
 
-function renderShell() {
+/** The seeded trip in the MSW fixtures (src/mocks/db.ts): "Six days in Kyoto". */
+const SEEDED_TRIP_ID = 1;
+
+function renderShell(initialPath = '/') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
       {/* Provider stack mirrors App.tsx: the shell renders FeedbackButton, which
           reaches for the toast context. */}
       <ToastProvider>
-        <MemoryRouter initialEntries={['/']}>
+        <MemoryRouter initialEntries={[initialPath]}>
           <AuthProvider>
             <Routes>
               <Route element={<AppLayout />}>
                 <Route path="/" element={<RouteContent />} />
+                {/* The trip's routes are stand-ins: what matters here is that
+                    the shell recognises a trip URL, not what the trip renders. */}
+                <Route path="/trips/:id" element={<RouteContent />}>
+                  <Route path="map" element={<RouteContent />} />
+                  <Route path="schedule" element={<RouteContent />} />
+                  <Route path="checklist" element={<RouteContent />} />
+                </Route>
               </Route>
             </Routes>
           </AuthProvider>
@@ -69,6 +79,50 @@ describe('AppLayout', () => {
   it('renders the routed Outlet content beside the sidebar', () => {
     renderShell();
     expect(screen.getByText('Route content here')).toBeInTheDocument();
+  });
+
+  it('keeps the PLAN block out of the sidebar when no trip is open', () => {
+    renderShell();
+    expect(screen.queryByText('Plan')).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Trip views' })).not.toBeInTheDocument();
+  });
+
+  it('shows the trip sub-nav in the sidebar on a trip route', async () => {
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+    expect(screen.getByText('Plan')).toBeInTheDocument();
+
+    const tripNav = screen.getByRole('navigation', { name: 'Trip views' });
+    // Same set, same order and same destinations as the old segmented tab bar.
+    expect(within(tripNav).getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Ideas',
+      'Map',
+      'Schedule',
+      'Checklist',
+    ]);
+    expect(within(tripNav).getByRole('link', { name: 'Ideas' })).toHaveAttribute('href', '/trips/1');
+    expect(within(tripNav).getByRole('link', { name: 'Map' })).toHaveAttribute('href', '/trips/1/map');
+    expect(within(tripNav).getByRole('link', { name: 'Schedule' })).toHaveAttribute(
+      'href',
+      '/trips/1/schedule',
+    );
+    expect(within(tripNav).getByRole('link', { name: 'Checklist' })).toHaveAttribute(
+      'href',
+      '/trips/1/checklist',
+    );
+
+    // Named once the trip itself has loaded, never guessed at beforehand.
+    expect(await screen.findByText('Six days in Kyoto')).toBeInTheDocument();
+  });
+
+  it('marks the trip view you are on as the current page', () => {
+    renderShell(`/trips/${SEEDED_TRIP_ID}/schedule`);
+    const tripNav = screen.getByRole('navigation', { name: 'Trip views' });
+    expect(within(tripNav).getByRole('link', { name: 'Schedule' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    // "Ideas" is the index route: it must not stay lit on every child view.
+    expect(within(tripNav).getByRole('link', { name: 'Ideas' })).not.toHaveAttribute('aria-current');
   });
 
   it('signs out from the sidebar', async () => {
