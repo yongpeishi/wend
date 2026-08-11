@@ -35,20 +35,45 @@ function renderBox(onToast: (message: string) => void = () => {}) {
   return render(<NewBundleBox tripId={TRIP_ID} onToast={onToast} />, { wrapper: makeWrapper() });
 }
 
+/** Clicks "create new bundle" and hands back the user-event session. */
+async function openNamingBox() {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'create new bundle' }));
+  return user;
+}
+
 describe('NewBundleBox — starting a bundle without a modal', () => {
+  it('says both ways in, and offers the second as a text button', () => {
+    renderBox();
+    expect(screen.getByText(/Drop ideas here to start a bundle/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'create new bundle' })).toBeInTheDocument();
+  });
+
+  // The dashed box says what it is for in one line; the field for a name is
+  // something you ask for, and it arrives ready to type in.
+  it('keeps the name field away until it is asked for, then focuses it', async () => {
+    renderBox();
+    expect(screen.queryByLabelText('Name a new bundle')).not.toBeInTheDocument();
+
+    await openNamingBox();
+
+    expect(screen.getByLabelText('Name a new bundle')).toHaveFocus();
+  });
+
   // Dropping is an accelerator. The typed name is the equivalent that works
   // with a keyboard, a switch or a screen reader, so it has to be a properly
   // labelled control, not a placeholder pretending to be a label.
-  it('labels the name field with a real label, not just a placeholder', () => {
+  it('labels the name field with a real label, not just a placeholder', async () => {
     renderBox();
+    await openNamingBox();
     expect(screen.getByLabelText('Name a new bundle')).toBeInTheDocument();
   });
 
   it('creates an empty bundle from a typed name, on Enter', async () => {
-    const user = userEvent.setup();
     const post = vi.spyOn(api, 'post').mockResolvedValue({ entry: { id: 1, title: 'Day one dinner' } });
     const onToast = vi.fn();
     renderBox(onToast);
+    const user = await openNamingBox();
 
     await user.type(screen.getByLabelText('Name a new bundle'), 'Day one dinner{Enter}');
 
@@ -60,13 +85,31 @@ describe('NewBundleBox — starting a bundle without a modal', () => {
     expect(body).toEqual({ entry: { kind: 'bundle', title: 'Day one dinner' }, parent_id: TRIP_ID });
     expect(post).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(onToast).toHaveBeenCalled());
+    // The box has done its job and puts itself away.
+    await waitFor(() => expect(screen.queryByLabelText('Name a new bundle')).not.toBeInTheDocument());
+    post.mockRestore();
+  });
+
+  it('abandons the name on Escape, keeping nothing', async () => {
+    const post = vi.spyOn(api, 'post').mockResolvedValue({ entry: {} });
+    renderBox();
+    const user = await openNamingBox();
+
+    await user.type(screen.getByLabelText('Name a new bundle'), 'Half a thought{Escape}');
+
+    expect(screen.queryByLabelText('Name a new bundle')).not.toBeInTheDocument();
+    expect(post).not.toHaveBeenCalled();
+
+    // And nothing is left over from last time.
+    await openNamingBox();
+    expect(screen.getByLabelText('Name a new bundle')).toHaveValue('');
     post.mockRestore();
   });
 
   it('will not create a bundle named only whitespace', async () => {
-    const user = userEvent.setup();
     const post = vi.spyOn(api, 'post').mockResolvedValue({ entry: {} });
     renderBox();
+    const user = await openNamingBox();
 
     await user.type(screen.getByLabelText('Name a new bundle'), '   ');
     expect(screen.getByRole('button', { name: 'Start it' })).toBeDisabled();

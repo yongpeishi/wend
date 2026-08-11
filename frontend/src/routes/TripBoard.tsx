@@ -28,6 +28,7 @@ import { useCreateBundleWithIdea } from '../features/board/useCreateBundle';
 import type { BundleDropData } from '../features/board/useCreateBundle';
 import { EMPTY_FILTERS, applyFilters, groupEntries } from '../features/board/filters';
 import type { GroupMode, IdeaFilters } from '../features/board/filters';
+import { EntryDetailDrawer } from './EntryDetail';
 import styles from './TripBoard.module.css';
 
 /**
@@ -52,9 +53,15 @@ export function TripBoard() {
   const { show } = useToast();
 
   const [filters, setFilters] = useState<IdeaFilters>(EMPTY_FILTERS);
-  const [groupMode, setGroupMode] = useState<GroupMode>('category');
+  // Ungrouped is the honest starting point, and what the design shows: the
+  // board opens as the whole list, and sectioning it is something you ask for.
+  const [groupMode, setGroupMode] = useState<GroupMode>('none');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [newIdeaOpen, setNewIdeaOpen] = useState(false);
+  // The idea whose edit drawer is up, if any. Held here rather than reached by
+  // navigating to /entries/:id, so the drawer lands over the board instead of
+  // over an empty page — see EntryDetailDrawer.
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
 
@@ -192,6 +199,7 @@ export function TripBoard() {
               members={members}
               selectedIds={selectedIds}
               onToggleSelect={onToggleSelect}
+              onEdit={setEditingId}
               onToast={(message) => show(message, 'success')}
             />
           )}
@@ -211,6 +219,10 @@ export function TripBoard() {
           onToast={(message) => show(message, 'success')}
         />
       </div>
+
+      {editingId !== null && (
+        <EntryDetailDrawer entryId={editingId} onClose={() => setEditingId(null)} />
+      )}
 
       <DragOverlay>
         {activeDrag && <Card padding={2}><EntryRow title={activeDrag.title} kept={false} /></Card>}

@@ -4,7 +4,7 @@
   gap: var(--space-3);
 }
 
-/* Chips take the room they need; the group toggle keeps its own line's end. */
+/* Chips take the room they need; the grouping control keeps its own line's end. */
 .controlRow {
   display: flex;
   flex-wrap: wrap;
@@ -32,7 +32,7 @@
   margin-right: var(--space-1);
 }
 
-.groupToggle {
+.groupControl {
   flex: none;
   white-space: nowrap;
 }

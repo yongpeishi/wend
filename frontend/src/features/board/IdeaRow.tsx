@@ -1,13 +1,11 @@
 import { useMemo } from 'react';
-import { Archive, GripVertical } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '../../components/Toast';
-import { useArchiveEntry } from '../../api';
 import type { Entry, EntryCategory } from '../../api/types';
 import { CATEGORY_LABELS } from './filters';
 import { formatDuration, joinMeta } from '../../lib/formatDates';
-import { AddToBundleMenu } from './AddToBundleMenu';
+import { IdeaActionsMenu } from './IdeaActionsMenu';
 import styles from './IdeaRow.module.css';
 
 export interface IdeaRowProps {
@@ -16,6 +14,12 @@ export interface IdeaRowProps {
   members: Map<number, Entry[]>;
   selected: boolean;
   onToggleSelect: (id: number, shiftKey: boolean) => void;
+  /**
+   * Opens the idea for editing. The board passes a handler that raises the edit
+   * drawer over the board itself; without one the row falls back to navigating
+   * to /entries/:id, which is the same drawer over an empty page.
+   */
+  onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
 }
 
@@ -96,26 +100,35 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
  * What is kept, and why:
  *   - The drag handle. Dragging an idea onto a bundle is the core board gesture
  *     (`data: { entryId, title }` is what the bundle drop targets read, and what
- *     TripBoard's onDragEnd turns into a link). `AddToBundleMenu` sits beside it
- *     as the pointer-free equivalent — every drag in Wend has one.
+ *     TripBoard's onDragEnd turns into a link). Its pointer-free equivalent is
+ *     the bundle list inside the ⋯ menu — every drag in Wend has one.
  *   - The multi-select checkbox, which is what `BulkBar` acts on.
  *   - Set aside. Nothing on the board is ever deleted; the archive action
- *     soft-archives and `SetAsideSection` brings it back.
+ *     soft-archives and `SetAsideSection` brings it back. It moved into the ⋯
+ *     menu with the rest of the row's verbs.
+ *
+ * Editing is now named: the ⋯ button on the right opens Edit, Set aside and the
+ * bundles, so the drawer arrives because it was asked for. Clicking the row
+ * still opens the same drawer — that shortcut is worth keeping, it just is no
+ * longer the only way in.
  *
  * Interaction: hover and press are opacity only, focus is the apricot ring,
  * there are no shadows. A selected row is bordered apricot — the same "this one"
  * accent the design uses for the row under the cursor's attention.
  */
-export function IdeaRow({ entry, bundles, members, selected, onToggleSelect, onToast }: IdeaRowProps) {
+export function IdeaRow({ entry, bundles, members, selected, onToggleSelect, onEdit, onToast }: IdeaRowProps) {
   const navigate = useNavigate();
-  const { show } = useToast();
-  const archiveEntry = useArchiveEntry();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `idea-${entry.id}`,
     data: { entryId: entry.id, title: entry.title },
   });
 
   const state = ideaState(entry);
+
+  function edit() {
+    if (onEdit) onEdit(entry.id);
+    else navigate(`/entries/${entry.id}`);
+  }
 
   // Category has its own slot beside the title now, so it is out of the meta
   // line — which leaves place, how long it takes, and what is still open.
@@ -147,7 +160,7 @@ export function IdeaRow({ entry, bundles, members, selected, onToggleSelect, onT
 
       <span className={[styles.stateDot, STATE_CLASS[state]].join(' ')} role="img" aria-label={STATE_LABEL[state]} />
 
-      <button type="button" className={styles.main} onClick={() => navigate(`/entries/${entry.id}`)}>
+      <button type="button" className={styles.main} onClick={edit}>
         <span className={styles.headline}>
           <span className={styles.title}>{entry.title}</span>
           {entry.category && (
@@ -161,21 +174,13 @@ export function IdeaRow({ entry, bundles, members, selected, onToggleSelect, onT
       </button>
 
       <div className={styles.actions}>
-        <AddToBundleMenu entry={entry} bundles={bundles} members={members} onToast={onToast} />
-
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label={`Set aside ${entry.title}`}
-          onClick={() =>
-            archiveEntry.mutate(entry.id, {
-              onSuccess: () => show('Set aside.', 'success'),
-              onError: () => show("That didn't save. It's still here — try again.", 'error'),
-            })
-          }
-        >
-          <Archive size={18} strokeWidth={1.5} aria-hidden="true" />
-        </button>
+        <IdeaActionsMenu
+          entry={entry}
+          bundles={bundles}
+          members={members}
+          onEdit={edit}
+          onToast={onToast}
+        />
 
         <button
           type="button"

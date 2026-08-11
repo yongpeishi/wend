@@ -70,7 +70,8 @@ describe('BundlePanel — the bundles-only rail', () => {
   it('explains what a bundle is and offers the drop box above the list', () => {
     renderPanel();
     expect(screen.getByText(/A bundle is a group of things that go well together/)).toBeInTheDocument();
-    expect(screen.getByText('Drop ideas here to start a bundle')).toBeInTheDocument();
+    expect(screen.getByText(/Drop ideas here to start a bundle/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'create new bundle' })).toBeInTheDocument();
     // The card's name is now the rename control itself, so it announces as one.
     expect(screen.getByRole('button', { name: 'Rename Kyoto dinner options' })).toBeInTheDocument();
   });
@@ -83,10 +84,18 @@ describe('BundlePanel — the bundles-only rail', () => {
     expect(screen.queryByRole('button', { name: /this idea/i })).not.toBeInTheDocument();
   });
 
-  // Creating moved inline; the old modal trigger must be gone, not merely hidden.
-  it('has no "New bundle" button opening a modal', () => {
+  // Creating moved inline; the old modal trigger must be gone, not merely
+  // hidden. "create new bundle" is the inline path, not that button — it opens
+  // a naming box in the rail, never a dialog over it.
+  it('has no "New bundle" button opening a modal', async () => {
+    const user = userEvent.setup();
     renderPanel();
-    expect(screen.queryByRole('button', { name: /new bundle/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^\+? ?new bundle$/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'create new bundle' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Name a new bundle')).toBeInTheDocument();
   });
 
   // Archiving is the reversible path, so the way back stays on the same screen.

@@ -1,5 +1,5 @@
-import { useId, useState } from 'react';
-import type { FormEvent } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import type { FormEvent, KeyboardEvent } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { Button } from '../../design/components/core/Button';
 import { useToast } from '../../components/Toast';
@@ -28,16 +28,21 @@ export interface NewBundleBoxProps {
  *     `onDragEnd`, so all this component contributes is the drop target: a
  *     `useDroppable` keyed NEW_BUNDLE_DROP_ID and marked `{ newBundle: true }`
  *     so the handler can tell it apart from a real bundle's card.
- *  2. Type a name. That makes an empty bundle — explicitly allowed; an empty
- *     bundle is a placeholder for a decision you have not made yet ("day one
- *     dinner"), which is exactly the kind of thing this product refuses to
+ *  2. Ask for one by name. That makes an empty bundle — explicitly allowed; an
+ *     empty bundle is a placeholder for a decision you have not made yet ("day
+ *     one dinner"), which is exactly the kind of thing this product refuses to
  *     make you resolve up front.
  *
- * The typed path is also the accessible equivalent of the drop, per the
- * board-wide rule that no interaction is drag-only. The input is labelled with
- * a real `<label for>` (visually hidden — the box already reads as one thing,
- * and a second visible label would fight the design's single centred line);
- * the placeholder is an example, never the label.
+ * The name field is not standing open. A permanently-open input read as the
+ * main act of the panel and gave the dashed box two jobs at once; now the box
+ * says the two ways in, in words, and "create new bundle" opens a box for the
+ * name at the top of the list. Enter confirms it, Escape puts it away — an
+ * abandoned name costs nothing and leaves nothing behind.
+ *
+ * The typed path is the accessible equivalent of the drop, per the board-wide
+ * rule that no interaction is drag-only. The input is labelled with a real
+ * `<label for>` (visually hidden — the box it sits in already reads as one
+ * thing); the placeholder is an example, never the label.
  *
  * The over-state is a border-colour change only. This design system has no
  * shadows, and hover/press are opacity — so "a drag is above me" gets the one
@@ -46,8 +51,10 @@ export interface NewBundleBoxProps {
 export function NewBundleBox({ tripId, onToast }: NewBundleBoxProps) {
   const { show } = useToast();
   const createEntry = useCreateEntry();
+  const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
   const inputId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
   const { setNodeRef, isOver } = useDroppable({
     id: NEW_BUNDLE_DROP_ID,
     data: { newBundle: true },
@@ -55,6 +62,22 @@ export function NewBundleBox({ tripId, onToast }: NewBundleBoxProps) {
 
   const trimmed = name.trim();
   const working = createEntry.isPending;
+
+  // Asking for the box is asking to type in it.
+  useEffect(() => {
+    if (naming) inputRef.current?.focus();
+  }, [naming]);
+
+  function startNaming() {
+    setNaming(true);
+    // Already open: put the cursor back rather than doing nothing visible.
+    inputRef.current?.focus();
+  }
+
+  function cancel() {
+    setNaming(false);
+    setName('');
+  }
 
   // A real <form>, so Enter submits without a keydown handler of its own —
   // the browser already knows this shape.
@@ -66,6 +89,7 @@ export function NewBundleBox({ tripId, onToast }: NewBundleBoxProps) {
       {
         onSuccess: () => {
           setName('');
+          setNaming(false);
           onToast(`Started ${trimmed}. Drop ideas in when you're ready.`);
         },
         onError: () => show("That didn't save. It's still here — try again.", 'error'),
@@ -73,27 +97,47 @@ export function NewBundleBox({ tripId, onToast }: NewBundleBoxProps) {
     );
   }
 
-  return (
-    <div ref={setNodeRef} className={[styles.box, isOver ? styles.over : ''].filter(Boolean).join(' ')}>
-      <p className={styles.dropLine}>Drop ideas here to start a bundle</p>
+  function onKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== 'Escape') return;
+    // Nothing else on the board is listening for Escape here, but the drawer
+    // and modals are one route away — don't let a cancelled name close them too.
+    event.stopPropagation();
+    cancel();
+  }
 
-      <form className={styles.form} onSubmit={submit}>
-        <label className={styles.srOnly} htmlFor={inputId}>
-          Name a new bundle
-        </label>
-        <input
-          id={inputId}
-          className={styles.input}
-          type="text"
-          value={name}
-          placeholder="Or name one: day one dinner"
-          disabled={working}
-          onChange={(event) => setName(event.target.value)}
-        />
-        <Button type="submit" variant="quiet" disabled={!trimmed || working}>
-          Start it
-        </Button>
-      </form>
+  return (
+    <div className={styles.wrap}>
+      <div ref={setNodeRef} className={[styles.box, isOver ? styles.over : ''].filter(Boolean).join(' ')}>
+        <p className={styles.dropLine}>
+          Drop ideas here to start a bundle,
+          <br />
+          or{' '}
+          <button type="button" className={styles.link} onClick={startNaming}>
+            create new bundle
+          </button>
+        </p>
+      </div>
+
+      {naming && (
+        <form className={styles.namingBox} onSubmit={submit} onKeyDown={onKeyDown}>
+          <label className={styles.srOnly} htmlFor={inputId}>
+            Name a new bundle
+          </label>
+          <input
+            id={inputId}
+            ref={inputRef}
+            className={styles.input}
+            type="text"
+            value={name}
+            placeholder="Day one dinner"
+            disabled={working}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <Button type="submit" variant="quiet" disabled={!trimmed || working}>
+            Start it
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

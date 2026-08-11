@@ -1,7 +1,8 @@
 import { Chip } from '../../design/components/core/Chip';
 import { Button } from '../../design/components/core/Button';
+import { TabBar } from '../../components/TabBar';
 import { MIDDOT } from '../../lib/formatDates';
-import { CATEGORY_LABELS, CATEGORY_ORDER, EMPTY_FILTERS, isNarrowed } from './filters';
+import { CATEGORY_LABELS, CATEGORY_ORDER, EMPTY_FILTERS, GROUP_MODES, isNarrowed } from './filters';
 import type { GroupMode, IdeaFilters } from './filters';
 import styles from './FilterBar.module.css';
 
@@ -20,11 +21,11 @@ export interface FilterBarProps {
  * The board's controls: what to show, and how to stack it.
  *
  * Filtering and grouping are orthogonal and stay visually apart for that
- * reason. The chips narrow the list; the "Group by place" button only decides
- * what headings the survivors sit under. Every chip keeps working in every
- * group mode — filtering by Food while grouped by place is a normal thing to
- * want, not a mode conflict — which falls out of the two controls writing to
- * two different pieces of state, never to each other's.
+ * reason. The chips narrow the list; the grouping control only decides what
+ * headings the survivors sit under. Every chip keeps working in every group
+ * mode — filtering by Food while grouped by place is a normal thing to want,
+ * not a mode conflict — which falls out of the two controls writing to two
+ * different pieces of state, never to each other's.
  *
  * Filters hide, never delete: the "Showing N of M" line and its "widen again"
  * escape are always rendered, narrowed or not — every narrowing carries its own
@@ -45,7 +46,6 @@ export function FilterBar({
   onNewIdea,
 }: FilterBarProps) {
   const narrowed = isNarrowed(filters);
-  const groupedByPlace = groupMode === 'location';
 
   return (
     <div className={styles.bar}>
@@ -64,20 +64,25 @@ export function FilterBar({
         </div>
 
         {/*
-          The label flips to the past tense once it is on, so the button reads as
-          the state and not only as the action; `aria-pressed` says the same
-          thing to assistive tech, and the variant carries it visually. Toggling
-          off returns to a flat list rather than falling back to categories —
-          "off" should mean off, not a different grouping the user didn't ask for.
+          Every grouping is one click from every other. This used to be a
+          two-state toggle — "Group by place" on, off — which made grouping by
+          category unreachable once you had grouped by place: the way back led
+          only to a flat list. A segmented control shows all three states at
+          once, so none of them is a dead end (screens.md: every narrowing
+          carries its own way out, and grouping is no different).
+
+          It reuses the app's own TabBar rather than dressing up three buttons —
+          same segmented look as the design's rail, and the arrow-key handling
+          comes with it.
         */}
-        <Button
-          className={styles.groupToggle}
-          variant={groupedByPlace ? 'primary' : 'secondary'}
-          aria-pressed={groupedByPlace}
-          onClick={() => onGroupModeChange(groupedByPlace ? 'none' : 'location')}
-        >
-          {groupedByPlace ? 'Grouped by place' : 'Group by place'}
-        </Button>
+        <div className={styles.groupControl}>
+          <TabBar
+            aria-label="Group ideas"
+            tabs={GROUP_MODES}
+            activeKey={groupMode}
+            onChange={(key) => onGroupModeChange(key as GroupMode)}
+          />
+        </div>
       </div>
 
       {/* The remaining filters. Same chip language, their own label, because

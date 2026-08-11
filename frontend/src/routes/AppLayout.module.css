@@ -55,6 +55,15 @@
   outline-offset: var(--focus-offset);
 }
 
+/* EXPLORE and PLAN sit in one column at the same 6px rhythm, per the design —
+   the 26px sidebar gap separates the lock-up from the navigation, not the two
+   sections from each other. */
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .section {
   display: flex;
   flex-direction: column;
@@ -70,35 +79,100 @@
   padding: 0 var(--space-2) 6px;
 }
 
+/*
+ * The PLAN panel. Paper at 7% over deep leaf — the design's own value, and the
+ * only way to lift a surface in a system with no shadows and one dark ground.
+ * The radius is 8px rather than --radius-card (12px) because the design draws
+ * this panel tighter than a content card; it is chrome, not a card of content.
+ */
+.tripCard {
+  border-radius: 8px;
+  background: rgb(240 243 238 / 7%);
+  overflow: hidden;
+}
+
+.tripHead {
+  padding: 10px var(--space-3);
+}
+
 /* The trip's name reads as the subject of the PLAN block, not as a link: it is
-   already where you are, so it is full-strength ink but never interactive. */
+   already where you are, so it is full-strength ink but never interactive.
+   17px is the body step — the panel's own title. */
 .tripTitle {
-  padding: 0 var(--space-3) 6px;
   font-family: var(--font-sans);
   font-weight: var(--weight-bold);
-  font-size: var(--text-small-size);
+  font-size: var(--text-body-size);
+  line-height: 1.3;
   color: var(--text-on-dark);
   overflow-wrap: anywhere;
+}
+
+/* "6 days · 12–17 Oct" — an itinerary line, so it takes the data tracking. The
+   design sets 13px; --text-min-size (15) is this product's readable floor, and
+   the tracking is what actually distinguishes the line. */
+.tripMeta {
+  margin-top: 2px;
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-on-dark-muted);
+}
+
+/* The panel's internal dividers. Paper at 12%, as the design has them — the
+   same ink as the panel ground, one step stronger. */
+.rule {
+  height: var(--border-width);
+  background: rgb(240 243 238 / 12%);
+  margin: var(--space-1) var(--space-3);
 }
 
 /* The former segmented tab bar, stood upright. Tighter than the section gap so
    the four views read as one list rather than four separate destinations. */
 .tripNav {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  padding: 6px;
+}
+
+/*
+ * The michikusa trail, drawn behind the stops: one line threading the views
+ * together, which is the brand's one figure and the reason these are dots and
+ * not bullets. 22.5px is exactly where the dot centres land (6px list padding +
+ * 12px item padding + half a 9px dot); the 30px inset is half an item's height,
+ * so the run starts and ends at a stop rather than in the gap above one, and is
+ * approximate by design — a pixel either way is invisible at 14% opacity.
+ */
+.tripNav::before {
+  content: '';
+  position: absolute;
+  left: 22.5px;
+  top: 30px;
+  bottom: 30px;
+  width: var(--border-width);
+  transform: translateX(-50%);
+  background: rgb(240 243 238 / 14%);
 }
 
 .navItem {
   display: flex;
   align-items: center;
   padding: 10px var(--space-3);
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   font-size: var(--text-small-size);
   color: var(--text-on-dark-muted);
   text-decoration: none;
   border-bottom: none;
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* Inside the panel the items are taller and carry their dot, per the design:
+   44px minimum, 12px between the stop and its label. */
+.tripNavItem {
+  position: relative;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: 11px var(--space-3);
 }
 
 /* Hover and press are opacity only — the palette never lightens or darkens. */
@@ -111,16 +185,74 @@
   outline-offset: var(--focus-offset);
 }
 
-/* "You are here" reads as full-strength paper against the muted rest.
-   Apricot stays reserved for the focus ring; it is never text. */
+/* The stop itself. Apricot means "you are here" and is a shape, never text —
+   which is exactly what this is. Unvisited stops take the panel's own ink. */
+.navDot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: var(--radius-pill);
+  background: rgb(240 243 238 / 28%);
+}
+
+/* "You are here" reads as full-strength paper against the muted rest. */
 /* "You are here" carries on two signals, not one. Colour alone — muted ink to
    full-strength paper — tested as too quiet to find: a browser pass over all
    four trip links read them as identical. The design's own nav marks the
-   current stop with weight as well as colour, so the weight comes with it.
-   Apricot stays reserved for the focus ring; it is never text. */
+   current stop with weight as well as colour, so the weight comes with it, and
+   inside the panel the apricot stop carries it a third time. */
 .navItemActive {
   color: var(--text-on-dark);
   font-weight: var(--weight-bold);
+}
+
+.navItemActive .navDot {
+  background: var(--stop-open);
+}
+
+.planners {
+  padding-bottom: var(--space-3);
+}
+
+.planners .sectionLabel {
+  padding: 10px var(--space-3) 0;
+}
+
+.avatars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0 var(--space-3);
+  list-style: none;
+}
+
+/* Leaf on deep leaf: the one green that reads as a filled shape against the
+   sidebar without becoming another surface. */
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--wend-leaf);
+  font-size: var(--text-code-size);
+  font-weight: var(--weight-bold);
+  color: var(--wend-paper);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .signOut {
@@ -129,7 +261,7 @@
   background: none;
   border: none;
   padding: 10px var(--space-3);
-  border-radius: 8px;
+  border-radius: var(--radius-pill);
   font-size: var(--text-small-size);
   color: var(--text-on-dark-muted);
   cursor: pointer;
@@ -172,6 +304,14 @@
     padding: var(--space-3) var(--gutter-screen);
   }
 
+  .sections {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    overflow: visible;
+  }
+
   .section {
     flex-direction: row;
     align-items: center;
@@ -182,20 +322,51 @@
     padding: 0;
   }
 
-  /* Laid down with everything else: the trip's views become a run of links
-     along the bar, and its name the label they follow. */
-  .tripTitle {
+  /* Laid down with everything else: the panel becomes a run along the bar, its
+     rules and its trail drop out, and the trip's name is the label the views
+     follow. */
+  .tripCard {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0 var(--space-3);
+  }
+
+  .tripHead {
     padding: 0;
+  }
+
+  .tripTitle {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 12ch;
   }
 
+  .tripMeta,
+  .rule,
+  .tripNav::before {
+    display: none;
+  }
+
   .tripNav {
     flex-direction: row;
     align-items: center;
     gap: var(--space-2);
+    padding: 0;
+  }
+
+  .planners {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding-bottom: 0;
+  }
+
+  .planners .sectionLabel,
+  .avatars {
+    padding: 0;
+    margin: 0;
   }
 
   .signOut {

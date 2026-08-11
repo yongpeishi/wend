@@ -14,6 +14,8 @@ export interface IdeaListProps {
   members: Map<number, Entry[]>;
   selectedIds: number[];
   onToggleSelect: (id: number, shiftKey: boolean) => void;
+  /** Passed straight through to each row — see IdeaRow's `onEdit`. */
+  onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
 }
 
@@ -39,6 +41,7 @@ export function IdeaList({
   members,
   selectedIds,
   onToggleSelect,
+  onEdit,
   onToast,
 }: IdeaListProps) {
   const idBase = useId();
@@ -64,6 +67,7 @@ export function IdeaList({
         members={members}
         selected={selectedIds.includes(entry.id)}
         onToggleSelect={onToggleSelect}
+        onEdit={onEdit}
         onToast={onToast}
       />
     ));

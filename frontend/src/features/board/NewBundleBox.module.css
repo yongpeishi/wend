@@ -1,16 +1,20 @@
-/* The design's dashed "Drop ideas here to start a bundle" box, widened to hold
-   the typed-name path as well. Dashed, not solid, is the whole message: this
-   outline is a slot waiting to be filled, not a card that already holds
-   something. */
+/* The drop zone and, once it is asked for, the box for the new bundle's name —
+   which sits directly beneath it and so at the top of the bundle list. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The design's dashed "Drop ideas here to start a bundle" box. Dashed, not
+   solid, is the whole message: this outline is a slot waiting to be filled, not
+   a card that already holds something. */
 .box {
   border: var(--border-width) dashed var(--border-strong);
   border-radius: var(--radius-card);
   /* Design calls for 20px; the 4px space scale has no 20px step and this is a
      one-off container, so the literal stands rather than inventing a token. */
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
   transition: border-color var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
@@ -31,10 +35,42 @@
   color: var(--text-muted);
 }
 
-.form {
+/* The second way in, written into the sentence rather than hung off it as a
+   button — underlined, apricot-underscored, the same text-button treatment as
+   "widen again" on the filter bar. */
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--wend-apricot);
+  cursor: pointer;
+}
+
+.link:hover {
+  opacity: 0.7;
+}
+
+.link:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Solid and card-toned, unlike the dashed zone above it: this box holds
+   something now — the name you are typing. */
+.namingBox {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
 }
 
 .input {

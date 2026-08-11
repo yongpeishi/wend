@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FilterBar } from './FilterBar';
 import { EMPTY_FILTERS } from './filters';
@@ -79,42 +79,66 @@ describe('FilterBar — filtering keeps working while grouped', () => {
     expect(onGroupModeChange).not.toHaveBeenCalled();
   });
 
-  it('leaves the active filters alone when the grouping is toggled', async () => {
+  it('leaves the active filters alone when the grouping changes', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' }, onChange });
 
-    await user.click(screen.getByRole('button', { name: 'Group by place' }));
+    await user.click(screen.getByRole('tab', { name: 'By location' }));
 
     expect(onChange).not.toHaveBeenCalled();
   });
 });
 
-describe('FilterBar — the group toggle', () => {
-  it('turns grouping on and reads back as the state it is now in', async () => {
-    const user = userEvent.setup();
-    const onGroupModeChange = vi.fn();
-    renderBar({ groupMode: 'none', onGroupModeChange });
-
-    const toggle = screen.getByRole('button', { name: 'Group by place' });
-    expect(toggle).toHaveAttribute('aria-pressed', 'false');
-
-    await user.click(toggle);
-
-    expect(onGroupModeChange).toHaveBeenCalledWith('location');
+// The point of the segmented control: no grouping is a dead end. Grouping by
+// place used to be a toggle whose only way out was a flat list, which left
+// "by category" unreachable from there.
+describe('FilterBar — the grouping control', () => {
+  it('offers all three groupings at once, whichever one is on', () => {
+    for (const mode of ['none', 'location', 'category'] as const) {
+      const view = renderBar({ groupMode: mode });
+      const control = screen.getByRole('tablist', { name: 'Group ideas' });
+      expect(within(control).getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+        'Ungrouped',
+        'By location',
+        'By category',
+      ]);
+      view.unmount();
+    }
   });
 
-  it('turns grouping off again, back to a flat list', async () => {
+  it('marks the grouping you are in as the selected one', () => {
+    renderBar({ groupMode: 'location' });
+    expect(screen.getByRole('tab', { name: 'By location' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Ungrouped' })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it.each([
+    ['Ungrouped', 'none'],
+    ['By location', 'location'],
+    ['By category', 'category'],
+  ])('switches to %s', async (label, mode) => {
+    const user = userEvent.setup();
+    const onGroupModeChange = vi.fn();
+    // Start somewhere else in every case, so each option is reached rather
+    // than merely already selected.
+    renderBar({ groupMode: mode === 'category' ? 'location' : 'category', onGroupModeChange });
+
+    await user.click(screen.getByRole('tab', { name: label }));
+
+    expect(onGroupModeChange).toHaveBeenCalledWith(mode);
+  });
+
+  // The dead end the feedback named: grouped by place, with no way back to
+  // categories short of going flat first.
+  it('goes straight from grouping by place to grouping by category', async () => {
     const user = userEvent.setup();
     const onGroupModeChange = vi.fn();
     renderBar({ groupMode: 'location', onGroupModeChange });
 
-    const toggle = screen.getByRole('button', { name: 'Grouped by place' });
-    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('tab', { name: 'By category' }));
 
-    await user.click(toggle);
-
-    expect(onGroupModeChange).toHaveBeenCalledWith('none');
+    expect(onGroupModeChange).toHaveBeenCalledWith('category');
   });
 });
 
