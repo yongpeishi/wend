@@ -1,0 +1,161 @@
+/* The two-column reason list on a trip card. Sizes come from the design import;
+   every colour, radius and border is a token. The pro wash is the leaf token at
+   10% (color-mix, so no new colour value enters the system); the con wash is
+   --wend-plum-wash, which already exists. */
+
+.columns {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+}
+
+/* Leaf and plum carry the two sides. Apricot stays out of it: it is never text. */
+.prosLabel {
+  color: var(--wend-leaf);
+}
+
+.consLabel {
+  color: var(--wend-plum);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border-radius: var(--radius-card);
+  padding: 9px var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+}
+
+.proRow {
+  background: color-mix(in srgb, var(--wend-leaf) 10%, transparent);
+}
+
+.conRow {
+  background: var(--wend-plum-wash);
+}
+
+.text {
+  min-width: 0;
+}
+
+.remove {
+  flex: none;
+  background: none;
+  border: none;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.remove:hover {
+  opacity: 0.6;
+}
+
+.remove:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.add {
+  background: none;
+  border: var(--border-width) dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: 9px var(--space-3);
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.add:hover {
+  opacity: 0.7;
+}
+
+.add:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The inline input sits in the add button's place, same box, so committing a
+   note doesn't shuffle the column. */
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: 9px var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Touch pointers get a real target; pointer devices keep the design's density. */
+@media (pointer: coarse) {
+  .remove,
+  .add,
+  .input {
+    min-height: var(--tap-min);
+  }
+
+  .remove {
+    width: var(--tap-min);
+  }
+}
+
+/* Two columns need width. Below this they stack rather than squeeze. */
+@media (max-width: 640px) {
+  .columns {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+}

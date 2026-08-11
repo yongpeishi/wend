@@ -20,6 +20,8 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     notes: null,
     from_entry_id: null,
     to_entry_id: null,
+    pros: [],
+    cons: [],
     archived_at: null,
     created_at: '',
     updated_at: '',

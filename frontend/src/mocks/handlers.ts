@@ -143,6 +143,8 @@ export const handlers = [
       notes: body.entry.notes ?? null,
       from_entry_id: body.entry.from_entry_id ?? null,
       to_entry_id: body.entry.to_entry_id ?? null,
+      pros: body.entry.pros ?? [],
+      cons: body.entry.cons ?? [],
       created_by_id: db.currentUserId ?? 1,
       archived_at: null,
       created_at: timestamp,
@@ -168,6 +170,10 @@ export const handlers = [
     if (!entry) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
     const body = (await request.json()) as { entry?: Partial<Entry> };
     Object.assign(entry, body.entry, { updated_at: now() });
+    // Pros and cons arrive whole (there is no per-note endpoint), so they are
+    // replaced rather than merged — and stored detached from the request body.
+    if (body.entry?.pros) entry.pros = body.entry.pros.map((n) => ({ ...n }));
+    if (body.entry?.cons) entry.cons = body.entry.cons.map((n) => ({ ...n }));
     return HttpResponse.json({ entry: toEntry(entry, db.currentUserId) });
   }),
 
@@ -228,7 +234,15 @@ export const handlers = [
     if (!entry) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
     const id = allocateId();
     const timestamp = now();
-    db.entries.push({ ...entry, id, title: `${entry.title} (copy)`, created_at: timestamp, updated_at: timestamp });
+    db.entries.push({
+      ...entry,
+      id,
+      title: `${entry.title} (copy)`,
+      pros: entry.pros.map((n) => ({ ...n })),
+      cons: entry.cons.map((n) => ({ ...n })),
+      created_at: timestamp,
+      updated_at: timestamp,
+    });
     childIdsOf(entry.id).forEach((childId, position) => {
       db.links.push({ id: allocateId(), parent_id: id, child_id: childId, position, created_at: timestamp, updated_at: timestamp });
     });

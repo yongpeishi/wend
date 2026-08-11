@@ -1,57 +1,54 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
-import { Trail } from '../design/components/brand/Trail';
-import type { TrailStopState } from '../design/components/brand/Trail';
-import { Card } from '../components/layout/Card';
 import { EntryRow } from '../components/EntryRow';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
-import { useEntries } from '../api/entries';
-import type { Entry } from '../api/types';
+import { useArchiveEntry, useEntries, useRestoreEntry } from '../api/entries';
 import { NewTripModal } from '../features/trips/NewTripModal';
-import { formatTripDates, joinMeta } from '../lib/formatDates';
+import { TripCard } from '../features/trips/TripCard';
 import styles from './TripsList.module.css';
 
 /**
- * How far along a trip is, shown as the trail. Deliberately forgiving: a trip
- * with nothing in it is still at the first stop, not "empty" or "incomplete".
+ * `/` — every trip you're carrying, and the ideas you've kept that aren't in one
+ * yet.
+ *
+ * Trips are fetched with `include_archived` and split here rather than in two
+ * queries: "Saved for later" is the same list read the other way round, and one
+ * request keeps the two halves from ever disagreeing mid-flight.
  */
-function tripStops(trip: Entry): TrailStopState[] {
-  const hasIdeas = trip.children_count > 0;
-  const hasDates = Boolean(trip.starts_on || trip.ends_on);
-  if (hasIdeas && hasDates) return ['decided', 'decided', 'open'];
-  if (hasIdeas) return ['decided', 'open', 'waiting'];
-  return ['open', 'waiting', 'waiting'];
-}
-
-/** `nine places kept · two bundles` — plain words, never a progress percentage. */
-function countLine(trip: Entry): string {
-  const kept = trip.children_count;
-  return joinMeta(
-    kept === 1 ? '1 thing kept' : `${kept} things kept`,
-    trip.todos_open_count > 0 ? `${trip.todos_open_count} to check off` : undefined,
-  );
-}
-
-/** `/` — trips you're planning, and the ideas you've kept that aren't in one yet. */
 export function TripsList() {
   const navigate = useNavigate();
 
-  const tripsQuery = useEntries({ kind: 'trip' });
+  const tripsQuery = useEntries({ kind: 'trip', include_archived: true });
   const libraryQuery = useEntries({ unassigned: true, kind: 'idea' });
+
+  const archiveTrip = useArchiveEntry();
+  const restoreTrip = useRestoreEntry();
 
   const [starting, setStarting] = useState(false);
 
-  const trips = (tripsQuery.data ?? []).filter((t) => !t.archived_at);
+  const allTrips = tripsQuery.data ?? [];
+  const trips = allTrips.filter((t) => !t.archived_at);
+  const saved = allTrips.filter((t) => t.archived_at);
   const library = (libraryQuery.data ?? []).filter((e) => !e.archived_at).slice(0, 6);
 
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
-        <h1 className={styles.pageTitle}>Where you&rsquo;re going</h1>
-        <Button onClick={() => setStarting(true)}>Start something</Button>
+        <div className={styles.headText}>
+          <p className={styles.eyebrow}>Your trips</p>
+          <h1 className={styles.pageTitle}>Where next</h1>
+        </div>
+        <Button className={styles.newTrip} onClick={() => setStarting(true)}>
+          + New trip
+        </Button>
       </div>
+
+      <p className={styles.intro}>
+        Nothing here is decided. Trips you set aside keep their ideas, and you can lift one out into a
+        trip of its own whenever you like.
+      </p>
 
       <NewTripModal
         open={starting}
@@ -68,29 +65,40 @@ export function TripsList() {
         <EmptyState message="No trips yet. A trip can start as one word — a country, a season, a craving." />
       ) : (
         <ul className={styles.grid}>
-          {trips.map((trip) => {
-            const dates = formatTripDates(trip.starts_on, trip.ends_on);
-            return (
-              <li key={trip.id}>
-                <Link to={`/trips/${trip.id}`} className={styles.cardLink}>
-                  <Card padding={6} className={styles.card}>
-                    <h2 className={styles.tripTitle}>{trip.title}</h2>
-                    {dates ? (
-                      <p className={styles.dates}>{dates}</p>
-                    ) : (
-                      <p className={styles.noDates}>No dates yet</p>
-                    )}
-                    <p className={styles.counts}>{countLine(trip)}</p>
-                    <Trail stops={tripStops(trip)} height={38} aria-hidden="true" />
-                  </Card>
-                </Link>
-              </li>
-            );
-          })}
+          {trips.map((trip) => (
+            <li key={trip.id} className={styles.gridItem}>
+              <TripCard trip={trip} onArchive={() => archiveTrip.mutate(trip.id)} />
+            </li>
+          ))}
         </ul>
       )}
 
-      <section className={styles.librarySection} aria-labelledby="library-heading">
+      {saved.length > 0 && (
+        <section className={styles.section} aria-labelledby="saved-heading">
+          <h2 id="saved-heading" className={styles.sectionLabel}>
+            Saved for later
+          </h2>
+          <ul className={styles.savedList}>
+            {saved.map((trip) => (
+              <li key={trip.id} className={styles.savedRow}>
+                <div className={styles.savedText}>
+                  <span className={styles.savedTitle}>{trip.title}</span>
+                  {trip.description && <span className={styles.savedNote}>{trip.description}</span>}
+                </div>
+                <button
+                  type="button"
+                  className={styles.bringBack}
+                  onClick={() => restoreTrip.mutate(trip.id)}
+                >
+                  Bring back
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className={styles.section} aria-labelledby="library-heading">
         <div className={styles.libraryHead}>
           <h2 id="library-heading" className={styles.sectionLabel}>
             Kept, not yet in a trip

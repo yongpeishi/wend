@@ -67,6 +67,9 @@ class EntrySerializer
         "duration_minutes" => entry.duration_minutes,
         "source_url" => entry.source_url,
         "notes" => entry.notes,
+        # Always arrays -- Entry's readers coerce a legacy NULL to [].
+        "pros" => entry.pros,
+        "cons" => entry.cons,
         "from_entry_id" => entry.from_entry_id,
         "to_entry_id" => entry.to_entry_id,
         "archived_at" => entry.archived_at&.iso8601,

@@ -32,7 +32,7 @@ describe('NewTripModal', () => {
     };
     renderModal(onCreated);
 
-    await user.click(screen.getByRole('button', { name: 'Start the trip' }));
+    await user.click(screen.getByRole('button', { name: 'Add trip' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('A trip needs a name.');
 
     await user.type(screen.getByLabelText('Name'), 'Malaysia');
@@ -66,7 +66,7 @@ describe('NewTripModal', () => {
     });
 
     await user.type(screen.getByLabelText('Name'), 'Malaysia');
-    await user.click(screen.getByRole('button', { name: 'Start the trip' }));
+    await user.click(screen.getByRole('button', { name: 'Add trip' }));
 
     await waitFor(() => expect(created).not.toBeNull());
     const trip = created as unknown as Entry;
@@ -87,7 +87,7 @@ describe('NewTripModal', () => {
     await user.type(screen.getByLabelText('Short description'), 'Cherry blossoms, if the timing works out.');
     await user.type(screen.getByLabelText('Starts'), '2026-11-02');
     await user.type(screen.getByLabelText('Ends'), '2026-11-16');
-    await user.click(screen.getByRole('button', { name: 'Start the trip' }));
+    await user.click(screen.getByRole('button', { name: 'Add trip' }));
 
     await waitFor(() => expect(created).not.toBeNull());
     const trip = created as unknown as Entry;

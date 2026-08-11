@@ -27,6 +27,8 @@ function entry(id: number, title: string, kind: Entry['kind'] = 'idea'): Entry {
     notes: null,
     from_entry_id: null,
     to_entry_id: null,
+    pros: [],
+    cons: [],
     archived_at: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',

@@ -6,6 +6,16 @@ export type EntryKind = 'trip' | 'idea' | 'bundle';
 
 export type EntryCategory = 'place' | 'food' | 'activity' | 'lodging' | 'transport' | 'other';
 
+/**
+ * One line of a trip's pros/cons list. `id` is generated on the client
+ * (`crypto.randomUUID()`) and is what remove targets — the server stores the
+ * array as given and never mints ids of its own.
+ */
+export interface EntryNote {
+  id: string;
+  text: string;
+}
+
 export interface VoteTally {
   total: number;
   count: number;
@@ -31,6 +41,9 @@ export interface Entry {
   notes: string | null;
   from_entry_id: number | null;
   to_entry_id: number | null;
+  /** Always present (empty array when there are none) — see EntryNote. */
+  pros: EntryNote[];
+  cons: EntryNote[];
   archived_at: string | null;
   created_at: string;
   updated_at: string;
@@ -161,6 +174,10 @@ export type EntryWritePayload = Partial<
     | 'notes'
     | 'from_entry_id'
     | 'to_entry_id'
+    // Pros and cons are written whole: there is no per-note endpoint, so
+    // adding or removing one sends the entire array back through PATCH.
+    | 'pros'
+    | 'cons'
   >
 >;
 

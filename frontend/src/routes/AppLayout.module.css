@@ -1,21 +1,53 @@
-.topBar {
+.shell {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-4) var(--gutter-screen);
-  border-bottom: var(--border-width) solid var(--border-subtle);
-  background: var(--surface-card);
+  min-height: 100vh;
+  background: var(--wend-paper);
 }
 
-/* The wordmark is a brand lock-up, not body-copy link text: browsers
-   underline anchor text by default, and that default would otherwise draw a
-   line straight through "WEND". Genuine inline text links (e.g. .signOut
-   below) apply their own border-bottom underline deliberately — this rule
-   only removes the *unstyled* default, scoped to the brand link itself. */
+/* 246px is the design's sidebar measure; the vertical rhythm inside it
+   (26 / 18 / 20) comes from the same source. Everything with a token uses the
+   token — no shadow, no border: the deep-leaf ground is the separation. */
+.sidebar {
+  width: 246px;
+  flex: none;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 26px 18px 20px;
+  background: var(--wend-deep-leaf);
+  color: var(--text-on-dark);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--space-2);
+}
+
+/* The wordmark is a brand lock-up, not body-copy link text: the default anchor
+   underline would draw a line straight through "Wend". Scoped to the brand link.
+   `color` is reset too — Logo paints its own marks today, so nothing renders
+   blue, but without this the anchor still computes to the UA default and any
+   text fallback inside would land on it. Inherits the sidebar's on-dark ink. */
 .brandLink {
   display: inline-flex;
+  color: inherit;
   text-decoration: none;
   border-bottom: none;
+  border-radius: var(--radius-card);
+}
+
+.brandLink:hover {
+  opacity: 0.75;
 }
 
 .brandLink:focus-visible {
@@ -23,18 +55,111 @@
   outline-offset: var(--focus-offset);
 }
 
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sectionLabel {
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-on-dark-muted);
+  padding: 0 var(--space-2) 6px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  padding: 10px var(--space-3);
+  border-radius: 8px;
+  font-size: var(--text-small-size);
+  color: var(--text-on-dark-muted);
+  text-decoration: none;
+  border-bottom: none;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* Hover and press are opacity only — the palette never lightens or darkens. */
+.navItem:hover {
+  opacity: 0.75;
+}
+
+.navItem:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* "You are here" reads as full-strength paper against the muted rest.
+   Apricot stays reserved for the focus ring; it is never text. */
+.navItemActive {
+  color: var(--text-on-dark);
+}
+
 .signOut {
+  margin-top: auto;
+  align-self: flex-start;
   background: none;
   border: none;
-  padding: 8px 4px;
-  color: var(--action-primary);
-  font-weight: var(--weight-bold);
+  padding: 10px var(--space-3);
+  border-radius: 8px;
   font-size: var(--text-small-size);
+  color: var(--text-on-dark-muted);
   cursor: pointer;
-  border-bottom: var(--border-width-strong) solid var(--action-primary);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.signOut:hover {
+  opacity: 0.75;
 }
 
 .signOut:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/* Touch pointers get the full 48px target; pointer devices keep the design's
+   tighter list rhythm. */
+@media (pointer: coarse) {
+  .navItem,
+  .signOut {
+    min-height: var(--tap-min);
+  }
+}
+
+/* Desktop-first: below this the sidebar would eat the page, so it unsticks and
+   lies down as a bar across the top. */
+@media (max-width: 860px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--gutter-screen);
+  }
+
+  .section {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .sectionLabel {
+    padding: 0;
+  }
+
+  .signOut {
+    margin-top: 0;
+    margin-left: auto;
+    align-self: center;
+  }
 }
