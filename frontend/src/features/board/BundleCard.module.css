@@ -16,9 +16,11 @@
   border-color: var(--focus-ring);
 }
 
-/* Remove (the X), the name, and the open-to-do count, in that order. The X
-   leads because the backlog puts it top left; it sits on the same 32px icon
-   button as the member rows, so the card has one icon-button size, not two. */
+/* The name, then the X that removes the bundle — nothing else. The X trails so
+   it lands in the top right corner, which `justify-content: space-between`
+   plus a `flex: 1` name gives without a spacer element. It sits on the same
+   32px icon button as the member rows, so the card has one icon-button size,
+   not two. */
 .header {
   display: flex;
   align-items: center;
@@ -63,32 +65,20 @@
   min-width: 0;
 }
 
-/* The design's right-hand count, now carrying open to-dos. Deliberately not a
-   Tag: that pill is the product's "kept" badge, and a chore that is still
-   outstanding is a quiet fact next to the name, not a status to celebrate.
-   Same uppercase label token as the meta line so the two agree. */
-.todoCount {
-  flex: none;
-  font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-label-size);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-/* The design's uppercase caption. Carries the scheduled summary — see
-   BundleCard.tsx on why that field and not an invented one. Design is 13px;
-   --text-label-size (12px) with the label tracking is the token that means
-   "small uppercase caption", so it wins over a 1px-closer literal. */
+/* The bundle's open-to-do line, set exactly like FilterBar's `.summary`: the
+   idea list and the bundle rail now both answer "how much is in front of me"
+   in the same voice, and a reader moving between the two columns should not
+   have to notice a change of typeface to know they are reading the same kind
+   of sentence. That retires the design's 12px letterspaced caps here — caps
+   are a heading treatment, and this is prose about the card's contents, which
+   is also why it is no longer bold. Only the margin is local, keeping the
+   design's rhythm: pulled up close under the name, then opening out before
+   the members. */
 .meta {
   margin: var(--space-1) 0 var(--space-2);
   font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-label-size);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
+  font-size: var(--text-small-size);
+  letter-spacing: var(--text-data-tracking);
   color: var(--text-muted);
 }
 
@@ -171,6 +161,24 @@
 .memberTitle:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/* A member's own open to-dos, immediately left of its actions. Plum with the
+   data tracking is IdeaRow's `.bundleLine` treatment — the same annotation one
+   level down, so the two features do not each invent a way to say "there is
+   something attached to this". `flex: none` plus nowrap is what puts the
+   truncation in the right place: the title beside it has `flex: 1` and
+   `min-width: 0`, so in a 376px rail a long name ellipses and the count stays
+   whole. The other way round leaves "2 to-…", which is worse than a clipped
+   name — the name is still recognisable from its first half, the number is
+   not a number any more. */
+.memberTodos {
+  flex: none;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--wend-plum);
 }
 
 .memberActions {

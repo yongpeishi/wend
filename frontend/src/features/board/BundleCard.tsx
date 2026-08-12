@@ -38,14 +38,18 @@ export interface BundleCardProps {
  *   edit of something already on screen, and covering the board to make it is
  *   more ceremony than the edit is worth.
  *
- *   The X at the top left removes the bundle. There is no destroy endpoint in
- *   this product and there should not be: "removing" here unlinks every member
- *   first and then archives the bundle entry, so every idea lands back in the
- *   idea list intact and the bundle itself is still recoverable from the
- *   rail's SetAsideSection. The unlinking is awaited before the archive so a
- *   failure part-way leaves a bundle that still holds its ideas, rather than
- *   an archived shell with orphaned links. Nothing in Wend is destroyed; this
- *   is the strongest verb on the card and it is still reversible.
+ *   The X at the top right removes the bundle. It closes the header rather
+ *   than opening it: this is the strongest verb on the card, and a rail where
+ *   every card leads with a delete control puts both the eye and the Tab order
+ *   on the destructive thing before either has read what the bundle is called.
+ *   Top right is also simply where a card's dismiss control is looked for.
+ *   There is no destroy endpoint in this product and there should not be:
+ *   "removing" here unlinks every member first and then archives the bundle
+ *   entry, so every idea lands back in the idea list intact and the bundle
+ *   itself is still recoverable from the rail's SetAsideSection. The unlinking
+ *   is awaited before the archive so a failure part-way leaves a bundle that
+ *   still holds its ideas, rather than an archived shell with orphaned links.
+ *   Nothing in Wend is destroyed; the strongest verb here is still reversible.
  *
  * Members reorder two ways, per screens.md's "every drag interaction needs a
  * keyboard and pointer-free equivalent": native HTML5 drag-and-drop on each
@@ -55,27 +59,46 @@ export interface BundleCardProps {
  * links' positions). Remove unlinks one member (useDeleteLink) — it must
  * never archive or touch the idea itself, only the entry_links row.
  *
- * Three pieces of the design carry data our model does not have, so all three
- * are derived from real fields rather than invented:
+ * The design's card carries state our model does not have, so every part of it
+ * that looks like metadata is derived from a real serialized field rather than
+ * invented:
  *
  *   The meta line. The design shows an uppercase caption above the members;
- *   Entry has no bundle-level metadata at all. It reports how many members are
- *   already on the schedule (`Entry.scheduled`, a real serialized field) —
- *   which is the one thing about a bundle that changes as you use it, and is
- *   worth a glance when deciding which bundle is closest to being a plan.
+ *   Entry has no bundle-level metadata at all. It reports the outstanding
+ *   work: every member's `todos_open_count` plus the bundle's own, because a
+ *   bundle can carry a "book this before the 3rd" that belongs to no single
+ *   idea in it. That total is the one thing worth a glance when you are
+ *   picking which bundle to open — it is what stands between this group of
+ *   ideas and being a plan. It replaces the "N of M on the schedule" line that
+ *   sat here before, which answered a question the schedule itself already
+ *   answers, and it is prose rather than the design's letterspaced caps: this
+ *   is a sentence about the contents, not a heading over them, so it borrows
+ *   FilterBar's `.summary` treatment and the two counts across the board read
+ *   alike. Zero renders too, as "0 open to-dos". In a rail where some cards
+ *   speak and some stay silent the reader has to work out which kind of
+ *   nothing they are looking at; "nothing outstanding" is a real answer about
+ *   a bundle, not an absence, and it is the answer you most want to see.
  *
- *   The header count. The design's right-hand slot held an idea count, which
- *   the backlog dropped as noise (the members are right there to be counted).
- *   It carries the open to-do work instead: the members' `todos_open_count`
- *   plus the bundle's own, which is the one number that says whether this
- *   bundle still needs something done to it. Zero renders nothing at all,
- *   the same way the meta line stays silent rather than reading "0" — an
- *   absence of chores is not news.
+ *   Exactly one to-do number per card. The design's right-hand header slot
+ *   held an idea count, which the backlog dropped as noise (the members are
+ *   right there to be counted); it then carried this same to-do total, which
+ *   meant the card stated one figure twice the moment the meta line took the
+ *   job. The header is now the name and the X and nothing else, and the count
+ *   is said once, immediately beneath.
  *
  *   The member dot. The design colours a dot per item from a state enum we
- *   don't have. It uses the same `scheduled` flag: leaf for on the schedule,
- *   the pale waiting tone for not yet. Colour is never the only carrier — each
+ *   don't have. It uses the `scheduled` flag: leaf for on the schedule, the
+ *   pale waiting tone for not yet. Colour is never the only carrier — each
  *   dot ships a visually-hidden phrase so the state is readable without it.
+ *
+ *   The member to-do label. The same field one level down: a member holding
+ *   open to-dos says "2 to-dos" in plum just left of its row actions, so the
+ *   total above can be traced to the ideas that own it without opening
+ *   anything. Members with nothing outstanding carry no label at all — here a
+ *   mark on the exceptions beats a column of zeroes, because the reader is
+ *   scanning for which row to deal with, not tallying. It is the only coloured
+ *   text in the row, which is what makes it read as an annotation on the idea
+ *   rather than a status the idea is in.
  */
 export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
   const navigate = useNavigate();
@@ -106,22 +129,14 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
     }
   }, [editingName]);
 
-  // Honest stand-in for the design's meta caption — see the doc comment above.
-  // Empty bundles get no line at all rather than "0 of 0": a bundle you just
-  // named should read as waiting, not as failing at something.
-  const meta = useMemo(() => {
-    if (members.length === 0) return null;
-    const scheduled = members.filter((member) => member.scheduled).length;
-    if (scheduled === 0) return 'None on the schedule yet';
-    return `${scheduled} of ${members.length} on the schedule`;
-  }, [members]);
-
   // The bundle's own to-dos count too — a bundle can carry a "book this before
-  // the 3rd" that belongs to no single idea in it.
-  const openTodos = useMemo(
-    () => members.reduce((total, member) => total + member.todos_open_count, 0) + bundle.todos_open_count,
-    [members, bundle.todos_open_count],
-  );
+  // the 3rd" that belongs to no single idea in it. Built as one string rather
+  // than assembled in JSX so the line is a single text node: "0 open to-dos"
+  // is one phrase to a screen reader, and one thing to assert on in a test.
+  const meta = useMemo(() => {
+    const open = members.reduce((total, member) => total + member.todos_open_count, 0) + bundle.todos_open_count;
+    return `${open} open ${open === 1 ? 'to-do' : 'to-dos'}`;
+  }, [members, bundle.todos_open_count]);
 
   function startEditingName() {
     setNameDraft(bundle.title);
@@ -228,18 +243,6 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
       className={[styles.card, isOver ? styles.over : ''].filter(Boolean).join(' ')}
     >
       <div className={styles.header}>
-        {/* Top left, ahead of the name, per the backlog. The label names the
-            bundle because a rail of these otherwise offers a column of
-            identical "Remove" buttons to anyone reading by label. */}
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label={`Remove bundle ${bundle.title}`}
-          onClick={removeBundle}
-        >
-          <X size={16} strokeWidth={1.5} aria-hidden="true" />
-        </button>
-
         {editingName ? (
           <Input
             aria-label="Bundle name"
@@ -277,14 +280,22 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
           </button>
         )}
 
-        {openTodos > 0 && (
-          <span className={styles.todoCount}>
-            {openTodos} to-do{openTodos === 1 ? '' : 's'}
-          </span>
-        )}
+        {/* Top right, after the name — last in the header and last in the
+            card's tab order, so nothing has to be Tabbed past a delete to
+            reach the bundle. The label names the bundle because a rail of
+            these otherwise offers a column of identical "Remove" buttons to
+            anyone reading by label. */}
+        <button
+          type="button"
+          className={styles.iconButton}
+          aria-label={`Remove bundle ${bundle.title}`}
+          onClick={removeBundle}
+        >
+          <X size={16} strokeWidth={1.5} aria-hidden="true" />
+        </button>
       </div>
 
-      {meta && <p className={styles.meta}>{meta}</p>}
+      <p className={styles.meta}>{meta}</p>
 
       {members.length === 0 ? (
         <p className={styles.emptyDrop}>Drag ideas here, or use "Add to bundle" on a row.</p>
@@ -315,6 +326,11 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
               <button type="button" className={styles.memberTitle} onClick={() => navigate(`/entries/${member.id}`)}>
                 {member.title}
               </button>
+              {member.todos_open_count > 0 && (
+                <span className={styles.memberTodos}>
+                  {`${member.todos_open_count} ${member.todos_open_count === 1 ? 'to-do' : 'to-dos'}`}
+                </span>
+              )}
               <span className={styles.memberActions}>
                 <button
                   type="button"
