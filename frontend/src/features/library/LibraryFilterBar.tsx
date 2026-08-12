@@ -16,9 +16,10 @@ export interface LibraryFilterBarProps {
 
 /**
  * Same idiom as the board's and map's filter bars: filters hide, never
- * delete, and "Showing N of M · widen again" is always rendered. This is
- * one of the three ways screens.md names for selecting library entries —
- * chip filter, map region, or by hand.
+ * delete, the "Showing N of M" line is always rendered, and "See all" appears
+ * beside it for as long as something is narrowed. This is one of the three
+ * ways screens.md names for selecting library entries — chip filter, map
+ * region, or by hand.
  */
 export function LibraryFilterBar({ filters, onChange, visibleCount, totalCount }: LibraryFilterBarProps) {
   const narrowed = isLibraryFiltersNarrowed(filters);
@@ -46,10 +47,14 @@ export function LibraryFilterBar({ filters, onChange, visibleCount, totalCount }
 
       <p className={styles.summary}>
         Showing {visibleCount} of {totalCount}
-        {MIDDOT}
-        <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_LIBRARY_FILTERS)} disabled={!narrowed}>
-          widen again
-        </button>
+        {narrowed && (
+          <>
+            {MIDDOT}
+            <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_LIBRARY_FILTERS)}>
+              See all
+            </button>
+          </>
+        )}
       </p>
     </div>
   );

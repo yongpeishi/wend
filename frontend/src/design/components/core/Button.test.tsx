@@ -25,6 +25,16 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toHaveClass(styles.quiet);
   });
 
+  it('defaults to the medium size and switches with the size prop', () => {
+    const { rerender } = render(<Button>Go</Button>);
+    expect(screen.getByRole('button')).toHaveClass(styles.medium);
+    rerender(
+      <Button size="small">Go</Button>,
+    );
+    expect(screen.getByRole('button')).toHaveClass(styles.small);
+    expect(screen.getByRole('button')).not.toHaveClass(styles.medium);
+  });
+
   it('is disabled, unfocusable via click handler, and exposes disabled to assistive tech', () => {
     const onClick = vi.fn();
     render(

@@ -67,12 +67,28 @@ function renderPanel(overrides: Partial<Parameters<typeof BundlePanel>[0]> = {})
 }
 
 describe('BundlePanel — the bundles-only rail', () => {
-  it('explains what a bundle is and offers the drop box above the list', () => {
+  it('names itself, explains what a bundle is, and lists the bundles', () => {
     renderPanel();
+    expect(screen.getByRole('heading', { name: 'Bundles' })).toBeInTheDocument();
     expect(screen.getByText(/A bundle is a group of things that go well together/)).toBeInTheDocument();
-    expect(screen.getByText('Drop ideas here to start a bundle')).toBeInTheDocument();
     // The card's name is now the rename control itself, so it announces as one.
     expect(screen.getByRole('button', { name: 'Rename Kyoto dinner options' })).toBeInTheDocument();
+  });
+
+  // The visible <h2> is the region's name. A hardcoded aria-label alongside it
+  // would be a second, competing one that nothing on screen can keep honest.
+  it('takes its landmark name from the visible heading', () => {
+    renderPanel();
+    const rail = screen.getByRole('complementary', { name: 'Bundles' });
+    expect(rail).toHaveAttribute('aria-labelledby', screen.getByRole('heading', { name: 'Bundles' }).id);
+  });
+
+  // The dashed target made a bundle out of a gesture that is easy to miss by
+  // twenty pixels. Dropping onto a bundle that exists is untouched.
+  it('offers no dashed drop target for starting a bundle', () => {
+    renderPanel();
+    expect(screen.queryByText(/Drop ideas here to start a bundle/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create new bundle' })).not.toBeInTheDocument();
   });
 
   // The design's rail had Bundles | Map | This idea tabs; both other views are
@@ -83,10 +99,45 @@ describe('BundlePanel — the bundles-only rail', () => {
     expect(screen.queryByRole('button', { name: /this idea/i })).not.toBeInTheDocument();
   });
 
-  // Creating moved inline; the old modal trigger must be gone, not merely hidden.
-  it('has no "New bundle" button opening a modal', () => {
+  // The header's action opens a row in the rail, never a dialog over it:
+  // creating a bundle is a one-field edit of the thing you are already looking
+  // at, and covering the board to make it is more ceremony than it is worth.
+  it('opens a naming row in the rail rather than a modal', async () => {
+    const user = userEvent.setup();
     renderPanel();
-    expect(screen.queryByRole('button', { name: /new bundle/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '+ New bundle' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Name a new bundle')).toBeInTheDocument();
+  });
+
+  // Anything you just made should be the first thing you see, so the form that
+  // makes it opens where it will land.
+  it('puts the naming row above the bundles it will join', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await user.click(screen.getByRole('button', { name: '+ New bundle' }));
+
+    const rail = screen.getByRole('complementary', { name: 'Bundles' });
+    // querySelectorAll returns document order, which is the order these read in.
+    const inOrder = Array.from(rail.querySelectorAll('input, button[aria-label^="Rename "]'));
+    const field = screen.getByLabelText('Name a new bundle');
+    const firstCard = screen.getByRole('button', { name: 'Rename Kyoto dinner options' });
+    expect(inOrder.indexOf(field)).toBeLessThan(inOrder.indexOf(firstCard));
+  });
+
+  // /entries sorts by id ascending for every kind on the board, so the rail
+  // reverses it here — the newest bundle is the one you were just working on.
+  it('lists the newest bundle first', () => {
+    const older = { ...BUNDLE, id: 10, title: 'Older bundle' };
+    const newer = { ...BUNDLE, id: 20, title: 'Newer bundle' };
+    renderPanel({ bundles: [older, newer], members: new Map() });
+
+    const names = screen
+      .getAllByRole('button', { name: /^Rename / })
+      .map((button) => button.textContent);
+    expect(names).toEqual(['Newer bundle', 'Older bundle']);
   });
 
   // Archiving is the reversible path, so the way back stays on the same screen.

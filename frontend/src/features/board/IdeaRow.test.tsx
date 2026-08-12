@@ -43,7 +43,16 @@ function makeEntry(overrides: Partial<Entry>): Entry {
 
 const BUNDLE = makeEntry({ id: 90, kind: 'bundle', title: 'Tuesday south', category: null, location_name: null });
 
-function renderRow(options: { entry?: Entry; bundles?: Entry[]; members?: Map<number, Entry[]>; selected?: boolean } = {}) {
+function renderRow(
+  options: {
+    entry?: Entry;
+    bundles?: Entry[];
+    members?: Map<number, Entry[]>;
+    selected?: boolean;
+    onEdit?: (id: number) => void;
+    onToast?: (message: string) => void;
+  } = {},
+) {
   const entry = options.entry ?? makeEntry({});
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -61,6 +70,8 @@ function renderRow(options: { entry?: Entry; bundles?: Entry[]; members?: Map<nu
                     members={options.members ?? new Map()}
                     selected={options.selected ?? false}
                     onToggleSelect={() => {}}
+                    onEdit={options.onEdit}
+                    onToast={options.onToast}
                   />
                 }
               />
@@ -71,6 +82,13 @@ function renderRow(options: { entry?: Entry; bundles?: Entry[]; members?: Map<nu
       </MemoryRouter>
     </QueryClientProvider>,
   );
+}
+
+/** Opens the row's ⋯ menu and hands back the user-event session. */
+async function openActions() {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: 'Actions for Fushimi Inari' }));
+  return user;
 }
 
 describe('IdeaRow — what the board shows', () => {
@@ -117,10 +135,13 @@ describe('IdeaRow — the interactions that must survive', () => {
     expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' })).toBeInTheDocument();
   });
 
-  // Every drag in Wend has a pointer-free equivalent. This is the row's.
-  it('keeps "Add to bundle" beside the drag handle', () => {
-    renderRow();
-    expect(screen.getByRole('button', { name: 'Add Fushimi Inari to a bundle' })).toBeInTheDocument();
+  // Every drag in Wend has a pointer-free equivalent. This is the row's, and it
+  // moved inside the ⋯ menu with the rest of the row's verbs.
+  it('keeps a pointer-free way into a bundle', async () => {
+    renderRow({ bundles: [BUNDLE] });
+    await openActions();
+
+    expect(screen.getByRole('button', { name: 'Tuesday south' })).toBeInTheDocument();
   });
 
   it('keeps the multi-select checkbox BulkBar acts on', () => {
@@ -137,16 +158,110 @@ describe('IdeaRow — the interactions that must survive', () => {
     expect(await screen.findByText('Entry detail screen')).toBeInTheDocument();
   });
 
-  it('sets an idea aside rather than destroying it', async () => {
+  it('hands editing to the board when it offers to take it, rather than navigating away', async () => {
     const user = userEvent.setup();
+    const onEdit = vi.fn();
+    renderRow({ onEdit });
+
+    await user.click(screen.getByRole('button', { name: /^Fushimi Inari/ }));
+
+    expect(onEdit).toHaveBeenCalledWith(42);
+    expect(screen.queryByText('Entry detail screen')).not.toBeInTheDocument();
+  });
+
+  it('sets an idea aside rather than destroying it', async () => {
     const del = vi.spyOn(api, 'delete').mockResolvedValue({ entry: makeEntry({ archived_at: 'now' }) });
     renderRow();
+    const user = await openActions();
 
-    await user.click(screen.getByRole('button', { name: 'Set aside Fushimi Inari' }));
+    await user.click(screen.getByRole('button', { name: 'Set aside' }));
 
     await waitFor(() => expect(del).toHaveBeenCalledWith('/entries/42'));
     expect(screen.queryByRole('button', { name: /delete permanently/i })).not.toBeInTheDocument();
     del.mockRestore();
+  });
+});
+
+// The feedback: editing arrived unasked-for, as a drawer over a page that had
+// gone blank. It now has a named button, and the row's actions are in one place
+// rather than strewn along its right-hand edge.
+describe('IdeaRow — the ⋯ actions menu', () => {
+  it('says whose actions they are', () => {
+    renderRow();
+    const trigger = screen.getByRole('button', { name: 'Actions for Fushimi Inari' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('keeps the actions out of the way until they are asked for', () => {
+    renderRow();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Set aside' })).not.toBeInTheDocument();
+  });
+
+  it('offers Edit, Set aside and the bundles together', async () => {
+    renderRow({ bundles: [BUNDLE] });
+    await openActions();
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Set aside' })).toBeInTheDocument();
+    expect(screen.getByText('Add to bundle')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tuesday south' })).toBeInTheDocument();
+  });
+
+  it('edits from the menu, and closes it behind itself', async () => {
+    const onEdit = vi.fn();
+    renderRow({ onEdit });
+    const user = await openActions();
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(onEdit).toHaveBeenCalledWith(42);
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
+  it('shows which bundles the idea is already in, and takes it out again', async () => {
+    const post = vi.spyOn(api, 'post').mockResolvedValue({ link: {} });
+    const del = vi.spyOn(api, 'delete').mockResolvedValue({ ok: true });
+    const onToast = vi.fn();
+    renderRow({ bundles: [BUNDLE], members: new Map([[90, [makeEntry({})]]]), onToast });
+    const user = await openActions();
+
+    const chip = screen.getByRole('button', { name: 'Tuesday south' });
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(chip);
+
+    await waitFor(() => expect(del).toHaveBeenCalled());
+    expect(post).not.toHaveBeenCalled();
+    post.mockRestore();
+    del.mockRestore();
+  });
+
+  it('closes on Escape and gives focus back to the button that opened it', async () => {
+    renderRow();
+    const user = await openActions();
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveFocus();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Actions for Fushimi Inari' })).toHaveFocus();
+  });
+
+  it('closes when you click away from it', async () => {
+    renderRow();
+    const user = await openActions();
+
+    await user.click(document.body);
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+  });
+
+  it('says so plainly when there is no bundle to add to yet', async () => {
+    renderRow({ bundles: [] });
+    await openActions();
+
+    expect(screen.getByText(/No bundles yet/)).toBeInTheDocument();
   });
 });
 

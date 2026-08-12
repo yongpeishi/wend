@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FilterBar } from './FilterBar';
 import { EMPTY_FILTERS } from './filters';
@@ -79,51 +79,80 @@ describe('FilterBar — filtering keeps working while grouped', () => {
     expect(onGroupModeChange).not.toHaveBeenCalled();
   });
 
-  it('leaves the active filters alone when the grouping is toggled', async () => {
+  it('leaves the active filters alone when the grouping changes', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' }, onChange });
 
-    await user.click(screen.getByRole('button', { name: 'Group by place' }));
+    await user.click(screen.getByRole('tab', { name: 'By location' }));
 
     expect(onChange).not.toHaveBeenCalled();
   });
 });
 
-describe('FilterBar — the group toggle', () => {
-  it('turns grouping on and reads back as the state it is now in', async () => {
-    const user = userEvent.setup();
-    const onGroupModeChange = vi.fn();
-    renderBar({ groupMode: 'none', onGroupModeChange });
-
-    const toggle = screen.getByRole('button', { name: 'Group by place' });
-    expect(toggle).toHaveAttribute('aria-pressed', 'false');
-
-    await user.click(toggle);
-
-    expect(onGroupModeChange).toHaveBeenCalledWith('location');
+// The point of the segmented control: no grouping is a dead end. Grouping by
+// place used to be a toggle whose only way out was a flat list, which left
+// "by category" unreachable from there.
+describe('FilterBar — the grouping control', () => {
+  it('offers all three groupings at once, whichever one is on', () => {
+    for (const mode of ['none', 'location', 'category'] as const) {
+      const view = renderBar({ groupMode: mode });
+      const control = screen.getByRole('tablist', { name: 'Group ideas' });
+      expect(within(control).getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+        'Ungrouped',
+        'By location',
+        'By category',
+      ]);
+      view.unmount();
+    }
   });
 
-  it('turns grouping off again, back to a flat list', async () => {
+  it('marks the grouping you are in as the selected one', () => {
+    renderBar({ groupMode: 'location' });
+    expect(screen.getByRole('tab', { name: 'By location' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Ungrouped' })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it.each([
+    ['Ungrouped', 'none'],
+    ['By location', 'location'],
+    ['By category', 'category'],
+  ])('switches to %s', async (label, mode) => {
+    const user = userEvent.setup();
+    const onGroupModeChange = vi.fn();
+    // Start somewhere else in every case, so each option is reached rather
+    // than merely already selected.
+    renderBar({ groupMode: mode === 'category' ? 'location' : 'category', onGroupModeChange });
+
+    await user.click(screen.getByRole('tab', { name: label }));
+
+    expect(onGroupModeChange).toHaveBeenCalledWith(mode);
+  });
+
+  // The dead end the feedback named: grouped by place, with no way back to
+  // categories short of going flat first.
+  it('goes straight from grouping by place to grouping by category', async () => {
     const user = userEvent.setup();
     const onGroupModeChange = vi.fn();
     renderBar({ groupMode: 'location', onGroupModeChange });
 
-    const toggle = screen.getByRole('button', { name: 'Grouped by place' });
-    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('tab', { name: 'By category' }));
 
-    await user.click(toggle);
-
-    expect(onGroupModeChange).toHaveBeenCalledWith('none');
+    expect(onGroupModeChange).toHaveBeenCalledWith('category');
   });
 });
 
-// Filters hide, never delete — so the count and its way out are always on
-// screen, narrowed or not.
+// Filters hide, never delete — so the count is always on screen, and the way
+// out is there for as long as there is something to escape from.
 describe('FilterBar — the escape hatch', () => {
   it('always shows how much is hidden', () => {
     renderBar({ visibleCount: 3, totalCount: 12 });
     expect(screen.getByText(/Showing 3 of 12/)).toBeInTheDocument();
+  });
+
+  it('offers the way out whenever a filter is narrowing the list', () => {
+    renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' }, visibleCount: 3, totalCount: 12 });
+    expect(screen.getByRole('button', { name: 'See all' })).toBeEnabled();
   });
 
   it('clears every narrowing at once', async () => {
@@ -131,19 +160,22 @@ describe('FilterBar — the escape hatch', () => {
     const onChange = vi.fn();
     renderBar({ filters: { category: 'food', hasLocation: true, scheduleState: 'scheduled' }, onChange });
 
-    await user.click(screen.getByRole('button', { name: 'widen again' }));
+    await user.click(screen.getByRole('button', { name: 'See all' }));
 
     expect(onChange).toHaveBeenCalledWith(EMPTY_FILTERS);
   });
 
-  it('offers nothing to widen when nothing is narrowed', () => {
-    renderBar({ filters: EMPTY_FILTERS });
-    expect(screen.getByRole('button', { name: 'widen again' })).toBeDisabled();
+  // The feedback: with the whole list on screen there is nothing to widen back
+  // to, so the control goes away rather than sitting there greyed out.
+  it('hides the way out entirely when every idea is already listed', () => {
+    renderBar({ filters: EMPTY_FILTERS, visibleCount: 12, totalCount: 12 });
+    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Showing 12 of 12/)).toBeInTheDocument();
   });
 
   it('does not treat the grouping as a narrowing to escape from', () => {
     renderBar({ filters: EMPTY_FILTERS, groupMode: 'location' });
-    expect(screen.getByRole('button', { name: 'widen again' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
   });
 });
 

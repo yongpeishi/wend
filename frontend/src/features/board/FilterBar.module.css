@@ -4,7 +4,8 @@
   gap: var(--space-3);
 }
 
-/* Chips take the room they need; the group toggle keeps its own line's end. */
+/* Chips take the room they need; the grouping control keeps its own line's end,
+   and drops to a line of its own rather than sitting on top of them. */
 .controlRow {
   display: flex;
   flex-wrap: wrap;
@@ -13,9 +14,22 @@
   gap: var(--space-3);
 }
 
+/* `flex: 1` here meant `flex: 1 1 0%`, and a 0% basis is what broke this row.
+   Flex line-breaking measures an item by its hypothetical main size, which for
+   a 0% basis is zero — so this box never counted towards the line being full,
+   the grouping control beside it never wrapped, and the chips were squeezed
+   towards nothing instead. Below about 1190px they overflowed the box they had
+   been squeezed into and rendered underneath the control: the WHAT label and
+   the category chips sat behind the tablist, which read as a broken bar rather
+   than a tight one.
+
+   An `auto` basis measures this box by its content, so once the chips and the
+   control genuinely stop fitting the control takes the next line. min-content
+   is the floor for the same reason — a chip is not a thing that can usefully be
+   made narrower than itself. */
 .chips {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: min-content;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -32,7 +46,7 @@
   margin-right: var(--space-1);
 }
 
-.groupToggle {
+.groupControl {
   flex: none;
   white-space: nowrap;
 }
@@ -66,14 +80,10 @@
   cursor: pointer;
 }
 
-.widen:hover:not(:disabled) {
+/* No disabled state to style: the button is only rendered while something is
+   narrowed, so it is always live when it is on screen. */
+.widen:hover {
   opacity: 0.7;
-}
-
-.widen:disabled {
-  color: var(--text-muted);
-  text-decoration: none;
-  cursor: default;
 }
 
 .widen:focus-visible {

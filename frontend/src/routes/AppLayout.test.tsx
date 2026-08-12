@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { api } from '../api';
+import { findEntry } from '../mocks/db';
 import { AppLayout } from './AppLayout';
 import { AuthProvider, useAuth } from '../auth/AuthContext';
 import { ToastProvider } from '../components/Toast';
@@ -112,6 +113,44 @@ describe('AppLayout', () => {
 
     // Named once the trip itself has loaded, never guessed at beforehand.
     expect(await screen.findByText('Six days in Kyoto')).toBeInTheDocument();
+  });
+
+  // The design's PLAN panel carries the trip's length and dates under its name.
+  it('says how long the trip is and when it runs', async () => {
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+    // The seeded trip runs 2–8 Nov, which is seven days counting both ends.
+    expect(await screen.findByText('7 days · 2–8 Nov')).toBeInTheDocument();
+  });
+
+  // A trip with no dates is a normal, permanent state — the line goes away
+  // rather than apologising for it. resetDb() puts the dates back afterwards.
+  it('leaves the meta line out for a trip with no dates', async () => {
+    const trip = findEntry(SEEDED_TRIP_ID);
+    if (trip) {
+      trip.starts_on = null;
+      trip.ends_on = null;
+    }
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    await screen.findByText('Six days in Kyoto');
+    expect(screen.queryByText(/days ·/)).not.toBeInTheDocument();
+  });
+
+  // "Planning with" is assembled client-side — there is no members endpoint —
+  // so it names the people the client actually knows about and no one else.
+  it('names who is planning the trip, starting with you', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    expect(await screen.findByText('Planning with')).toBeInTheDocument();
+    // The circle shows an initial; the name is what assistive tech hears.
+    expect(screen.getByRole('listitem')).toHaveTextContent('DDemo Traveler');
+  });
+
+  it('keeps "Planning with" out when nobody is known yet', async () => {
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+    await screen.findByText('Six days in Kyoto');
+    expect(screen.queryByText('Planning with')).not.toBeInTheDocument();
   });
 
   it('marks the trip view you are on as the current page', () => {

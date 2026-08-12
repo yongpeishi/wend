@@ -36,7 +36,6 @@
 .primary {
   background: var(--action-primary);
   color: var(--action-primary-text);
-  padding: 14px 26px;
   border-radius: var(--radius-card);
 }
 
@@ -48,7 +47,6 @@
 .secondary {
   background: transparent;
   color: var(--text-strong);
-  padding: 12px 24px;
   border-radius: var(--radius-card);
   border: var(--border-width-strong) solid var(--action-primary);
 }
@@ -61,7 +59,6 @@
 .quiet {
   background: transparent;
   color: var(--action-primary);
-  padding: 12px 4px;
   border-radius: 0;
   border-bottom: var(--border-width-strong) solid var(--action-primary);
 }
@@ -74,7 +71,6 @@
 .onDark {
   background: transparent;
   color: var(--text-on-dark);
-  padding: 12px 24px;
   border-radius: var(--radius-card);
   border: var(--border-width-strong) solid var(--wend-leaf-soft);
 }
@@ -82,4 +78,66 @@
 .onDark:disabled {
   color: var(--text-on-dark-muted);
   border-color: var(--text-on-dark-muted);
+}
+
+/* Sizes
+ *
+ * All the geometry lives here — the variants above carry colour and border
+ * only. Padding differs per variant as well as per size because quiet has no
+ * box to pad and the bordered variants absorb 2px of their own edge, so the
+ * three end up optically level on a shared row.
+ *
+ * small deliberately sits under --tap-min: it is for a button inside an
+ * already-dense row, never the only route to a primary action. */
+
+.button.small {
+  min-height: 36px;
+}
+
+.small.primary {
+  padding: 7px 16px;
+}
+
+.small.secondary,
+.small.onDark {
+  padding: 5px 14px;
+}
+
+.small.quiet {
+  padding: 6px 2px;
+}
+
+.button.medium {
+  min-height: var(--tap-min);
+}
+
+.medium.primary {
+  padding: 14px 26px;
+}
+
+.medium.secondary,
+.medium.onDark {
+  padding: 12px 24px;
+}
+
+.medium.quiet {
+  padding: 12px 4px;
+}
+
+.button.large {
+  min-height: 56px;
+  font-size: var(--text-body-size);
+}
+
+.large.primary {
+  padding: 18px 34px;
+}
+
+.large.secondary,
+.large.onDark {
+  padding: 16px 32px;
+}
+
+.large.quiet {
+  padding: 15px 4px;
 }

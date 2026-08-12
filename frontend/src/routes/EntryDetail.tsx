@@ -21,15 +21,21 @@ import styles from './EntryDetail.module.css';
 
 const CATEGORIES: EntryCategory[] = ['place', 'food', 'activity', 'lodging', 'transport', 'other'];
 
+export interface EntryDetailDrawerProps {
+  entryId: number | undefined;
+  onClose: () => void;
+}
+
 /**
- * /entries/:id — the detail panel, a drawer over whatever you were looking at.
- * Closing returns you to where you came from; nothing here navigates away from
- * the board underneath.
+ * The detail panel itself, decoupled from the route.
+ *
+ * It is a drawer over whatever you were looking at — which only holds if there
+ * is something underneath. Reached as a route it covers an empty page, because
+ * /entries/:id renders nothing else; the board therefore raises this component
+ * directly, over the board, and keeps its own URL. The editing surface is the
+ * same one either way.
  */
-export function EntryDetail() {
-  const { id } = useParams();
-  const entryId = id ? Number(id) : undefined;
-  const navigate = useNavigate();
+export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawerProps) {
   const { show } = useToast();
 
   const { data, isLoading, isError } = useEntry(entryId);
@@ -59,10 +65,6 @@ export function EntryDetail() {
       notes: entry.notes ?? '',
     });
   }, [entry?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function close() {
-    navigate(-1);
-  }
 
   function save(field: string, value: string) {
     if (!entry) return;
@@ -344,4 +346,16 @@ export function EntryDetail() {
       </div>
     </Drawer>
   );
+}
+
+/**
+ * /entries/:id — the same drawer, opened by URL. This is the deep-link and
+ * back-button path (the library screen still navigates here); closing returns
+ * you to wherever you came from. The board opens the drawer in place instead,
+ * so editing an idea never leaves the ideas you were reading.
+ */
+export function EntryDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  return <EntryDetailDrawer entryId={id ? Number(id) : undefined} onClose={() => navigate(-1)} />;
 }

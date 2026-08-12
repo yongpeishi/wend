@@ -59,6 +59,18 @@ export interface EntryGroup {
  */
 export type GroupMode = 'none' | 'category' | 'location';
 
+/**
+ * The three groupings, in the order the board's segmented control offers them:
+ * flat first, then the two ways of sectioning. All three are always on screen,
+ * so no grouping can strand you — getting back to categories after grouping by
+ * place is the same single click as any other move between them.
+ */
+export const GROUP_MODES: { key: GroupMode; label: string }[] = [
+  { key: 'none', label: 'Ungrouped' },
+  { key: 'location', label: 'By location' },
+  { key: 'category', label: 'By category' },
+];
+
 /** Groups already-filtered entries by category, in a stable order, uncategorised last. */
 export function groupByCategory(entries: Entry[]): EntryGroup[] {
   const groups = new Map<string, Entry[]>();

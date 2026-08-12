@@ -56,6 +56,23 @@ export function formatTripDates(
   return `${formatDay(startsOn as string)} ${EN_DASH} ${formatDay(endsOn as string)}`;
 }
 
+/**
+ * How long a trip runs, counted in whole days and inclusive of both ends —
+ * `12–17 Oct` is `6 days`, not five. Null unless both ends are known, because
+ * half a range is not a length; the dates line says what it can on its own.
+ *
+ * Rounds the millisecond difference: `parseDay` builds local midnights, so a
+ * range that crosses a daylight-saving change is an hour short of a whole
+ * number of days and would otherwise floor to one day fewer.
+ */
+export function formatTripLength(startsOn: string | null, endsOn: string | null): string | null {
+  if (!startsOn || !endsOn) return null;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const days = Math.round((parseDay(endsOn).getTime() - parseDay(startsOn).getTime()) / dayMs) + 1;
+  if (days < 1) return null;
+  return `${days} ${days === 1 ? 'day' : 'days'}`;
+}
+
 /** Minutes from midnight -> `09:40`. */
 export function formatMinutes(minutes: number): string {
   const h = Math.floor(minutes / 60);

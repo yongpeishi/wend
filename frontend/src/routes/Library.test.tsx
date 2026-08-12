@@ -71,10 +71,14 @@ describe('Library', () => {
     expect(await screen.findByText('Nothing kept yet. Saving something is how a trip starts.')).toBeInTheDocument();
   });
 
-  it('filters hide rows, never delete them, and "widen again" always undoes it', async () => {
+  it('filters hide rows, never delete them, and "See all" always undoes it', async () => {
     const user = userEvent.setup();
     renderLibrary();
     await screen.findByText('Fushimi Inari at dawn');
+
+    // Unfiltered: the whole library is listed, so the escape hatch is absent
+    // rather than greyed out — same as the board's.
+    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Place' }));
     expect(screen.getByText(/Showing 1 of 1/)).toBeInTheDocument(); // Fushimi Inari is category "place"
@@ -83,10 +87,11 @@ describe('Library', () => {
     expect(screen.getByText(/Showing 0 of 1/)).toBeInTheDocument();
     expect(screen.queryByText('Fushimi Inari at dawn')).not.toBeInTheDocument();
 
-    const widen = screen.getByRole('button', { name: 'widen again' });
+    const widen = screen.getByRole('button', { name: 'See all' });
     expect(widen).toBeEnabled();
     await user.click(widen);
     expect(await screen.findByText('Fushimi Inari at dawn')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
   });
 
   it('quick-add keeps a pasted URL as source_url, titled by hand, no unfurling', async () => {
