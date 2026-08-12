@@ -12,20 +12,27 @@
      member row would widen the panel past its column instead of ellipsising
      inside it.
 
-     The vertical story is newer. The board's grid stretches this item and gives
-     the row a floor of roughly a screen (see TripBoard.module.css), so `height:
-     100%` turns that into a definite height — which is what the internal
-     scroller below needs to resolve against, and what stops the hairline from
-     petering out a third of the way down a long idea list. `max-height: 100vh`
-     with `position: sticky` is the other half: on a board taller than the
-     window the rail stops growing at one screen and rides along instead, so the
-     bundles stay beside the ideas you are dragging from rather than scrolling
-     off the top of the window. Below a screen's worth of board, sticky costs
-     nothing and does nothing. */
+     The vertical story is newer, and the height has to come from the VIEWPORT
+     rather than from the row. `height: 100%` against a stretched grid row looks
+     like the same thing and is not: a grid row is as tall as its tallest item,
+     and this item's own content is the bundle list, so every card made the row
+     taller — the internal scroller below never got a height to clip against,
+     and the page grew a couple of hundred pixels of scroll with nothing in it.
+     --board-rail-height is TripBoard's floor for that row, so taking it
+     directly gives the same height in the case that motivated it, while making
+     this rail's height independent of what it holds. The row is back to being
+     as tall as the ideas, and the scroller finally resolves.
+
+     `align-self: start` and `position: sticky` are the other half: on a board
+     taller than the window the rail stays one screen tall and rides along, so
+     the bundles stay beside the ideas you are dragging from rather than
+     scrolling off the top of the window. Stretching would have flattened that
+     travel to zero and made sticky a no-op. Below a screen's worth of board,
+     sticky costs nothing and does nothing. */
   width: 100%;
   min-width: 0;
-  height: 100%;
-  max-height: 100vh;
+  height: var(--board-rail-height);
+  align-self: start;
   position: sticky;
   top: 0;
   box-sizing: border-box;
@@ -121,8 +128,9 @@
     border-top: var(--border-width) solid var(--border-subtle);
     padding: var(--space-6) 0 var(--space-8);
     position: static;
+    /* Content-sized again, so `align-self` above stops mattering and needs no
+       reset: start and stretch are the same thing for an auto height. */
     height: auto;
-    max-height: none;
   }
 
   .stack {

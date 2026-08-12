@@ -168,10 +168,15 @@
    level down, so the two features do not each invent a way to say "there is
    something attached to this". `flex: none` plus nowrap is what puts the
    truncation in the right place: the title beside it has `flex: 1` and
-   `min-width: 0`, so in a 376px rail a long name ellipses and the count stays
-   whole. The other way round leaves "2 to-…", which is worse than a clipped
-   name — the name is still recognisable from its first half, the number is
-   not a number any more. */
+   `min-width: 0`, so a long name ellipses and the count stays whole. The other
+   way round leaves "2 to-…", which is worse than a clipped name — the name is
+   still recognisable from its first half, the number is not a number any more.
+
+   It is not free, though: label plus gap is about 58px out of a rail that
+   starts at 336px, and a browser pass found a labelled title down to six
+   characters at the width where the rail sat on that floor. The rail's
+   percentage in TripBoard.module.css went 40% -> 48% to pay for this; the note
+   there is the other half of this one. */
 .memberTodos {
   flex: none;
   white-space: nowrap;
