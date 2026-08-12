@@ -142,12 +142,17 @@ describe('FilterBar — the grouping control', () => {
   });
 });
 
-// Filters hide, never delete — so the count and its way out are always on
-// screen, narrowed or not.
+// Filters hide, never delete — so the count is always on screen, and the way
+// out is there for as long as there is something to escape from.
 describe('FilterBar — the escape hatch', () => {
   it('always shows how much is hidden', () => {
     renderBar({ visibleCount: 3, totalCount: 12 });
     expect(screen.getByText(/Showing 3 of 12/)).toBeInTheDocument();
+  });
+
+  it('offers the way out whenever a filter is narrowing the list', () => {
+    renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' }, visibleCount: 3, totalCount: 12 });
+    expect(screen.getByRole('button', { name: 'widen again' })).toBeEnabled();
   });
 
   it('clears every narrowing at once', async () => {
@@ -160,14 +165,17 @@ describe('FilterBar — the escape hatch', () => {
     expect(onChange).toHaveBeenCalledWith(EMPTY_FILTERS);
   });
 
-  it('offers nothing to widen when nothing is narrowed', () => {
-    renderBar({ filters: EMPTY_FILTERS });
-    expect(screen.getByRole('button', { name: 'widen again' })).toBeDisabled();
+  // The feedback: with the whole list on screen there is nothing to widen back
+  // to, so the control goes away rather than sitting there greyed out.
+  it('hides the way out entirely when every idea is already listed', () => {
+    renderBar({ filters: EMPTY_FILTERS, visibleCount: 12, totalCount: 12 });
+    expect(screen.queryByRole('button', { name: 'widen again' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Showing 12 of 12/)).toBeInTheDocument();
   });
 
   it('does not treat the grouping as a narrowing to escape from', () => {
     renderBar({ filters: EMPTY_FILTERS, groupMode: 'location' });
-    expect(screen.getByRole('button', { name: 'widen again' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'widen again' })).not.toBeInTheDocument();
   });
 });
 

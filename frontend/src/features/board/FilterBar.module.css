@@ -80,14 +80,10 @@
   cursor: pointer;
 }
 
-.widen:hover:not(:disabled) {
+/* No disabled state to style: the button is only rendered while something is
+   narrowed, so it is always live when it is on screen. */
+.widen:hover {
   opacity: 0.7;
-}
-
-.widen:disabled {
-  color: var(--text-muted);
-  text-decoration: none;
-  cursor: default;
 }
 
 .widen:focus-visible {

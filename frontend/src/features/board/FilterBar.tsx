@@ -27,10 +27,13 @@ export interface FilterBarProps {
  * not a mode conflict — which falls out of the two controls writing to two
  * different pieces of state, never to each other's.
  *
- * Filters hide, never delete: the "Showing N of M" line and its "widen again"
- * escape are always rendered, narrowed or not — every narrowing carries its own
- * way out, per screens.md. Grouping needs no such escape, because it hides
- * nothing: a collapsed section still counts its ideas in its own header.
+ * Filters hide, never delete: every narrowing carries its own way out, per
+ * screens.md. The "Showing N of M" line is always there, but "widen again"
+ * appears only while something is narrowed — with the whole list already on
+ * screen there is nothing to widen back to, and a permanently greyed-out escape
+ * hatch just reads as a broken control. Grouping needs no such escape at all,
+ * because it hides nothing: a collapsed section still counts its ideas in its
+ * own header.
  *
  * Text search was removed here (it lives on the library screen) but the escape
  * hatch stays wired exactly the same: category, "has location" and
@@ -113,10 +116,14 @@ export function FilterBar({
       <div className={styles.countRow}>
         <p className={styles.summary}>
           Showing {visibleCount} of {totalCount}
-          {MIDDOT}
-          <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_FILTERS)} disabled={!narrowed}>
-            widen again
-          </button>
+          {narrowed && (
+            <>
+              {MIDDOT}
+              <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_FILTERS)}>
+                widen again
+              </button>
+            </>
+          )}
         </p>
         {onNewIdea && (
           <Button variant="primary" size="small" onClick={onNewIdea}>
