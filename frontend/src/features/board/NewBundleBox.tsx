@@ -111,7 +111,7 @@ export function NewBundleBox({ tripId, onToast }: NewBundleBoxProps) {
         <p className={styles.dropLine}>
           Drop ideas here to start a bundle, or{' '}
           <br />
-          <Button variant="quiet" onClick={startNaming}>Create new bundle</Button>
+          <Button variant="quiet" size="small" onClick={startNaming}>Create new bundle</Button>
         </p>
       </div>
 
@@ -130,7 +130,7 @@ export function NewBundleBox({ tripId, onToast }: NewBundleBoxProps) {
             disabled={working}
             onChange={(event) => setName(event.target.value)}
           />
-          <Button type="submit" variant="quiet" disabled={!trimmed || working}>
+          <Button type="submit" variant="quiet" size="small" disabled={!trimmed || working}>
             Start it
           </Button>
         </form>
