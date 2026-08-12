@@ -119,7 +119,7 @@ export function FilterBar({
           </button>
         </p>
         {onNewIdea && (
-          <Button variant="secondary" size="small" onClick={onNewIdea}>
+          <Button variant="primary" size="small" onClick={onNewIdea}>
             + New idea
           </Button>
         )}

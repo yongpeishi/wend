@@ -31,13 +31,11 @@
      sticky costs nothing and does nothing. */
   width: 100%;
   min-width: 0;
-  height: var(--board-rail-height);
   align-self: start;
   position: sticky;
   top: 0;
   box-sizing: border-box;
   border-left: var(--border-width) solid var(--border-subtle);
-  background: var(--surface-card);
   /* Design: 26px 24px 60px. The sides land exactly on --space-6; top and bottom
      round onto the nearest scale steps rather than carrying two more one-off
      literals. The bottom used to be a deep --space-16 so the last bundle would
