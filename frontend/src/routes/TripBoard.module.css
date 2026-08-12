@@ -25,12 +25,52 @@
    hairline border-left, the card ground behind it and its own 24px inner
    padding. A grid gap here would leave a strip of paper between the ideas and
    that hairline, which reads as a floating box rather than a rail, so the
-   breathing room goes on the ideas column as padding instead. */
+   breathing room goes on the ideas column as padding instead.
+
+   The items stretch rather than sitting at the start of the row, and the row
+   has a floor of about a screen. Both are for the rail: `align-items: start`
+   left it exactly as tall as the bundles it held, so its hairline stopped a
+   third of the way down beside a long idea list and it read as a floating box
+   rather than an edge of the board. Stretching alone is not enough either — on
+   a nearly empty trip both columns are short and the rail would be a stub.
+
+   --board-rail-height is that floor, and it is a variable rather than a literal
+   because BundlePanel needs the same number: the rail resolves it into a
+   definite height of its own so that its internal scroller has something to
+   resolve against. Two copies of this arithmetic in two files would drift the
+   first time the title block changed. It inherits, so the rail just reads it.
+
+   The rail taking a DEFINITE height from this, rather than stretching to the
+   row, is what keeps the page honest. A stretched rail is sized by its own
+   content, and a grid row is sized by its tallest item — so every bundle card
+   grew the row even though the rail clipped them, and the page gained a couple
+   of hundred pixels of scroll with nothing in it. Sized against the viewport
+   instead, the rail contributes exactly this floor and no more, and the length
+   of the page is once again the length of the ideas.
+
+   240px is the chrome above and below the board on the way to the window
+   edges: TripLayout's 32px top padding, its title block (a 40px/1.2 display
+   line, then 8px and a 17px/1.7 date line — about 85px), the 48px
+   --gap-section under it, and the 64px bottom padding. That is 229px, measured
+   in the browser at 165px above and 64px below; rounding UP is the safe
+   direction, because it asks for slightly less height than there is and so
+   never introduces a page scrollbar that was not already earned by the ideas.
+
+   48%, not the 40% this started at. A member row that carries an open-to-do
+   count spends about 58px on it (see BundleCard's .memberTodos), which is 58px
+   the title no longer has. At 40% a 1074px window put the rail on its 336px
+   floor and left a labelled title six characters before the ellipsis —
+   "Kaiseki at Giro Giro Hitoshina" read as "Kaisek…". 48% covers the label's
+   cost in the band where the percentage actually binds; the 480px cap is
+   unchanged, so nothing moves on a wide window, and the floors are unchanged,
+   so nothing moves at the bottom of the two-column range either. */
 .grid {
+  --board-rail-height: calc(100vh - 240px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(336px, 40%, 480px);
+  grid-template-columns: minmax(0, 1fr) clamp(336px, 48%, 480px);
   gap: 0;
-  align-items: start;
+  align-items: stretch;
+  min-height: var(--board-rail-height);
 }
 
 .ideas {
@@ -49,7 +89,7 @@
    a 738px board, so 384px still lets the ideas keep 322px. */
 @media (pointer: coarse) {
   .grid {
-    grid-template-columns: minmax(0, 1fr) clamp(384px, 40%, 480px);
+    grid-template-columns: minmax(0, 1fr) clamp(384px, 48%, 480px);
   }
 }
 
@@ -66,6 +106,12 @@
   .grid {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-8);
+    /* One column, so the floor no longer protects a rail from ending early —
+       it would just stretch two stacked auto rows to fill a screen they have
+       no content for. BundlePanel drops its own full-height treatment at this
+       same width; the variable goes with it so the two cannot disagree. */
+    --board-rail-height: auto;
+    min-height: 0;
   }
 
   /* Stacked, the rail is no longer beside anything, so the reserved strip

@@ -24,8 +24,7 @@ import { BundlePanel } from '../features/board/BundlePanel';
 import { SetAsideSection } from '../features/board/SetAsideSection';
 import { useBundleMembers } from '../features/board/useBundleMembers';
 import { useLinkMutations } from '../features/board/useLinkMutations';
-import { useCreateBundleWithIdea } from '../features/board/useCreateBundle';
-import type { BundleDropData } from '../features/board/useCreateBundle';
+import type { BundleDropData } from '../features/board/bundleDrop';
 import { EMPTY_FILTERS, applyFilters, groupEntries } from '../features/board/filters';
 import type { GroupMode, IdeaFilters } from '../features/board/filters';
 import { EntryDetailDrawer } from './EntryDetail';
@@ -67,7 +66,6 @@ export function TripBoard() {
 
   const restoreEntry = useRestoreEntry();
   const { addLink } = useLinkMutations();
-  const createBundleWithIdea = useCreateBundleWithIdea();
 
   // Stable handle, not an inline arrow: NewIdeaModal memoizes its own internal
   // onClose forward to keep Modal's focus effect (which depends on [open,
@@ -123,15 +121,14 @@ export function TripBoard() {
   }
 
   /**
-   * Two kinds of drop target share this handler: an existing bundle card, and
-   * the new-bundle box at the top of the rail. Both are distinguished by their
-   * droppable data rather than by id parsing — see useCreateBundle.ts.
+   * There is one kind of drop target left: a bundle that already exists. It is
+   * recognised by its droppable data rather than by parsing its id — see
+   * bundleDrop.ts, which also records what the second kind used to be and why
+   * the dashed "start a bundle" target is gone.
    *
-   * Dropping onto a bundle COPIES the link and never removes the old one, so
-   * an idea can belong to several bundles at once. Dropping onto the new-bundle
-   * box creates the bundle and links the idea in one gesture; the create-then-
-   * link sequencing lives in the hook, because the link needs the id the POST
-   * returns.
+   * Dropping onto a bundle COPIES the link and never removes the old one, so an
+   * idea can belong to several bundles at once. Nothing here creates anything:
+   * a bundle is made by naming it, in the rail's own header.
    */
   function handleDragEnd(event: DragEndEvent) {
     setActiveDrag(null);
@@ -140,18 +137,6 @@ export function TripBoard() {
     const entryData = active.data.current as { entryId: number; title: string } | undefined;
     const overData = over.data.current as BundleDropData | undefined;
     if (!entryData || !overData) return;
-
-    if (overData.newBundle) {
-      createBundleWithIdea.mutate(
-        { tripId: trip.id, entryId: entryData.entryId, ideaTitle: entryData.title },
-        {
-          onSuccess: (bundle) =>
-            show(`Started ${bundle.title} with ${entryData.title}. Rename it any time.`, 'success'),
-          onError: () => show("That didn't save. It's still here — try again.", 'error'),
-        },
-      );
-      return;
-    }
 
     if (overData.bundleId === undefined) return;
     const bundleTitle = overData.title ?? 'the bundle';

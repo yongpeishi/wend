@@ -233,18 +233,47 @@ describe('BundleCard — reordering and unlinking members', () => {
  * these tests pin that so nobody quietly swaps in an invented one later.
  */
 describe('BundleCard — the design anatomy, on real fields only', () => {
-  it('summarises how many members are already on the schedule', () => {
-    renderCard([entry(91, 'Ramen alley', 'idea', true), entry(92, 'Kaiseki counter')]);
-    expect(screen.getByText('1 of 2 on the schedule')).toBeInTheDocument();
+  it('sums the open to-dos across the members and the bundle itself', () => {
+    renderCard(
+      [entry(91, 'Ramen alley', 'idea', false, 2), entry(92, 'Kaiseki counter', 'idea', false, 0)],
+      entry(90, 'Kyoto dinner options', 'bundle', false, 1),
+    );
+    // The bundle's own to-do counts: it can hold a chore belonging to no single
+    // idea in it, and that chore is still work standing between this group and
+    // a plan.
+    expect(screen.getByText('3 open to-dos')).toBeInTheDocument();
   });
 
-  it('says so plainly when nothing is scheduled, and stays silent for an empty bundle', () => {
-    const { unmount } = renderCard([entry(91, 'Ramen alley')]);
-    expect(screen.getByText('None on the schedule yet')).toBeInTheDocument();
+  it('counts a lone to-do in the singular', () => {
+    renderCard([entry(91, 'Ramen alley', 'idea', false, 1)]);
+    expect(screen.getByText('1 open to-do')).toBeInTheDocument();
+  });
+
+  // Zero is an answer, not a silence: a rail where some cards speak and some
+  // say nothing makes the reader work out which kind of nothing they have.
+  it('still says zero when there is no open work, empty bundle included', () => {
+    const { unmount } = renderCard();
+    expect(screen.getByText('0 open to-dos')).toBeInTheDocument();
     unmount();
 
     renderCard([]);
-    expect(screen.queryByText(/on the schedule/i)).not.toBeInTheDocument();
+    expect(screen.getByText('0 open to-dos')).toBeInTheDocument();
+  });
+
+  // The schedule answers this itself; the card's one line is worth more spent
+  // on the work outstanding.
+  it('no longer reports how many members are on the schedule', () => {
+    renderCard([entry(91, 'Ramen alley', 'idea', true), entry(92, 'Kaiseki counter')]);
+    expect(screen.queryByText(/\d+ of \d+ on the schedule/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/none on the schedule yet/i)).not.toBeInTheDocument();
+  });
+
+  // Exactly one to-do number per card: the header count that used to repeat it
+  // beside the name is gone, so the header is the name and the X and nothing
+  // else.
+  it('states the to-do total once, and only under the name', () => {
+    renderCard([entry(91, 'Ramen alley', 'idea', false, 3)]);
+    expect(screen.getAllByText(/open to-dos?/i)).toHaveLength(1);
   });
 
   // Colour is never the only carrier of meaning: the dot's state is also text.
@@ -254,23 +283,22 @@ describe('BundleCard — the design anatomy, on real fields only', () => {
     expect(screen.getByText('Not on the schedule yet:')).toBeInTheDocument();
   });
 
-  it('adds up the open to-dos across the members and the bundle itself', () => {
-    renderCard(
-      [entry(91, 'Ramen alley', 'idea', false, 2), entry(92, 'Kaiseki counter', 'idea', false, 0)],
-      entry(90, 'Kyoto dinner options', 'bundle', false, 1),
-    );
-    expect(screen.getByText('3 to-dos')).toBeInTheDocument();
-  });
-
-  it('counts a lone to-do in the singular', () => {
-    renderCard([entry(91, 'Ramen alley', 'idea', false, 1)]);
+  // The total above is traceable to the ideas that own it without opening one.
+  it('labels the members that carry the open to-dos', () => {
+    renderCard([
+      entry(91, 'Ramen alley', 'idea', false, 2),
+      entry(92, 'Kaiseki counter', 'idea', false, 1),
+      entry(93, 'Standing sushi'),
+    ]);
+    expect(screen.getByText('2 to-dos')).toBeInTheDocument();
     expect(screen.getByText('1 to-do')).toBeInTheDocument();
+    expect(screen.getByText('3 open to-dos')).toBeInTheDocument();
   });
 
-  // Nothing outstanding is not news — it reads as silence, not as "0 to-dos".
-  it('says nothing at all when there is no open work', () => {
+  // A mark on the exceptions, not a column of zeroes.
+  it('leaves members with nothing outstanding unlabelled', () => {
     renderCard();
-    expect(screen.queryByText(/to-do/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^\d+ to-dos?$/)).not.toBeInTheDocument();
   });
 
   // The card is content, not a toolbar: the whole bundle-level action row is
@@ -281,5 +309,14 @@ describe('BundleCard — the design anatomy, on real fields only', () => {
       expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
     }
     expect(screen.queryByText(/kept/i)).not.toBeInTheDocument();
+  });
+
+  // Top right, which in the DOM means last — so a keyboard user reaches the
+  // name (and everything the card is for) before the one destructive control.
+  it('puts the remove control after the name, not in front of it', () => {
+    renderCard();
+    const name = screen.getByRole('button', { name: `Rename ${BUNDLE.title}` });
+    const remove = screen.getByRole('button', { name: `Remove bundle ${BUNDLE.title}` });
+    expect(name.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
