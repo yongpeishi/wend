@@ -61,11 +61,19 @@ describe('toggleLibraryCategory', () => {
     const one = toggleLibraryCategory(EMPTY_LIBRARY_FILTERS, 'food');
     expect(one.categories).toEqual(['food']);
 
+    // Canonical CATEGORY_ORDER, not click order: 'place' precedes 'food' there,
+    // so clicking food then place still yields place-first.
     const two = toggleLibraryCategory(one, 'place');
-    expect(two.categories).toEqual(['food', 'place']); // click order: appended
+    expect(two.categories).toEqual(['place', 'food']);
 
     const back = toggleLibraryCategory(two, 'food');
     expect(back.categories).toEqual(['place']); // the other chip stays lit
+  });
+
+  it('gives the same array for the same set of chips, whichever order they were clicked', () => {
+    const foodThenPlace = toggleLibraryCategory(toggleLibraryCategory(EMPTY_LIBRARY_FILTERS, 'food'), 'place');
+    const placeThenFood = toggleLibraryCategory(toggleLibraryCategory(EMPTY_LIBRARY_FILTERS, 'place'), 'food');
+    expect(foodThenPlace.categories).toEqual(placeThenFood.categories);
   });
 
   it('leaves the search term untouched and never mutates the input', () => {

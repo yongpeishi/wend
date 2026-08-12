@@ -1,3 +1,4 @@
+import { toggleCategory } from '../board/filters';
 import type { Entry, EntryCategory } from '../../api/types';
 
 /**
@@ -37,17 +38,12 @@ export function isLibraryFiltersNarrowed(filters: LibraryFilters): boolean {
 /**
  * Adds or removes one category, leaving the rest of the selection alone.
  *
- * Order is click order (append on select), same as the map's — deterministic,
- * never reordered under the user, and read by nothing downstream: matching asks
- * only about membership and the chips are drawn in CATEGORY_ORDER.
+ * Shares the board's `toggleCategory`, as the map's does, so all three chip rows
+ * toggle by one implementation and return their selection in canonical
+ * CATEGORY_ORDER. See features/map/mapFilters.ts for the longer version.
  */
 export function toggleLibraryCategory(filters: LibraryFilters, category: EntryCategory): LibraryFilters {
-  return {
-    ...filters,
-    categories: filters.categories.includes(category)
-      ? filters.categories.filter((selected) => selected !== category)
-      : [...filters.categories, category],
-  };
+  return { ...filters, categories: toggleCategory(filters.categories, category) };
 }
 
 /** Filters hide, never delete — same rule as the board's and map's filter bars. */

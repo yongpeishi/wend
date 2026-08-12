@@ -1,3 +1,4 @@
+import { toggleCategory } from '../board/filters';
 import type { Entry, EntryCategory } from '../../api/types';
 
 export type MapScheduleFilter = 'all' | 'scheduled' | 'potential';
@@ -47,20 +48,18 @@ export function isMapFiltersNarrowed(filters: MapFilters): boolean {
  * whole difference between a multi-select chip row and the single-value one it
  * replaced.
  *
- * Order is click order: selecting appends, deselecting removes in place, so the
- * array is deterministic given the same sequence of clicks and never reorders
- * under the user. Nothing downstream reads the order — `applyMapFilters` asks
- * only about membership and the chips are drawn in CATEGORY_ORDER — so this is
- * about the state being predictable to reason about and to assert on in tests,
- * not about anything on screen moving.
+ * The array work is the board's `toggleCategory` rather than a copy of it: the
+ * three chip rows are meant to be one behaviour, and a second implementation is
+ * just somewhere for them to drift apart. That also inherits its ordering rule —
+ * the result is in canonical CATEGORY_ORDER, the order the chips are drawn in,
+ * so the same SET of lit chips always produces the same array however it was
+ * arrived at. Equal selections compare equal, memoised derivations don't re-run
+ * on a difference that isn't one, and tests can assert on the array without
+ * encoding a click sequence. Nothing on screen moves either way: matching asks
+ * only about membership.
  */
 export function toggleMapCategory(filters: MapFilters, category: EntryCategory): MapFilters {
-  return {
-    ...filters,
-    categories: filters.categories.includes(category)
-      ? filters.categories.filter((selected) => selected !== category)
-      : [...filters.categories, category],
-  };
+  return { ...filters, categories: toggleCategory(filters.categories, category) };
 }
 
 /** Filters hide pins, never delete entries — same rule as the board's filter bar. */

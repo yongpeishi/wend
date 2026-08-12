@@ -57,10 +57,19 @@ describe('toggleMapCategory', () => {
     expect(one.categories).toEqual(['food']);
 
     const two = toggleMapCategory(one, 'lodging');
-    expect(two.categories).toEqual(['food', 'lodging']); // click order: appended
+    expect(two.categories).toEqual(['food', 'lodging']); // canonical CATEGORY_ORDER
 
     const back = toggleMapCategory(two, 'food');
     expect(back.categories).toEqual(['lodging']); // the other chip stays lit
+  });
+
+  it('gives the same array for the same set of chips, whichever order they were clicked', () => {
+    // 'place' precedes 'food' in CATEGORY_ORDER, so a click-ordered result would
+    // differ between these two and a canonical one cannot.
+    const foodThenPlace = toggleMapCategory(toggleMapCategory(EMPTY_MAP_FILTERS, 'food'), 'place');
+    const placeThenFood = toggleMapCategory(toggleMapCategory(EMPTY_MAP_FILTERS, 'place'), 'food');
+    expect(foodThenPlace.categories).toEqual(['place', 'food']);
+    expect(placeThenFood.categories).toEqual(['place', 'food']);
   });
 
   it('leaves the other filters untouched and never mutates the input', () => {
