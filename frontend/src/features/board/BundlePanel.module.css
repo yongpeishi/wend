@@ -84,11 +84,25 @@
    flex item's default min-height is auto — its content's minimum — which would
    let a rail of ten bundles push the panel past its own height and take the
    page with it. Clamped, the overflow lands here instead, and SetAsideSection
-   below stays on the bottom edge of the rail whatever the list is doing. */
+   below stays on the bottom edge of the rail whatever the list is doing.
+
+   position: relative is the third member of that pair, and it is not cosmetic.
+   Every member row carries a visually-hidden span (BundleCard's .srOnly, the
+   position: absolute recipe) naming its schedule state. Absolute boxes are
+   clipped by their CONTAINING BLOCK's overflow, not by whatever scroller
+   happens to sit between — and with this element static, the nearest positioned
+   ancestor was the sticky .panel. So the hidden spans belonging to rows scrolled
+   out of view were laid out at their static positions hundreds of pixels below
+   the panel, escaped this scroller entirely, and pushed the DOCUMENT's scroll
+   height out: a blank band under the board, exactly as tall as the bundles that
+   were supposed to be clipped. Positioning this element makes it their
+   containing block, so they are clipped by the same overflow as the rows they
+   describe. */
 .stack {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
