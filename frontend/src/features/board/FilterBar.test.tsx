@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -28,6 +29,30 @@ function renderBar(
       onNewIdea={overrides.onNewIdea}
     />,
   );
+}
+
+/**
+ * FilterBar is controlled, so a spy `onChange` freezes the chips at whatever
+ * `filters` was passed in. Multi-select is a sequence — light one, light
+ * another, put one out — and asserting on it means letting the state actually
+ * move, so these tests drive a tiny stateful host instead of a spy.
+ */
+function StatefulBar({ initial }: { initial: IdeaFilters }) {
+  const [filters, setFilters] = useState<IdeaFilters>(initial);
+  return (
+    <FilterBar
+      filters={filters}
+      onChange={setFilters}
+      visibleCount={8}
+      totalCount={12}
+      groupMode="none"
+      onGroupModeChange={() => {}}
+    />
+  );
+}
+
+function renderStatefulBar(initial: IdeaFilters = EMPTY_FILTERS) {
+  return render(<StatefulBar initial={initial} />);
 }
 
 /** The chips live behind the Filter button now, so every chip assertion opens it
@@ -128,18 +153,36 @@ describe('FilterBar — the active-filter count', () => {
   });
 
   it('counts each narrowing separately in the accessible name', () => {
-    renderBar({ filters: { category: 'food', hasLocation: true, scheduleState: 'all' } });
+    renderBar({ filters: { categories: ['food'], hasLocation: true, scheduleState: 'all' } });
     expect(screen.getByRole('button', { name: 'Filter (2 active)' })).toBeInTheDocument();
   });
 
   it('counts all three at once', () => {
-    renderBar({ filters: { category: 'food', hasLocation: true, scheduleState: 'scheduled' } });
+    renderBar({ filters: { categories: ['food'], hasLocation: true, scheduleState: 'scheduled' } });
     expect(screen.getByRole('button', { name: 'Filter (3 active)' })).toBeInTheDocument();
   });
 
   it('shows the number on the badge too', () => {
-    renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' } });
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] } });
     expect(within(screen.getByRole('button', { name: 'Filter (1 active)' })).getByText('1')).toBeInTheDocument();
+  });
+
+  // Each lit chip counts on its own, so lighting a second category moves the
+  // badge. Counting the category section as one narrowing would let the second
+  // chip hide behind a number that never changed.
+  it('counts each selected category individually', () => {
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['place', 'food'] } });
+    expect(screen.getByRole('button', { name: 'Filter (2 active)' })).toBeInTheDocument();
+  });
+
+  it('adds up categories alongside the state narrowings', () => {
+    renderBar({ filters: { categories: ['place', 'food', 'lodging'], hasLocation: true, scheduleState: 'scheduled' } });
+    expect(screen.getByRole('button', { name: 'Filter (5 active)' })).toBeInTheDocument();
+  });
+
+  it('goes quiet again when the categories are cleared', () => {
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: [] } });
+    expect(screen.getByRole('button', { name: 'Filter' })).toBeInTheDocument();
   });
 });
 
@@ -159,18 +202,102 @@ describe('FilterBar — category filtering', () => {
 
     await user.click(screen.getByRole('button', { name: 'Food' }));
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ category: 'food' }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: ['food'] }));
   });
 
   it('unsets a category by clicking the chip that is already on', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' }, onChange });
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, onChange });
     await openFilters(user);
 
     await user.click(screen.getByRole('button', { name: 'Food' }));
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ category: null }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: [] }));
+  });
+});
+
+/**
+ * The chips are a set you build up, not a single choice you replace. "Food or
+ * places?" is the normal shape of a trip question, and answering it used to
+ * mean flipping between two lists because selecting the second category threw
+ * the first away.
+ */
+describe('FilterBar — categories are multi-select', () => {
+  it('adds a second category instead of replacing the first', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, onChange });
+    await openFilters(user);
+
+    await user.click(screen.getByRole('button', { name: 'Place' }));
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: ['place', 'food'] }));
+  });
+
+  it('keeps the others when one of several is switched off', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['place', 'food', 'lodging'] }, onChange });
+    await openFilters(user);
+
+    await user.click(screen.getByRole('button', { name: 'Food' }));
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: ['place', 'lodging'] }));
+  });
+
+  // aria-pressed per chip is what makes this announce as a set of independent
+  // toggles rather than a one-of-many choice.
+  it('reports every lit chip as pressed, and the rest as not', async () => {
+    const user = userEvent.setup();
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['place', 'food'] } });
+    await openFilters(user);
+
+    expect(screen.getByRole('button', { name: 'Place' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Food' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Lodging' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('lights two chips at once across a real sequence of clicks', async () => {
+    const user = userEvent.setup();
+    renderStatefulBar();
+    await openFilters(user);
+
+    await user.click(screen.getByRole('button', { name: 'Food' }));
+    await user.click(screen.getByRole('button', { name: 'Place' }));
+
+    expect(screen.getByRole('button', { name: 'Food' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Place' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /^Filter/ })).toHaveAccessibleName('Filter (2 active)');
+  });
+
+  it('leaves the other one lit after deselecting one of the pair', async () => {
+    const user = userEvent.setup();
+    renderStatefulBar({ ...EMPTY_FILTERS, categories: ['place', 'food'] });
+    await openFilters(user);
+
+    await user.click(screen.getByRole('button', { name: 'Food' }));
+
+    expect(screen.getByRole('button', { name: 'Food' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Place' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /^Filter/ })).toHaveAccessibleName('Filter (1 active)');
+  });
+
+  // Unpicking four lit chips by hand is four clicks through a panel you have to
+  // open first, so the one-move way out has to clear all of them.
+  it('clears every lit category at once from "See all"', async () => {
+    const user = userEvent.setup();
+    renderStatefulBar({ categories: ['place', 'food', 'lodging'], hasLocation: true, scheduleState: 'scheduled' });
+
+    await user.click(screen.getByRole('button', { name: 'See all' }));
+
+    expect(screen.getByRole('button', { name: 'Filter' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
+
+    await openFilters(user);
+    for (const label of ['Place', 'Food', 'Lodging']) {
+      expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'false');
+    }
   });
 });
 
@@ -197,14 +324,14 @@ describe('FilterBar — filtering keeps working while grouped', () => {
 
     await user.click(screen.getByRole('button', { name: 'Food' }));
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ category: 'food' }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: ['food'] }));
     expect(onGroupModeChange).not.toHaveBeenCalled();
   });
 
   it('leaves the active filters alone when the grouping changes', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' }, onChange });
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, onChange });
 
     await user.click(screen.getByRole('tab', { name: 'By location' }));
 
@@ -289,12 +416,12 @@ describe('FilterBar — the escape hatch', () => {
   });
 
   it('offers the way out whenever a filter is narrowing the list', () => {
-    renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' }, visibleCount: 3, totalCount: 12 });
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, visibleCount: 3, totalCount: 12 });
     expect(screen.getByRole('button', { name: 'See all' })).toBeEnabled();
   });
 
   it('offers it without the popover having to be open', () => {
-    renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' }, visibleCount: 3, totalCount: 12 });
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, visibleCount: 3, totalCount: 12 });
     expect(screen.queryByRole('group', { name: 'Filter ideas' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'See all' })).toBeInTheDocument();
   });
@@ -302,7 +429,7 @@ describe('FilterBar — the escape hatch', () => {
   it('clears every narrowing at once', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderBar({ filters: { category: 'food', hasLocation: true, scheduleState: 'scheduled' }, onChange });
+    renderBar({ filters: { categories: ['food'], hasLocation: true, scheduleState: 'scheduled' }, onChange });
 
     await user.click(screen.getByRole('button', { name: 'See all' }));
 

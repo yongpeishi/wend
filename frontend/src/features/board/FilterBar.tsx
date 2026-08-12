@@ -3,7 +3,7 @@ import { Chip } from '../../design/components/core/Chip';
 import { Button } from '../../design/components/core/Button';
 import { TabBar } from '../../components/TabBar';
 import { MIDDOT } from '../../lib/formatDates';
-import { CATEGORY_LABELS, CATEGORY_ORDER, EMPTY_FILTERS, GROUP_MODES, isNarrowed } from './filters';
+import { CATEGORY_LABELS, CATEGORY_ORDER, EMPTY_FILTERS, GROUP_MODES, isNarrowed, toggleCategory } from './filters';
 import type { GroupMode, IdeaFilters } from './filters';
 import styles from './FilterBar.module.css';
 
@@ -19,20 +19,23 @@ export interface FilterBarProps {
 }
 
 /**
- * How many separate narrowings are on — what the badge on the Filter button
- * counts.
+ * How many chips are lit — what the badge on the Filter button counts.
  *
  * Deliberately here and not in filters.ts beside `isNarrowed`. The model's
  * question is binary — is this list narrowed, yes or no — and everything that
  * acts on filters (the query, the "See all" hatch) only ever asks that. "Two"
  * is a fact about how many chips are lit, which is a fact about this bar, so it
  * is computed where it is drawn.
+ *
+ * Each selected category counts on its own, so three lit category chips read
+ * as 3 and not as 1. The badge answers "how much of this panel is switched on",
+ * which is the question you ask when the panel is folded away — counting the
+ * whole category section as one narrowing would let two chips hide behind a
+ * number that never moved when you lit the second.
  */
 function activeFilterCount(filters: IdeaFilters): number {
   return (
-    (filters.category !== null ? 1 : 0) +
-    (filters.hasLocation ? 1 : 0) +
-    (filters.scheduleState !== 'all' ? 1 : 0)
+    filters.categories.length + (filters.hasLocation ? 1 : 0) + (filters.scheduleState !== 'all' ? 1 : 0)
   );
 }
 
@@ -71,8 +74,13 @@ function activeFilterCount(filters: IdeaFilters): number {
  * Grouping needs no such escape at all, because it hides nothing: a collapsed
  * section still counts its ideas in its own header.
  *
+ * Multi-select raises the stakes on that hatch rather than changing it. A
+ * narrowing can now be four lit chips instead of one, so unpicking it by hand
+ * is four clicks through a panel you have to open first — "See all" stays the
+ * single move that undoes all of it at once, however much is on.
+ *
  * Text search was removed here (it lives on the library screen) but the escape
- * hatch stays wired exactly the same: category, "has location" and
+ * hatch stays wired exactly the same: categories, "has location" and
  * scheduled/potential still narrow, and "See all" clears whatever is set.
  */
 export function FilterBar({
@@ -161,14 +169,23 @@ export function FilterBar({
                   <p className={styles.label} id={whatLabelId}>
                     What
                   </p>
+                  {/* Any number of these can be lit at once, and the list shows
+                      ideas in ANY of them. Each chip is its own independent
+                      on/off — clicking Place while Food is on adds places to
+                      the list rather than swapping the list over to them, so
+                      building up "food or places" is two clicks with nothing
+                      thrown away in between. `Chip` renders a real button with
+                      `aria-pressed`, which is already the right announcement
+                      for a multi-select set: each chip reports its own pressed
+                      state, so there is no single-choice promise to break. */}
                   <div className={styles.chips} role="group" aria-labelledby={whatLabelId}>
                     {CATEGORY_ORDER.map((category, index) => (
                       <Chip
                         key={category}
                         ref={index === 0 ? firstChipRef : undefined}
-                        selected={filters.category === category}
+                        selected={filters.categories.includes(category)}
                         onClick={() =>
-                          onChange({ ...filters, category: filters.category === category ? null : category })
+                          onChange({ ...filters, categories: toggleCategory(filters.categories, category) })
                         }
                       >
                         {CATEGORY_LABELS[category]}
