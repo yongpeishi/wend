@@ -57,26 +57,31 @@
  * is "+ New idea". A green segment beside it would claim the same weight for
  * what is only a view preference — grouping hides nothing and undoes nothing.
  *
- * Radius is --radius-card, deliberately not the pill the nav variant wears.
- * Every control on this row (the Filter button, the primary button) is a
- * 12px-cornered rectangle, and one pill among them reads as a stray.
+ * The pill radius is inherited from .tablist / .tab above and deliberately kept.
+ * A segmented control is not a button and should not be dressed as one: the
+ * capsule is what says "pick one of these three", where three 12px rectangles in
+ * a 12px rectangle read as three separate buttons that happen to be adjacent.
+ * The buttons either side of it keep the app's own --radius-card.
  *
- * 36px is Button's `small` height, so the three controls on the row sit on one
- * optical line. Like `small`, it is under --tap-min on purpose and is never the
- * only route to anything: grouping is a preference, and the flat list it starts
- * in is a perfectly good place to stay. */
+ * Height is built to land on Button's `small` box exactly, in both regimes:
+ * where the inherited 1.7 line-height governs, 3 + (4 + 25.5 + 4) + 3 = 39.5px,
+ * the same as `small`'s 25.5 + 14px of padding; where a UA collapses the line
+ * box, the 30px floor plus 6px of track makes 36px, `small`'s own min-height.
+ * Both halves are needed — drop the padding and the two stop tracking each other
+ * the moment the type scale moves; drop the floor and they part company on a
+ * browser that resolves button line-height to `normal`. Like `small`, this sits
+ * under --tap-min on purpose and is never the only route to anything: grouping
+ * is a preference, and the flat list it starts in is a fine place to stay. */
 .compact {
   gap: 0;
-  padding: var(--space-1);
+  padding: 3px;
   background: var(--wend-line);
   border: none;
-  border-radius: var(--radius-card);
 }
 
 .compact .tab {
-  min-height: 36px;
+  min-height: 30px;
   padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-card);
   color: var(--text-muted);
 }
 

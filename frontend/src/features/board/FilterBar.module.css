@@ -32,15 +32,23 @@
   position: relative;
 }
 
-/* Outlined, 36px, 12px corners: the same box as a `small` secondary Button,
-   because it sits on a row with one. It is not a Button component — Button's
-   variants are about how much an action wants to be taken, and this one opens a
-   panel rather than doing anything, so it borrows the geometry and keeps a
-   quieter fill.
+/* Outlined, 12px corners: the same box as a `small` secondary Button, because it
+   sits on a row with one. It is not a Button component — Button's variants are
+   about how much an action wants to be taken, and this one opens a panel rather
+   than doing anything, so it borrows the geometry and keeps a quieter fill.
 
-   The corners are --radius-card and not the pill the design draws. A pill here
-   would be the only rounded thing on a row of 12px rectangles, and matching the
-   app's own button shape is worth more than matching one mockup. */
+   "Borrows the geometry" has to include the border width, not just the padding.
+   --border-width-strong is what `small`'s 5px padding is cut for: Button's size
+   block sets padding per variant precisely so the bordered ones absorb their own
+   2px edge and still land level with the filled ones. Pairing that padding with
+   a 1.5px hairline made this button 1px shorter than everything beside it, which
+   is exactly the kind of gap the eye reads as a wobble without being able to name
+   it. The quietness comes from --border-strong being a neutral rather than the
+   action green, not from drawing a thinner line.
+
+   The corners stay --radius-card while the grouping control beside it is a pill.
+   That is the intended split, not an oversight: a button is a button shape, and
+   the capsule is reserved for the one control that is a set of choices. */
 .filterButton {
   display: inline-flex;
   align-items: center;
@@ -48,7 +56,7 @@
   min-height: 36px;
   padding: 5px 14px;
   background: transparent;
-  border: var(--border-width) solid var(--border-strong);
+  border: var(--border-width-strong) solid var(--border-strong);
   border-radius: var(--radius-card);
   font-family: var(--font-sans);
   font-size: var(--text-small-size);

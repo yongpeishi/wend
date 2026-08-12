@@ -1,6 +1,6 @@
 # TASK_STATUS_011 — Idea list filter + grouping control
 
-**Status:** DONE — committed as `130dfdb` and pushed to `origin`. Nothing outstanding except the one flagged follow-up (`+ New bundle` is still `size="small"`, see the end of the log).
+**Status:** DONE — implementation in `130dfdb`, follow-up styling fix on top (see the last log entry). Pushed to `origin`. Nothing outstanding except the one flagged follow-up (`+ New bundle` is still `size="small"`, see the end of the log).
 **Branch:** `worktree-feat-011-idea-list-controls`
 **Worktree:** `.claude/worktrees/feat-011-idea-list-controls`
 **Last updated:** 2026-08-12 — implementation subagent, after verification
@@ -191,3 +191,38 @@ Showing 8 of 21 · See all
   - No `@media (pointer: coarse)` bump on the 36px controls: the row's primary
     Button is `size="small"` (also 36px) and bumping only two of the three
     would break the row's optical line.
+
+- **2026-08-12** — User feedback, applied. Two changes, CSS only, no TS touched:
+
+  1. **Grouping control is a pill again.** Decision 3 above ("radius =
+     --radius-card") is now scoped to the *buttons* only. `.compact` and
+     `.compact .tab` in `TabBar.module.css` dropped their `border-radius`
+     overrides and fall back to the base `--radius-pill`, per the design. The
+     Filter button and `+ New idea` keep `--radius-card`. The rationale, written
+     into the CSS: a segmented control is a set of choices, not a button, and the
+     capsule is what says so — three 12px rectangles inside a 12px rectangle read
+     as three adjacent buttons.
+
+  2. **Row heights now actually line up.** The old compact track was
+     4px padding + 36px tab + 4px = 44px against a ~39.5px row, which is what the
+     user saw. Two fixes:
+     - `.compact { padding: 3px }` and `.compact .tab { min-height: 30px;
+       padding: var(--space-1) var(--space-3) }`. Deliberately *both* a floor and
+       real padding, so the track matches `Button.small` under either line-height
+       regime: 3 + (4 + 25.5 + 4) + 3 = 39.5px when the inherited 1.7 governs
+       (= `small`'s 25.5 + 14px padding), and 6 + 30 = 36px when a UA collapses
+       the button line box (= `small`'s min-height).
+     - `.filterButton` border `--border-width` → `--border-width-strong`.
+       Button's size block cuts `small`'s 5px padding on the assumption the
+       bordered variants absorb a 2px edge (see the comment above `.button.small`
+       in `Button.module.css`); pairing that padding with a 1.5px hairline left
+       this button 1px shorter than both its neighbours. The quiet look comes
+       from `--border-strong` being a neutral, not from a thinner line.
+
+  Re-verified: `scripts/test frontend` → 47 files, 352 tests, all pass (CSS-only,
+  so no test churn); `tsc` clean; oxlint = the same 3 pre-existing
+  `only-export-components` warnings and nothing new.
+
+  **Not measured in a browser** — the heights above are derived from the token
+  values and Button's own size block, not observed. If the row still looks off,
+  that is the first thing to check.
