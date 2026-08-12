@@ -15,8 +15,10 @@ export interface MapFilterBarProps {
 
 /**
  * Same idiom as the board's FilterBar (src/features/board/FilterBar.tsx):
- * filters hide, never delete, and "Showing N of M · widen again" is always
- * rendered so every narrowing carries its own way back out.
+ * filters hide, never delete, and the "Showing N of M" line is always
+ * rendered, with "See all" beside it so every narrowing carries its own way
+ * back out. With every pin already on the map there is nothing to widen back
+ * to, so the button goes away rather than sitting there greyed out.
  */
 export function MapFilterBar({ filters, onChange, visibleCount, totalCount }: MapFilterBarProps) {
   const narrowed = isMapFiltersNarrowed(filters);
@@ -49,10 +51,14 @@ export function MapFilterBar({ filters, onChange, visibleCount, totalCount }: Ma
 
       <p className={styles.summary}>
         Showing {visibleCount} of {totalCount}
-        {MIDDOT}
-        <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_MAP_FILTERS)} disabled={!narrowed}>
-          widen again
-        </button>
+        {narrowed && (
+          <>
+            {MIDDOT}
+            <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_MAP_FILTERS)}>
+              See all
+            </button>
+          </>
+        )}
       </p>
     </div>
   );

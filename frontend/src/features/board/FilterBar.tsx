@@ -28,7 +28,7 @@ export interface FilterBarProps {
  * different pieces of state, never to each other's.
  *
  * Filters hide, never delete: every narrowing carries its own way out, per
- * screens.md. The "Showing N of M" line is always there, but "widen again"
+ * screens.md. The "Showing N of M" line is always there, but "See all"
  * appears only while something is narrowed — with the whole list already on
  * screen there is nothing to widen back to, and a permanently greyed-out escape
  * hatch just reads as a broken control. Grouping needs no such escape at all,
@@ -37,7 +37,7 @@ export interface FilterBarProps {
  *
  * Text search was removed here (it lives on the library screen) but the escape
  * hatch stays wired exactly the same: category, "has location" and
- * scheduled/potential still narrow, and "widen again" clears whatever is set.
+ * scheduled/potential still narrow, and "See all" clears whatever is set.
  */
 export function FilterBar({
   filters,
@@ -120,7 +120,7 @@ export function FilterBar({
             <>
               {MIDDOT}
               <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_FILTERS)}>
-                widen again
+                See all
               </button>
             </>
           )}

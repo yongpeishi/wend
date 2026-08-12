@@ -62,20 +62,25 @@ describe('TripMap', () => {
     expect(screen.getByText(/Showing 2 of 2/)).toBeInTheDocument();
   });
 
-  it('filters hide pins, never delete them, and "widen again" always undoes it', async () => {
+  it('filters hide pins, never delete them, and "See all" always undoes it', async () => {
     const user = userEvent.setup();
     renderWithLayout();
     await screen.findByText('Nanzen-ji (scheduled)');
+
+    // Every pin is on the map, so there is nothing to widen back to and the
+    // escape hatch is absent rather than greyed out — same as the board's.
+    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Scheduled' }));
     expect(screen.getByText(/Showing 1 of 2/)).toBeInTheDocument();
     expect(screen.queryByText('Kiyamachi (potential)')).not.toBeInTheDocument();
 
-    const widen = screen.getByRole('button', { name: 'widen again' });
+    const widen = screen.getByRole('button', { name: 'See all' });
     expect(widen).toBeEnabled();
     await user.click(widen);
     expect(screen.getByText(/Showing 2 of 2/)).toBeInTheDocument();
     expect(screen.getByText('Kiyamachi (potential)')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
   });
 
   it('opens a compact popover on pin click, stating status in words and linking to the entry', async () => {

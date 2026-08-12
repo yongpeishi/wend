@@ -152,7 +152,7 @@ describe('FilterBar — the escape hatch', () => {
 
   it('offers the way out whenever a filter is narrowing the list', () => {
     renderBar({ filters: { ...EMPTY_FILTERS, category: 'food' }, visibleCount: 3, totalCount: 12 });
-    expect(screen.getByRole('button', { name: 'widen again' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'See all' })).toBeEnabled();
   });
 
   it('clears every narrowing at once', async () => {
@@ -160,7 +160,7 @@ describe('FilterBar — the escape hatch', () => {
     const onChange = vi.fn();
     renderBar({ filters: { category: 'food', hasLocation: true, scheduleState: 'scheduled' }, onChange });
 
-    await user.click(screen.getByRole('button', { name: 'widen again' }));
+    await user.click(screen.getByRole('button', { name: 'See all' }));
 
     expect(onChange).toHaveBeenCalledWith(EMPTY_FILTERS);
   });
@@ -169,13 +169,13 @@ describe('FilterBar — the escape hatch', () => {
   // to, so the control goes away rather than sitting there greyed out.
   it('hides the way out entirely when every idea is already listed', () => {
     renderBar({ filters: EMPTY_FILTERS, visibleCount: 12, totalCount: 12 });
-    expect(screen.queryByRole('button', { name: 'widen again' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
     expect(screen.getByText(/Showing 12 of 12/)).toBeInTheDocument();
   });
 
   it('does not treat the grouping as a narrowing to escape from', () => {
     renderBar({ filters: EMPTY_FILTERS, groupMode: 'location' });
-    expect(screen.queryByRole('button', { name: 'widen again' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
   });
 });
 
