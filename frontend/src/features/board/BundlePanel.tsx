@@ -84,18 +84,19 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, loading
 
   return (
     <aside className={styles.panel} aria-labelledby={headingId}>
-      <div className={styles.header}>
-        <h2 id={headingId} className={styles.heading}>
-          Bundles
-        </h2>
-        <Button variant="secondary" onClick={() => setNaming(true)}>
-          + New bundle
-        </Button>
-      </div>
+      <h2 id={headingId} className={styles.heading}>
+        Bundles
+      </h2>
 
       <p className={styles.intro}>
         A bundle is a group of things that go well together. Bundles can be used to form your itinerary.
       </p>
+
+      <div className={styles.cta}>
+        <Button variant="secondary" size="small" onClick={() => setNaming(true)}>
+          + New bundle
+        </Button>
+      </div>
 
       <div className={styles.stack}>
         {naming && <NewBundleForm tripId={tripId} onToast={onToast} onClose={() => setNaming(false)} />}

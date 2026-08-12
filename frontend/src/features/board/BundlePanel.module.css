@@ -50,16 +50,10 @@
   gap: var(--space-4);
 }
 
-/* The rail's name, and the one action the rail owns, on one line. Baseline
-   alignment rather than centre: the heading is a 12px uppercase label and the
-   button is a 48px box, so centring them optically drops the label below the
-   middle of the row. The gap is generous because these two are not a pair —
-   they are the two ends of the header. */
-.header {
+.cta {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-4);
+  justify-content: end;
 }
 
 /* The design's uppercase rail label — the same token pairing every section
