@@ -38,3 +38,55 @@
   color: var(--action-primary-text);
   font-weight: var(--weight-bold);
 }
+
+/* The compact variant.
+ *
+ * Everything below is scoped under `.compact` so the trip's sub-navigation —
+ * the other, older user of this component — is untouched by it. The differences
+ * are all about where this variant lives: in a control row, beside a primary
+ * button.
+ *
+ * The track is drawn rather than outlined. Sub-navigation sits alone above a
+ * page and can afford a hairline box; a control sharing a row with an outlined
+ * Filter button and a filled primary button would add a third competing edge,
+ * so the track is a solid tone and the selected option is a card-toned pill cut
+ * out of it. The selection reads as a groove rather than a fourth button.
+ *
+ * Selected is card tone and strong ink, NOT the action green the nav variant
+ * uses. Green in this system means "the forward action", and on this row that
+ * is "+ New idea". A green segment beside it would claim the same weight for
+ * what is only a view preference — grouping hides nothing and undoes nothing.
+ *
+ * The pill radius is inherited from .tablist / .tab above and deliberately kept.
+ * A segmented control is not a button and should not be dressed as one: the
+ * capsule is what says "pick one of these three", where three 12px rectangles in
+ * a 12px rectangle read as three separate buttons that happen to be adjacent.
+ * The buttons either side of it keep the app's own --radius-card.
+ *
+ * Height is built to land on Button's `small` box exactly, in both regimes:
+ * where the inherited 1.7 line-height governs, 3 + (4 + 25.5 + 4) + 3 = 39.5px,
+ * the same as `small`'s 25.5 + 14px of padding; where a UA collapses the line
+ * box, the 30px floor plus 6px of track makes 36px, `small`'s own min-height.
+ * Both halves are needed — drop the padding and the two stop tracking each other
+ * the moment the type scale moves; drop the floor and they part company on a
+ * browser that resolves button line-height to `normal`. Like `small`, this sits
+ * under --tap-min on purpose and is never the only route to anything: grouping
+ * is a preference, and the flat list it starts in is a fine place to stay. */
+.compact {
+  gap: 0;
+  padding: 3px;
+  background: var(--wend-line);
+  border: none;
+}
+
+.compact .tab {
+  min-height: 30px;
+  padding: var(--space-1) var(--space-3);
+  color: var(--text-muted);
+}
+
+.compact .tab[aria-selected='true'] {
+  background: var(--surface-card);
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+}

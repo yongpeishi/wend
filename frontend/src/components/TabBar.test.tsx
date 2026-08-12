@@ -37,4 +37,20 @@ describe('TabBar', () => {
     await userEvent.keyboard('{ArrowRight}');
     expect(onChange).toHaveBeenCalledWith('board');
   });
+
+  // `compact` is a skin. If it ever costs the roving tabindex or the arrow keys
+  // it has stopped being one, and the second user of this component is worse off
+  // than if it had built three buttons of its own.
+  it('the compact variant keeps the same semantics and keyboard contract', async () => {
+    const onChange = vi.fn();
+    render(<TabBar aria-label="Group ideas" variant="compact" tabs={tabs} activeKey="board" onChange={onChange} />);
+
+    expect(screen.getByRole('tablist', { name: 'Group ideas' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Board' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Map' })).toHaveAttribute('tabindex', '-1');
+
+    screen.getByRole('tab', { name: 'Board' }).focus();
+    await userEvent.keyboard('{End}');
+    expect(onChange).toHaveBeenCalledWith('schedule');
+  });
 });
