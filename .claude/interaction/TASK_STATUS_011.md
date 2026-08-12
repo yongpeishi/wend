@@ -1,6 +1,6 @@
 # TASK_STATUS_011 — Idea list filter + grouping control
 
-**Status:** DONE — implemented, tests + typecheck green, awaiting orchestrator commit
+**Status:** DONE — committed as `130dfdb` and pushed to `origin`. Nothing outstanding except the one flagged follow-up (`+ New bundle` is still `size="small"`, see the end of the log).
 **Branch:** `worktree-feat-011-idea-list-controls`
 **Worktree:** `.claude/worktrees/feat-011-idea-list-controls`
 **Last updated:** 2026-08-12 — implementation subagent, after verification
