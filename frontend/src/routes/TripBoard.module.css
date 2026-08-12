@@ -25,12 +25,28 @@
    hairline border-left, the card ground behind it and its own 24px inner
    padding. A grid gap here would leave a strip of paper between the ideas and
    that hairline, which reads as a floating box rather than a rail, so the
-   breathing room goes on the ideas column as padding instead. */
+   breathing room goes on the ideas column as padding instead.
+
+   The items stretch rather than sitting at the start of the row, and the row
+   has a floor of about a screen. Both are for the rail: `align-items: start`
+   left it exactly as tall as the bundles it held, so its hairline stopped a
+   third of the way down beside a long idea list and it read as a floating box
+   rather than an edge of the board. Stretching alone is not enough either — on
+   a nearly empty trip both columns are short and the rail would be a stub.
+
+   240px is the chrome above and below the board on the way to the window
+   edges: TripLayout's 32px top padding, its title block (a 40px/1.2 display
+   line, then 8px and a 17px/1.7 date line — about 85px), the 48px
+   --gap-section under it, and the 64px bottom padding. That is 229px; rounding
+   UP is the safe direction, because it asks for slightly less height than there
+   is and so never introduces a page scrollbar that was not already earned by
+   the ideas. */
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(336px, 40%, 480px);
   gap: 0;
-  align-items: start;
+  align-items: stretch;
+  min-height: calc(100vh - 240px);
 }
 
 .ideas {
@@ -66,6 +82,11 @@
   .grid {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-8);
+    /* One column, so the floor no longer protects a rail from ending early —
+       it would just stretch two stacked auto rows to fill a screen they have
+       no content for. BundlePanel drops its own full-height treatment at this
+       same width. */
+    min-height: 0;
   }
 
   /* Stacked, the rail is no longer beside anything, so the reserved strip

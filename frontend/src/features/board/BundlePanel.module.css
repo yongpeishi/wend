@@ -6,29 +6,82 @@
    that promise is now kept by the ceiling in TripBoard.module.css's clamp, so
    the reasoning for the bounds lives there, next to the value. */
 .panel {
-  /* Stretch to the track. min-width is the load-bearing half: a grid item
-     defaults to min-width: auto, which is its content's minimum size and
-     outranks this width, so a long bundle name or a member row would widen the
-     panel past its column instead of ellipsising inside it. */
+  /* Stretch to the track, in both axes. min-width is the load-bearing half of
+     the horizontal story: a grid item defaults to min-width: auto, which is its
+     content's minimum size and outranks this width, so a long bundle name or a
+     member row would widen the panel past its column instead of ellipsising
+     inside it.
+
+     The vertical story is newer. The board's grid stretches this item and gives
+     the row a floor of roughly a screen (see TripBoard.module.css), so `height:
+     100%` turns that into a definite height — which is what the internal
+     scroller below needs to resolve against, and what stops the hairline from
+     petering out a third of the way down a long idea list. `max-height: 100vh`
+     with `position: sticky` is the other half: on a board taller than the
+     window the rail stops growing at one screen and rides along instead, so the
+     bundles stay beside the ideas you are dragging from rather than scrolling
+     off the top of the window. Below a screen's worth of board, sticky costs
+     nothing and does nothing. */
   width: 100%;
   min-width: 0;
+  height: 100%;
+  max-height: 100vh;
+  position: sticky;
+  top: 0;
   box-sizing: border-box;
   border-left: var(--border-width) solid var(--border-subtle);
   background: var(--surface-card);
-  /* Design: 26px 24px 60px. The sides land exactly on --space-6; top and
-     bottom round onto the nearest scale steps rather than carrying two more
-     one-off literals. The deep bottom pad is deliberate — the last bundle
-     should not sit on the fold. */
-  padding: var(--space-6) var(--space-6) var(--space-16);
+  /* Design: 26px 24px 60px. The sides land exactly on --space-6; top and bottom
+     round onto the nearest scale steps rather than carrying two more one-off
+     literals. The bottom used to be a deep --space-16 so the last bundle would
+     not sit on the fold; the rail no longer ends at the fold — the list scrolls
+     inside it and the set-aside disclosure is what sits at the bottom edge — so
+     it comes back level with the top. */
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-/* Design gap is 18px between rail sections and 14px inside the bundle column;
-   both round to the nearest scale step (16px / 12px) rather than inventing
-   two more values. */
+/* The rail's name, and the one action the rail owns, on one line. Baseline
+   alignment rather than centre: the heading is a 12px uppercase label and the
+   button is a 48px box, so centring them optically drops the label below the
+   middle of the row. The gap is generous because these two are not a pair —
+   they are the two ends of the header. */
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/* The design's uppercase rail label — the same token pairing every section
+   heading in the product uses (see TripsList's .sectionLabel). Quiet on
+   purpose: it names the region for anyone scanning, and then gets out of the
+   way of the bundles, which are the content. */
+.heading {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* The bundle column, and the rail's only scrolling region. Design gap is 14px
+   inside the column, which rounds to the 12px scale step rather than inventing
+   another value.
+
+   flex: 1 with min-height: 0 is the pair that makes the internal scroll real: a
+   flex item's default min-height is auto — its content's minimum — which would
+   let a rail of ten bundles push the panel past its own height and take the
+   page with it. Clamped, the overflow lands here instead, and SetAsideSection
+   below stays on the bottom edge of the rail whatever the list is doing. */
 .stack {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -55,11 +108,25 @@
    reads as a separate region rather than more list. The width is already 100%
    above; what changes here is that the inner side padding goes too, because
    stacked the rail shares the ideas' left edge and 24px of inset would set the
-   bundles in from a list they are meant to line up with. */
+   bundles in from a list they are meant to line up with.
+
+   Everything the full-height treatment added is undone here as well. Stacked,
+   there is no second column to run beside: a viewport-tall panel with its own
+   scrollbar would be a window inside a window, and a sticky one would park the
+   bundles over the ideas as you scrolled past them. The rail goes back to being
+   as tall as what it holds. */
 @media (max-width: 900px) {
   .panel {
     border-left: none;
     border-top: var(--border-width) solid var(--border-subtle);
     padding: var(--space-6) 0 var(--space-8);
+    position: static;
+    height: auto;
+    max-height: none;
+  }
+
+  .stack {
+    flex: initial;
+    overflow: visible;
   }
 }

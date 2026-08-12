@@ -1,0 +1,76 @@
+/* The box for a new bundle's name, sitting at the top of the bundle list.
+   Solid and card-toned, and the same 12px inset as a BundleCard: it is the
+   first row of the list, a bundle in the moment before it has a name, so it
+   should read as one of them rather than as a tool above them. The dashed
+   drop-zone rules that used to head this file went with the drop zone — see
+   NewBundleForm.tsx. */
+.form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  /* Deliberately shorter than <Input>'s 48px: this is one line inside a row
+     that is itself the width of a bundle card, and a full-height field would
+     read as the primary act of the rail rather than as the first bundle in the
+     list. Still above the 32px pointer minimum, and coarse pointers get
+     --tap-min. */
+  padding: var(--space-2) var(--space-3);
+  min-height: 36px;
+  outline: none;
+}
+
+@media (pointer: coarse) {
+  .input {
+    min-height: var(--tap-min);
+  }
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* One ring, not two. global.css's blanket `input:focus-visible` (0,1,1) paints
+   a solid apricot outline at 3px offset; on a field that already has a border
+   that reads as two concentric apricot rings with a strip of paper between
+   them. This rule scores (0,2,0) and wins: the border itself goes apricot and
+   the outline is the pale wash hugging it at offset 0 — same treatment as
+   <Input> and the NewIdeaModal textarea. */
+.input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring-wash);
+  outline-offset: 0;
+  border-color: var(--focus-ring);
+}
+
+.input:disabled {
+  color: var(--action-disabled-text);
+  cursor: default;
+}
+
+/* The label is real and points at the input; it is only hidden from sight
+   because the rail's heading and the button that opened this row have already
+   said what is being named. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
