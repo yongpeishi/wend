@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef, useState } from 'react';
 import { Chip } from '../../design/components/core/Chip';
 import { Button } from '../../design/components/core/Button';
 import { TabBar } from '../../components/TabBar';
@@ -13,8 +14,26 @@ export interface FilterBarProps {
   totalCount: number;
   groupMode: GroupMode;
   onGroupModeChange: (mode: GroupMode) => void;
-  /** Omit to leave the "+ New idea" button out and render the count line alone. */
+  /** Omit to leave the "+ New idea" button out and render the controls alone. */
   onNewIdea?: () => void;
+}
+
+/**
+ * How many separate narrowings are on — what the badge on the Filter button
+ * counts.
+ *
+ * Deliberately here and not in filters.ts beside `isNarrowed`. The model's
+ * question is binary — is this list narrowed, yes or no — and everything that
+ * acts on filters (the query, the "See all" hatch) only ever asks that. "Two"
+ * is a fact about how many chips are lit, which is a fact about this bar, so it
+ * is computed where it is drawn.
+ */
+function activeFilterCount(filters: IdeaFilters): number {
+  return (
+    (filters.category !== null ? 1 : 0) +
+    (filters.hasLocation ? 1 : 0) +
+    (filters.scheduleState !== 'all' ? 1 : 0)
+  );
 }
 
 /**
@@ -27,13 +46,30 @@ export interface FilterBarProps {
  * not a mode conflict — which falls out of the two controls writing to two
  * different pieces of state, never to each other's.
  *
+ * The chips used to be laid out flat across the top of the board: two rows of
+ * them, a WHAT row and a STATE row, on screen at all times. That was nine
+ * always-visible controls above a list you had come to read, and on a narrow
+ * desk they wrapped into a third row and pushed the ideas below the fold. They
+ * are also, by their nature, rarely touched — you narrow a list once and then
+ * work in it — so the space they held was permanently rented to an occasional
+ * job. They now live behind one Filter button, which is a single control that
+ * says what it is, and the row they vacated holds the thing that actually
+ * belongs at the top of a list of ideas: the button that adds one.
+ *
+ * Folding them away costs visibility of what is currently on, so the button
+ * carries the count back out: a badge for the eye, and the same number in the
+ * button's accessible name for anyone who is not reading badges. The count line
+ * underneath ("Showing 8 of 21") is the other half of that answer and never
+ * folds away.
+ *
  * Filters hide, never delete: every narrowing carries its own way out, per
  * screens.md. The "Showing N of M" line is always there, but "See all"
  * appears only while something is narrowed — with the whole list already on
  * screen there is nothing to widen back to, and a permanently greyed-out escape
- * hatch just reads as a broken control. Grouping needs no such escape at all,
- * because it hides nothing: a collapsed section still counts its ideas in its
- * own header.
+ * hatch just reads as a broken control. It sits OUTSIDE the popover on purpose:
+ * the way out of a narrowing must never be behind the control that caused it.
+ * Grouping needs no such escape at all, because it hides nothing: a collapsed
+ * section still counts its ideas in its own header.
  *
  * Text search was removed here (it lives on the library screen) but the escape
  * hatch stays wired exactly the same: category, "has location" and
@@ -49,88 +85,191 @@ export function FilterBar({
   onNewIdea,
 }: FilterBarProps) {
   const narrowed = isNarrowed(filters);
+  const activeCount = activeFilterCount(filters);
+
+  const [open, setOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const firstChipRef = useRef<HTMLButtonElement>(null);
+  const whatLabelId = useId();
+  const stateLabelId = useId();
+
+  // Opening moves focus into the popover so a keyboard reaches the chips
+  // without tabbing past the trigger, and Escape hands it straight back. The
+  // design has only the outside-click catcher; without the Escape half a
+  // keyboard user who opens this has no way to shut it again. Same pair of
+  // listeners as IdeaActionsMenu — a document listener rather than a
+  // full-screen invisible catcher element, because a catcher swallows the first
+  // click anywhere on the page, and dismissing a filter panel should not also
+  // cost you the click you were making.
+  useEffect(() => {
+    if (!open) return;
+    firstChipRef.current?.focus();
+    function onDocPointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      if (popoverRef.current?.contains(target)) return;
+      if (triggerRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+    document.addEventListener('mousedown', onDocPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onDocPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
 
   return (
     <div className={styles.bar}>
       <div className={styles.controlRow}>
-        <div className={styles.chips}>
-          <span className={styles.label}>What</span>
-          {CATEGORY_ORDER.map((category) => (
-            <Chip
-              key={category}
-              selected={filters.category === category}
-              onClick={() => onChange({ ...filters, category: filters.category === category ? null : category })}
+        <div className={styles.leftGroup}>
+          <div className={styles.filterWrap}>
+            <button
+              type="button"
+              ref={triggerRef}
+              className={narrowed ? `${styles.filterButton} ${styles.filterButtonActive}` : styles.filterButton}
+              aria-haspopup="true"
+              aria-expanded={open}
+              // The badge is the fast visual answer, but it is a small number in
+              // a coloured pill — colour and shape are the whole of it. The
+              // accessible name says the same thing in words so the state is not
+              // badge-only, and the badge itself is hidden to avoid announcing
+              // the digit twice.
+              aria-label={activeCount > 0 ? `Filter (${activeCount} active)` : 'Filter'}
+              onClick={() => setOpen((value) => !value)}
             >
-              {CATEGORY_LABELS[category]}
-            </Chip>
-          ))}
+              Filter
+              {activeCount > 0 && (
+                <span className={styles.count} aria-hidden="true">
+                  {activeCount}
+                </span>
+              )}
+            </button>
+
+            {/* Closing on a chip click would make setting two filters take two
+                trips through the button, so the panel stays open until you
+                dismiss it. The list behind it updates live, which is the whole
+                reason to leave it open: you can see what each chip did. */}
+            {open && (
+              <div className={styles.popover} ref={popoverRef} role="group" aria-label="Filter ideas">
+                <div className={styles.section}>
+                  <p className={styles.label} id={whatLabelId}>
+                    What
+                  </p>
+                  <div className={styles.chips} role="group" aria-labelledby={whatLabelId}>
+                    {CATEGORY_ORDER.map((category, index) => (
+                      <Chip
+                        key={category}
+                        ref={index === 0 ? firstChipRef : undefined}
+                        selected={filters.category === category}
+                        onClick={() =>
+                          onChange({ ...filters, category: filters.category === category ? null : category })
+                        }
+                      >
+                        {CATEGORY_LABELS[category]}
+                      </Chip>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Same chip language, their own label, because "What" belongs
+                    to the categories above and these narrow by state. */}
+                <div className={styles.section}>
+                  <p className={styles.label} id={stateLabelId}>
+                    State
+                  </p>
+                  <div className={styles.chips} role="group" aria-labelledby={stateLabelId}>
+                    <Chip
+                      selected={filters.hasLocation}
+                      onClick={() => onChange({ ...filters, hasLocation: !filters.hasLocation })}
+                    >
+                      Has location
+                    </Chip>
+                    <Chip
+                      selected={filters.scheduleState === 'scheduled'}
+                      onClick={() =>
+                        onChange({
+                          ...filters,
+                          scheduleState: filters.scheduleState === 'scheduled' ? 'all' : 'scheduled',
+                        })
+                      }
+                    >
+                      Scheduled
+                    </Chip>
+                    <Chip
+                      selected={filters.scheduleState === 'potential'}
+                      onClick={() =>
+                        onChange({
+                          ...filters,
+                          scheduleState: filters.scheduleState === 'potential' ? 'all' : 'potential',
+                        })
+                      }
+                    >
+                      Potential
+                    </Chip>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* A drawn rule rather than a gap: filtering and grouping are two
+              different jobs that happen to share a row, and the eye needs
+              something to say so. Decorative, so it is hidden from the
+              accessibility tree — the two controls already name themselves. */}
+          <span className={styles.divider} aria-hidden="true" />
+
+          {/*
+            Every grouping is one click from every other. This used to be a
+            two-state toggle — "Group by place" on, off — which made grouping by
+            category unreachable once you had grouped by place: the way back led
+            only to a flat list. A segmented control shows all three states at
+            once, so none of them is a dead end (screens.md: every narrowing
+            carries its own way out, and grouping is no different).
+
+            It reuses the app's own TabBar rather than dressing up three buttons —
+            the arrow-key handling comes with it, and there is one copy of that
+            behaviour rather than two. `compact` is the opt-in variant that fits
+            it into a control row; see TabBar.module.css for why it is quieter
+            than the trip's own sub-navigation.
+          */}
+          <div className={styles.groupControl}>
+            <TabBar
+              aria-label="Group ideas"
+              variant="compact"
+              tabs={GROUP_MODES}
+              activeKey={groupMode}
+              onChange={(key) => onGroupModeChange(key as GroupMode)}
+            />
+          </div>
         </div>
 
-        {/*
-          Every grouping is one click from every other. This used to be a
-          two-state toggle — "Group by place" on, off — which made grouping by
-          category unreachable once you had grouped by place: the way back led
-          only to a flat list. A segmented control shows all three states at
-          once, so none of them is a dead end (screens.md: every narrowing
-          carries its own way out, and grouping is no different).
-
-          It reuses the app's own TabBar rather than dressing up three buttons —
-          same segmented look as the design's rail, and the arrow-key handling
-          comes with it.
-        */}
-        <div className={styles.groupControl}>
-          <TabBar
-            aria-label="Group ideas"
-            tabs={GROUP_MODES}
-            activeKey={groupMode}
-            onChange={(key) => onGroupModeChange(key as GroupMode)}
-          />
-        </div>
-      </div>
-
-      {/* The remaining filters. Same chip language, their own label, because
-          "What" belongs to the categories above and these narrow by state. */}
-      <div className={styles.chips}>
-        <span className={styles.label}>State</span>
-        <Chip selected={filters.hasLocation} onClick={() => onChange({ ...filters, hasLocation: !filters.hasLocation })}>
-          Has location
-        </Chip>
-        <Chip
-          selected={filters.scheduleState === 'scheduled'}
-          onClick={() =>
-            onChange({ ...filters, scheduleState: filters.scheduleState === 'scheduled' ? 'all' : 'scheduled' })
-          }
-        >
-          Scheduled
-        </Chip>
-        <Chip
-          selected={filters.scheduleState === 'potential'}
-          onClick={() =>
-            onChange({ ...filters, scheduleState: filters.scheduleState === 'potential' ? 'all' : 'potential' })
-          }
-        >
-          Potential
-        </Chip>
-      </div>
-
-      <div className={styles.countRow}>
-        <p className={styles.summary}>
-          Showing {visibleCount} of {totalCount}
-          {narrowed && (
-            <>
-              {MIDDOT}
-              <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_FILTERS)}>
-                See all
-              </button>
-            </>
-          )}
-        </p>
+        {/* The one forward action of this screen, at the end of the row that
+            controls the list it adds to. It used to sit beside the count line
+            below, which put the primary button on the quietest line of the bar. */}
         {onNewIdea && (
           <Button variant="primary" size="small" onClick={onNewIdea}>
             + New idea
           </Button>
         )}
       </div>
+
+      <p className={styles.summary}>
+        Showing {visibleCount} of {totalCount}
+        {narrowed && (
+          <>
+            {MIDDOT}
+            <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_FILTERS)}>
+              See all
+            </button>
+          </>
+        )}
+      </p>
     </div>
   );
 }

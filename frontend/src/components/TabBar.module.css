@@ -38,3 +38,50 @@
   color: var(--action-primary-text);
   font-weight: var(--weight-bold);
 }
+
+/* The compact variant.
+ *
+ * Everything below is scoped under `.compact` so the trip's sub-navigation —
+ * the other, older user of this component — is untouched by it. The differences
+ * are all about where this variant lives: in a control row, beside a primary
+ * button.
+ *
+ * The track is drawn rather than outlined. Sub-navigation sits alone above a
+ * page and can afford a hairline box; a control sharing a row with an outlined
+ * Filter button and a filled primary button would add a third competing edge,
+ * so the track is a solid tone and the selected option is a card-toned pill cut
+ * out of it. The selection reads as a groove rather than a fourth button.
+ *
+ * Selected is card tone and strong ink, NOT the action green the nav variant
+ * uses. Green in this system means "the forward action", and on this row that
+ * is "+ New idea". A green segment beside it would claim the same weight for
+ * what is only a view preference — grouping hides nothing and undoes nothing.
+ *
+ * Radius is --radius-card, deliberately not the pill the nav variant wears.
+ * Every control on this row (the Filter button, the primary button) is a
+ * 12px-cornered rectangle, and one pill among them reads as a stray.
+ *
+ * 36px is Button's `small` height, so the three controls on the row sit on one
+ * optical line. Like `small`, it is under --tap-min on purpose and is never the
+ * only route to anything: grouping is a preference, and the flat list it starts
+ * in is a perfectly good place to stay. */
+.compact {
+  gap: 0;
+  padding: var(--space-1);
+  background: var(--wend-line);
+  border: none;
+  border-radius: var(--radius-card);
+}
+
+.compact .tab {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+}
+
+.compact .tab[aria-selected='true'] {
+  background: var(--surface-card);
+  color: var(--text-strong);
+  font-weight: var(--weight-bold);
+}

@@ -4,59 +4,161 @@
   gap: var(--space-3);
 }
 
-/* Chips take the room they need; the grouping control keeps its own line's end,
-   and drops to a line of its own rather than sitting on top of them. */
+/* One row, two ends: the controls that shape the list on the left, the action
+   that adds to it on the right. It still wraps — on a narrow desk the button
+   drops under the controls rather than crushing them — but there is no longer
+   anything here that can be squeezed to nothing, because the chips that used to
+   fill this row are behind the Filter button now. */
 .controlRow {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
 }
 
-/* `flex: 1` here meant `flex: 1 1 0%`, and a 0% basis is what broke this row.
-   Flex line-breaking measures an item by its hypothetical main size, which for
-   a 0% basis is zero — so this box never counted towards the line being full,
-   the grouping control beside it never wrapped, and the chips were squeezed
-   towards nothing instead. Below about 1190px they overflowed the box they had
-   been squeezed into and rendered underneath the control: the WHAT label and
-   the category chips sat behind the tablist, which read as a broken bar rather
-   than a tight one.
-
-   An `auto` basis measures this box by its content, so once the chips and the
-   control genuinely stop fitting the control takes the next line. min-content
-   is the floor for the same reason — a chip is not a thing that can usefully be
-   made narrower than itself. */
-.chips {
-  flex: 1 1 auto;
-  min-width: min-content;
+/* Filter, rule, grouping — one cluster. They travel together when the row
+   wraps, because the rule between them only means anything while both sides of
+   it are on the same line. */
+.leftGroup {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
+  gap: var(--space-3);
+}
+
+/* The popover is positioned against this, not against the row, so it opens
+   under the button's own left edge wherever the row has pushed it. */
+.filterWrap {
+  position: relative;
+}
+
+/* Outlined, 36px, 12px corners: the same box as a `small` secondary Button,
+   because it sits on a row with one. It is not a Button component — Button's
+   variants are about how much an action wants to be taken, and this one opens a
+   panel rather than doing anything, so it borrows the geometry and keeps a
+   quieter fill.
+
+   The corners are --radius-card and not the pill the design draws. A pill here
+   would be the only rounded thing on a row of 12px rectangles, and matching the
+   app's own button shape is worth more than matching one mockup. */
+.filterButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 36px;
+  padding: 5px 14px;
+  background: transparent;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.filterButton:hover {
+  opacity: 0.82;
+}
+
+.filterButton:active {
+  opacity: 0.7;
+}
+
+.filterButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Something is hidden behind this button, so its edge stops being a neutral
+   hairline and picks up the action green. Never the only signal — the badge
+   beside it and the button's accessible name both carry the same fact. */
+.filterButtonActive {
+  border-color: var(--action-primary);
+}
+
+/* A selected chip in miniature: the same green-on-paper as every other "this is
+   on" state in the app, so the badge needs no learning.
+
+   The design pairs --wend-leaf-soft with --wend-leaf here, which is about 2.5:1
+   — well under the 4.5 a 13px numeral needs, and this system does not ship text
+   you have to squint at. Inverting it to the action pair keeps the same family
+   of greens at 5.5:1. It stays a pill, unlike the button around it: a count is a
+   badge, not a control, and the shape is what says so. */
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-code-size);
+}
+
+/* Card tone on page tone with a drawn edge — the panel is lifted the only way
+   this system lifts anything. No shadow.
+
+   360px is two rows of category chips, which is the width that stops "Has
+   location" from being orphaned on a line of its own. It caps against the
+   viewport so the panel cannot hang off the edge of a narrow window; the button
+   it hangs from is near the left edge of the board, so a left-aligned panel has
+   room to be this wide. */
+.popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 20;
+  width: 360px;
+  max-width: calc(100vw - var(--space-8));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
 }
 
 .label {
+  margin: 0;
   font-family: var(--font-sans);
   font-size: var(--text-label-size);
   letter-spacing: var(--text-label-tracking);
   text-transform: uppercase;
   font-weight: var(--weight-bold);
   color: var(--text-muted);
-  margin-right: var(--space-1);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Two jobs, one row. The rule is what keeps "narrow the list" and "section the
+   list" from reading as one six-control strip. Thin and subtle on purpose: it
+   separates, it does not divide. */
+.divider {
+  flex: none;
+  width: var(--border-width);
+  height: var(--space-6);
+  background: var(--border-subtle);
+  border-radius: var(--radius-pill);
 }
 
 .groupControl {
   flex: none;
   white-space: nowrap;
-}
-
-.countRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
 }
 
 .summary {

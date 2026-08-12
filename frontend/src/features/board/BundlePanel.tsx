@@ -93,7 +93,7 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, loading
       </p>
 
       <div className={styles.cta}>
-        <Button variant="primary" size="small" onClick={() => setNaming(true)}>
+        <Button variant="secondary" size="small" onClick={() => setNaming(true)}>
           + New bundle
         </Button>
       </div>
