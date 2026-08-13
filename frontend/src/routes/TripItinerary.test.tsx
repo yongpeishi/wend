@@ -91,9 +91,11 @@ describe('TripItinerary — the dates gate', () => {
     expect(screen.getByLabelText('First day')).toHaveValue('2026-11-02');
     expect(screen.getByLabelText('Last day')).toHaveValue('2026-11-08');
 
-    // "Back to ideas" from here is a change of mind about the dates, not about
-    // the screen: it returns to the day list rather than leaving for the board.
-    await user.click(screen.getByRole('button', { name: 'Back to ideas' }));
+    // Backing out from here is a change of mind about the dates, not about the
+    // screen: it returns to the day list rather than leaving for the board —
+    // and the button says so, because the trip already has days to go back to.
+    expect(screen.queryByRole('button', { name: 'Back to ideas' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Back to your days' }));
     expect(await screen.findByText('Day 1 · Mon 2')).toBeInTheDocument();
   });
 });

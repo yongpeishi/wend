@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { GripVertical, MoreHorizontal } from 'lucide-react';
 import { useDndMonitor, useDraggable } from '@dnd-kit/core';
 import { EmptyState } from '../../components/EmptyState';
 import type { EntrySummary } from '../../api/types';
-import { formatDuration, joinMeta } from '../../lib/formatDates';
+import { joinMeta } from '../../lib/formatDates';
+// The itinerary's own short duration form ("30 min", "1 hr 30"), not
+// lib/formatDates' longer one — one screen, one convention.
+import { formatDuration } from './itineraryModel';
 import type { ItineraryDay } from './itineraryModel';
 import styles from './UnplacedRail.module.css';
 
@@ -76,15 +79,20 @@ interface RailItemProps {
  * draggable (the prototype's approach): a draggable card that also contains a
  * menu button swallows the click meant for the menu.
  *
- * Not `role="menu"` — as on the board's ⋯ menu, that role promises arrow-key
- * traversal and a single tab stop. This is a labelled group of ordinary
- * buttons, and Tab already walks it in order.
+ * Still `role="group"` rather than `role="menu"`: that role promises a single
+ * tab stop, and here Tab walking the days one by one is a route people already
+ * have. What the group did not have was the arrow keys, which anyone who
+ * reaches for a popup list reaches for first — and on a trip of fourteen days
+ * this list is long. So Up and Down walk it and wrap, Home and End jump to its
+ * ends, and Tab and Escape do exactly what they did before. This is the
+ * keyboard's whole equivalent of dragging something onto a day.
  */
 function RailItem({ item, days, onAddToDay }: RailItemProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const firstItemRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `${DRAGGABLE_PREFIX}${item.id}`,
@@ -117,6 +125,41 @@ function RailItem({ item, days, onAddToDay }: RailItemProps) {
     item.location_name,
     formatDuration(item.duration_minutes),
   );
+
+  /**
+   * Up and Down walk the days and wrap round; Home and End jump to the first
+   * and the last. The buttons are read out of the DOM rather than held in an
+   * array of refs — the list is exactly the days prop, so the DOM is already
+   * the single source of what is in it and in what order.
+   */
+  function moveFocus(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const choices = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+    if (choices.length === 0) return;
+
+    const here = choices.indexOf(document.activeElement as HTMLButtonElement);
+    let next: number;
+    switch (event.key) {
+      case 'ArrowDown':
+        next = here < 0 ? 0 : (here + 1) % choices.length;
+        break;
+      case 'ArrowUp':
+        next = here < 0 ? choices.length - 1 : (here - 1 + choices.length) % choices.length;
+        break;
+      case 'Home':
+        next = 0;
+        break;
+      case 'End':
+        next = choices.length - 1;
+        break;
+      default:
+        return;
+    }
+
+    // Only once a key we handle has been recognised, so the page still scrolls
+    // on the keys this menu has no opinion about.
+    event.preventDefault();
+    choices[next].focus();
+  }
 
   return (
     <div
@@ -155,7 +198,13 @@ function RailItem({ item, days, onAddToDay }: RailItemProps) {
         </button>
 
         {open && (
-          <div className={styles.menu} role="group" aria-label={`Days to add ${item.title} to`}>
+          <div
+            ref={menuRef}
+            className={styles.menu}
+            role="group"
+            aria-label={`Days to add ${item.title} to`}
+            onKeyDown={moveFocus}
+          >
             {days.length === 0 ? (
               <p className={styles.menuEmpty}>Set the trip's dates and the days appear here.</p>
             ) : (

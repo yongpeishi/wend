@@ -75,6 +75,13 @@ export function DatesGate({
   const backwards = Boolean(start && end && end < start);
   const ready = Boolean(start && end) && !backwards;
 
+  // Arriving with dates already set means this gate was reopened by "Change
+  // dates" over a day list that exists — so backing out of it lands on those
+  // days, not on the ideas board. Only the trip with no dates at all has
+  // nowhere to go back to but the ideas the days will be filled from, and the
+  // button has to say which of the two it is doing.
+  const reopened = Boolean(initialStart && initialEnd);
+
   function setLength(days: number) {
     const from = start || todayIso();
     setStart(from);
@@ -124,7 +131,7 @@ export function DatesGate({
 
         <div className={styles.actions}>
           <Button variant="secondary" onClick={onBack}>
-            Back to ideas
+            {reopened ? 'Back to your days' : 'Back to ideas'}
           </Button>
           <Button disabled={!ready || saving} aria-busy={saving || undefined} onClick={() => onConfirm(start, end)}>
             Open the days

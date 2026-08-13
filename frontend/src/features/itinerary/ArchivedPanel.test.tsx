@@ -21,6 +21,25 @@ function item(id: number, title: string): ItineraryItem {
   };
 }
 
+/** A second, later thing, so the version has a span wider than one item. */
+function afternoon(id: number, title: string): ItineraryItem {
+  return { ...item(id, title), starts_at_minutes: 13 * 60, ends_at_minutes: 15 * 60 };
+}
+
+/** A bundle, whose band and members the panel must not draw. */
+function bundle(id: number, title: string): ItineraryItem {
+  const base = item(id, title);
+  return {
+    ...base,
+    starts_at_minutes: 11 * 60,
+    ends_at_minutes: 13 * 60,
+    entry: { ...base.entry!, kind: 'bundle' },
+    members: [
+      { id: 91, kind: 'idea', title: 'Teramachi arcade', category: 'place', duration_minutes: 30, location_name: 'Teramachi' },
+    ],
+  };
+}
+
 const ARCHIVED: DayVersion = {
   id: 9,
   trip_day_id: 1,
@@ -68,7 +87,55 @@ describe('ArchivedPanel', () => {
     renderPanel(true);
 
     expect(screen.getByText('Kinkaku-ji')).toBeInTheDocument();
-    expect(screen.getByText('09:00–11:00')).toBeInTheDocument();
+    expect(screen.getByText('09:00–11:00 · 1 thing')).toBeInTheDocument();
+  });
+
+  // The rail is 300px. The day's own row language — a 104px mono column, a
+  // title, right-aligned metadata — does not fit in it, so this summarises
+  // rather than replaying the running order.
+  it('summarises the version instead of redrawing the day inside a 300px rail', () => {
+    renderPanel(true, [
+      {
+        version: {
+          ...ARCHIVED,
+          schedule_items: [item(1, 'Kinkaku-ji'), afternoon(2, 'Nishiki market')],
+        },
+        label: 'Day 4 · Wed 15 · Version B',
+      },
+    ]);
+
+    // One span for the whole version, one count, one list of titles.
+    expect(screen.getByText('09:00–15:00 · 2 things')).toBeInTheDocument();
+    expect(screen.getByText('Kinkaku-ji · Nishiki market')).toBeInTheDocument();
+    // No per-item time column, and so nothing to collide with a title.
+    expect(screen.queryByText('09:00–11:00')).not.toBeInTheDocument();
+    expect(screen.queryByText('13:00–15:00')).not.toBeInTheDocument();
+  });
+
+  // A hole in a plan you already set aside is not a hole you can fill.
+  it('draws no gap rows and no bundle bands', () => {
+    renderPanel(true, [
+      {
+        version: {
+          ...ARCHIVED,
+          schedule_items: [item(1, 'Kinkaku-ji'), bundle(3, 'Nishiki market crawl')],
+        },
+        label: 'Day 4 · Wed 15 · Version B',
+      },
+    ]);
+
+    expect(screen.queryByText(/Nothing planned/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Bundle ·/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Teramachi arcade')).not.toBeInTheDocument();
+    expect(screen.getByText('Kinkaku-ji · Nishiki market crawl')).toBeInTheDocument();
+  });
+
+  it('says plainly when a version had nothing on it at all', () => {
+    renderPanel(true, [
+      { version: { ...ARCHIVED, schedule_items: [] }, label: 'Day 4 · Wed 15 · Version B' },
+    ]);
+
+    expect(screen.getByText('Nothing was on it.')).toBeInTheDocument();
   });
 
   it('shows an archived version, never edits it', () => {

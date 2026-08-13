@@ -170,12 +170,78 @@ export function withGaps(items: ItineraryItem[]): Row[] {
  * which spells the trailing minutes as "1 hr 30 min": on the itinerary a
  * duration always sits beside a time range, and the mockup's shorter form
  * ("Nothing planned · 4 hr 15") is what keeps a gap row to one line.
+ *
+ * This is the itinerary's only duration format. The rail, the picker and the
+ * bundle members read it too, because two conventions on one screen — a gap
+ * saying "1 hr 20" a hand's width from a rail saying "1 hr 30 min" — reads as
+ * two different measurements rather than one. The other screens keep
+ * `lib/formatDates`, where the longer form is at home.
+ *
+ * Null takes an empty string rather than null, so it drops out of `joinMeta`
+ * exactly as the nullable version does.
  */
-export function formatDuration(mins: number): string {
+export function formatDuration(mins: number | null): string {
+  if (mins === null) return '';
   if (mins < 60) return `${Math.max(0, mins)} min`;
   const hours = Math.floor(mins / 60);
   const minutes = mins % 60;
   return minutes === 0 ? `${hours} hr` : `${hours} hr ${minutes}`;
+}
+
+/** One member's share of its bundle's span. Both null when the bundle is untimed. */
+export interface DerivedSpan {
+  startsAtMinutes: number | null;
+  endsAtMinutes: number | null;
+}
+
+/**
+ * The hours each member of a placed bundle would get, DERIVED FOR DISPLAY ONLY.
+ *
+ * Nothing here is stored: a bundle sits on a day as one `schedule_item` with
+ * one span, and its members have no rows of their own until you ungroup. But
+ * the design's rule is that "a bundle member and a loose idea look identical"
+ * (itinerary-decisions.md) — a member with an empty time column reads as an
+ * indented orphan, not as one more thing on the day.
+ *
+ * So these are computed with **exactly** the rule the server's `ungroup` uses
+ * (`ScheduleItem#split_slots`, contract §2): divide the span in
+ * `duration_minutes` proportion when every member has a usable one, evenly
+ * otherwise; consecutive, non-overlapping slots; the last member lands exactly
+ * on the bundle's end so rounding never leaves or steals a minute. Which means
+ * what a member shows here is precisely what it is given if you ungroup it —
+ * the display never promises hours the server would not hand out.
+ *
+ * Keep this in step with `backend/app/models/schedule_item.rb` if that rule
+ * ever changes.
+ */
+export function bundleMemberSpans(
+  item: Pick<ItineraryItem, 'starts_at_minutes' | 'ends_at_minutes' | 'members'>,
+): DerivedSpan[] {
+  const { members } = item;
+  const start = item.starts_at_minutes;
+  const end = item.ends_at_minutes;
+
+  // An untimed bundle hands its members no times either.
+  if (start === null || end === null) return members.map(() => ({ startsAtMinutes: null, endsAtMinutes: null }));
+
+  const span = end - start;
+  const estimates = members.map((member) => member.duration_minutes);
+  const proportional = estimates.every((minutes): minutes is number => minutes !== null && minutes > 0);
+  const weights = proportional ? estimates : members.map(() => 1);
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+
+  let cursor = start;
+  let running = 0;
+  return members.map((_member, index) => {
+    running += weights[index];
+    // The last member always lands exactly on the end, so rounding never
+    // leaves or steals a minute.
+    const raw = index === members.length - 1 ? end : start + Math.round((span * running) / total);
+    const finish = Math.min(Math.max(raw, cursor), end);
+    const slot = { startsAtMinutes: cursor, endsAtMinutes: finish };
+    cursor = finish;
+    return slot;
+  });
 }
 
 /** `08:00–12:30`, or just the start when a thing has no end yet. Empty when untimed. */
@@ -196,6 +262,28 @@ export function dayHours(items: ItineraryItem[]): string {
     return sum + Math.max(0, item.ends_at_minutes - item.starts_at_minutes);
   }, 0);
   return total === 0 ? '' : formatDuration(total);
+}
+
+/**
+ * The hours a whole version covers, first start to last end — `09:00–18:30`.
+ *
+ * Not the same fact as `dayHours`: this is the outside edge of the plan
+ * including the holes in it, which is what answers "when did that version have
+ * me out?". Empty when nothing in it carries hours.
+ */
+export function versionSpan(items: ItineraryItem[]): string {
+  let first: number | null = null;
+  let last: number | null = null;
+
+  for (const item of items) {
+    if (item.starts_at_minutes === null) continue;
+    first = first === null ? item.starts_at_minutes : Math.min(first, item.starts_at_minutes);
+    const end = itemEnd(item);
+    if (end !== null) last = last === null ? end : Math.max(last, end);
+  }
+
+  if (first === null) return '';
+  return formatSpan(first, last === null || last === first ? null : last);
 }
 
 /** The collapsed row's middle cell: what is on the day, in order, clipped by CSS. */

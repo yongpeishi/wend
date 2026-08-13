@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { DayVersion, EntrySummary, ItineraryItem, TripDay } from '../../api/types';
 import {
   buildDayList,
+  bundleMemberSpans,
   dayHours,
   daySummary,
   formatDuration,
   formatSpan,
   nextFreeSlot,
+  versionSpan,
   UNSAVED_VERSION_ID,
   withGaps,
 } from './itineraryModel';
@@ -299,6 +301,112 @@ describe('formatDuration', () => {
     expect(formatDuration(60)).toBe('1 hr');
     expect(formatDuration(255)).toBe('4 hr 15');
     expect(formatDuration(300)).toBe('5 hr');
+  });
+
+  // The rail and the picker read a nullable duration off an EntrySummary, and
+  // an empty string drops out of joinMeta the same way null does.
+  it('says nothing at all about a thing with no estimate', () => {
+    expect(formatDuration(null)).toBe('');
+  });
+});
+
+describe('versionSpan', () => {
+  it('runs from the first thing to the last, holes and all', () => {
+    const span = versionSpan([
+      item({ starts_at_minutes: at('09:00'), ends_at_minutes: at('10:00') }),
+      item({ starts_at_minutes: at('15:30'), ends_at_minutes: at('18:00') }),
+    ]);
+
+    expect(span).toBe('09:00–18:00');
+  });
+
+  it('reads in clock order however the list arrived', () => {
+    const span = versionSpan([
+      item({ starts_at_minutes: at('15:30'), ends_at_minutes: at('18:00') }),
+      item({ starts_at_minutes: at('09:00'), ends_at_minutes: at('10:00') }),
+    ]);
+
+    expect(span).toBe('09:00–18:00');
+  });
+
+  it('gives just the start when one untimed-ended thing is all there is', () => {
+    expect(versionSpan([item({ starts_at_minutes: at('09:00'), ends_at_minutes: null })])).toBe('09:00');
+  });
+
+  it('is empty when nothing in it carries hours', () => {
+    expect(versionSpan([item(), item()])).toBe('');
+    expect(versionSpan([])).toBe('');
+  });
+});
+
+/**
+ * These are display-only times — a bundle sits on a day as one row and its
+ * members have none of their own until it is ungrouped. The rule below is
+ * therefore checked against what `ScheduleItem#ungroup!` would actually
+ * produce: if the two ever drift, a member is showing hours it will not get.
+ */
+describe('bundleMemberSpans', () => {
+  function bundle(start: string, end: string, durations: (number | null)[]): ItineraryItem {
+    return item({
+      starts_at_minutes: at(start),
+      ends_at_minutes: at(end),
+      members: durations.map((duration_minutes) => summary({ duration_minutes })),
+    });
+  }
+
+  it('divides the span in duration proportion when every member has one', () => {
+    // 3 hours split 60/120 -> 1 hour, then 2 hours.
+    expect(bundleMemberSpans(bundle('09:00', '12:00', [60, 120]))).toEqual([
+      { startsAtMinutes: at('09:00'), endsAtMinutes: at('10:00') },
+      { startsAtMinutes: at('10:00'), endsAtMinutes: at('12:00') },
+    ]);
+  });
+
+  it('divides it evenly when any member has no estimate at all', () => {
+    expect(bundleMemberSpans(bundle('09:00', '12:00', [60, null]))).toEqual([
+      { startsAtMinutes: at('09:00'), endsAtMinutes: at('10:30') },
+      { startsAtMinutes: at('10:30'), endsAtMinutes: at('12:00') },
+    ]);
+  });
+
+  it('divides it evenly when an estimate is zero, which weighs nothing', () => {
+    expect(bundleMemberSpans(bundle('09:00', '11:00', [0, 60]))).toEqual([
+      { startsAtMinutes: at('09:00'), endsAtMinutes: at('10:00') },
+      { startsAtMinutes: at('10:00'), endsAtMinutes: at('11:00') },
+    ]);
+  });
+
+  it('hands the last member the exact end, so rounding never loses a minute', () => {
+    const spans = bundleMemberSpans(bundle('09:00', '10:00', [null, null, null]));
+
+    expect(spans[0].startsAtMinutes).toBe(at('09:00'));
+    expect(spans[2].endsAtMinutes).toBe(at('10:00'));
+    // Consecutive and non-overlapping: each one starts where the last stopped.
+    expect(spans[1].startsAtMinutes).toBe(spans[0].endsAtMinutes);
+    expect(spans[2].startsAtMinutes).toBe(spans[1].endsAtMinutes);
+  });
+
+  it('gives an untimed bundle members with no times either', () => {
+    const spans = bundleMemberSpans(
+      item({ starts_at_minutes: null, ends_at_minutes: null, members: [summary(), summary()] }),
+    );
+
+    expect(spans).toEqual([
+      { startsAtMinutes: null, endsAtMinutes: null },
+      { startsAtMinutes: null, endsAtMinutes: null },
+    ]);
+  });
+
+  it('has nothing to say about a thing with no members', () => {
+    expect(bundleMemberSpans(bundle('09:00', '12:00', []))).toEqual([]);
+  });
+
+  it('never runs a member backwards, even on a zero-length bundle', () => {
+    const spans = bundleMemberSpans(bundle('09:00', '09:00', [30, 90]));
+
+    for (const span of spans) {
+      expect(span.endsAtMinutes!).toBeGreaterThanOrEqual(span.startsAtMinutes!);
+    }
   });
 });
 

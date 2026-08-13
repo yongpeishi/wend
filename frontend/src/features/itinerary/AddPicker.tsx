@@ -1,6 +1,9 @@
 import { Button } from '../../design/components/core/Button';
 import type { EntrySummary } from '../../api/types';
-import { formatDuration, joinMeta } from '../../lib/formatDates';
+import { joinMeta } from '../../lib/formatDates';
+// The itinerary's own short duration form ("30 min", "1 hr 30"), not
+// lib/formatDates' longer one — one screen, one convention.
+import { formatDuration } from './itineraryModel';
 import styles from './AddPicker.module.css';
 
 export interface AddPickerProps {

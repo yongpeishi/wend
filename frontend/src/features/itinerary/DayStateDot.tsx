@@ -12,21 +12,29 @@ export interface DayStateDotProps {
  * the idea row — the dot is derived from fields that really exist and means
  * only what they mean:
  *
- *   more than one live version  -> "open": this is the day you are deciding.
- *                                  Apricot, which means exactly that and only
- *                                  that anywhere in Wend.
+ *   more than one live version  -> "split": more than one way to spend it,
+ *                                  none of them settled. A plum ring — plum is
+ *                                  what Wend already uses for things kept and
+ *                                  set aside, and it is what the versions tag
+ *                                  beside this dot is drawn in.
  *   one version, things on it   -> "decided": a plan you have settled on.
  *   one version, nothing on it  -> "waiting": an empty day, which is
  *                                  legitimate and never an error.
  *
- * Colour is never the only carrier: the same wording reaches assistive tech,
- * and the collapsed row spells the split out in words beside it.
+ * No state here is apricot. Apricot means exactly one thing anywhere in Wend —
+ * "this is where you are deciding now" — and on this screen that is the focus
+ * ring, which must stay the only apricot on the page for it to keep meaning
+ * anything.
+ *
+ * Colour is never the only carrier: the three dots differ in size and in shape
+ * (a ring against two fills), the same wording reaches assistive tech, and the
+ * collapsed row spells the split out in words beside it.
  */
 export function DayStateDot({ day }: DayStateDotProps) {
   if (day.versions.length > 1) {
     return (
       <span
-        className={[styles.dot, styles.open].join(' ')}
+        className={[styles.dot, styles.split].join(' ')}
         role="img"
         aria-label={`${day.versions.length} ways to spend it, not settled`}
       />

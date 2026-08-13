@@ -12,13 +12,22 @@
   background: var(--stop-decided);
 }
 
-/* The one step you are deciding: an apricot ring, never an apricot fill —
-   apricot is a ring, an outline or an underline, and never text. */
-.open {
+/* A split day: a plum ring, never a fill. Plum is the colour of things kept
+   and set aside — the versions tag beside this dot is already plum — and
+   apricot is reserved for the one thing it means anywhere in Wend, "you are
+   here, deciding now" (doc/architecture.md §5). A day being split is a fact
+   about the day, true whether or not you are looking at it, so it cannot wear
+   the colour that means focus; the focus ring on this screen is apricot and
+   must stay the only apricot on it.
+
+   The ring is also 13px against the 11px solid and the 9px pale dot, so the
+   three states differ in shape and size as well as in colour, and each one
+   carries its own words for assistive tech. */
+.split {
   width: 13px;
   height: 13px;
   background: var(--surface-card);
-  border: 3px solid var(--stop-open);
+  border: 3px solid var(--stop-destination);
 }
 
 .waiting {

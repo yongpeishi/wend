@@ -135,6 +135,64 @@ describe('UnplacedRail — getting something onto a day', () => {
     expect(screen.getByRole('button', { name: 'Add to Day 1 · Mon 12' })).toHaveFocus();
   });
 
+  // The menu is the keyboard's whole equivalent of dragging something onto a
+  // day, and a fourteen-day trip makes it a long list. Tab still walks it.
+  it('walks the days with the arrow keys, wrapping round both ends', async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(screen.getByRole('button', { name: 'Add Kinkaku-ji to a day' }));
+    const first = screen.getByRole('button', { name: 'Add to Day 1 · Mon 12' });
+    const last = screen.getByRole('button', { name: 'Add to Day 2 · Tue 13' });
+
+    await user.keyboard('{ArrowDown}');
+    expect(last).toHaveFocus();
+
+    await user.keyboard('{ArrowDown}');
+    expect(first).toHaveFocus();
+
+    await user.keyboard('{ArrowUp}');
+    expect(last).toHaveFocus();
+
+    await user.keyboard('{ArrowUp}');
+    expect(first).toHaveFocus();
+  });
+
+  it('jumps to the first and the last day with Home and End', async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(screen.getByRole('button', { name: 'Add Kinkaku-ji to a day' }));
+
+    await user.keyboard('{End}');
+    expect(screen.getByRole('button', { name: 'Add to Day 2 · Tue 13' })).toHaveFocus();
+
+    await user.keyboard('{Home}');
+    expect(screen.getByRole('button', { name: 'Add to Day 1 · Mon 12' })).toHaveFocus();
+  });
+
+  it('still places the day the arrows landed on', async () => {
+    const user = userEvent.setup();
+    const { onAddToDay } = renderRail();
+
+    await user.click(screen.getByRole('button', { name: 'Add Kinkaku-ji to a day' }));
+    await user.keyboard('{ArrowDown}{Enter}');
+
+    expect(onAddToDay).toHaveBeenCalledWith(1, '2026-10-13');
+  });
+
+  // Tab was the only way through the list before the arrows arrived, and
+  // people who learned it must not lose it.
+  it('keeps Tab walking the days as it always did', async () => {
+    const user = userEvent.setup();
+    renderRail();
+
+    await user.click(screen.getByRole('button', { name: 'Add Kinkaku-ji to a day' }));
+    await user.tab();
+
+    expect(screen.getByRole('button', { name: 'Add to Day 2 · Tue 13' })).toHaveFocus();
+  });
+
   it('closes on Escape and gives focus back to the button that opened it', async () => {
     const user = userEvent.setup();
     renderRail();
