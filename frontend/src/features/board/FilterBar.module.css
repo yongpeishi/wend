@@ -17,10 +17,20 @@
   gap: var(--space-3);
 }
 
-/* Filter, rule, grouping — one cluster. They travel together when the row
-   wraps, because the rule between them only means anything while both sides of
-   it are on the same line. */
+/* Filter, rule, grouping, and — once there is a map — the follow switch. One
+   cluster: they travel together when the row wraps, because the rule between
+   them only means anything while both sides of it are on the same line. It
+   wraps within itself too, since the switch adds a fourth control to a row
+   that was already full on a narrow desk. */
 .leftGroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* "Show map" and "+ New idea": the two controls that are not about narrowing. */
+.rightGroup {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -48,8 +58,15 @@
 
    The corners stay --radius-card while the grouping control beside it is a pill.
    That is the intended split, not an oversight: a button is a button shape, and
-   the capsule is reserved for the one control that is a set of choices. */
-.filterButton {
+   the capsule is reserved for the one control that is a set of choices.
+
+   Three controls wear this now — Filter, Show/Hide map, and Select — hence the
+   name. They are the same kind of thing: a quiet control that turns something
+   on and reports whether it is on. Giving them one class rather than three
+   near-identical ones is what keeps them from drifting apart a pixel at a time,
+   and it is why the "on" state below is spelled `toggleButtonOn` rather than
+   naming any one of them. */
+.toggleButton {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -66,24 +83,46 @@
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-.filterButton:hover {
+.toggleButton:hover {
   opacity: 0.82;
 }
 
-.filterButton:active {
+.toggleButton:active {
   opacity: 0.7;
 }
 
-.filterButton:focus-visible {
+.toggleButton:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
 
-/* Something is hidden behind this button, so its edge stops being a neutral
-   hairline and picks up the action green. Never the only signal — the badge
-   beside it and the button's accessible name both carry the same fact. */
-.filterButtonActive {
+/* 36px is the drawn height, which is above the 32px pointer floor and below the
+   48px a finger needs. Rather than a pseudo-element trick, these just grow —
+   they sit on a row that wraps anyway, so a taller control costs nothing. */
+@media (pointer: coarse) {
+  .toggleButton {
+    min-height: var(--tap-min);
+  }
+}
+
+/* This one is on: something is hidden behind Filter, the map is up, or the list
+   is in select mode. The edge stops being a neutral hairline and picks up the
+   action green. Never the only signal — Filter carries a badge and says the
+   count in its accessible name, and the other two change their own label
+   ("Show map" -> "Hide map", "Select" -> "Done selecting"), which is a signal
+   that survives having no colour vision at all. */
+.toggleButtonOn {
   border-color: var(--action-primary);
+}
+
+/* The 9px mark on the map button, from the design. Decorative — it takes the
+   button's own colour and says nothing the label does not. */
+.dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  background: currentColor;
 }
 
 /* A selected chip in miniature: the same green-on-paper as every other "this is
@@ -167,6 +206,17 @@
 .groupControl {
   flex: none;
   white-space: nowrap;
+}
+
+/* The count on the left, the select-mode toggle on the right. It wraps rather
+   than crushing the count, which is the half of this row that has to stay
+   readable. */
+.summaryRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .summary {

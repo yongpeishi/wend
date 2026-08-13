@@ -1,0 +1,110 @@
+/* The map fills whatever box the board gives it; the status pill floats over
+   its bottom-left corner, the way the zoom pair floats over the top-right.
+
+   --radius-media is re-pointed at --radius-card for this pane only. MapView's
+   own frame reads --radius-media (14px, the design bundle's value for imagery),
+   and on this screen the map sits in a row of cards and buttons that are all
+   --radius-card — a single 14px corner among them reads as a mistake, and the
+   house rule is that a card's radius IS a button's radius. Doing it as a
+   variable rather than by reaching into MapView's class keeps the override
+   scoped to the board: /library and /trips/:id/map, where the map IS the page
+   rather than one card among several, are untouched. */
+.pane {
+  --radius-media: var(--radius-card);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+/* Leaflet's own cursors: `.leaflet-grab` is grab at rest, but its dragging
+   state is `move`, which reads as "reorder this" rather than "you have hold of
+   the map". Both selectors are needed — the grab class sits on the container
+   and the interactive class on every pin, so a drag that begins on a pin
+   changes cursor too. */
+.pane :global(.leaflet-dragging .leaflet-grab),
+.pane :global(.leaflet-dragging .leaflet-grab .leaflet-interactive) {
+  cursor: grabbing;
+}
+
+/* Above Leaflet's own panes (400) and level with its controls (1000), so the
+   pill is never painted under a tile layer. Left/right rather than a width, so
+   the pill and "Widen" share the bottom edge and the attribution — which sits
+   bottom-right — keeps its corner. */
+.footer {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(100% - 28px);
+}
+
+/* Card tone on the map, drawn edge, no shadow — the same lift as every other
+   floating thing in this system.
+
+   The design sets 13px here. The readable floor is 15px (architecture.md §5)
+   and the floor wins: this sentence is the only place the screen explains why
+   the list underneath just got shorter, so it is not a caption. */
+.status {
+  margin: 0;
+  padding: 7px 13px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+/* An action, so its border is the 2px action weight and takes the action
+   colour — the design's own treatment for this button. */
+.widen {
+  flex: none;
+  padding: 6px 13px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  border: var(--border-width-strong) solid var(--action-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: 1.3;
+  font-weight: var(--weight-bold);
+  color: var(--action-primary);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.widen:hover {
+  opacity: 0.82;
+}
+
+.widen:active {
+  opacity: 0.7;
+}
+
+.widen:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* A finger needs the full target even though the drawn pill stays this size —
+   the same pseudo-element trick the zoom control uses, so nothing moves. */
+@media (pointer: coarse) {
+  .widen {
+    position: relative;
+  }
+
+  .widen::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    min-width: var(--tap-min);
+    height: var(--tap-min);
+    transform: translate(-50%, -50%);
+  }
+}

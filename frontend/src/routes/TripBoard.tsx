@@ -16,6 +16,7 @@ import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
 import { useEntries, useRestoreEntry } from '../api';
 import type { Entry } from '../api/types';
+import { BoardMapPane } from '../features/board/BoardMapPane';
 import { FilterBar } from '../features/board/FilterBar';
 import { IdeaList } from '../features/board/IdeaList';
 import { NewIdeaModal } from '../features/board/NewIdeaModal';
@@ -27,6 +28,9 @@ import { useLinkMutations } from '../features/board/useLinkMutations';
 import type { BundleDropData } from '../features/board/bundleDrop';
 import { EMPTY_FILTERS, applyFilters, groupEntries } from '../features/board/filters';
 import type { GroupMode, IdeaFilters } from '../features/board/filters';
+import { isWithinBounds } from '../features/map/bounds';
+import { entriesWithCoordinates, entryToPin } from '../features/map/pins';
+import type { Bounds, MapPin, PinTone } from '../features/map/types';
 import { EntryDetailDrawer } from './EntryDetail';
 import styles from './TripBoard.module.css';
 
@@ -46,6 +50,23 @@ import styles from './TripBoard.module.css';
  * chips narrow WHICH ideas show; the group mode only changes how the survivors
  * are arranged. Grouping by location while filtered to Food is a supported
  * combination, not an accident.
+ *
+ * The map is a THIRD axis, and it composes with the other two rather than
+ * replacing either. One pipeline, in one order, and everything on the screen
+ * reads off it:
+ *
+ *   allIdeas -> applyFilters -> visibleIdeas -> the map's viewport -> spatiallyVisible
+ *
+ * The pins are drawn from `visibleIdeas`, so a chip takes ideas off the map as
+ * well as out of the list — the two halves are always looking at the same set.
+ * The viewport cut is applied only to the LIST, and only while the reader has
+ * asked for it (`narrowing`), because a map that hid its own pins as you panned
+ * would erase the thing you were panning towards.
+ *
+ * Ideas with no coordinates are never cut by the viewport. They cannot be
+ * anywhere, so they cannot be somewhere else — dropping them would mean a trip's
+ * unplaced ideas silently vanished the moment the map came up, which is the one
+ * outcome this screen must not produce.
  */
 export function TripBoard() {
   const { trip } = useOutletContext<{ trip: Entry }>();
@@ -63,6 +84,21 @@ export function TripBoard() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
+
+  // The map starts closed: the board is a list first, and a reader who came to
+  // read it should not have to dismiss half the screen.
+  const [mapOpen, setMapOpen] = useState(false);
+  // ...but once it IS open, it starts bound to the list, because a map that
+  // narrows nothing looks broken until you find the switch that explains it.
+  const [followMap, setFollowMap] = useState(true);
+  const [mapBounds, setMapBounds] = useState<Bounds | null>(null);
+  // A nonce, not a boolean: "widen" is something that HAPPENED, and the same
+  // thing can happen twice. See MapView's `fitRequest`.
+  const [fitRequest, setFitRequest] = useState(0);
+  // Picking several ideas is a mode now, not a permanent column of checkboxes.
+  const [selectMode, setSelectMode] = useState(false);
+  // The pin the reader last pointed at, held here only to draw it as "this one".
+  const [pinnedId, setPinnedId] = useState<number | null>(null);
 
   const restoreEntry = useRestoreEntry();
   const { addLink } = useLinkMutations();
@@ -87,11 +123,78 @@ export function TripBoard() {
 
   const visibleIdeas = useMemo(() => applyFilters(allIdeas, filters), [allIdeas, filters]);
 
+  // All three have to be true before the viewport touches the list: no map, no
+  // cut; follow switched off, no cut; and no bounds reported yet, nothing to cut
+  // against. The last one matters on the very first frame after the map opens.
+  const narrowing = mapOpen && followMap && mapBounds !== null;
+
+  const spatiallyVisible = useMemo(() => {
+    if (!narrowing || !mapBounds) return visibleIdeas;
+    return visibleIdeas.filter(
+      (entry) =>
+        entry.lat === null ||
+        entry.lng === null ||
+        isWithinBounds({ id: entry.id, lat: entry.lat, lng: entry.lng }, mapBounds),
+    );
+  }, [visibleIdeas, narrowing, mapBounds]);
+
+  // What the MAP thinks is off-screen, which is not the same question as what
+  // the LIST is currently hiding. This one ignores the follow switch on purpose:
+  // it is what the pill on the map reports and what decides whether "Widen" is
+  // worth offering, and both of those are true whether or not the list is
+  // listening. `offCount` below is the list's version, and is zero unless the
+  // list is actually being cut.
+  const offViewCount = useMemo(() => {
+    if (!mapOpen || !mapBounds) return 0;
+    return visibleIdeas.filter(
+      (entry) =>
+        entry.lat !== null &&
+        entry.lng !== null &&
+        !isWithinBounds({ id: entry.id, lat: entry.lat, lng: entry.lng }, mapBounds),
+    ).length;
+  }, [visibleIdeas, mapOpen, mapBounds]);
+
+  const offCount = visibleIdeas.length - spatiallyVisible.length;
+
+  // Every idea that is already in a bundle, flattened once rather than searched
+  // per pin — otherwise toning N pins costs N × bundles lookups on every pan.
+  const bundledIds = useMemo(
+    () => new Set([...members.values()].flatMap((list) => list.map((entry) => entry.id))),
+    [members],
+  );
+
+  // Pins come off the FILTERED list, never the viewport-cut one: panning must
+  // not delete the pins you are panning towards. Tone is decided here because
+  // this is the only place that holds both the viewport and the bundle
+  // membership — see MapPin.tone. Bundled beats in-view beats off-view: "this
+  // one is already spoken for" is the more useful thing to know about a place
+  // than "it is on screen", which the reader can see for themselves.
+  //
+  // "Off view" is measured against `narrowing`, not against the bounds alone,
+  // because the tone means "not in the list you can see" — and with the follow
+  // switch off, everything IS in that list however far the map has been dragged.
+  const pins = useMemo<MapPin[]>(
+    () =>
+      entriesWithCoordinates(visibleIdeas).map((entry) => {
+        const located = entry as Entry & { lat: number; lng: number };
+        const tone: PinTone = bundledIds.has(entry.id)
+          ? 'bundled'
+          : narrowing && mapBounds && !isWithinBounds({ id: entry.id, lat: located.lat, lng: located.lng }, mapBounds)
+            ? 'offView'
+            : 'inView';
+        return { ...entryToPin(located), tone };
+      }),
+    [visibleIdeas, bundledIds, narrowing, mapBounds],
+  );
+
   // Shift-select ranges follow the order the list actually renders in, so the
-  // range a user sees between two clicks is the range they get.
+  // range a user sees between two clicks is the range they get — which means
+  // reading it off the SPATIALLY visible list, not the filtered one. Otherwise
+  // a shift-range across two rows on screen would quietly pick up everything the
+  // map had cut from between them.
   const orderedVisibleIds = useMemo(
-    () => groupEntries(visibleIdeas, groupMode).flatMap((group) => group.entries.map((e) => e.id)),
-    [visibleIdeas, groupMode],
+    () => groupEntries(spatiallyVisible, groupMode).flatMap((group) => group.entries.map((e) => e.id)),
+    [spatiallyVisible, groupMode],
   );
 
   const sensors = useSensors(
@@ -113,6 +216,52 @@ export function TripBoard() {
       lastSelectedId.current = id;
       return prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
     });
+  }
+
+  /**
+   * Closing the map forgets where it was looking, in both senses: the list stops
+   * being cut (there is no viewport any more, so `mapBounds` would be a stale
+   * fact about a map nobody can see), and the map itself unmounts rather than
+   * being hidden. Unmounting is not an optimisation — Leaflet caches its
+   * container size and paints grey where it thinks there is no map, so one
+   * revealed at zero height comes back as a grid of blank tiles. It also buys
+   * "showing the map again starts fresh" for free, which is the behaviour a
+   * reader expects from a pane they just dismissed.
+   */
+  function toggleMap() {
+    const next = !mapOpen;
+    setMapOpen(next);
+    if (!next) setMapBounds(null);
+  }
+
+  /** Leaving select mode drops the picks with it — an invisible selection is a trap. */
+  function setSelecting(selecting: boolean) {
+    setSelectMode(selecting);
+    if (!selecting) setSelectedIds([]);
+  }
+
+  /**
+   * A pin click surfaces its idea. In select mode that means ticking its row —
+   * the design's "clicking a pin ticks its row", and the reason you can build a
+   * bundle from either side of the screen. Out of select mode there is nothing
+   * to tick, so it just marks the pin as the one you mean, the same way hovering
+   * a row does on /library.
+   */
+  function handleSelectPin(id: number) {
+    setPinnedId(id);
+    if (selectMode) onToggleSelect(id, false);
+  }
+
+  /**
+   * Opening a cluster reads as "these ones" — so it picks them, and turns select
+   * mode ON to do it. Picking without the mode would leave the rows looking
+   * exactly as they did while a bulk bar appeared underneath them, which is a
+   * selection you cannot see and therefore cannot correct.
+   */
+  function handleSelectCluster(ids: number[]) {
+    setSelectMode(true);
+    setSelectedIds((prev) => Array.from(new Set([...prev, ...ids])));
+    show(ids.length === 1 ? 'Selected 1 idea near here.' : `Selected ${ids.length} ideas near here.`, 'success');
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -161,38 +310,86 @@ export function TripBoard() {
             groupMode={groupMode}
             onGroupModeChange={setGroupMode}
             onNewIdea={openNewIdea}
-            visibleCount={visibleIdeas.length}
+            visibleCount={spatiallyVisible.length}
             totalCount={allIdeas.length}
+            mapOpen={mapOpen}
+            onToggleMap={toggleMap}
+            followMap={followMap}
+            onFollowMapChange={setFollowMap}
+            selectMode={selectMode}
+            onSelectModeChange={setSelecting}
+            mapNarrowing={narrowing}
+            mapOffCount={offCount}
           />
 
-          <BulkBar
-            selectedIds={selectedIds}
-            bundles={bundles}
-            onClear={() => setSelectedIds([])}
-            onToast={(message) => show(message, 'success')}
-          />
+          {/* Map and list share one wrapping row: the map is on the left, where
+              the design puts it, and the list keeps the wider basis because it
+              is the thing being read. Nothing here is a breakpoint — see the
+              stylesheet. */}
+          <div className={styles.body}>
+            {/* Rendered only while open, never merely hidden. See toggleMap. */}
+            {mapOpen && (
+              <div className={styles.mapCell}>
+                <BoardMapPane
+                  pins={pins}
+                  selectedId={pinnedId}
+                  onSelectPin={handleSelectPin}
+                  onSelectCluster={handleSelectCluster}
+                  onBoundsChange={setMapBounds}
+                  fitRequest={fitRequest}
+                  following={followMap}
+                  offCount={offViewCount}
+                  onWiden={() => setFitRequest((n) => n + 1)}
+                />
+              </div>
+            )}
 
-          {ideasQuery.isLoading ? (
-            <Spinner label="Finding your ideas" />
-          ) : allIdeas.length === 0 ? (
-            <EmptyState message="This one's still a daydream. Add the first thing you'd like to do." />
-          ) : (
-            <IdeaList
-              entries={visibleIdeas}
-              groupMode={groupMode}
-              bundles={bundles}
-              members={members}
-              selectedIds={selectedIds}
-              onToggleSelect={onToggleSelect}
-              onEdit={setEditingId}
-              onToast={(message) => show(message, 'success')}
-            />
-          )}
+            <div className={styles.listCell}>
+              <BulkBar
+                selectedIds={selectedIds}
+                bundles={bundles}
+                members={members}
+                tripId={trip.id}
+                onClear={() => setSelectedIds([])}
+                onExitSelectMode={() => setSelecting(false)}
+                onToast={(message) => show(message, 'success')}
+              />
 
-          <SetAsideSection
-            entries={archivedIdeas}
-            onRestore={(id) => restoreEntry.mutate(id, { onSuccess: () => show('Picked back up.', 'success') })}
-          />
+              {ideasQuery.isLoading ? (
+                <Spinner label="Finding your ideas" />
+              ) : allIdeas.length === 0 ? (
+                <EmptyState message="This one's still a daydream. Add the first thing you'd like to do." />
+              ) : spatiallyVisible.length === 0 ? (
+                // Missing from the design, and the state a map makes easy to
+                // reach: pan somewhere empty and the list is legitimately
+                // nothing. An empty column with a count line above it reads as a
+                // failure to load, so the list says which narrowing did it and
+                // where the way back is.
+                <p className={styles.noneInView}>
+                  {narrowing
+                    ? 'Nothing kept is in this part of the map. Pan somewhere else, or widen the view.'
+                    : 'Nothing matches those filters. Nothing is gone — widen them and it comes back.'}
+                </p>
+              ) : (
+                <IdeaList
+                  entries={spatiallyVisible}
+                  groupMode={groupMode}
+                  bundles={bundles}
+                  members={members}
+                  selectMode={selectMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={onToggleSelect}
+                  onEdit={setEditingId}
+                  onToast={(message) => show(message, 'success')}
+                />
+              )}
+
+              <SetAsideSection
+                entries={archivedIdeas}
+                onRestore={(id) => restoreEntry.mutate(id, { onSuccess: () => show('Picked back up.', 'success') })}
+              />
+            </div>
+          </div>
         </section>
 
         <BundlePanel

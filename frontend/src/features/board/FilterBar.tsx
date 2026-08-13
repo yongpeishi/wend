@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Chip } from '../../design/components/core/Chip';
 import { Button } from '../../design/components/core/Button';
+import { Switch } from '../../design/components/core/Switch';
 import { TabBar } from '../../components/TabBar';
 import { MIDDOT } from '../../lib/formatDates';
 import { CATEGORY_LABELS, CATEGORY_ORDER, EMPTY_FILTERS, GROUP_MODES, isNarrowed, toggleCategory } from './filters';
@@ -10,12 +11,39 @@ import styles from './FilterBar.module.css';
 export interface FilterBarProps {
   filters: IdeaFilters;
   onChange: (filters: IdeaFilters) => void;
+  /** How many ideas the list is actually showing right now — after the filters AND after the map's viewport. */
   visibleCount: number;
   totalCount: number;
   groupMode: GroupMode;
   onGroupModeChange: (mode: GroupMode) => void;
   /** Omit to leave the "+ New idea" button out and render the controls alone. */
   onNewIdea?: () => void;
+  /**
+   * The map/list controls. Every one of them is optional, and each is drawn only
+   * when its handler is wired: a caller with no map (or no notion of picking
+   * several ideas) gets exactly the bar it had before, rather than a row of
+   * controls that do nothing.
+   */
+  mapOpen?: boolean;
+  onToggleMap?: () => void;
+  followMap?: boolean;
+  onFollowMapChange?: (following: boolean) => void;
+  selectMode?: boolean;
+  onSelectModeChange?: (selecting: boolean) => void;
+  /**
+   * The map's viewport is currently narrowing the list, so the count line
+   * switches to the in-view phrasing. Separate from `mapOffCount > 0` because
+   * "following the map, and everything happens to be in it" is a real state and
+   * still deserves the in-view words.
+   */
+  mapNarrowing?: boolean;
+  /**
+   * How many otherwise-visible ideas the viewport is cutting away. The filtered
+   * total is `visibleCount + mapOffCount` rather than a prop of its own: the
+   * viewport cut is the only thing standing between the two numbers, so a third
+   * count would be a fact this bar could be told twice and get wrong once.
+   */
+  mapOffCount?: number;
 }
 
 /**
@@ -82,6 +110,19 @@ function activeFilterCount(filters: IdeaFilters): number {
  * Text search was removed here (it lives on the library screen) but the escape
  * hatch stays wired exactly the same: categories, "has location" and
  * scheduled/potential still narrow, and "See all" clears whatever is set.
+ *
+ * The map controls join the same row rather than starting a strip of their own,
+ * because they do the same job the chips do: they decide which ideas are on
+ * screen. "Show map" is on the right with "+ New idea" — it changes the shape of
+ * the screen, which is a different kind of act from narrowing a list — and
+ * "Follow the map" sits with the narrowing controls on the left, behind its own
+ * rule, appearing only once there is a map for it to follow. A switch that
+ * governs something not on screen is a control with nothing to say.
+ *
+ * There is exactly ONE count line. The map's viewport is a third narrowing on
+ * top of the chips and the grouping, and the honest place to report it is the
+ * line that already answers "how much of this am I looking at" — a second line
+ * under it would make the reader add two numbers together to find out.
  */
 export function FilterBar({
   filters,
@@ -91,6 +132,14 @@ export function FilterBar({
   groupMode,
   onGroupModeChange,
   onNewIdea,
+  mapOpen = false,
+  onToggleMap,
+  followMap = true,
+  onFollowMapChange,
+  selectMode = false,
+  onSelectModeChange,
+  mapNarrowing = false,
+  mapOffCount = 0,
 }: FilterBarProps) {
   const narrowed = isNarrowed(filters);
   const activeCount = activeFilterCount(filters);
@@ -140,7 +189,7 @@ export function FilterBar({
             <button
               type="button"
               ref={triggerRef}
-              className={narrowed ? `${styles.filterButton} ${styles.filterButtonActive}` : styles.filterButton}
+              className={narrowed ? `${styles.toggleButton} ${styles.toggleButtonOn}` : styles.toggleButton}
               aria-haspopup="true"
               aria-expanded={open}
               // The badge is the fast visual answer, but it is a small number in
@@ -264,29 +313,87 @@ export function FilterBar({
               onChange={(key) => onGroupModeChange(key as GroupMode)}
             />
           </div>
+
+          {/* Only while there is a map. Off-screen the setting would still be
+              true, but it would govern nothing, and a live-looking switch that
+              changes nothing is worse than no switch at all. */}
+          {mapOpen && onFollowMapChange && (
+            <>
+              <span className={styles.divider} aria-hidden="true" />
+              <Switch checked={followMap} onCheckedChange={onFollowMapChange}>
+                Follow the map
+              </Switch>
+            </>
+          )}
         </div>
 
-        {/* The one forward action of this screen, at the end of the row that
-            controls the list it adds to. It used to sit beside the count line
-            below, which put the primary button on the quietest line of the bar. */}
-        {onNewIdea && (
-          <Button variant="primary" size="small" onClick={onNewIdea}>
-            + New idea
-          </Button>
-        )}
+        <div className={styles.rightGroup}>
+          {/* Same box as the Filter button beside it — this opens a pane rather
+              than doing anything to the data, so it takes the quiet outlined
+              shape rather than a Button variant. The dot is decoration: the
+              label already says which way the toggle will go, so nothing here
+              rests on colour. */}
+          {onToggleMap && (
+            <button
+              type="button"
+              className={mapOpen ? `${styles.toggleButton} ${styles.toggleButtonOn}` : styles.toggleButton}
+              onClick={onToggleMap}
+            >
+              <span className={styles.dot} aria-hidden="true" />
+              {mapOpen ? 'Hide map' : 'Show map'}
+            </button>
+          )}
+
+          {/* The one forward action of this screen, at the end of the row that
+              controls the list it adds to. It used to sit beside the count line
+              below, which put the primary button on the quietest line of the bar. */}
+          {onNewIdea && (
+            <Button variant="primary" size="small" onClick={onNewIdea}>
+              + New idea
+            </Button>
+          )}
+        </div>
       </div>
 
-      <p className={styles.summary}>
-        Showing {visibleCount} of {totalCount}
-        {narrowed && (
-          <>
-            {MIDDOT}
-            <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_FILTERS)}>
-              See all
-            </button>
-          </>
+      {/* One line, two ends: what you are looking at, and the mode you are
+          looking at it in. "Select" belongs here rather than up on the control
+          row because it acts on the rows below it, not on which rows there are. */}
+      <div className={styles.summaryRow}>
+        <p className={styles.summary}>
+          {mapNarrowing ? (
+            <>
+              {visibleCount} of {visibleCount + mapOffCount} ideas in view
+              {mapOffCount > 0 && `${MIDDOT}${mapOffCount} just off-screen`}
+            </>
+          ) : (
+            <>
+              Showing {visibleCount} of {totalCount}
+            </>
+          )}
+          {narrowed && (
+            <>
+              {MIDDOT}
+              <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_FILTERS)}>
+                See all
+              </button>
+            </>
+          )}
+        </p>
+
+        {/* No aria-pressed on the button below: the label itself is the state,
+            exactly as on the map button beside it. A control that says "Done
+            selecting" AND reports itself as pressed announces the same fact
+            twice, and the second telling is the one that reads backwards. */}
+        {onSelectModeChange && (
+          <button
+            type="button"
+            className={selectMode ? `${styles.toggleButton} ${styles.toggleButtonOn}` : styles.toggleButton}
+            onClick={() => onSelectModeChange(!selectMode)}
+          >
+            {selectMode ? 'Done selecting' : 'Select'}
+          </button>
         )}
-      </p>
+      </div>
     </div>
   );
 }
