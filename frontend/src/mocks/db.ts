@@ -3,14 +3,17 @@
 // the Rails API. Not meant to be a faithful reimplementation of every rule
 // (e.g. cycle detection on links is not enforced here).
 import type {
+  DayVersion,
   Entry,
   EntryDetailResponse,
   EntryLink,
   EntryNote,
   EntrySummary,
   Feedback,
+  ItineraryItem,
   ScheduleItem,
   Todo,
+  TripDay,
   User,
   Vote,
   VoteTally,
@@ -45,6 +48,28 @@ interface StoredEntry {
   updated_at: string;
 }
 
+/** The `trip_days` row — see CONTRACT §1. `lodging_title` is derived, not stored. */
+export interface StoredTripDay {
+  id: number;
+  trip_id: number;
+  day: string;
+  lodging_entry_id: number | null;
+  lodging_label: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** The `day_versions` row. `archived_at` set = kept aside, not chosen. */
+export interface StoredDayVersion {
+  id: number;
+  trip_day_id: number;
+  name: string;
+  position: number;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 let nextId = 1000;
 export function allocateId(): number {
   return nextId++;
@@ -57,6 +82,8 @@ export const db = {
   votes: [] as Vote[],
   todos: [] as Todo[],
   scheduleItems: [] as ScheduleItem[],
+  tripDays: [] as StoredTripDay[],
+  dayVersions: [] as StoredDayVersion[],
   feedbacks: [] as Feedback[],
   currentUserId: null as number | null,
 };
@@ -174,6 +201,154 @@ export function toEntryDetail(entry: StoredEntry, currentUserId: number | null):
   };
 }
 
+// ---- Itinerary ------------------------------------------------------------
+// trip_days -> day_versions -> schedule_items. The rules here mirror
+// CONTRACT §1 "Model rules" and §2 "API surface" closely enough that the UI
+// can be driven against them: never hard-delete a version, a day always keeps
+// at least one live version, and version letters run A -> B -> C.
+
+/** "Version A" … "Version Z", then "Version AA" — index 0 is A. */
+export function versionName(index: number): string {
+  let n = index;
+  let letters = '';
+  do {
+    letters = String.fromCharCode(65 + (n % 26)) + letters;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return `Version ${letters}`;
+}
+
+export function findTripDay(tripId: number, day: string): StoredTripDay | undefined {
+  return db.tripDays.find((d) => d.trip_id === tripId && d.day === day);
+}
+
+export function findDayVersion(id: number): StoredDayVersion | undefined {
+  return db.dayVersions.find((v) => v.id === id);
+}
+
+export function versionsOf(tripDayId: number): StoredDayVersion[] {
+  return db.dayVersions.filter((v) => v.trip_day_id === tripDayId);
+}
+
+export function liveVersionsOf(tripDayId: number): StoredDayVersion[] {
+  return versionsOf(tripDayId)
+    .filter((v) => !v.archived_at)
+    .sort((a, b) => a.position - b.position || a.id - b.id);
+}
+
+export function archivedVersionsOf(tripDayId: number): StoredDayVersion[] {
+  return versionsOf(tripDayId)
+    .filter((v) => v.archived_at)
+    .sort((a, b) => (b.archived_at ?? '').localeCompare(a.archived_at ?? '') || b.id - a.id);
+}
+
+/** Fork naming: the next letter by count of every version the day has ever had. */
+export function nextForkName(tripDayId: number): string {
+  return versionName(versionsOf(tripDayId).length);
+}
+
+/** Restore naming: the first letter no *live* version is using. */
+export function nextFreeName(tripDayId: number): string {
+  const taken = new Set(liveVersionsOf(tripDayId).map((v) => v.name));
+  for (let i = 0; ; i += 1) {
+    const name = versionName(i);
+    if (!taken.has(name)) return name;
+  }
+}
+
+export function addDayVersion(tripDayId: number, name: string, position: number, id = allocateId()): StoredDayVersion {
+  const version: StoredDayVersion = {
+    id,
+    trip_day_id: tripDayId,
+    name,
+    position,
+    archived_at: null,
+    created_at: now(),
+    updated_at: now(),
+  };
+  db.dayVersions.push(version);
+  return version;
+}
+
+/** The day's row, created with a "Version A" if this date had none — §2's auto-create. */
+export function ensureTripDay(tripId: number, day: string): StoredTripDay {
+  const existing = findTripDay(tripId, day);
+  if (existing) {
+    if (liveVersionsOf(existing.id).length === 0) addDayVersion(existing.id, nextFreeName(existing.id), 0);
+    return existing;
+  }
+  const tripDay: StoredTripDay = {
+    id: allocateId(),
+    trip_id: tripId,
+    day,
+    lodging_entry_id: null,
+    lodging_label: null,
+    created_at: now(),
+    updated_at: now(),
+  };
+  db.tripDays.push(tripDay);
+  addDayVersion(tripDay.id, versionName(0), 0);
+  return tripDay;
+}
+
+/** Where a schedule item lands when the caller names no version — §2's fallback. */
+export function firstLiveVersionId(tripId: number, day: string): number {
+  const tripDay = ensureTripDay(tripId, day);
+  return liveVersionsOf(tripDay.id)[0]?.id ?? addDayVersion(tripDay.id, nextFreeName(tripDay.id), 0).id;
+}
+
+/** Null times sort last, so an untimed item never jumps to the top of a day. */
+function startRank(minutes: number | null): number {
+  return minutes === null ? Number.MAX_SAFE_INTEGER : minutes;
+}
+
+export function itemsOfVersion(versionId: number): ScheduleItem[] {
+  return db.scheduleItems
+    .filter((s) => s.day_version_id === versionId)
+    .sort((a, b) => startRank(a.starts_at_minutes) - startRank(b.starts_at_minutes) || a.position - b.position);
+}
+
+export function toItineraryItem(item: ScheduleItem): ItineraryItem {
+  const entry = item.entry_id !== null ? findEntry(item.entry_id) : undefined;
+  return {
+    ...item,
+    entry: entry ? toEntrySummary(entry) : null,
+    members:
+      entry?.kind === 'bundle'
+        ? childIdsOf(entry.id)
+            .map((id) => findEntry(id))
+            .filter((e): e is StoredEntry => Boolean(e))
+            .map(toEntrySummary)
+        : [],
+  };
+}
+
+export function toDayVersion(version: StoredDayVersion): DayVersion {
+  return {
+    id: version.id,
+    trip_day_id: version.trip_day_id,
+    name: version.name,
+    position: version.position,
+    archived_at: version.archived_at,
+    schedule_items: itemsOfVersion(version.id).map(toItineraryItem),
+  };
+}
+
+export function toTripDay(tripDay: StoredTripDay): TripDay {
+  const lodgingEntry = tripDay.lodging_entry_id !== null ? findEntry(tripDay.lodging_entry_id) : undefined;
+  return {
+    id: tripDay.id,
+    trip_id: tripDay.trip_id,
+    day: tripDay.day,
+    lodging_entry_id: tripDay.lodging_entry_id,
+    lodging_label: tripDay.lodging_label,
+    // The entry's title wins when there is one; free text is the fallback.
+    lodging_title: lodgingEntry?.title ?? tripDay.lodging_label ?? null,
+    versions: liveVersionsOf(tripDay.id).map(toDayVersion),
+    archived_versions: archivedVersionsOf(tripDay.id).map(toDayVersion),
+  };
+}
+
 function addLink(parentId: number, childId: number, position: number) {
   db.links.push({ id: allocateId(), parent_id: parentId, child_id: childId, position, created_at: now(), updated_at: now() });
 }
@@ -181,6 +356,10 @@ function addLink(parentId: number, childId: number, position: number) {
 export function seed() {
   db.users = [{ id: 1, name: 'Demo Traveler', email: 'demo@wend.app', password: 'password' }];
   db.currentUserId = null;
+  // Links are rebuilt from scratch below. Without this the seeded links were
+  // appended again on every resetDb(), so children_count crept up between
+  // tests and one test's links leaked into the next.
+  db.links = [];
 
   const trip: StoredEntry = {
     id: 1,
@@ -244,16 +423,64 @@ export function seed() {
     duration_minutes: 90,
   };
 
-  const dinnerBundle: StoredEntry = {
+  const marketBundle: StoredEntry = {
     ...trip,
     id: 4,
     kind: 'bundle',
-    title: 'Day one dinner options',
+    title: 'Nishiki market crawl',
     description: null,
     category: null,
     pros: [],
     cons: [],
   };
+
+  /** Ideas hang under a bundle, never straight off the trip: the trip's three
+   * direct children are its shape on the trips list, and the itinerary's extra
+   * material is grouped material. Deliberately no lat/lng — the map counts
+   * located ideas, and these are things to do, not places to pin. */
+  const idea = (
+    id: number,
+    title: string,
+    category: Entry['category'],
+    durationMinutes: number,
+    locationName: string,
+  ): StoredEntry => ({
+    ...trip,
+    id,
+    kind: 'idea',
+    title,
+    description: null,
+    pros: [],
+    cons: [],
+    category,
+    starts_on: null,
+    ends_on: null,
+    location_name: locationName,
+    address: null,
+    lat: null,
+    lng: null,
+    duration_minutes: durationMinutes,
+  });
+
+  // 30 + 60 + 30 = the bundle's two-hour span exactly, so ungroup divides it
+  // into whole, obviously-proportional slots.
+  const coffee = idea(6, 'Coffee at Weekenders', 'food', 30, 'Weekenders Coffee');
+  const nishiki = idea(7, 'Nishiki market', 'food', 60, 'Nishiki-koji');
+  const teramachi = idea(8, 'Teramachi arcade', 'activity', 30, 'Teramachi');
+
+  const nightBundle: StoredEntry = {
+    ...trip,
+    id: 9,
+    kind: 'bundle',
+    title: 'A night out in Pontocho',
+    description: null,
+    category: null,
+    pros: [],
+    cons: [],
+  };
+
+  const kamogawa = idea(10, 'Kamo river walk', 'activity', 45, 'Kamogawa');
+  const yakitori = idea(11, 'Yakitori under the tracks', 'food', 45, 'Kiyamachi-dori');
 
   const library1: StoredEntry = {
     ...trip,
@@ -270,11 +497,20 @@ export function seed() {
     source_url: 'https://example.com/fushimi-inari',
   };
 
-  db.entries = [trip, nanzenji, kiyamachi, dinnerBundle, library1];
+  db.entries = [trip, nanzenji, kiyamachi, marketBundle, library1, coffee, nishiki, teramachi, nightBundle, kamogawa, yakitori];
 
   addLink(trip.id, nanzenji.id, 0);
-  addLink(trip.id, kiyamachi.id, 1);
-  addLink(trip.id, dinnerBundle.id, 2);
+  addLink(trip.id, marketBundle.id, 1);
+  addLink(trip.id, nightBundle.id, 2);
+
+  addLink(marketBundle.id, coffee.id, 0);
+  addLink(marketBundle.id, nishiki.id, 1);
+  addLink(marketBundle.id, teramachi.id, 2);
+
+  // 90 + 45 + 45 = the night bundle's three-hour span.
+  addLink(nightBundle.id, kiyamachi.id, 0);
+  addLink(nightBundle.id, kamogawa.id, 1);
+  addLink(nightBundle.id, yakitori.id, 2);
 
   db.votes = [
     { id: allocateId(), entry_id: nanzenji.id, user_id: 1, user_name: 'Priya', score: 2 },
@@ -292,19 +528,72 @@ export function seed() {
   // Starts empty: feedback is something the user produces, never seed content.
   db.feedbacks = [];
 
+  // ---- Itinerary ---------------------------------------------------------
+  // Three of the trip's seven dates carry a row; the rest are untouched days,
+  // which is what the screen looks like mid-planning. Between them they cover
+  // every shape the UI has to draw: a bundle and a loose idea with a real gap
+  // between them, two live versions side by side, an archived version, a day
+  // with lodging and a day without. Kiyamachi, Nishiki market and the coffee
+  // are in no live version, so the unplaced rail has three things in it.
+  // Fixed ids (days 1-3, versions 1-5) so a dev poking at /api/day_versions/2
+  // gets the same version every reload; everything minted later uses allocateId().
+  const day1 = { id: 1, trip_id: trip.id, day: '2026-11-02', lodging_entry_id: null, lodging_label: 'Machiya near Gion', created_at: now(), updated_at: now() };
+  const day2 = { id: 2, trip_id: trip.id, day: '2026-11-03', lodging_entry_id: null, lodging_label: null, created_at: now(), updated_at: now() };
+  const day3 = { id: 3, trip_id: trip.id, day: '2026-11-04', lodging_entry_id: null, lodging_label: 'Sleeping on the night train', created_at: now(), updated_at: now() };
+  db.tripDays = [day1, day2, day3];
+
+  const version = (id: number, tripDayId: number, name: string, position: number, archivedAt: string | null = null) => ({
+    id,
+    trip_day_id: tripDayId,
+    name,
+    position,
+    archived_at: archivedAt,
+    created_at: now(),
+    updated_at: now(),
+  });
+
+  db.dayVersions = [
+    version(1, day1.id, 'Version A', 0),
+    // The undecided day: two ways to spend it, neither settled.
+    version(2, day2.id, 'Version A', 0),
+    version(3, day2.id, 'Version B', 1),
+    version(4, day3.id, 'Version A', 0),
+    // Kept aside rather than deleted — the archived panel's content.
+    version(5, day3.id, 'Version B', 1, '2026-10-20T09:00:00.000Z'),
+  ];
+
+  const item = (
+    versionId: number,
+    day: string,
+    entryId: number,
+    startsAtMinutes: number,
+    endsAtMinutes: number,
+    position: number,
+  ): ScheduleItem => ({
+    id: allocateId(),
+    trip_id: trip.id,
+    entry_id: entryId,
+    chosen_entry_id: null,
+    day,
+    day_version_id: versionId,
+    starts_at_minutes: startsAtMinutes,
+    ends_at_minutes: endsAtMinutes,
+    note: null,
+    position,
+  });
+
   db.scheduleItems = [
-    {
-      id: allocateId(),
-      trip_id: trip.id,
-      entry_id: nanzenji.id,
-      chosen_entry_id: null,
-      day: '2026-11-02',
-      day_version_id: null,
-      starts_at_minutes: 9 * 60,
-      ends_at_minutes: 9 * 60 + 40,
-      note: null,
-      position: 0,
-    },
+    // 09:40 -> 11:00 is a real hole between two timed things: the gap row.
+    item(1, day1.day, nanzenji.id, 9 * 60, 9 * 60 + 40, 0),
+    item(1, day1.day, marketBundle.id, 11 * 60, 13 * 60, 1),
+
+    item(2, day2.day, nanzenji.id, 9 * 60, 9 * 60 + 40, 0),
+    item(2, day2.day, teramachi.id, 11 * 60, 11 * 60 + 30, 1),
+    item(3, day2.day, kamogawa.id, 10 * 60, 10 * 60 + 45, 0),
+    item(3, day2.day, yakitori.id, 12 * 60 + 30, 13 * 60 + 15, 1),
+
+    item(4, day3.day, nightBundle.id, 18 * 60, 21 * 60, 0),
+    item(5, day3.day, coffee.id, 9 * 60, 9 * 60 + 30, 0),
   ];
 }
 
