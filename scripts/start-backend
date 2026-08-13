@@ -9,5 +9,17 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
 
 require_backend
 
+# A server pointed at a database that was never prepared does not fail loudly --
+# sqlite creates an empty file and every request 500s on a pending migration, so
+# make sure the database exists, is migrated, and has been seeded before we boot.
+# No-op once it is (see backend/lib/tasks/dev.rake). Skipped for any environment
+# but development, where the database is not ours to touch.
+prepare_db=true
+[ "${RAILS_ENV:-development}" = "development" ] || prepare_db=false
+case " $* " in
+  *" -e "*|*" --environment "*|*" --environment="*) prepare_db=false ;;
+esac
+[ "$prepare_db" = false ] || rails_cmd dev:prepare
+
 info "Rails API on http://localhost:$BACKEND_PORT"
 rails_cmd server --port "$BACKEND_PORT" --binding 0.0.0.0 "$@"

@@ -5,7 +5,7 @@ One script per thing you'd run. They all work from any directory — no `cd` fir
 | Command | What it does |
 | --- | --- |
 | `scripts/setup` | `bundle install`, prepare the DB, `npm install`. Run this first. |
-| `scripts/start-backend` | Rails API on http://localhost:3000 |
+| `scripts/start-backend` | Rails API on http://localhost:3000, preparing the DB if it needs it |
 | `scripts/start-frontend` | Vite on http://localhost:5173 |
 | `scripts/start-dev` | Both, with prefixed logs. Ctrl-C stops both. |
 | `scripts/db-reset` | Drop → create → migrate → seed. Prompts before destroying data. |
@@ -24,6 +24,15 @@ Seeded logins after a reset: `peter@example.com` / `sarah@example.com`, password
 
 `start-frontend` runs standalone — Mock Service Worker answers `/api` with fixtures when
 no backend is up, and `/design` renders every component in every state.
+
+`start-backend` runs `bin/rails dev:prepare` first, so `start-dev` works in a checkout
+where nobody has run `setup` yet. That task creates, migrates and — only when the
+database has no users, meaning the seeds have never run here — seeds. It matters because
+sqlite does not fail on a missing database file; it creates an empty one, and the
+pending-migration error that follows tells you to run `db:migrate`, which builds the
+schema without ever seeding. `db:prepare` then considers the database initialized and
+will never seed it, so the app comes up with no account to sign in as. `dev:prepare` is a
+no-op once the database is usable, and skips any environment but development.
 
 `db-reset` replays migrations rather than loading `schema.rb`, so a migration you just
 wrote is picked up without dumping the schema first. It refuses to run with
