@@ -135,8 +135,12 @@ export function voteTallyFor(entryId: number): VoteTally {
   };
 }
 
+/** Mirrors the server's `ScheduleItem.placed`: an entry is scheduled once a
+ * LIVE version holds it. A placement left behind in an archived version is a
+ * plan the user rejected, so the entry is free again — the same answer the
+ * itinerary screen computes for its unplaced rail. */
 export function isScheduled(entryId: number): boolean {
-  return db.scheduleItems.some((s) => s.entry_id === entryId || s.chosen_entry_id === entryId);
+  return db.scheduleItems.some((s) => (s.entry_id === entryId || s.chosen_entry_id === entryId) && isPlaced(s));
 }
 
 export function toEntrySummary(entry: StoredEntry): EntrySummary {
@@ -295,6 +299,29 @@ export function ensureTripDay(tripId: number, day: string): StoredTripDay {
 export function firstLiveVersionId(tripId: number, day: string): number {
   const tripDay = ensureTripDay(tripId, day);
   return liveVersionsOf(tripDay.id)[0]?.id ?? addDayVersion(tripDay.id, nextFreeName(tripDay.id), 0).id;
+}
+
+// Two questions get asked of schedule_items, and answering both with "every
+// item on the day" is the bug these mirror the server to stop. Neither ever
+// counts an ARCHIVED version — a plan the user explicitly rejected must not
+// come back on any screen. A null day_version_id is in both: those rows predate
+// day_versions and must not vanish. See ScheduleItem.in_final_plan / .placed.
+
+/** "What is the plan for this day?" — one plan, the day's first live version.
+ * What GET /api/trips/:id/schedule (the Final schedule screen) reads. */
+export function inFinalPlan(item: ScheduleItem): boolean {
+  if (item.day_version_id === null) return true;
+  const version = findDayVersion(item.day_version_id);
+  if (!version || version.archived_at) return false;
+  return liveVersionsOf(version.trip_day_id)[0]?.id === version.id;
+}
+
+/** "Has this been placed anywhere yet?" — any live version counts, so a fork
+ * under comparison keeps both alternatives off the unplaced rail. */
+export function isPlaced(item: ScheduleItem): boolean {
+  if (item.day_version_id === null) return true;
+  const version = findDayVersion(item.day_version_id);
+  return version !== undefined && version.archived_at === null;
 }
 
 /** Null times sort last, so an untimed item never jumps to the top of a day. */

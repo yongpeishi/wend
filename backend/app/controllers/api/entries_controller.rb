@@ -30,7 +30,10 @@ module Api
 
       if params[:scheduled].present? && trip_id
         want_scheduled = truthy?(params[:scheduled])
-        scheduled_ids = ScheduleItem.where(trip_id: trip_id)
+        # Only live placements count: an entry that survives nowhere but an
+        # archived version is unplaced, which is exactly how the itinerary
+        # screen treats it -- back on the rail.
+        scheduled_ids = ScheduleItem.where(trip_id: trip_id).placed
                                      .where("entry_id IN (:ids) OR chosen_entry_id IN (:ids)", ids: entries.map(&:id).presence || [0])
                                      .pluck(:entry_id, :chosen_entry_id).flatten.compact.to_set
         entries = entries.select { |e| scheduled_ids.include?(e.id) == want_scheduled }
