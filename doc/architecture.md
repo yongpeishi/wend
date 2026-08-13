@@ -124,6 +124,7 @@ At least one of `entry_id` / `trip_id` must be present.
 | entry_id | integer FK entries | the idea or **bundle** being scheduled |
 | chosen_entry_id | integer FK entries | when `entry_id` is a bundle of options, the one picked on the day |
 | day | date, not null | |
+| day_version_id | integer FK day_versions | the plan this placement belongs to. Nullable — see below. |
 | starts_at_minutes | integer | minutes from midnight, 0..1439. Null = unscheduled that day. |
 | ends_at_minutes | integer | |
 | note | text | |
@@ -131,6 +132,61 @@ At least one of `entry_id` / `trip_id` must be present.
 
 Storing times as integer minutes avoids timezone grief entirely. The frontend formats
 them as 24-hour `HH:MM`.
+
+A schedule_item is a **placement, not a kept thing**: the Entry it points at is what the
+user saved, and it outlives the placement. So unlike entries and day_versions, these rows
+may be destroyed outright — `POST /schedule_items/:id/ungroup` does exactly that to the
+bundle row it replaces, and nothing kept is lost.
+
+`day_version_id` stays nullable so the older `POST /trips/:id/schedule` path, which sends
+a bare `day`, cannot 500. The controller resolves the day's first live version on write,
+so no live row is left without one.
+
+### `trip_days` — a date the trip has put something on
+
+| column | type | notes |
+| --- | --- | --- |
+| id | integer PK | |
+| trip_id | integer FK entries, not null | |
+| day | date, not null | |
+| lodging_entry_id | integer FK entries | where you sleep that night, as a kept place |
+| lodging_label | string | free text instead — "Sleeping on the plane" |
+| created_at/updated_at | datetime | |
+
+Unique index `[trip_id, day]`. A date with nothing on it has **no row**; the client merges
+the trip's date range with what comes back. `lodging_entry_id` and `lodging_label` are
+mutually exclusive in practice but not enforced — the API sends both plus a resolved
+`lodging_title`, which prefers the entry's title.
+
+### `day_versions` — alternate plans for the same day
+
+| column | type | notes |
+| --- | --- | --- |
+| id | integer PK | |
+| trip_day_id | integer FK trip_days, not null | |
+| name | string, not null | "Version A", "Version B", … past Z, "Version AA" |
+| position | integer, not null, default 0 | ordering within the day |
+| archived_at | datetime | **archived = "not chosen, kept anyway" — never destroyed.** |
+| created_at/updated_at | datetime | |
+
+Same rule as entries: a version the user did not go with is archived, not deleted, so a
+change of mind costs nothing. A day always keeps **at least one live version**; archiving
+the last one is rejected with 422.
+
+Model rules:
+
+- `TripDay.ensure!(trip_id:, day:)` — find the row or create it along with the "Version A"
+  every day is guaranteed to have. Every write path that takes a date goes through this.
+- `TripDay#fork!` — duplicate the last live version: next letter (A → B → C, counted over
+  every version the day has ever had, archived included), position at the end, plus a copy
+  of every schedule_item in the source.
+- `DayVersion#keep!` — this is the one. Archives every live sibling and renames the
+  survivor back to "Version A" at position 0. A no-op when there is nothing to choose
+  between.
+- `DayVersion#restore!` — clears `archived_at`, appends at the end of the live list under
+  the first letter nobody is using.
+- `DayVersion#archive!` — sets `archived_at`; returns false rather than leaving a day with
+  no live version.
 
 ### `feedbacks` — what users say about the app
 
@@ -254,7 +310,39 @@ GET    /api/trips/:trip_id/schedule?day=YYYY-MM-DD   -> 200 { schedule_items: [S
 POST   /api/trips/:trip_id/schedule  { schedule_item: {...} }  -> 201
 PATCH  /api/schedule_items/:id                                 -> 200
 DELETE /api/schedule_items/:id                                 -> 204
+
+POST   /api/schedule_items/:id/ungroup               -> 200 { trip_day: TripDay }
 ```
+`schedule_item` accepts `day_version_id` on both write paths. **Omit it and the item lands
+on that day's first live version**, creating the `trip_day` and its "Version A" if this is
+the first thing placed there — which is how the final-schedule screen, which knows nothing
+about versions, keeps working unchanged. A PATCH that moves an item to another date and
+does not name a version re-resolves it against the new date.
+
+`ungroup` replaces one placed **bundle** with one item per member, inside the same version:
+the bundle's span is divided between members in `duration_minutes` proportion when every
+member has one, evenly otherwise. Members take consecutive, non-overlapping slots covering
+exactly the old span; the bundle's note rides along on the first. The bundle's
+schedule_item is destroyed (a placement, not a kept thing — the bundle Entry is untouched).
+A non-bundle item, or a bundle with no members, returns 422.
+
+### Itinerary
+```
+GET    /api/trips/:trip_id/itinerary          -> 200 { trip_days: [TripDay] }
+
+PATCH  /api/trips/:trip_id/days/:day          { trip_day: { lodging_entry_id?, lodging_label? } }
+                                              -> 200 { trip_day: TripDay }
+POST   /api/trips/:trip_id/days/:day/versions -> 201 { trip_day: TripDay }   # fork
+
+POST   /api/day_versions/:id/keep             -> 200 { trip_day: TripDay }
+POST   /api/day_versions/:id/restore          -> 200 { trip_day: TripDay }
+DELETE /api/day_versions/:id                  -> 200 { trip_day: TripDay }   # archives
+```
+`:day` is `YYYY-MM-DD`, a date rather than an id, because until the first write there is
+no `trip_day` row to address — both day routes create one on demand. `index` returns only
+days that have a row. Every mutation answers with the **whole affected TripDay** so the
+client replaces one day in its cache without a refetch race. Sending both lodging keys as
+null clears the lodging.
 
 ### Nearby (flexibility on the road)
 ```
@@ -294,7 +382,38 @@ from the request and ignored if supplied in the body.
 
 `Entry` (detail form) adds `parents: [EntrySummary]`, `children: [Entry]`,
 `todos: [Todo]`, `votes: [Vote]`.
-`EntrySummary` = `{ id, kind, title, category }`.
+`EntrySummary` = `{ id, kind, title, category, duration_minutes, location_name }` — one
+shared shape, sent by entry `parents`, `Todo#entry` and the itinerary's `entry`/`members`.
+
+The itinerary sends three more:
+
+```jsonc
+TripDay = {
+  id, trip_id,
+  day: "2026-10-12",
+  lodging_entry_id: number | null,
+  lodging_label: string | null,
+  lodging_title: string | null,     // resolved: entry.title, else lodging_label, else null
+  versions: [DayVersion],           // live only, by position
+  archived_versions: [DayVersion]   // archived_at desc
+}
+
+DayVersion = {
+  id, trip_day_id, name, position,
+  archived_at: string | null,
+  schedule_items: [ItineraryItem]   // by starts_at_minutes, then position
+}
+
+ItineraryItem = {
+  id, trip_id, entry_id, chosen_entry_id, day, day_version_id,
+  starts_at_minutes: number | null,
+  ends_at_minutes: number | null,
+  note: string | null,
+  position: number,
+  entry: EntrySummary | null,
+  members: [EntrySummary]           // [] unless entry.kind == "bundle"; link position order
+}
+```
 
 ---
 

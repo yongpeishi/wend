@@ -34,6 +34,17 @@ Rails.application.routes.draw do
     post "trips/:trip_id/schedule", to: "schedule_items#create"
     patch "schedule_items/:id", to: "schedule_items#update"
     delete "schedule_items/:id", to: "schedule_items#destroy"
+    post "schedule_items/:id/ungroup", to: "schedule_items#ungroup"
+
+    # Itinerary. `:day` is a date, not an id: until the first write there is no
+    # trip_day row to address, so these routes create one on demand.
+    get "trips/:trip_id/itinerary", to: "itineraries#index"
+    patch "trips/:trip_id/days/:day", to: "trip_days#update", constraints: { day: /\d{4}-\d{2}-\d{2}/ }
+    post "trips/:trip_id/days/:day/versions", to: "day_versions#create", constraints: { day: /\d{4}-\d{2}-\d{2}/ }
+
+    post "day_versions/:id/keep", to: "day_versions#keep"
+    post "day_versions/:id/restore", to: "day_versions#restore"
+    delete "day_versions/:id", to: "day_versions#destroy"
 
     get "trips/:trip_id/nearby", to: "nearby#index"
   end

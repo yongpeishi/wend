@@ -10,7 +10,19 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_10_071308) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_13_090002) do
+  create_table "day_versions", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "trip_day_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["archived_at"], name: "index_day_versions_on_archived_at"
+    t.index ["trip_day_id", "position"], name: "index_day_versions_on_trip_day_id_and_position"
+    t.index ["trip_day_id"], name: "index_day_versions_on_trip_day_id"
+  end
+
   create_table "entries", force: :cascade do |t|
     t.string "address"
     t.datetime "archived_at"
@@ -72,6 +84,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_071308) do
     t.integer "chosen_entry_id"
     t.datetime "created_at", null: false
     t.date "day", null: false
+    t.integer "day_version_id"
     t.integer "ends_at_minutes"
     t.integer "entry_id"
     t.text "note"
@@ -80,6 +93,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_071308) do
     t.integer "trip_id", null: false
     t.datetime "updated_at", null: false
     t.index ["chosen_entry_id"], name: "index_schedule_items_on_chosen_entry_id"
+    t.index ["day_version_id"], name: "index_schedule_items_on_day_version_id"
     t.index ["entry_id"], name: "index_schedule_items_on_entry_id"
     t.index ["trip_id", "day"], name: "index_schedule_items_on_trip_id_and_day"
     t.index ["trip_id"], name: "index_schedule_items_on_trip_id"
@@ -96,6 +110,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_071308) do
     t.datetime "updated_at", null: false
     t.index ["entry_id"], name: "index_todos_on_entry_id"
     t.index ["trip_id"], name: "index_todos_on_trip_id"
+  end
+
+  create_table "trip_days", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "day", null: false
+    t.integer "lodging_entry_id"
+    t.string "lodging_label"
+    t.integer "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["lodging_entry_id"], name: "index_trip_days_on_lodging_entry_id"
+    t.index ["trip_id", "day"], name: "index_trip_days_on_trip_id_and_day", unique: true
+    t.index ["trip_id"], name: "index_trip_days_on_trip_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -118,17 +144,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_10_071308) do
     t.index ["user_id"], name: "index_votes_on_user_id"
   end
 
+  add_foreign_key "day_versions", "trip_days"
   add_foreign_key "entries", "entries", column: "from_entry_id"
   add_foreign_key "entries", "entries", column: "to_entry_id"
   add_foreign_key "entries", "users", column: "created_by_id"
   add_foreign_key "entry_links", "entries", column: "child_id"
   add_foreign_key "entry_links", "entries", column: "parent_id"
   add_foreign_key "feedbacks", "users"
+  add_foreign_key "schedule_items", "day_versions"
   add_foreign_key "schedule_items", "entries"
   add_foreign_key "schedule_items", "entries", column: "chosen_entry_id"
   add_foreign_key "schedule_items", "entries", column: "trip_id"
   add_foreign_key "todos", "entries"
   add_foreign_key "todos", "entries", column: "trip_id"
+  add_foreign_key "trip_days", "entries", column: "lodging_entry_id"
+  add_foreign_key "trip_days", "entries", column: "trip_id"
   add_foreign_key "votes", "entries"
   add_foreign_key "votes", "users"
 end
