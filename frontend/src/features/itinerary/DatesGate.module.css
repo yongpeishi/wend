@@ -36,6 +36,10 @@
   color: var(--text-muted);
 }
 
+/* An <h2> under TripLayout's trip title, but sized as the focus of the screen
+   rather than as a section label — the card is the whole page while the gate
+   is up, and the question is the thing you answer. Heading level is semantics
+   here, not size. */
 .title {
   margin: 0;
   font-size: var(--text-title-size);

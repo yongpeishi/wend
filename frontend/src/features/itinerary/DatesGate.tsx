@@ -45,6 +45,11 @@ function keptLine(keptCount: number, tripTitle: string): string {
  * dates there is no day list to draw — and rather than showing an empty one
  * and nagging, the whole screen becomes this single card.
  *
+ * The question is an `<h2>` at display size: the trip's title in the shell
+ * above is the page's one `<h1>`, but this card is the whole screen while the
+ * gate is up, so the level is semantics and the size is the truth about what
+ * you are looking at. The eyebrow over it stays a paragraph.
+ *
  * Rough is fine and the copy says so — but only as far as it is true. Changing
  * the dates is cheap and allowed; what it does not do is carry placed things
  * along with it. Each schedule item keeps the date it was given, and a day that
@@ -81,7 +86,7 @@ export function DatesGate({
       <div className={styles.card}>
         <div className={styles.intro}>
           <p className={styles.eyebrow}>Before the days appear</p>
-          <h1 className={styles.title}>When are you going?</h1>
+          <h2 className={styles.title}>When are you going?</h2>
           <p className={styles.body}>
             Days come from your dates. Rough is fine — you can change them later, and anything you've already
             placed stays on the day you put it on.
