@@ -26,17 +26,80 @@
   opacity: 0.4;
 }
 
-.checkbox {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-  accent-color: var(--wend-leaf);
+/*
+ * The pick circle: the state dot's other life, while the board is selecting.
+ * 22px against the dot's 10px, and the size change is the mode signal — so
+ * these two rules are a pair, and neither size is arbitrary.
+ */
+.pick {
+  position: relative;
+  /* 22px: no shape token — this is the design's own circle, sized to read as a
+     control beside 18px type without becoming a button. */
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: none;
   cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-.checkbox:focus-visible {
+/*
+ * The 22px circle is the visual; the target is bigger than the visual. 32px is
+ * the pointer floor from architecture.md and fits inside the row's 16px gap
+ * without stealing clicks from the title; touch gets the full 48px, which
+ * overlaps a little but is the rule that is not negotiable on a phone.
+ */
+.pick::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+}
+
+@media (pointer: coarse) {
+  .pick::before {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+}
+
+.pick:hover {
+  opacity: 0.85;
+}
+
+.pick:active {
+  opacity: 0.7;
+}
+
+.pick:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/* Picked. The border thickens as well as changing hue — the second, colourless
+   half of the signal, alongside the tick. */
+.pickOn {
+  border-width: var(--border-width-strong);
+  border-color: var(--wend-leaf);
+  background: var(--wend-leaf);
+}
+
+/* 13px: a glyph inside a 22px circle, not running text, so the 15px readable
+   floor doesn't apply — it is never read as words (aria-checked says it). */
+.pickTick {
+  font-size: 13px;
+  line-height: 1;
+  font-weight: var(--weight-bold);
+  color: var(--wend-paper);
 }
 
 /* 10px: smaller than any trail dot token, which are SVG radii, not CSS sizes. */

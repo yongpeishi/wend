@@ -12,6 +12,13 @@ export interface IdeaListProps {
   groupMode: GroupMode;
   bundles: Entry[];
   members: Map<number, Entry[]>;
+  /**
+   * The board is picking several ideas at once — every row swaps its state dot
+   * for a pick circle. Optional and off by default so the list still renders
+   * correctly for any caller that has no notion of selecting (and so the board
+   * can adopt it without this file needing to know when).
+   */
+  selectMode?: boolean;
   selectedIds: number[];
   onToggleSelect: (id: number, shiftKey: boolean) => void;
   /** Passed straight through to each row — see IdeaRow's `onEdit`. */
@@ -39,6 +46,7 @@ export function IdeaList({
   groupMode,
   bundles,
   members,
+  selectMode = false,
   selectedIds,
   onToggleSelect,
   onEdit,
@@ -65,6 +73,7 @@ export function IdeaList({
         entry={entry}
         bundles={bundles}
         members={members}
+        selectMode={selectMode}
         selected={selectedIds.includes(entry.id)}
         onToggleSelect={onToggleSelect}
         onEdit={onEdit}

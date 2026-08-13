@@ -42,20 +42,21 @@ function makeEntry(overrides: Partial<Entry>): Entry {
 }
 
 const BUNDLE = makeEntry({ id: 90, kind: 'bundle', title: 'Tuesday south', category: null, location_name: null });
+const OTHER_BUNDLE = makeEntry({ id: 91, kind: 'bundle', title: 'Travel day', category: null, location_name: null });
 
-function renderRow(
-  options: {
-    entry?: Entry;
-    bundles?: Entry[];
-    members?: Map<number, Entry[]>;
-    selected?: boolean;
-    onEdit?: (id: number) => void;
-    onToast?: (message: string) => void;
-  } = {},
-) {
-  const entry = options.entry ?? makeEntry({});
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+interface RowOptions {
+  entry?: Entry;
+  bundles?: Entry[];
+  members?: Map<number, Entry[]>;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: number, shiftKey: boolean) => void;
+  onEdit?: (id: number) => void;
+  onToast?: (message: string) => void;
+}
+
+function rowTree(options: RowOptions, queryClient: QueryClient) {
+  return (
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/board']}>
         <ToastProvider>
@@ -65,11 +66,12 @@ function renderRow(
                 path="/board"
                 element={
                   <IdeaRow
-                    entry={entry}
+                    entry={options.entry ?? makeEntry({})}
                     bundles={options.bundles ?? []}
                     members={options.members ?? new Map()}
+                    selectMode={options.selectMode ?? false}
                     selected={options.selected ?? false}
-                    onToggleSelect={() => {}}
+                    onToggleSelect={options.onToggleSelect ?? (() => {})}
                     onEdit={options.onEdit}
                     onToast={options.onToast}
                   />
@@ -80,8 +82,18 @@ function renderRow(
           </DndContext>
         </ToastProvider>
       </MemoryRouter>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+}
+
+function renderRow(options: RowOptions = {}) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = render(rowTree(options, queryClient));
+  return {
+    ...view,
+    /** Re-renders the same row with new props — for "does it follow the data?". */
+    update: (next: RowOptions) => view.rerender(rowTree(next, queryClient)),
+  };
 }
 
 /** Opens the row's ⋯ menu and hands back the user-event session. */
@@ -114,6 +126,33 @@ describe('IdeaRow — what the board shows', () => {
     renderRow({ bundles: [BUNDLE], members: new Map([[90, [makeEntry({})]]]) });
     expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveTextContent('in Tuesday south');
   });
+
+  it('lists several bundles on one line, comma-separated, in one lowercase sentence', () => {
+    renderRow({
+      bundles: [BUNDLE, OTHER_BUNDLE],
+      members: new Map([
+        [90, [makeEntry({})]],
+        [91, [makeEntry({})]],
+      ]),
+    });
+    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveTextContent(
+      'in Tuesday south, Travel day',
+    );
+  });
+
+  it('says nothing about bundles when the idea is in none', () => {
+    renderRow({ bundles: [BUNDLE], members: new Map([[90, []]]) });
+    expect(screen.getByRole('button', { name: /^Fushimi Inari/ }).textContent).not.toMatch(/^in /m);
+  });
+
+  it('names a bundle the moment the idea is added to it', () => {
+    const view = renderRow({ bundles: [BUNDLE], members: new Map([[90, []]]) });
+    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).not.toHaveTextContent('in Tuesday south');
+
+    view.update({ bundles: [BUNDLE], members: new Map([[90, [makeEntry({})]]]) });
+
+    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveTextContent('in Tuesday south');
+  });
 });
 
 // Rating is descoped from the board for now. VoteControl and the votes on the
@@ -144,8 +183,8 @@ describe('IdeaRow — the interactions that must survive', () => {
     expect(screen.getByRole('button', { name: 'Tuesday south' })).toBeInTheDocument();
   });
 
-  it('keeps the multi-select checkbox BulkBar acts on', () => {
-    renderRow({ selected: true });
+  it('keeps the multi-select control BulkBar acts on, once the board is selecting', () => {
+    renderRow({ selectMode: true, selected: true });
     expect(screen.getByRole('checkbox', { name: 'Select Fushimi Inari' })).toBeChecked();
   });
 
@@ -286,5 +325,79 @@ describe('IdeaRow — the state dot', () => {
   it('prefers scheduled over open todos — a placed idea is placed', () => {
     renderRow({ entry: makeEntry({ scheduled: true, todos_open_count: 3 }) });
     expect(screen.getByRole('img', { name: 'Scheduled' })).toBeInTheDocument();
+  });
+
+  it('offers nothing to check while the board is not selecting', () => {
+    renderRow();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+});
+
+// The always-visible checkbox is gone. The dot does both jobs: it describes the
+// idea's state until the board starts picking, and becomes the pick circle when
+// it does — the growth from 10px to 22px is the only announcement the mode gets.
+describe('IdeaRow — select mode', () => {
+  it('turns the state dot into a real checkbox, keeping the name it always had', () => {
+    renderRow({ selectMode: true });
+
+    const pick = screen.getByRole('checkbox', { name: 'Select Fushimi Inari' });
+    expect(pick).toHaveAttribute('aria-checked', 'false');
+    expect(screen.queryByRole('img', { name: 'Kept, not placed yet' })).not.toBeInTheDocument();
+  });
+
+  it('reports a picked idea as checked rather than leaving colour to say it', () => {
+    renderRow({ selectMode: true, selected: true });
+
+    const pick = screen.getByRole('checkbox', { name: 'Select Fushimi Inari' });
+    expect(pick).toHaveAttribute('aria-checked', 'true');
+    expect(pick).toHaveTextContent('✓');
+  });
+
+  it('gives the state dot back the moment select mode ends', () => {
+    renderRow({ selectMode: false, entry: makeEntry({ scheduled: true }) });
+    expect(screen.getByRole('img', { name: 'Scheduled' })).toBeInTheDocument();
+  });
+
+  it('can be picked from the keyboard, since it is a button underneath', async () => {
+    const user = userEvent.setup();
+    const onToggleSelect = vi.fn();
+    renderRow({ selectMode: true, onToggleSelect });
+
+    screen.getByRole('checkbox', { name: 'Select Fushimi Inari' }).focus();
+    await user.keyboard(' ');
+
+    expect(onToggleSelect).toHaveBeenCalledWith(42, false);
+  });
+
+  it('still tells the board when a pick was shift-clicked, so ranges survive', async () => {
+    const user = userEvent.setup();
+    const onToggleSelect = vi.fn();
+    renderRow({ selectMode: true, onToggleSelect });
+
+    await user.keyboard('{Shift>}');
+    await user.click(screen.getByRole('checkbox', { name: 'Select Fushimi Inari' }));
+    await user.keyboard('{/Shift}');
+
+    expect(onToggleSelect).toHaveBeenCalledWith(42, true);
+  });
+
+  it('reports a plain click as a plain pick', async () => {
+    const user = userEvent.setup();
+    const onToggleSelect = vi.fn();
+    renderRow({ selectMode: true, onToggleSelect });
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select Fushimi Inari' }));
+
+    expect(onToggleSelect).toHaveBeenCalledWith(42, false);
+  });
+
+  it('never opens the idea when the pick circle is clicked', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    renderRow({ selectMode: true, onEdit });
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select Fushimi Inari' }));
+
+    expect(onEdit).not.toHaveBeenCalled();
   });
 });
