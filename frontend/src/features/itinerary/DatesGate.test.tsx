@@ -27,7 +27,11 @@ describe('DatesGate — what it asks for', () => {
   it('asks the question plainly, and says rough is fine without promising more than that', () => {
     renderGate();
 
-    expect(screen.getByRole('heading', { name: 'When are you going?' })).toBeInTheDocument();
+    // Level 2: the trip's title in TripLayout is the page's only <h1>, and the
+    // eyebrow above the question is a plain paragraph, not a heading of its own.
+    expect(screen.getByRole('heading', { level: 2, name: 'When are you going?' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('heading')).toHaveLength(1);
     // Changing the dates does not move placed things — days outside the new
     // range just stop being drawn. The copy has to say only what is true.
     expect(

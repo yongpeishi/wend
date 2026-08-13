@@ -61,7 +61,9 @@ describe('TripItinerary — the dates gate', () => {
     const user = userEvent.setup();
     renderItinerary();
 
-    expect(await screen.findByRole('heading', { name: 'When are you going?' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 2, name: 'When are you going?' })).toBeInTheDocument();
+    // Even with the gate up, the trip's title is still the page's only <h1>.
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     // Counted once the trip's ideas and bundles land — the gate draws as soon
     // as the trip does and fills its own line in.
     expect(await screen.findByText(/You've kept 9 things for Six days in Kyoto/)).toBeInTheDocument();
