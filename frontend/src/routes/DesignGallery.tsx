@@ -5,6 +5,7 @@ import { Trail } from '../design/components/brand/Trail';
 import { Button } from '../design/components/core/Button';
 import { Chip, Tag } from '../design/components/core/Chip';
 import { Input } from '../design/components/core/Input';
+import { Switch } from '../design/components/core/Switch';
 import { Card } from '../components/layout/Card';
 import { Stack, Row } from '../components/layout/Stack';
 import { HatchPlaceholder } from '../components/HatchPlaceholder';
@@ -69,6 +70,7 @@ export function DesignGallery() {
   const [modalOpen, setModalOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tab, setTab] = useState('board');
+  const [following, setFollowing] = useState(true);
   const [trailStep, setTrailStep] = useState<TrailStep>('gather');
 
   return (
@@ -243,6 +245,24 @@ export function DesignGallery() {
           <Stack gap={3}>
             <Input placeholder="Where are you going?" hint="↵" value={inputValue} onChange={(e) => setInputValue(e.target.value)} />
             <Input value="Kyoto" readOnly hint="↵" />
+          </Stack>
+        </Specimen>
+        {/* Both states side by side, plus one that is live: a switch is read by
+            where its knob sits, and that only reads as a pair. */}
+        <Specimen
+          label="Switch — off, on, live"
+          note="A setting that takes effect the moment it is flipped — not a filter (Chip) and not a form value (checkbox)."
+        >
+          <Stack gap={2}>
+            <Switch checked={false} onCheckedChange={() => {}}>
+              Follow the map
+            </Switch>
+            <Switch checked onCheckedChange={() => {}}>
+              Follow the map
+            </Switch>
+            <Switch checked={following} onCheckedChange={setFollowing}>
+              Follow the map
+            </Switch>
           </Stack>
         </Specimen>
         <Specimen label="Field — labelled, error state">
