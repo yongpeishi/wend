@@ -1,0 +1,127 @@
+/* The bundle band. A tint and nothing else — no border, no heavier type, no
+   shadow: grouping is sub-information, not hierarchy. --radius-card, like the
+   rows it wraps. */
+.band {
+  background: var(--wend-hatch-b);
+  border-radius: var(--radius-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  /* 8px 10px 10px: the design's own band inset, snug around its member rows. */
+  padding: var(--space-2) 10px 10px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: 0 3px 2px;
+}
+
+/* The uppercase eyebrow keeps its letter-spacing but takes --text-min-size
+   (15px) rather than the design's 12px — the floor applies to caps too. */
+.label {
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+/* Raised from the design's 12px to the 15px floor. */
+.span {
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.spanButton {
+  background: none;
+  border: none;
+  padding: 0;
+  /* 32px: the pointer floor. A 48px control here would push the band's head
+     taller than the member rows it labels. */
+  min-height: 32px;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.spanButton:hover {
+  opacity: 0.7;
+}
+
+.spanButton:active {
+  opacity: 0.55;
+}
+
+.spanButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.ungroup {
+  margin-left: auto;
+}
+
+.remove {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.remove:hover {
+  opacity: 0.7;
+}
+
+.remove:active {
+  opacity: 0.55;
+}
+
+.remove:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* A member reads exactly like a loose idea — same tone, same radius, same
+   geometry as ItemLine, minus the hairline border the tint already replaces. */
+.member {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  padding: 11px 13px;
+}
+
+/* The empty column that holds the member titles in line with every other
+   title on the day. Members carry no hours of their own — the band above
+   holds the clock. */
+.memberTime {
+  flex: none;
+  width: 104px;
+}
+
+.memberTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+}
+
+/* Raised from the design's 13px to the 15px floor. */
+.memberMeta {
+  flex: none;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}

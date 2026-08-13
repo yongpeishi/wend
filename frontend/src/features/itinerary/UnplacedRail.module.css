@@ -1,0 +1,199 @@
+/* The 300px right rail. Card tone against the page, separated by a rule
+   rather than a shadow. */
+.rail {
+  width: 300px;
+  flex: none;
+  box-sizing: border-box;
+  border-left: var(--border-width) solid var(--border-subtle);
+  background: var(--surface-card);
+  padding: var(--space-6) var(--gutter-screen) 40px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The uppercase eyebrow keeps its letter-spacing but takes --text-min-size
+   (15px) rather than the design's 12px — the floor applies to caps too. */
+.title {
+  margin: 0;
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.line {
+  margin: 0;
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-body);
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 11px 13px;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* A bundle wears the same quiet tint it wears inside a day, so the same thing
+   looks the same in both places. */
+.item[data-bundle] {
+  background: var(--wend-hatch-b);
+  border-color: var(--wend-hatch-b);
+}
+
+/* Mid-drag its stand-in is following the pointer. */
+.item[data-dragging] {
+  opacity: 0.4;
+}
+
+.grip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 32px: the pointer floor. The ⋯ menu is the route that must work without
+     a pointer at all, so the grip does not need a 48px target. */
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+  cursor: grab;
+  /* dnd-kit needs the browser's own touch panning out of the way to read a drag. */
+  touch-action: none;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.grip:active {
+  cursor: grabbing;
+}
+
+.grip:hover {
+  opacity: 0.7;
+}
+
+.grip:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* 3px: tighter than --space-1 (4). The two lines read as one block. */
+  gap: 3px;
+}
+
+.name {
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+}
+
+/* Raised from the design's 13px to the 15px floor. */
+.meta {
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+.menuWrap {
+  flex: none;
+  position: relative;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.trigger:hover {
+  opacity: 0.7;
+}
+
+.trigger:active {
+  opacity: 0.55;
+}
+
+.trigger:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The popup. Card tone with a strong hairline — no shadow, so the border is
+   what separates it from the rail behind. */
+.menu {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  z-index: 5;
+  width: 220px;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.menuItem {
+  background: none;
+  border: none;
+  border-radius: var(--radius-card);
+  padding: 9px 10px;
+  /* 32px: the pointer floor, in a list where 48px rows would run the popup
+     off a short window. */
+  min-height: 32px;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.menuItem:hover {
+  opacity: 0.7;
+}
+
+.menuItem:active {
+  opacity: 0.55;
+}
+
+.menuItem:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.menuEmpty {
+  margin: 0;
+  padding: 9px 10px;
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+.note {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}

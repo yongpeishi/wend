@@ -1,0 +1,137 @@
+/* The closed day. Three columns: label | everything else, clipping | chevron
+   in its own column, so the way to open the day can never be squeezed out by
+   a long summary. */
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  text-align: left;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  /* 14px 18px: the design's own row inset, between --space-3 and --space-4. */
+  padding: 14px 18px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.row:hover {
+  opacity: 0.9;
+}
+
+.row:active {
+  opacity: 0.78;
+}
+
+.row:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* An empty day is a legitimate day, not an error — it is drawn as an outline
+   waiting to be filled, in the same tone as everything else. */
+.row[data-empty] {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
+
+/* Mid-drag, the day under the pointer takes a leaf outline. Green means
+   "this action will land here" — apricot is reserved for where you are. */
+.row[data-drop-target] {
+  outline: var(--border-width-strong) solid var(--wend-leaf);
+  outline-offset: 2px;
+}
+
+.lead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.label {
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+
+.middle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-min-size);
+  color: var(--text-body);
+}
+
+.summary[data-empty] {
+  color: var(--text-muted);
+}
+
+/* The split tag and the lodging pill are the two true chips on this screen —
+   the only two things that keep --radius-pill. The tag is plum: unsettled work
+   is signalled once, in words, and never nagged about. */
+.status {
+  flex: none;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  /* Chip pads for a 48px control; on a dense row the tag is a label, not a
+     target, so it sits at the row's own rhythm. */
+  padding: 4px 12px;
+}
+
+/* Static, not the interactive LodgingPill: this whole row is already a button
+   and buttons do not nest. */
+.lodging {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 180px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--wend-plum-wash);
+}
+
+.bed {
+  flex: none;
+  color: var(--wend-plum);
+}
+
+/* Raised from the design's 13px to --text-min-size, the readable floor. */
+.lodgingTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+}
+
+/* Raised from the design's 12px to the floor as well. */
+.hours {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: none;
+  color: var(--action-primary);
+}

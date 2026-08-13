@@ -1,0 +1,8 @@
+/* Inside a version the gap between rows is the divider — there is no rule
+   line. 6px is the design's own row rhythm here, tighter than --space-2, so
+   the day reads as one block rather than a stack of cards. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

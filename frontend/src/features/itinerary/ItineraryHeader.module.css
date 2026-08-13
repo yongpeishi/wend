@@ -1,0 +1,59 @@
+/* Card tone above the paper day list, separated by a rule — never a shadow. */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  background: var(--surface-card);
+  border-bottom: var(--border-width) solid var(--border-subtle);
+  padding: var(--space-6) var(--space-8) 18px;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.meta {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Dates are data: mono, with the design's data tracking. Raised from the
+   design's 13px to --text-min-size, this product's readable floor. */
+.dates {
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-muted);
+}
+
+/* Plum, bold: the one place the screen says something is unsettled. */
+.split {
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-data-tracking);
+  font-weight: var(--weight-bold);
+  color: var(--wend-plum);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
