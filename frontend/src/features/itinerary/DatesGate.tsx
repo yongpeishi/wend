@@ -45,11 +45,15 @@ function keptLine(keptCount: number, tripTitle: string): string {
  * dates there is no day list to draw — and rather than showing an empty one
  * and nagging, the whole screen becomes this single card.
  *
- * Rough is fine and the copy says so: dates move, and everything placed moves
- * with them. A length chip is the third way in, for the trip that has a
- * starting day and a shape but no return flight yet — it fills the first day
- * with today if you have not picked one, because a length has to count from
- * something.
+ * Rough is fine and the copy says so — but only as far as it is true. Changing
+ * the dates is cheap and allowed; what it does not do is carry placed things
+ * along with it. Each schedule item keeps the date it was given, and a day that
+ * falls outside the new range simply stops being drawn. So the copy promises
+ * the date you chose for a thing will hold, and promises nothing more.
+ *
+ * A length chip is the third way in, for the trip that has a starting day and a
+ * shape but no return flight yet — it fills the first day with today if you
+ * have not picked one, because a length has to count from something.
  */
 export function DatesGate({
   tripTitle,
@@ -79,8 +83,8 @@ export function DatesGate({
           <p className={styles.eyebrow}>Before the days appear</p>
           <h1 className={styles.title}>When are you going?</h1>
           <p className={styles.body}>
-            Days come from your dates. Rough is fine — you can move them later and everything you've placed
-            shifts with them.
+            Days come from your dates. Rough is fine — you can change them later, and anything you've already
+            placed stays on the day you put it on.
           </p>
         </div>
 

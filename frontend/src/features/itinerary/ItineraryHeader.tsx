@@ -2,7 +2,7 @@ import { Button } from '../../design/components/core/Button';
 import styles from './ItineraryHeader.module.css';
 
 export interface ItineraryHeaderProps {
-  /** `12 Oct–17 Oct · 6 days`. */
+  /** `6 days`. Not the date range — the trip shell already prints that. */
   meta: string;
   /** `2 days split · not settled`, or null when nothing is split. */
   splitLine?: string | null;
@@ -12,8 +12,13 @@ export interface ItineraryHeaderProps {
 }
 
 /**
- * The screen's head: what the trip's dates are, whether anything is still
+ * The screen's head: how long the trip runs, whether anything is still
  * unsettled, and the three things you do to the whole list.
+ *
+ * It names a section, not the page — TripLayout above it holds the trip's
+ * title as the one `<h1>` and prints the date range under it, so neither is
+ * repeated here. Hence `<h2>`, styled like every other section heading in the
+ * product (TripsList's .sectionLabel, BundlePanel's).
  *
  * Unsettled work is signalled once and never nagged about — the split line
  * simply is not there when nothing is split, and when it is, it states the
@@ -29,9 +34,9 @@ export function ItineraryHeader({
   return (
     <header className={styles.header}>
       <div className={styles.titles}>
-        <h1 className={styles.title}>Itinerary</h1>
+        <h2 className={styles.title}>Itinerary</h2>
         <p className={styles.meta}>
-          <span className={styles.dates}>{meta}</span>
+          <span className={styles.length}>{meta}</span>
           {splitLine && <span className={styles.split}>{splitLine}</span>}
         </p>
       </div>

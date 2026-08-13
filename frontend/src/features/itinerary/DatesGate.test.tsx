@@ -24,11 +24,17 @@ function setDate(label: string, value: string) {
 }
 
 describe('DatesGate — what it asks for', () => {
-  it('asks the question plainly and says rough is fine', () => {
+  it('asks the question plainly, and says rough is fine without promising more than that', () => {
     renderGate();
 
     expect(screen.getByRole('heading', { name: 'When are you going?' })).toBeInTheDocument();
-    expect(screen.getByText(/Rough is fine/)).toBeInTheDocument();
+    // Changing the dates does not move placed things — days outside the new
+    // range just stop being drawn. The copy has to say only what is true.
+    expect(
+      screen.getByText(
+        "Days come from your dates. Rough is fine — you can change them later, and anything you've already placed stays on the day you put it on.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it('says what is already kept, and for which trip', () => {

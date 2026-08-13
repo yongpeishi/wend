@@ -17,11 +17,20 @@
   min-width: 0;
 }
 
+/* The page's <h1> is the trip's title in TripLayout; this names the section
+   under it, in the same uppercase label the rest of the product gives a
+   section heading (TripsList's .sectionLabel, BundlePanel's .heading). Raised
+   from their --text-label-size to --text-min-size, this product's floor —
+   caps keep the label tracking at 15px. */
 .title {
   margin: 0;
-  font-size: var(--text-display-size);
-  line-height: var(--text-display-line);
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
   font-weight: var(--weight-bold);
+  /* --text-strong where those two are muted: they label a list that is itself
+     the content, while this one heads the whole screen under the trip title. */
   color: var(--text-strong);
 }
 
@@ -33,9 +42,10 @@
   flex-wrap: wrap;
 }
 
-/* Dates are data: mono, with the design's data tracking. Raised from the
-   design's 13px to --text-min-size, this product's readable floor. */
-.dates {
+/* The length is data: mono, with the design's data tracking. Raised from the
+   design's 13px to --text-min-size, this product's readable floor. The date
+   range itself is not repeated here — TripLayout prints it under the title. */
+.length {
   font-family: var(--font-mono);
   font-size: var(--text-min-size);
   letter-spacing: var(--text-data-tracking);

@@ -41,7 +41,7 @@ import {
   nextFreeSlot,
 } from '../features/itinerary';
 import type { ArchivedVersion, ItineraryDay, ItineraryDragData } from '../features/itinerary';
-import { formatTripDates, formatTripLength, joinMeta } from '../lib/formatDates';
+import { formatTripLength } from '../lib/formatDates';
 import styles from './TripItinerary.module.css';
 
 /** What a failed write says. Nothing is lost — the screen still holds it. */
@@ -146,10 +146,10 @@ export function TripItinerary() {
   }, [days]);
 
   const splitCount = days.filter((day) => day.versions.length > 1).length;
-  const meta = joinMeta(
-    formatTripDates(trip.starts_on, trip.ends_on) ?? undefined,
-    formatTripLength(trip.starts_on, trip.ends_on) ?? undefined,
-  );
+  // The length only. TripLayout, the shell every trip screen sits in, already
+  // prints the trip's date range under its title — saying it again here is the
+  // same fact twice on one page.
+  const meta = formatTripLength(trip.starts_on, trip.ends_on) ?? '';
   // Said once, and only when true. No warning colour, no "finish this".
   const splitLine = splitCount > 0 ? `${splitCount} ${splitCount === 1 ? 'day' : 'days'} split · not settled` : null;
 
