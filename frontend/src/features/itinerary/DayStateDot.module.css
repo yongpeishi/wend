@@ -1,0 +1,28 @@
+/* The trail's stop, in CSS. The sizes are the design's own dot geometry
+   (11 / 13 / 9px): the trail tokens are SVG radii, not CSS lengths. */
+.dot {
+  flex: none;
+  border-radius: var(--radius-pill);
+  box-sizing: border-box;
+}
+
+.decided {
+  width: 11px;
+  height: 11px;
+  background: var(--stop-decided);
+}
+
+/* The one step you are deciding: an apricot ring, never an apricot fill —
+   apricot is a ring, an outline or an underline, and never text. */
+.open {
+  width: 13px;
+  height: 13px;
+  background: var(--surface-card);
+  border: 3px solid var(--stop-open);
+}
+
+.waiting {
+  width: 9px;
+  height: 9px;
+  background: var(--stop-waiting);
+}

@@ -1,0 +1,34 @@
+/* Paper tone inside the open day's card — the panel reads as a hollow in the
+   day rather than a layer over it, which is what "no shadows" leaves us and
+   what we want anyway. */
+.editor {
+  background: var(--surface-page);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The design sets this caption at 13px; raised to --text-min-size, the floor. */
+.title {
+  margin: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Free text is data you typed, so it is set in the mono face like the times. */
+.freeText {
+  font-family: var(--font-mono);
+}
+
+.save {
+  align-self: flex-start;
+}

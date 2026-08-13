@@ -1,0 +1,73 @@
+/* Sits at the foot of the rail, under the ideas still waiting. The rule above
+   it is the only divider — inside the group, the gap is the divider. */
+.panel {
+  margin-top: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: var(--border-width) solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Leaf, because this is an action. The design sets it at 13px; raised to
+   --text-min-size, this product's readable floor. */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* 32px: the pointer floor. A rail heading is not a primary action. */
+  min-height: 32px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-card);
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--action-primary);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.toggle:hover {
+  opacity: 0.7;
+}
+
+.toggle:active {
+  opacity: 0.55;
+}
+
+.toggle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* Plum: archived things and lodging are the two things plum means. */
+.label {
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--stop-destination);
+}
+
+.restore {
+  flex: none;
+}
