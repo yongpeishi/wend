@@ -108,8 +108,12 @@ class EntrySerializer
     # An entry is "scheduled" if a schedule_item references it directly
     # (entry_id) or as the chosen member of a bundle (chosen_entry_id).
     # When `trip_id` is given, only schedule_items in that trip count.
+    #
+    # `placed` because an archived version is a plan the user rejected: an
+    # entry left behind in one is back to potential everywhere (board, map,
+    # library, unscheduled tray), matching the itinerary rail.
     def scheduled_entry_ids(ids, trip_id: nil)
-      scope = ScheduleItem.where("entry_id IN (:ids) OR chosen_entry_id IN (:ids)", ids: ids)
+      scope = ScheduleItem.placed.where("entry_id IN (:ids) OR chosen_entry_id IN (:ids)", ids: ids)
       scope = scope.where(trip_id: trip_id) if trip_id
       scope.pluck(:entry_id, :chosen_entry_id).flatten.compact.to_set
     end

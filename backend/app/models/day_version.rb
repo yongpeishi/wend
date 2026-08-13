@@ -17,6 +17,22 @@ class DayVersion < ApplicationRecord
   scope :live, -> { where(archived_at: nil).order(:position, :id) }
   scope :archived_only, -> { where.not(archived_at: nil).order(archived_at: :desc, id: :desc) }
 
+  # The single version each day's *finished* plan is read from: the first live
+  # one, by the same order `live` uses (position, then id). Set-shaped rather
+  # than ordered, so it can be used as a subquery -- see
+  # ScheduleItem.in_final_plan, which is what the Final schedule screen reads
+  # through. A second live version (a fork being compared) and every archived
+  # version (a plan the user rejected) are deliberately outside it.
+  scope :first_of_each_day, lambda {
+    where(archived_at: nil).where(
+      "NOT EXISTS (SELECT 1 FROM day_versions earlier" \
+      " WHERE earlier.trip_day_id = day_versions.trip_day_id" \
+      " AND earlier.archived_at IS NULL" \
+      " AND (earlier.position < day_versions.position" \
+      " OR (earlier.position = day_versions.position AND earlier.id < day_versions.id)))"
+    )
+  }
+
   # "Version A", "Version B", ... and past Z, "Version AA" -- spreadsheet
   # style, so a day can be forked more than 26 times without a collision.
   def self.name_for(index)

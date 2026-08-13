@@ -3,8 +3,11 @@ module Api
     before_action :set_trip, only: [:index, :create]
     before_action :set_item, only: [:update, :destroy, :ungroup]
 
+    # The Final schedule screen: one plan per day, never two stacked on top of
+    # each other and never one the user rejected. `in_final_plan` is what draws
+    # that line -- see ScheduleItem.
     def index
-      scope = ScheduleItem.where(trip_id: @trip.id)
+      scope = ScheduleItem.where(trip_id: @trip.id).in_final_plan
       scope = scope.where(day: params[:day]) if params[:day].present?
       items = scope.order(:day, :starts_at_minutes, :position).to_a
       render json: { schedule_items: ScheduleItemSerializer.list(items) }

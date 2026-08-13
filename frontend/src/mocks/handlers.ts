@@ -9,6 +9,7 @@ import {
   findEntry,
   findTripDay,
   firstLiveVersionId,
+  inFinalPlan,
   isScheduled,
   itemsOfVersion,
   liveVersionsOf,
@@ -401,11 +402,15 @@ export const handlers = [
   }),
 
   // ---- Schedule --------------------------------------------------------
+  // The Final schedule screen: ONE plan per day. `inFinalPlan` is what draws
+  // that line — a forked day sends its first live version only, and a version
+  // the user archived is never read. Mirrors the server's
+  // ScheduleItem.in_final_plan; the two must not drift.
   http.get('/api/trips/:tripId/schedule', ({ params, request }) => {
     const tripId = Number(params.tripId);
     const url = new URL(request.url);
     const day = url.searchParams.get('day');
-    let results = db.scheduleItems.filter((s) => s.trip_id === tripId);
+    let results = db.scheduleItems.filter((s) => s.trip_id === tripId && inFinalPlan(s));
     if (day) results = results.filter((s) => s.day === day);
     return HttpResponse.json({ schedule_items: results });
   }),
