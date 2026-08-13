@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import type { PinState } from './types';
+import type { PinState, PinTone } from './types';
 import { pinStateLabel } from './pins';
 
 // Custom SVG divIcons only — never Leaflet's default blue pin (and never its
@@ -38,6 +38,52 @@ export function pinIcon(state: PinState, selected: boolean, title: string): L.Di
     iconSize: [PIN_BOX, PIN_BOX],
     iconAnchor: [PIN_CENTER, PIN_CENTER],
     popupAnchor: [0, -PIN_CENTER],
+  });
+}
+
+/**
+ * Tone -> modifier class. The class is all this file decides; the actual
+ * colours live in MapView.module.css as custom properties, because a divIcon's
+ * markup is a string and a string cannot read design tokens. Writing hex here
+ * would be the one place in the app where a colour escapes the token file, and
+ * it would escape into the hardest place to notice it.
+ */
+const TONE_CLASS: Record<PinTone, string> = {
+  bundled: 'wend-pin-label--bundled',
+  inView: 'wend-pin-label--in-view',
+  offView: 'wend-pin-label--off-view',
+};
+
+/** Matches the pill's rendered height in MapView.module.css — only used to lift the popup clear of it. */
+const LABEL_HEIGHT = 28;
+
+/**
+ * The name-pill pin. Where `pinIcon` says "something is here", this says
+ * "*this* is here" — at board zoom the reader is scanning a shortlist of
+ * places they already named, so the name is the useful mark and a teardrop
+ * is just a thing to hover.
+ *
+ * Deliberately sized by its own text, not by `iconSize`: the pill is as wide
+ * as the title. So the icon is anchored at 0x0 and the pill centres itself on
+ * that point in CSS (`translate(-50%, -50%)`), rather than Leaflet centring a
+ * box whose width we would have to measure in advance — which we cannot do
+ * before it is in the document.
+ */
+export function labelIcon(title: string, tone: PinTone | undefined, selected: boolean): L.DivIcon {
+  const classes = ['wend-pin-label'];
+  // No tone means no opinion, and the base class already resting-tones itself —
+  // so an untoned pin is not silently reported as "off view".
+  if (tone) classes.push(TONE_CLASS[tone]);
+  if (selected) classes.push('is-selected');
+  const html = `
+    <button type="button" class="${classes.join(' ')}">${escapeHtml(title)}</button>
+  `;
+  return L.divIcon({
+    html,
+    className: 'wend-pin-label-icon',
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor: [0, -LABEL_HEIGHT / 2],
   });
 }
 

@@ -16,6 +16,24 @@ export function boundsForPoints(points: ClusterPoint[], padDeg = 0.01): Bounds |
   return { north: north + padDeg, south: south - padDeg, east: east + padDeg, west: west - padDeg };
 }
 
+/**
+ * The same box as `boundsForPoints`, in the corner-pair shape every "fit the
+ * view to these" call site needs. Three places in MapView.tsx want it (first
+ * fit, re-fit on request, zooming a cluster open) and each one of them would
+ * otherwise re-spell the same nested-array literal from a Bounds — a shape
+ * that is easy to get subtly wrong (south/west first) and impossible to
+ * notice, because jsdom can't render the map that would show the mistake.
+ * Keeping it here keeps it unit-testable.
+ */
+export function boundsTupleForPoints(points: ClusterPoint[]): [[number, number], [number, number]] | null {
+  const bounds = boundsForPoints(points);
+  if (!bounds) return null;
+  return [
+    [bounds.south, bounds.west],
+    [bounds.north, bounds.east],
+  ];
+}
+
 export function isWithinBounds(point: ClusterPoint, bounds: Bounds): boolean {
   return point.lat <= bounds.north && point.lat >= bounds.south && point.lng <= bounds.east && point.lng >= bounds.west;
 }
