@@ -185,13 +185,20 @@
   display: block;
   width: max-content;
   transform: translate(-50%, -50%);
-  padding: 6px 12px;
+  /* The design bundle draws this pill at 13px; 15px is the product's readable
+     floor (architecture.md §5) and the floor wins — this is a place name a
+     reader scans across a map, not a caption. The padding steps down 6/12 ->
+     5/11 to pay for the two extra pixels of type: same 1:2 proportion, and the
+     pill still renders exactly 28px tall (5 + 15 + 5 + two 1.5px edges), which
+     is the height markerIcon.ts's LABEL_HEIGHT assumes when it lifts the popup
+     clear. Colour and tracking are the design's, untouched. */
+  padding: 5px 11px;
   border-radius: var(--radius-pill);
   background: var(--pin-label-bg);
   color: var(--pin-label-text);
   border: var(--border-width) solid var(--pin-label-border);
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: var(--text-min-size);
   font-weight: var(--weight-bold);
   line-height: 1;
   white-space: nowrap;
