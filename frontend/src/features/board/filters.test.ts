@@ -6,6 +6,8 @@ import {
   groupByCategory,
   groupByLocation,
   groupEntries,
+  isNarrowed,
+  toggleCategory,
 } from './filters';
 import type { Entry } from '../../api/types';
 
@@ -172,14 +174,118 @@ describe('filtering and grouping are orthogonal', () => {
   ];
 
   it('groups by place what the category filter left behind', () => {
-    const groups = groupByLocation(applyFilters(entries, { ...EMPTY_FILTERS, category: 'food' }));
+    const groups = groupByLocation(applyFilters(entries, { ...EMPTY_FILTERS, categories: ['food'] }));
 
     expect(groups.map((g) => g.label)).toEqual(['Gion', 'Namba']);
     expect(groups.flatMap((g) => g.entries.map((e) => e.id))).toEqual([1, 3]);
   });
 
   it('drops a place bucket entirely once nothing in it survives the filter', () => {
-    const groups = groupByLocation(applyFilters(entries, { ...EMPTY_FILTERS, category: 'place' }));
+    const groups = groupByLocation(applyFilters(entries, { ...EMPTY_FILTERS, categories: ['place'] }));
     expect(groups.map((g) => g.label)).toEqual(['Gion']);
+  });
+});
+
+// Ideas carry exactly one category, so two selected categories can only ever
+// mean "either of these" — an intersection would always be empty. Union is
+// also what the chips look like they promise: each lit chip adds its ideas.
+describe('applyFilters — categories are a union, not a choice', () => {
+  const entries = [
+    makeEntry({ id: 1, category: 'food' }),
+    makeEntry({ id: 2, category: 'place' }),
+    makeEntry({ id: 3, category: 'lodging' }),
+    makeEntry({ id: 4, category: null }),
+  ];
+
+  function idsFor(categories: Parameters<typeof toggleCategory>[0]) {
+    return applyFilters(entries, { ...EMPTY_FILTERS, categories }).map((e) => e.id);
+  }
+
+  it('shows ideas in ANY of two selected categories', () => {
+    expect(idsFor(['food', 'place'])).toEqual([1, 2]);
+  });
+
+  it('keeps the other category when one of the two is deselected', () => {
+    const remaining = toggleCategory(['food', 'place'], 'food');
+    expect(remaining).toEqual(['place']);
+    expect(idsFor(remaining)).toEqual([2]);
+  });
+
+  it('widens as each further category is added, never replacing the last', () => {
+    expect(idsFor(['food'])).toEqual([1]);
+    expect(idsFor(['food', 'place'])).toEqual([1, 2]);
+    expect(idsFor(['food', 'place', 'lodging'])).toEqual([1, 2, 3]);
+  });
+
+  it('treats an empty selection as no narrowing at all, not as "show nothing"', () => {
+    expect(idsFor([])).toEqual([1, 2, 3, 4]);
+  });
+
+  // Clearing every chip has to land back on the whole list, or "See all" would
+  // be the only way home from a filter the user built one click at a time.
+  it('restores everything once the last category is deselected', () => {
+    const cleared = toggleCategory(toggleCategory(['food', 'place'], 'food'), 'place');
+    expect(cleared).toEqual([]);
+    expect(idsFor(cleared)).toEqual([1, 2, 3, 4]);
+  });
+
+  it('steps an uncategorised idea aside while any category is selected', () => {
+    expect(idsFor(['food', 'place', 'lodging'])).not.toContain(4);
+  });
+
+  it('still composes with the other narrowings', () => {
+    const mixed = applyFilters(
+      [
+        makeEntry({ id: 1, category: 'food', scheduled: true }),
+        makeEntry({ id: 2, category: 'place', scheduled: false }),
+        makeEntry({ id: 3, category: 'place', scheduled: true }),
+      ],
+      { ...EMPTY_FILTERS, categories: ['food', 'place'], scheduleState: 'scheduled' },
+    );
+    expect(mixed.map((e) => e.id)).toEqual([1, 3]);
+  });
+});
+
+describe('toggleCategory', () => {
+  it('adds a category that is off and removes one that is on', () => {
+    expect(toggleCategory([], 'food')).toEqual(['food']);
+    expect(toggleCategory(['food'], 'food')).toEqual([]);
+  });
+
+  // Canonical CATEGORY_ORDER, not click order: the same set of lit chips is the
+  // same array however you got there, so equal selections compare equal.
+  it('keeps the result in CATEGORY_ORDER whichever order the chips were clicked', () => {
+    expect(toggleCategory(['food'], 'place')).toEqual(['place', 'food']);
+    expect(toggleCategory(['place'], 'food')).toEqual(['place', 'food']);
+  });
+
+  it('never mutates the array it was given', () => {
+    const before: Parameters<typeof toggleCategory>[0] = ['food'];
+    toggleCategory(before, 'place');
+    expect(before).toEqual(['food']);
+  });
+
+  it('is its own undo', () => {
+    expect(toggleCategory(toggleCategory(['food'], 'place'), 'place')).toEqual(['food']);
+  });
+});
+
+describe('isNarrowed', () => {
+  it('is false for the resting state', () => {
+    expect(isNarrowed(EMPTY_FILTERS)).toBe(false);
+  });
+
+  it('is true for one selected category and for several', () => {
+    expect(isNarrowed({ ...EMPTY_FILTERS, categories: ['food'] })).toBe(true);
+    expect(isNarrowed({ ...EMPTY_FILTERS, categories: ['food', 'place'] })).toBe(true);
+  });
+
+  it('is false again once the last category is deselected', () => {
+    expect(isNarrowed({ ...EMPTY_FILTERS, categories: [] })).toBe(false);
+  });
+
+  it('still notices the non-category narrowings on their own', () => {
+    expect(isNarrowed({ ...EMPTY_FILTERS, hasLocation: true })).toBe(true);
+    expect(isNarrowed({ ...EMPTY_FILTERS, scheduleState: 'scheduled' })).toBe(true);
   });
 });

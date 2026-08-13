@@ -3,25 +3,54 @@ import type { Entry, EntryCategory } from '../../api/types';
 export type ScheduleState = 'all' | 'scheduled' | 'potential';
 
 export interface IdeaFilters {
-  category: EntryCategory | null;
+  /**
+   * The categories the list is narrowed to, as a set the user builds up rather
+   * than a single choice they replace.
+   *
+   * This was one nullable category, which quietly imposed a question nobody
+   * asked: "food OR places?" is the normal shape of a trip question — you are
+   * deciding where to eat and what to see in the same sitting — and a
+   * single-value filter made answering it a matter of flipping between two
+   * lists and holding the other one in your head. Selecting a second category
+   * used to silently throw the first away, which is the one thing a filter
+   * must never do quietly.
+   *
+   * So: a union, not an intersection. Ideas are tagged with exactly one
+   * category, so intersecting two categories would always yield nothing —
+   * "food AND lodging" is not a question this data can answer. Union is the
+   * only reading that means anything here, and it is also the one the chips
+   * look like they promise: each lit chip adds its ideas to the list.
+   *
+   * An EMPTY array means no category narrowing at all — every idea passes,
+   * including uncategorised ones. It deliberately does not mean "show nothing":
+   * emptiness is the resting state you land in on first load and return to via
+   * "See all", and a filter that hid everything when nothing was chosen would
+   * be a screen that starts blank.
+   */
+  categories: EntryCategory[];
   hasLocation: boolean;
   scheduleState: ScheduleState;
 }
 
 export const EMPTY_FILTERS: IdeaFilters = {
-  category: null,
+  categories: [],
   hasLocation: false,
   scheduleState: 'all',
 };
 
 export function isNarrowed(filters: IdeaFilters): boolean {
-  return filters.category !== null || filters.hasLocation || filters.scheduleState !== 'all';
+  return filters.categories.length > 0 || filters.hasLocation || filters.scheduleState !== 'all';
 }
 
 /** Filters hide, never delete — this only changes what a query returns, nothing is archived. */
 export function applyFilters(entries: Entry[], filters: IdeaFilters): Entry[] {
   return entries.filter((entry) => {
-    if (filters.category && entry.category !== filters.category) return false;
+    // No categories chosen is the widest state, not the narrowest: the whole
+    // list passes. Once any chip is lit, an idea has to be in one of them —
+    // and an uncategorised idea is in none, so it steps aside until the
+    // narrowing is lifted.
+    if (filters.categories.length > 0 && !(entry.category !== null && filters.categories.includes(entry.category)))
+      return false;
     if (filters.hasLocation && !(entry.lat !== null && entry.lng !== null)) return false;
     if (filters.scheduleState === 'scheduled' && !entry.scheduled) return false;
     if (filters.scheduleState === 'potential' && entry.scheduled) return false;
@@ -39,6 +68,29 @@ export const CATEGORY_LABELS: Record<EntryCategory, string> = {
   transport: 'Transport',
   other: 'Other',
 };
+
+/**
+ * Adds or removes one category from a multi-select filter, keeping the result
+ * in CATEGORY_ORDER.
+ *
+ * The order is canonical rather than click-ordered on purpose: the same set of
+ * lit chips always produces the same array, whichever sequence the user
+ * clicked them in. That makes the filter state comparable — two people who
+ * picked Food and Place in opposite orders hold equal state — so memoised
+ * derivations downstream do not re-run over a difference that is not one, and
+ * tests can assert on the array without encoding the path taken to it.
+ *
+ * Lives here rather than in the bar that draws the chips because all three
+ * filter surfaces (board, map, library) toggle the same categories the same
+ * way, and one copy of "what a chip click means" is enough. The array is
+ * rebuilt rather than mutated, so callers can hand the result straight to
+ * `setFilters` and get the new reference React needs.
+ */
+export function toggleCategory(categories: EntryCategory[], category: EntryCategory): EntryCategory[] {
+  const next = new Set(categories);
+  if (!next.delete(category)) next.add(category);
+  return CATEGORY_ORDER.filter((known) => next.has(known));
+}
 
 /**
  * One rendered section of the idea list. Every grouping function returns this

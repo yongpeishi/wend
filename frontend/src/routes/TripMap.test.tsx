@@ -83,6 +83,43 @@ describe('TripMap', () => {
     expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
   });
 
+  // The seeded trip holds one "place" (Nanzen-ji, scheduled) and one "activity"
+  // (Kiyamachi, potential), so each category chip picks out exactly one pin and
+  // the union of both is visibly different from either alone.
+  it('lights any number of category chips at once and shows the union of them', async () => {
+    const user = userEvent.setup();
+    renderWithLayout();
+    await screen.findByText('Nanzen-ji (scheduled)');
+
+    await user.click(screen.getByRole('button', { name: 'Place' }));
+    expect(screen.getByText(/Showing 1 of 2/)).toBeInTheDocument();
+    expect(screen.queryByText('Kiyamachi (potential)')).not.toBeInTheDocument();
+
+    // A second chip joins the first rather than replacing it — the whole point
+    // of the multi-select. Both stay pressed, and both kinds of pin are back.
+    await user.click(screen.getByRole('button', { name: 'Activity' }));
+    expect(screen.getByText(/Showing 2 of 2/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Place' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Activity' })).toHaveAttribute('aria-pressed', 'true');
+
+    // Category and schedule state still narrow together.
+    await user.click(screen.getByRole('button', { name: 'Scheduled' }));
+    expect(screen.getByText(/Showing 1 of 2/)).toBeInTheDocument();
+    expect(screen.getByText('Nanzen-ji (scheduled)')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Scheduled' }));
+
+    // Turning one category off leaves the other lit and its pin on the map.
+    await user.click(screen.getByRole('button', { name: 'Place' }));
+    expect(screen.getByText(/Showing 1 of 2/)).toBeInTheDocument();
+    expect(screen.getByText('Kiyamachi (potential)')).toBeInTheDocument();
+    expect(screen.queryByText('Nanzen-ji (scheduled)')).not.toBeInTheDocument();
+
+    // "See all" clears the whole selection at once, not one chip at a time.
+    await user.click(screen.getByRole('button', { name: 'See all' }));
+    expect(screen.getByText(/Showing 2 of 2/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Activity' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('opens a compact popover on pin click, stating status in words and linking to the entry', async () => {
     const user = userEvent.setup();
     renderWithLayout();

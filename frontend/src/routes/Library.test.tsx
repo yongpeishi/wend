@@ -72,6 +72,13 @@ describe('Library', () => {
   });
 
   it('filters hide rows, never delete them, and "See all" always undoes it', async () => {
+    // Three categories in the library so the union of two chips is a distinct
+    // outcome from either chip alone and from no chip at all — with only the
+    // one seeded idea, every multi-select assertion below would pass by
+    // accident. Fushimi Inari (seeded) is category "place".
+    await api.post('/entries', { entry: { kind: 'idea', title: 'Ramen alley', category: 'food' } });
+    await api.post('/entries', { entry: { kind: 'idea', title: 'Onsen day trip', category: 'activity' } });
+
     const user = userEvent.setup();
     renderLibrary();
     await screen.findByText('Fushimi Inari at dawn');
@@ -81,10 +88,21 @@ describe('Library', () => {
     expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Place' }));
-    expect(screen.getByText(/Showing 1 of 1/)).toBeInTheDocument(); // Fushimi Inari is category "place"
+    expect(await screen.findByText(/Showing 1 of 3/)).toBeInTheDocument();
+    expect(screen.queryByText('Ramen alley')).not.toBeInTheDocument();
 
+    // The chips are a multi-select: a second one lights alongside the first and
+    // the list widens to the union, rather than the new chip replacing the old.
     await user.click(screen.getByRole('button', { name: 'Food' }));
-    expect(screen.getByText(/Showing 0 of 1/)).toBeInTheDocument();
+    expect(await screen.findByText(/Showing 2 of 3/)).toBeInTheDocument();
+    expect(screen.getByText('Fushimi Inari at dawn')).toBeInTheDocument();
+    expect(screen.getByText('Ramen alley')).toBeInTheDocument();
+    expect(screen.queryByText('Onsen day trip')).not.toBeInTheDocument();
+
+    // Turning one back off leaves the other lit and its rows on screen.
+    await user.click(screen.getByRole('button', { name: 'Place' }));
+    expect(await screen.findByText(/Showing 1 of 3/)).toBeInTheDocument();
+    expect(screen.getByText('Ramen alley')).toBeInTheDocument();
     expect(screen.queryByText('Fushimi Inari at dawn')).not.toBeInTheDocument();
 
     const widen = screen.getByRole('button', { name: 'See all' });
