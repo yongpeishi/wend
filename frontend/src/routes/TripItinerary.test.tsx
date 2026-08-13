@@ -111,10 +111,23 @@ describe('TripItinerary — the day list', () => {
   it("states the trip's length, and says once that a day is unsettled", async () => {
     renderItinerary();
 
-    expect(await screen.findByText('2–8 Nov · 7 days')).toBeInTheDocument();
+    // The length only: the date range belongs to TripLayout's title block, and
+    // this screen would otherwise print 2–8 Nov twice on the one page.
+    expect(await screen.findByText('7 days')).toBeInTheDocument();
+    expect(screen.getAllByText('2–8 Nov')).toHaveLength(1);
     // One day of the seven carries two live versions.
     expect(screen.getByText('1 day split · not settled')).toBeInTheDocument();
     expect(screen.getByText('2 versions · not settled')).toBeInTheDocument();
+  });
+
+  it("leaves the trip's title as the page's only <h1>, with the itinerary a section under it", async () => {
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+
+    const [h1, ...rest] = screen.getAllByRole('heading', { level: 1 });
+    expect(h1).toHaveTextContent('Six days in Kyoto');
+    expect(rest).toHaveLength(0);
+    expect(screen.getByRole('heading', { level: 2, name: 'Itinerary' })).toBeInTheDocument();
   });
 
   it('opens every day at once and closes them all again', async () => {
