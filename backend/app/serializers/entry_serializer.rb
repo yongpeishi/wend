@@ -36,8 +36,22 @@ class EntrySerializer
       one(entry, current_user: current_user, trip_id: trip_id).merge("distance_km" => distance_km)
     end
 
+    # The one EntrySummary shape in the API: entry `parents`, `Todo#entry`, and
+    # the itinerary's `entry`/`members` all send exactly this. `duration_minutes`
+    # and `location_name` are here for the itinerary, which sizes a day from
+    # them, but they cost nothing on the row and one shared shape beats two
+    # near-identical ones.
     def summary(entry)
-      { "id" => entry.id, "kind" => entry.kind, "title" => entry.title, "category" => entry.category }
+      return nil if entry.nil?
+
+      {
+        "id" => entry.id,
+        "kind" => entry.kind,
+        "title" => entry.title,
+        "category" => entry.category,
+        "duration_minutes" => entry.duration_minutes,
+        "location_name" => entry.location_name
+      }
     end
 
     def detail(entry, current_user: nil)
