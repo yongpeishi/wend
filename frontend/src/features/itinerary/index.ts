@@ -7,16 +7,18 @@
 
 export {
   buildDayList,
+  bundleMemberSpans,
   dayHours,
   daySummary,
   formatDuration,
   formatSpan,
   nextFreeSlot,
+  versionSpan,
   withGaps,
   MIN_GAP_MINUTES,
   UNSAVED_VERSION_ID,
 } from './itineraryModel';
-export type { ItineraryDay, Row } from './itineraryModel';
+export type { DerivedSpan, ItineraryDay, Row } from './itineraryModel';
 
 export { dayDroppableId, useDayDrop } from './useDayDrop';
 export type { ItineraryDragData } from './useDayDrop';

@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '../../design/components/core/Button';
 import type { DayVersion } from '../../api/types';
-import { VersionItems } from './VersionItems';
+import { daySummary, versionSpan } from './itineraryModel';
 import styles from './ArchivedPanel.module.css';
 
 export interface ArchivedVersion {
@@ -24,9 +24,18 @@ export interface ArchivedPanelProps {
  * sits collapsed behind a count rather than taking rail space from the ideas
  * still waiting to be placed.
  *
- * An archived version is shown, never edited: its items render read-only, so
- * the panel answers "what was in it?" without pretending you can change a plan
- * you already set aside. Bring it back and it becomes a live version again.
+ * An archived version is summarised, not replayed. The rail is 300px wide and
+ * the day's own row language needs more than that — a 104px mono time column,
+ * a title and right-aligned metadata on one line — so drawing the version's
+ * running order here collides its own columns into unreadable text. Rarely
+ * reached also means "answer one question": what was in it, and when did it
+ * have you out. That is a span, a count and the titles in order, all in plain
+ * wrapping text with no columns to collide.
+ *
+ * So there are no gap rows and no bundle bands either. A hole between two
+ * things you already set aside is not a hole you can fill, and a bundle you
+ * cannot ungroup is just one more title in the list. Bring it back and it
+ * becomes a live version again, drawn in full on its own day.
  */
 export function ArchivedPanel({ archived, open, onToggle, onRestore }: ArchivedPanelProps) {
   if (archived.length === 0) return null;
@@ -42,10 +51,13 @@ export function ArchivedPanel({ archived, open, onToggle, onRestore }: ArchivedP
 
       {open && (
         <div className={styles.list}>
-          {archived.map(({ version, label }) => (
-            <div key={version.id} className={styles.entry}>
-              <div className={styles.head}>
-                <span className={styles.label}>{label}</span>
+          {archived.map(({ version, label }) => {
+            const titles = daySummary(version.schedule_items);
+            return (
+              <div key={version.id} className={styles.entry}>
+                <p className={styles.label}>{label}</p>
+                <p className={styles.held}>{held(version)}</p>
+                {titles && <p className={styles.titles}>{titles}</p>}
                 <Button
                   size="small"
                   variant="quiet"
@@ -56,11 +68,20 @@ export function ArchivedPanel({ archived, open, onToggle, onRestore }: ArchivedP
                   Bring back
                 </Button>
               </div>
-              <VersionItems items={version.schedule_items} readOnly />
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
+}
+
+/** `09:00–13:00 · 3 things` — the span, then how much was in it. */
+function held(version: DayVersion): string {
+  const items = version.schedule_items;
+  if (items.length === 0) return 'Nothing was on it.';
+
+  const count = `${items.length} ${items.length === 1 ? 'thing' : 'things'}`;
+  const span = versionSpan(items);
+  return span ? `${span} · ${count}` : count;
 }

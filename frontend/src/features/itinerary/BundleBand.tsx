@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../../design/components/core/Button';
 import type { ItineraryItem } from '../../api/types';
-import { formatDuration, joinMeta } from '../../lib/formatDates';
-import { formatSpan } from './itineraryModel';
+import { joinMeta } from '../../lib/formatDates';
+import { bundleMemberSpans, formatDuration, formatSpan } from './itineraryModel';
 import { TimeEditor } from './TimeEditor';
 import styles from './BundleBand.module.css';
 
@@ -24,10 +24,14 @@ export interface BundleBandProps {
  * sub-information, not hierarchy, so the band adds no border, no heavier type
  * and no shadow, and each member line is drawn exactly like a loose idea.
  *
- * Members carry no hours of their own: the model gives a bundle one span and
- * the server divides it only when you ungroup (contract §2). So a member line
- * shows what it is and where, and the band above it holds the clock — which is
- * also why the band's span is the thing you click to change the hours.
+ * Members carry no hours of their own — the model gives a bundle one span, and
+ * the server divides it into rows only when you ungroup (contract §2). But a
+ * blank time column turns a member into an indented orphan and breaks the one
+ * rule the layout exists to keep, so each member's hours are DERIVED FOR
+ * DISPLAY by `bundleMemberSpans`, with exactly the rule `ungroup` uses. What a
+ * member shows is what it would be given if you split the bundle right now.
+ * Nothing here is stored, and the band's own span stays the thing you click to
+ * change the hours — a derived time is not an editable one.
  */
 export function BundleBand({ item, onUngroup, onEditTime, onRemove, readOnly = false }: BundleBandProps) {
   const [editing, setEditing] = useState(false);
@@ -35,6 +39,7 @@ export function BundleBand({ item, onUngroup, onEditTime, onRemove, readOnly = f
   const title = item.entry?.title ?? 'Bundle';
   const span = formatSpan(item.starts_at_minutes, item.ends_at_minutes);
   const canEditTime = Boolean(onEditTime) && !readOnly;
+  const memberSpans = bundleMemberSpans(item);
 
   return (
     <div className={styles.band}>
@@ -85,15 +90,20 @@ export function BundleBand({ item, onUngroup, onEditTime, onRemove, readOnly = f
         />
       )}
 
-      {item.members.map((member) => (
-        <div key={member.id} className={styles.member}>
-          <span className={styles.memberTime} aria-hidden="true" />
-          <span className={styles.memberTitle}>{member.title}</span>
-          <span className={styles.memberMeta}>
-            {joinMeta(member.location_name, formatDuration(member.duration_minutes))}
-          </span>
-        </div>
-      ))}
+      {item.members.map((member, index) => {
+        const slot = memberSpans[index];
+        return (
+          <div key={member.id} className={styles.member}>
+            <span className={styles.memberTime}>
+              {formatSpan(slot?.startsAtMinutes ?? null, slot?.endsAtMinutes ?? null)}
+            </span>
+            <span className={styles.memberTitle}>{member.title}</span>
+            <span className={styles.memberMeta}>
+              {joinMeta(member.location_name, formatDuration(member.duration_minutes))}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

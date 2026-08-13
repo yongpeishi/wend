@@ -48,26 +48,53 @@
   gap: var(--space-3);
 }
 
+/* One archived version, summarised in stacked full-width lines. The rail is
+   300px: nothing in here takes a column, a fixed gutter or a right-aligned
+   cell, because two columns in 300px is what collided the day's own row
+   language into unreadable text. Everything wraps, nothing is clipped. */
 .entry {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-}
-
-.head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  align-items: flex-start;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  /* 11px 13px: the same row inset as a placed thing, so the rail keeps one
+     geometry even where the contents differ. */
+  padding: 11px 13px;
 }
 
 /* Plum: archived things and lodging are the two things plum means. */
 .label {
+  margin: 0;
   font-size: var(--text-min-size);
   line-height: var(--text-small-line);
+  font-weight: var(--weight-bold);
   color: var(--stop-destination);
+}
+
+/* The span and the count. Mono, because the span is a time like every other
+   time on this screen. */
+.held {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+/* What was in it, in clock order, wrapping over as many lines as it needs.
+   A rarely-reached panel may be tall; it may not be unreadable. */
+.titles {
+  margin: 0;
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-strong);
+  overflow-wrap: break-word;
 }
 
 .restore {
   flex: none;
+  margin-top: var(--space-1);
 }

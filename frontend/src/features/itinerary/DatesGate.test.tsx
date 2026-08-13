@@ -138,4 +138,23 @@ describe('DatesGate — setting the dates', () => {
 
     expect(onBack).toHaveBeenCalled();
   });
+
+  // Reached by "Change dates", backing out lands on the day list it was opened
+  // over, so the button may not go on promising the ideas board.
+  it('names what backing out actually does when the dates are only being changed', async () => {
+    const user = userEvent.setup();
+    const { onBack } = renderGate({ initialStart: '2026-10-12', initialEnd: '2026-10-17' });
+
+    expect(screen.queryByRole('button', { name: 'Back to ideas' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Back to your days' }));
+
+    expect(onBack).toHaveBeenCalled();
+  });
+
+  // Half-set dates are not a day list to return to.
+  it('still offers the ideas when only one of the two dates is known', () => {
+    renderGate({ initialStart: '2026-10-12', initialEnd: null });
+
+    expect(screen.getByRole('button', { name: 'Back to ideas' })).toBeInTheDocument();
+  });
 });

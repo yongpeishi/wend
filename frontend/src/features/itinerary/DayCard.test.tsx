@@ -99,6 +99,31 @@ describe('DayCard — the open day', () => {
     expect(screen.getByText('Nishiki Market')).toBeInTheDocument();
   });
 
+  // "Every idea is one 15px regular line with its time in mono at a fixed
+  // 104px column. A bundle member and a loose idea look identical."
+  // (itinerary-decisions.md). The hours are derived, never stored: they are
+  // the share the server's ungroup would hand each member.
+  it('gives every bundle member the hours it would get if you ungrouped it', () => {
+    renderCard();
+
+    // 08:00–12:30 is 4 hr 30, split evenly between two 2-hour members.
+    expect(screen.getByText('08:00–10:15')).toBeInTheDocument();
+    expect(screen.getByText('10:15–12:30')).toBeInTheDocument();
+  });
+
+  it('leaves a member blank when the bundle itself has no hours yet', () => {
+    renderCard({
+      day: day({
+        versions: [
+          version(1, 'Version A', [{ ...BUNDLE_ITEM, starts_at_minutes: null, ends_at_minutes: null }]),
+        ],
+      }),
+    });
+
+    expect(screen.getByText('Daiso, Kyoto Station')).toBeInTheDocument();
+    expect(screen.queryByText(/08:00/)).not.toBeInTheDocument();
+  });
+
   it('draws the hole between two things', () => {
     renderCard();
 
