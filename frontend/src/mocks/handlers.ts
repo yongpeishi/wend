@@ -395,6 +395,7 @@ export const handlers = [
       entry_id: body.schedule_item.entry_id ?? null,
       chosen_entry_id: body.schedule_item.chosen_entry_id ?? null,
       day: body.schedule_item.day,
+      day_version_id: body.schedule_item.day_version_id ?? null,
       starts_at_minutes: body.schedule_item.starts_at_minutes ?? null,
       ends_at_minutes: body.schedule_item.ends_at_minutes ?? null,
       note: body.schedule_item.note ?? null,
