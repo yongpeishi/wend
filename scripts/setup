@@ -12,7 +12,7 @@ info "installing gems"
 (cd "$BACKEND_DIR" && run bundle install)
 
 info "preparing database"
-rails_cmd db:prepare   # creates + migrates + seeds a fresh DB, no-op once it exists
+rails_cmd dev:prepare  # creates + migrates + seeds, no-op once the DB is usable
 
 info "installing npm packages"
 (cd "$FRONTEND_DIR" && run npm install)
