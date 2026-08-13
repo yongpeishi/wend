@@ -113,7 +113,14 @@ export function isScheduled(entryId: number): boolean {
 }
 
 export function toEntrySummary(entry: StoredEntry): EntrySummary {
-  return { id: entry.id, kind: entry.kind, title: entry.title, category: entry.category };
+  return {
+    id: entry.id,
+    kind: entry.kind,
+    title: entry.title,
+    category: entry.category,
+    duration_minutes: entry.duration_minutes,
+    location_name: entry.location_name,
+  };
 }
 
 export function toEntry(entry: StoredEntry, currentUserId: number | null): Entry {
@@ -292,6 +299,7 @@ export function seed() {
       entry_id: nanzenji.id,
       chosen_entry_id: null,
       day: '2026-11-02',
+      day_version_id: null,
       starts_at_minutes: 9 * 60,
       ends_at_minutes: 9 * 60 + 40,
       note: null,
