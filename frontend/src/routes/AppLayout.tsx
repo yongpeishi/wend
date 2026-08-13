@@ -7,21 +7,23 @@ import { formatTripDates, formatTripLength, joinMeta } from '../lib/formatDates'
 import styles from './AppLayout.module.css';
 
 /**
- * The trip's own views. Same set, same order and same destinations as the
- * segmented tab bar that used to sit under the trip header — only the
- * presentation moved. `board` is the index route, so it has no path segment.
+ * The trip's own views, in the order you plan in: keep the ideas, lay them onto
+ * days, sort out what you have to do before you go, then read the finished plan
+ * on the road. `board` is the index route, so it has no path segment.
  *
- * The design's sub-nav names five views (Ideas, Bundles, Hour by hour, Map,
- * Before you go). Four of those are these four under different words, and
- * "Bundles" is not a view at all here — bundles live in the board's right-hand
- * rail. Renaming the labels is a copy decision, not part of "make the sidebar
- * look like the design", so the words stay and only the presentation changes.
+ * "Final schedule" rather than "Schedule": with an itinerary screen next door,
+ * one word had to say which of the two is the finished one. Only the label
+ * changed — /trips/:id/schedule is the same route it always was.
+ *
+ * Map is not in the itinerary design's sub-nav, and stays anyway: it shipped,
+ * and taking a working view out of the nav is a regression rather than a tidy-up.
  */
 const TRIP_TABS = [
   { key: 'board', label: 'Ideas' },
-  { key: 'map', label: 'Map' },
-  { key: 'schedule', label: 'Schedule' },
+  { key: 'itinerary', label: 'Itinerary' },
   { key: 'checklist', label: 'Checklist' },
+  { key: 'schedule', label: 'Final schedule' },
+  { key: 'map', label: 'Map' },
 ];
 
 /** One person shown under "Planning with", as a circle of initials. */

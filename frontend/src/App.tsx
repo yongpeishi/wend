@@ -10,6 +10,7 @@ import { SignIn } from './routes/SignIn';
 import { TripsList } from './routes/TripsList';
 import { TripLayout } from './routes/TripLayout';
 import { TripBoard } from './routes/TripBoard';
+import { TripItinerary } from './routes/TripItinerary';
 import { TripMap } from './routes/TripMap';
 import { TripSchedule } from './routes/TripSchedule';
 import { TripChecklist } from './routes/TripChecklist';
@@ -35,6 +36,7 @@ export function App() {
                     <Route path="/library" element={<Library />} />
                     <Route path="/trips/:id" element={<TripLayout />}>
                       <Route index element={<TripBoard />} />
+                      <Route path="itinerary" element={<TripItinerary />} />
                       <Route path="map" element={<TripMap />} />
                       <Route path="schedule" element={<TripSchedule />} />
                       <Route path="checklist" element={<TripChecklist />} />

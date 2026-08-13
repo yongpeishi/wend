@@ -41,6 +41,7 @@ function renderShell(initialPath = '/') {
                 {/* The trip's routes are stand-ins: what matters here is that
                     the shell recognises a trip URL, not what the trip renders. */}
                 <Route path="/trips/:id" element={<RouteContent />}>
+                  <Route path="itinerary" element={<RouteContent />} />
                   <Route path="map" element={<RouteContent />} />
                   <Route path="schedule" element={<RouteContent />} />
                   <Route path="checklist" element={<RouteContent />} />
@@ -93,16 +94,23 @@ describe('AppLayout', () => {
     expect(screen.getByText('Plan')).toBeInTheDocument();
 
     const tripNav = screen.getByRole('navigation', { name: 'Trip views' });
-    // Same set, same order and same destinations as the old segmented tab bar.
+    // The order you plan in: ideas, then days, then what to do before you go,
+    // then the finished plan. Map keeps its place at the end.
     expect(within(tripNav).getAllByRole('link').map((link) => link.textContent)).toEqual([
       'Ideas',
-      'Map',
-      'Schedule',
+      'Itinerary',
       'Checklist',
+      'Final schedule',
+      'Map',
     ]);
     expect(within(tripNav).getByRole('link', { name: 'Ideas' })).toHaveAttribute('href', '/trips/1');
+    expect(within(tripNav).getByRole('link', { name: 'Itinerary' })).toHaveAttribute(
+      'href',
+      '/trips/1/itinerary',
+    );
     expect(within(tripNav).getByRole('link', { name: 'Map' })).toHaveAttribute('href', '/trips/1/map');
-    expect(within(tripNav).getByRole('link', { name: 'Schedule' })).toHaveAttribute(
+    // Renamed, not rerouted: the finished plan is the same URL it always was.
+    expect(within(tripNav).getByRole('link', { name: 'Final schedule' })).toHaveAttribute(
       'href',
       '/trips/1/schedule',
     );
@@ -156,7 +164,7 @@ describe('AppLayout', () => {
   it('marks the trip view you are on as the current page', () => {
     renderShell(`/trips/${SEEDED_TRIP_ID}/schedule`);
     const tripNav = screen.getByRole('navigation', { name: 'Trip views' });
-    expect(within(tripNav).getByRole('link', { name: 'Schedule' })).toHaveAttribute(
+    expect(within(tripNav).getByRole('link', { name: 'Final schedule' })).toHaveAttribute(
       'aria-current',
       'page',
     );
