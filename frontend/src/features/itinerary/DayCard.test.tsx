@@ -325,6 +325,22 @@ describe('DayCard — swapping it with another day', () => {
     expect(screen.queryByRole('button', { name: 'Swap with Day 1 · Mon 12' })).not.toBeInTheDocument();
     expect(onSwapDay).not.toHaveBeenCalled();
   });
+
+  // The other half of DayRow.test.tsx's ordering test. The collapsed row has
+  // no choice — its chevron is a column of the toggle button and the swap has
+  // to sit outside that button — so the open day follows it, and neither
+  // control moves when the day opens or closes. jsdom lays nothing out: this
+  // pins DOM order, not pixels.
+  it('keeps the close chevron before the swap, the order the collapsed row uses', () => {
+    renderCard({ swapChoices: TRIP_DAYS, onSwapDay: vi.fn() });
+
+    const close = screen.getByRole('button', { name: 'Close Day 2 · Tue 13' });
+    const swap = screen.getByRole('button', { name: 'Swap Day 2 · Tue 13 with another day' });
+
+    expect(close.compareDocumentPosition(swap) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Immediately outboard of it, at the card's right inset — nothing between.
+    expect(close.nextElementSibling).toContainElement(swap);
+  });
 });
 
 describe('DayCard — as a drop target', () => {

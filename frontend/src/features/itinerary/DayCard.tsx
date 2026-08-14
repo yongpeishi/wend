@@ -121,13 +121,12 @@ export function DayCard({
             {split ? 'Add another' : 'Fork this day'}
           </Button>
 
-          {/* Beside the day's other actions rather than in the body: swapping
-              is something done TO the day, like forking it, not something done
-              to what is on it. */}
-          {onSwapDay && (
-            <SwapDayMenu day={day.day} dayLabel={day.label} choices={swapChoices} onSwap={onSwapDay} />
-          )}
-
+          {/* The chevron before the swap, which is the order the collapsed row
+              (DayRow) puts them in and cannot change: there the chevron is a
+              grid column of the toggle button, and the swap has to be outside
+              that button entirely. Matching it here is what keeps either
+              control from sliding out from under the pointer when the day
+              opens or closes. */}
           <button
             type="button"
             className={styles.close}
@@ -137,6 +136,13 @@ export function DayCard({
           >
             <ChevronUp size={20} strokeWidth={1.5} aria-hidden="true" />
           </button>
+
+          {/* Beside the day's other actions rather than in the body: swapping
+              is something done TO the day, like forking it, not something done
+              to what is on it. */}
+          {onSwapDay && (
+            <SwapDayMenu day={day.day} dayLabel={day.label} choices={swapChoices} onSwap={onSwapDay} />
+          )}
         </span>
       </div>
 

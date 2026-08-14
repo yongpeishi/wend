@@ -39,6 +39,10 @@
   padding: 4px 12px;
 }
 
+/* Fork, then the chevron, then the swap — the collapsed row's order, so a
+   control keeps its column when the day opens. The swap trigger therefore ends
+   at the card's own 18px inset, the same edge the collapsed row's does, and its
+   popup hangs from `right: 0` off that edge in both states. */
 .headActions {
   margin-left: auto;
   display: flex;

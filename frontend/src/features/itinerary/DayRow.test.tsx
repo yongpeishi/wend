@@ -214,4 +214,23 @@ describe('DayRow — swapping it with another day', () => {
     await user.click(screen.getByRole('button', { name: 'Swap Day 2 · Tue 13 with another day' }));
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
+
+  // Both states have to lay these two out in the same order, or the trigger
+  // you just pressed slides out from under the pointer as the day opens. Here
+  // the order is forced: the chevron is a column of the toggle button and the
+  // swap cannot go inside a button, so the swap is outboard. DayCard.test.tsx
+  // pins the open day to match. jsdom lays nothing out — this is DOM order,
+  // not pixels.
+  it('puts the chevron before the swap, the order the open day matches', () => {
+    renderRow({ swapChoices: TRIP_DAYS, onSwapDay: vi.fn() });
+
+    const toggle = row().firstElementChild as HTMLElement;
+    const swap = screen.getByRole('button', { name: 'Swap Day 2 · Tue 13 with another day' });
+
+    expect(toggle.tagName).toBe('BUTTON');
+    // The chevron closes the toggle's three columns…
+    expect(toggle.lastElementChild?.tagName.toLowerCase()).toBe('svg');
+    // …and the swap follows the whole button.
+    expect(toggle.compareDocumentPosition(swap) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
 });
