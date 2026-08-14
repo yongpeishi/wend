@@ -52,7 +52,7 @@ export function versionDroppableId(day: string, versionId: number): string {
  * The monitor fires only when `over` is this exact target, which is how a day
  * and the columns inside it stay mutually exclusive: whichever one the context
  * resolved to is the only one that hears the drop. Which one that is, is
- * `itineraryCollisionDetection`'s job.
+ * `itineraryDragStrategy`'s job.
  *
  * Dragging is the accelerator, never the only route: the rail's ⋯ menu places
  * the same thing on the same day with a pointer or a keyboard alone, and a
@@ -94,30 +94,128 @@ function dropDataOf(container: DroppableContainer | undefined): ItineraryDropDat
 }
 
 /**
- * Which target a drag is over.
+ * The two halves of aiming a drag on this screen, which have to be one thing.
  *
- * Two readings, because a keyboard drag has no pointer at all: with one, what
- * is literally under the cursor wins, falling back to rect overlap for the
- * moment the cursor has run off the edge of every target while the card it is
- * carrying has not. Without one, the drag sits wherever
- * `itineraryKeyboardCoordinates` parked it, and nearest-centre is the reading
- * that always resolves to exactly the target it was parked on.
- *
- * Then the innermost target wins. A split day is a drop target that *contains*
- * drop targets, and the enclosing day is the bigger, easier thing to hit — so
- * left alone it swallows every drop aimed at a column and the day resolves to
- * Version A, which is the whole of feedback 014#2. This does not blanket-prefer
- * version targets (that would let a split day elsewhere on the page steal a
- * drop meant for an unsplit one): it only promotes a version column over *its
- * own day*, when both are in the running.
+ * `collisionDetection` says which target a drag is over — which is what gets
+ * announced, and what receives the drop. `coordinateGetter` is what the arrow
+ * keys do. They are made together and used together (see TripItinerary), and
+ * `release` is called when the drag is over.
  */
-export const itineraryCollisionDetection: CollisionDetection = (args) => {
-  const byId = new Map<UniqueIdentifier, DroppableContainer>(
-    args.droppableContainers.map((container) => [container.id, container]),
-  );
-  const collisions = args.pointerCoordinates ? underPointer(args) : closestCenter(args);
-  return innermostFirst(collisions, byId);
-};
+export interface ItineraryDragStrategy {
+  collisionDetection: CollisionDetection;
+  coordinateGetter: KeyboardCoordinateGetter;
+  release: () => void;
+}
+
+/**
+ * Everything about aiming a drag at a day, or at one version column of a day.
+ *
+ * Built per `DndContext` rather than stated as two free functions, because the
+ * arrow keys and the answer to "what is this over?" cannot be allowed to
+ * disagree: the drag is only ever over the stop the arrow keys walked it to,
+ * and that has to be one remembered fact rather than two computations of the
+ * same rectangles that might come out differently.
+ *
+ * Why they would come out differently: `@dnd-kit`'s keyboard sensor, asked for
+ * a coordinate that is off-screen, deliberately *leaves the drag where it is
+ * and scrolls the page instead* — so drop targets slide under a stationary
+ * drag as a matter of course, and by default asynchronously (`scrollBehavior`).
+ * Resolving the drop by geometry at the moment the key comes up therefore
+ * resolves it against whatever the page had scrolled to by then, which is how
+ * a drag that announced Version B of one day landed on the next day
+ * altogether — feedback 014#2 again, from the other end.
+ */
+export function itineraryDragStrategy(): ItineraryDragStrategy {
+  /** The stop the arrow keys last walked to, and the drag it belongs to. */
+  let parked: { drag: UniqueIdentifier; stop: UniqueIdentifier } | null = null;
+
+  const stopFor = (drag: UniqueIdentifier): UniqueIdentifier | undefined =>
+    parked?.drag === drag ? parked.stop : undefined;
+
+  /**
+   * Which target a drag is over.
+   *
+   * A keyboard drag is over the stop it was walked to, full stop: no rectangle
+   * is consulted, so no scroll, re-measure or re-layout between the
+   * announcement and the drop can move it. That is the invariant the screen
+   * rests on — **what is announced is what receives the drop**.
+   *
+   * A pointer drag has no such record, so it is read off the page: what is
+   * literally under the cursor wins, falling back to rect overlap for the
+   * moment the cursor has run off the edge of every target while the card it is
+   * carrying has not. Then the innermost target wins. A split day is a drop
+   * target that *contains* drop targets, and the enclosing day is the bigger,
+   * easier thing to hit — so left alone it swallows every drop aimed at a column
+   * and the day resolves to Version A, which is the whole of feedback 014#2.
+   * This does not blanket-prefer version targets (that would let a split day
+   * elsewhere on the page steal a drop meant for an unsplit one): it only
+   * promotes a version column over *its own day*, when both are in the running.
+   */
+  const collisionDetection: CollisionDetection = (args) => {
+    const byId = new Map<UniqueIdentifier, DroppableContainer>(
+      args.droppableContainers.map((container) => [container.id, container]),
+    );
+
+    if (!args.pointerCoordinates) {
+      const stop = stopFor(args.active.id);
+      if (stop !== undefined && byId.has(stop)) return [{ id: stop }];
+      // Nothing walked to yet — the drag has only just been lifted — or what
+      // was walked to has left the page, which a day list that came back from
+      // the server shorter will do. Either way, read the rectangles.
+      return innermostFirst(closestCenter(args), byId);
+    }
+
+    return innermostFirst(underPointer(args), byId);
+  };
+
+  /**
+   * The arrow keys, for a drag that is being carried by the keyboard.
+   *
+   * `@dnd-kit`'s own getter nudges the drag 25px per press, which on this screen
+   * means a dozen presses to cross from the rail to a day and a dozen more to
+   * reach the second column of a split one. This walks the drop targets
+   * themselves instead: one press, one target, in the order they are read down
+   * the page. Every version column is therefore reachable, and reachable in a
+   * countable number of presses — which is what makes a split day placeable
+   * without a mouse at all.
+   *
+   * Where the walk has got to is this closure's own record, not `context.over`.
+   * `over` is React state a render behind, and on a press that only scrolls the
+   * page it never catches up at all — which is a walk that stops dead partway
+   * down the list, one key doing nothing however many times it is pressed.
+   *
+   * It parks the drag centred on the target, so the page scrolls it into view
+   * and the overlay is drawn where the announcement says it is.
+   */
+  const coordinateGetter: KeyboardCoordinateGetter = (event, { active, context }) => {
+    const step = STEP[event.code];
+    if (step === undefined) return;
+
+    const containers = context.droppableContainers.toArray();
+    const walk = keyboardTargets(containers, context.droppableRects);
+    // Before the context has measured anything there is nowhere to go, and the
+    // page should still scroll rather than swallow the key.
+    if (walk.length === 0) return;
+
+    event.preventDefault();
+
+    const stop = walk[nextStop(walk, containers, stopFor(active) ?? context.over?.id, step)];
+    parked = { drag: active, stop: stop.id };
+
+    const dragged = context.collisionRect;
+    return {
+      x: stop.rect.left + stop.rect.width / 2 - (dragged ? dragged.width / 2 : 0),
+      y: stop.rect.top + stop.rect.height / 2 - (dragged ? dragged.height / 2 : 0),
+    };
+  };
+
+  /** Forget the walk. The next drag starts from wherever it is picked up. */
+  const release = () => {
+    parked = null;
+  };
+
+  return { collisionDetection, coordinateGetter, release };
+}
 
 function underPointer(args: Parameters<CollisionDetection>[0]): Collision[] {
   const under = pointerWithin(args);
@@ -158,45 +256,34 @@ interface KeyboardTarget {
 }
 
 /**
- * The arrow keys, for a drag that is being carried by the keyboard.
+ * Which stop of the walk one press lands on.
  *
- * `@dnd-kit`'s own getter nudges the drag 25px per press, which on this screen
- * means a dozen presses to cross from the rail to a day and a dozen more to
- * reach the second column of a split one. This walks the drop targets
- * themselves instead: one press, one target, in the order they are read down
- * the page. Every version column is therefore reachable, and reachable in a
- * countable number of presses — which is what makes a split day placeable
- * without a mouse at all.
+ * Every stop has a stop after it and a stop before it, up to the two ends,
+ * which stay put rather than wrapping round — so from anywhere, Down reaches
+ * everything below and Up reaches everything above, with nowhere to get stuck.
  *
- * It parks the drag centred on the target, so nearest-centre resolves to that
- * target and nothing else.
+ * `from` can be somewhere the walk itself skips: the card of a day whose
+ * columns are on screen, which geometry can resolve to before the first arrow
+ * is pressed. That is not "nowhere" — it is that day, so the walk carries on
+ * into the day's own columns rather than snapping to the far end of the page.
+ * Genuinely nowhere starts at whichever end the key came from.
  */
-export const itineraryKeyboardCoordinates: KeyboardCoordinateGetter = (event, { context }) => {
-  const step = STEP[event.code];
-  if (step === undefined) return;
+function nextStop(
+  walk: KeyboardTarget[],
+  containers: DroppableContainer[],
+  from: UniqueIdentifier | undefined,
+  step: number,
+): number {
+  const last = walk.length - 1;
+  const here = from === undefined ? -1 : walk.findIndex((target) => target.id === from);
+  if (here !== -1) return Math.min(last, Math.max(0, here + step));
 
-  const targets = keyboardTargets(context.droppableContainers.toArray(), context.droppableRects);
-  // Before the context has measured anything there is nowhere to go, and the
-  // page should still scroll rather than swallow the key.
-  if (targets.length === 0) return;
+  const day = dropDataOf(containers.find((container) => container.id === from))?.day;
+  const columns = day === undefined ? [] : walk.filter((target) => target.data.day === day);
+  if (columns.length > 0) return walk.indexOf(step > 0 ? columns[0] : columns[columns.length - 1]);
 
-  event.preventDefault();
-
-  const here = context.over ? targets.findIndex((target) => target.id === context.over?.id) : -1;
-  const next =
-    here === -1
-      ? step > 0
-        ? 0
-        : targets.length - 1
-      : Math.min(targets.length - 1, Math.max(0, here + step));
-
-  const { rect } = targets[next];
-  const dragged = context.collisionRect;
-  return {
-    x: rect.left + rect.width / 2 - (dragged ? dragged.width / 2 : 0),
-    y: rect.top + rect.height / 2 - (dragged ? dragged.height / 2 : 0),
-  };
-};
+  return step > 0 ? 0 : last;
+}
 
 /**
  * The targets the arrow keys walk, in reading order.

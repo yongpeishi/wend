@@ -44,12 +44,7 @@ import {
 import type { ArchivedVersion, ItineraryDay, ItineraryDragData } from '../features/itinerary';
 // Not through the barrel: these are the drag machinery the DndContext itself
 // is wired with, rather than parts the screen draws.
-import {
-  dayDroppableId,
-  itineraryCollisionDetection,
-  itineraryKeyboardCoordinates,
-  versionDroppableId,
-} from '../features/itinerary/useDayDrop';
+import { dayDroppableId, itineraryDragStrategy, versionDroppableId } from '../features/itinerary/useDayDrop';
 import { formatTripLength } from '../lib/formatDates';
 import styles from './TripItinerary.module.css';
 
@@ -191,13 +186,23 @@ export function TripItinerary() {
   // Said once, and only when true. No warning colour, no "finish this".
   const splitLine = splitCount > 0 ? `${splitCount} ${splitCount === 1 ? 'day' : 'days'} split · not settled` : null;
 
+  // How a drag is aimed: what the arrow keys do, and what the drag is over.
+  // One object because those two have to agree — see itineraryDragStrategy.
+  const drag = useMemo(() => itineraryDragStrategy(), []);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     // The keyboard walks the drop targets one press per target rather than
-    // nudging the drag in pixels — see itineraryKeyboardCoordinates. It is the
-    // only route that can reach the second column of a split day without a
-    // steady hand, and the only one an automated check can drive at all.
-    useSensor(KeyboardSensor, { coordinateGetter: itineraryKeyboardCoordinates }),
+    // nudging the drag in pixels — see itineraryDragStrategy. It is the only
+    // route that can reach the second column of a split day without a steady
+    // hand, and the only one an automated check can drive at all.
+    //
+    // `auto` rather than @dnd-kit's smoothly animated default: when the stop it
+    // is walking to is off-screen the sensor scrolls the page instead of moving
+    // the drag, and compensates for the scroll in the same breath. Animating
+    // that leaves the two out of step for the length of the animation, so the
+    // overlay drifts away from the target the announcement has already named.
+    useSensor(KeyboardSensor, { coordinateGetter: drag.coordinateGetter, scrollBehavior: 'auto' }),
   );
 
   /**
@@ -366,8 +371,12 @@ export function TripItinerary() {
 
   // The drop itself is handled by the monitor inside whichever target the
   // context resolved to — a day, or one column of a split day — so there is
-  // nothing to do at the end of a drag but put the overlay away.
-  const endDrag = () => setDragging(null);
+  // nothing to do at the end of a drag but put the overlay away and forget
+  // where the arrow keys had walked to.
+  const endDrag = () => {
+    drag.release();
+    setDragging(null);
+  };
 
   if (datesOpen || !trip.starts_on || !trip.ends_on) {
     return (
@@ -422,9 +431,11 @@ export function TripItinerary() {
   return (
     <DndContext
       sensors={sensors}
-      // The innermost target wins, so a split day's columns are aimable
-      // instead of being swallowed by the day around them.
-      collisionDetection={itineraryCollisionDetection}
+      // A keyboard drag is over the stop the arrow keys walked it to, and a
+      // pointer drag is over the innermost thing under the cursor — so a split
+      // day's columns are aimable instead of being swallowed by the day around
+      // them, and what is announced is what receives the drop.
+      collisionDetection={drag.collisionDetection}
       accessibility={{ announcements, screenReaderInstructions: DRAG_INSTRUCTIONS }}
       onDragStart={handleDragStart}
       onDragEnd={endDrag}

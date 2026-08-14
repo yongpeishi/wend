@@ -128,18 +128,85 @@ function layOutDropTargets() {
   };
 }
 
+/**
+ * Lets the page be scrolled under a drag that is already in flight.
+ *
+ * @dnd-kit measures a drop target once, into a rectangle that subtracts its
+ * scrolling ancestor's current offset every time it is read — so moving
+ * `document.scrollingElement`'s scrollTop moves every target, exactly as a real
+ * scroll does, with no re-measure. The drag overlay is `position: fixed` and has
+ * no scrolling ancestor, so it stays where it was put: the page slides out from
+ * under it. That is the situation the keyboard sensor creates for itself every
+ * time an arrow key aims at something off-screen (it scrolls the page instead of
+ * moving the drag), and it is the situation feedback 014#2's fix has to survive.
+ */
+function letThePageScroll() {
+  let scrolled = 0;
+  const root = document.documentElement;
+
+  // jsdom leaves `document.scrollingElement` undefined, and without it @dnd-kit
+  // finds no scrolling ancestor at all and treats the page as unscrollable.
+  Object.defineProperty(document, 'scrollingElement', { configurable: true, get: () => root });
+  Object.defineProperty(root, 'scrollTop', { configurable: true, get: () => scrolled });
+  // Reachable only once there is a scrolling ancestor, and unimplemented in
+  // jsdom: @dnd-kit brings the lifted thing into view when a drag starts.
+  const scrollIntoView = Element.prototype.scrollIntoView;
+  Element.prototype.scrollIntoView = function noop() {};
+  Object.defineProperty(window, 'scrollY', { configurable: true, get: () => scrolled });
+
+  // jsdom has no ResizeObserver, so @dnd-kit never measures the drag overlay
+  // and falls back to measuring the grip the drag came off — an ordinary
+  // element, which scrolls with the page and so hides the very drift this is
+  // about. One that reports immediately restores the browser's arrangement: a
+  // `position: fixed` overlay, measured once and staying put, over drop targets
+  // that move.
+  const noObserver = !('ResizeObserver' in window);
+  if (noObserver) {
+    (window as unknown as Record<string, unknown>).ResizeObserver = class {
+      readonly callback: ResizeObserverCallback;
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+      }
+      observe(target: Element) {
+        this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
+      }
+      unobserve() {}
+      disconnect() {}
+    };
+  }
+
+  async function scrollBy(pixels: number) {
+    scrolled += pixels;
+    // @dnd-kit only re-reads the offsets when it hears about the scroll.
+    await act(async () => {
+      fireEvent.scroll(window);
+      await Promise.resolve();
+    });
+  }
+
+  function restore() {
+    delete (root as unknown as Record<string, unknown>).scrollTop;
+    delete (window as unknown as Record<string, unknown>).scrollY;
+    delete (document as unknown as Record<string, unknown>).scrollingElement;
+    Element.prototype.scrollIntoView = scrollIntoView;
+    if (noObserver) delete (window as unknown as Record<string, unknown>).ResizeObserver;
+  }
+
+  return { scrollBy, restore };
+}
+
 /** What a screen reader is being told about the drag, right now. */
 function announcement(): string {
   return document.querySelector('[role="status"][aria-live="assertive"]')?.textContent ?? '';
 }
 
 /**
- * Carries a drag by keyboard until the announcement names `target`, then
- * leaves it there. Arrow-by-arrow rather than a fixed number of presses: the
- * point being proved is that the target is reachable and says so, not how many
- * presses away it happens to sit.
+ * Lifts a drag by keyboard and carries it until the announcement names
+ * `target`, leaving it in the air. Arrow-by-arrow rather than a fixed number of
+ * presses: the point being proved is that the target is reachable and says so,
+ * not how many presses away it happens to sit.
  */
-async function dragByKeyboardOnto(user: ReturnType<typeof userEvent.setup>, grip: HTMLElement, target: string) {
+async function carryByKeyboardOnto(user: ReturnType<typeof userEvent.setup>, grip: HTMLElement, target: string) {
   grip.focus();
   await user.keyboard('[Space]');
   // The lift measures the targets and attaches the arrow-key listener on the
@@ -155,7 +222,11 @@ async function dragByKeyboardOnto(user: ReturnType<typeof userEvent.setup>, grip
   if (!announcement().includes(target)) {
     throw new Error(`Never reached ${target}. The drag ended up: ${announcement()}`);
   }
+}
 
+/** Carries it there and lets it go. */
+async function dragByKeyboardOnto(user: ReturnType<typeof userEvent.setup>, grip: HTMLElement, target: string) {
+  await carryByKeyboardOnto(user, grip, target);
   await user.keyboard('[Space]');
 }
 
@@ -236,9 +307,11 @@ describe('TripItinerary — dates that would cost a day', () => {
     expect(
       screen.getByText("4 Nov falls outside the new dates, so what you've placed on it comes off."),
     ).toBeInTheDocument();
+    // One idea, not two rows: the coffee on that day is in its archived
+    // version, so it is on the rail already and nothing about it comes back.
     expect(
       screen.getByText(
-        'The 2 ideas on it go back to "Not placed yet", so nothing is lost — you can place them on another day.',
+        '1 idea goes back to "Not placed yet", so nothing is lost — you can place it on another day.',
       ),
     ).toBeInTheDocument();
     // The write was refused outright: the trip still runs to the 8th.
@@ -544,6 +617,51 @@ describe('TripItinerary — dragging onto a split day', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("That didn't save. It's still here — try again.")).not.toBeInTheDocument();
     expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+  });
+
+  /**
+   * The invariant the whole fix rests on: **what the drop lands on is what the
+   * announcement named**, not what happens to be under the drag by the time the
+   * key comes up.
+   *
+   * The keyboard sensor deliberately leaves a drag where it is and scrolls the
+   * page instead whenever the target it is aiming at sits past the middle of the
+   * screen, so the ground moving under a stationary drag is the normal case, not
+   * a freak one. Scrolling one whole day's worth here puts the *next* day's
+   * column exactly where Version B's was — so anything resolving the drop by
+   * geometry at drop time places it on the wrong day, silently, which is
+   * feedback 014#2 all over again.
+   */
+  it('drops on the target it announced even when the page scrolls out from under the drag', async () => {
+    const user = userEvent.setup();
+    const page = letThePageScroll();
+    try {
+      renderItinerary();
+      await openEveryDay(user);
+
+      await carryByKeyboardOnto(
+        user,
+        screen.getByRole('button', { name: 'Drag Kiyamachi onto a day' }),
+        'Version B of Day 2 · Tue 3',
+      );
+
+      // A day and a half of the list goes by under the drag, which has not moved.
+      await page.scrollBy(400);
+
+      // Nothing about the drag changed, so nothing about it is re-announced.
+      expect(announcement()).toBe('Kiyamachi is over Version B of Day 2 · Tue 3.');
+
+      await user.keyboard('[Space]');
+
+      expect(announcement()).toBe('Kiyamachi was left on Version B of Day 2 · Tue 3.');
+      const inB = (await screen.findByRole('heading', { name: 'Version B' })).closest(
+        '[data-drop-id]',
+      ) as HTMLElement;
+      expect(await within(inB).findByText('Kiyamachi')).toBeInTheDocument();
+      expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+    } finally {
+      page.restore();
+    }
   });
 
   it('does not let the day take a drop one of its columns has already taken', async () => {
