@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ProsCons } from './ProsCons';
 import { useUpdateEntry } from '../../api/entries';
 import { canDelete, canEdit } from '../../auth/tripRole';
-import { ReadOnly } from '../../components/ReadOnly';
 import { useToast } from '../../components/Toast';
 import { formatTripDates, joinMeta } from '../../lib/formatDates';
 import type { Entry } from '../../api/types';
@@ -213,15 +212,16 @@ export function TripCard({ trip, onArchive }: TripCardProps) {
         onBlur={(e) => saveDescription(e.target.value)}
       />
 
-      {/* The region gate rather than a prop: ProsCons belongs to no slice of this
-          change, so its remove and "+ add" buttons go inert inside a disabled
-          fieldset instead of disappearing the way the house rule prefers. The
-          reasons themselves stay fully readable, which is the half that matters.
-          See the report accompanying this change. */}
+      {/* The prop, not a disabled fieldset: the reasons stay readable and the
+          controls around them are simply not drawn (architecture.md §5). */}
       <div className={styles.reasons}>
-        <ReadOnly canEdit={editable}>
-          <ProsCons entryId={trip.id} tripTitle={titleDraft} pros={trip.pros} cons={trip.cons} />
-        </ReadOnly>
+        <ProsCons
+          entryId={trip.id}
+          tripTitle={titleDraft}
+          pros={trip.pros}
+          cons={trip.cons}
+          canEdit={editable}
+        />
       </div>
 
       <p className={styles.meta}>{metaLine(trip)}</p>

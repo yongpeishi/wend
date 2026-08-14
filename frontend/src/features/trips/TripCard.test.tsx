@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -161,6 +161,34 @@ describe('TripCard — what each role may do to it', () => {
     expect(screen.queryByRole('button', { name: `Save ${TRIP_TITLE} for later` })).not.toBeInTheDocument();
   });
 
+  // Not rendered, not inert: the reasons are content and stay, the verbs around
+  // them go. A disabled fieldset would have left both buttons standing there
+  // greyed, which the house rule reads as "refused" rather than "not yours".
+  it('takes the pros and cons controls away and leaves every reason readable', async () => {
+    await cardFor('viewer');
+
+    expect(screen.queryByRole('button', { name: `Add a pro to ${TRIP_TITLE}` })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Add a con to ${TRIP_TITLE}` })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Remove pro: Flights are already booked' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Remove con: Nothing sorted yet' }),
+    ).not.toBeInTheDocument();
+
+    // Both columns are still there, headings and notes alike.
+    expect(screen.getByText('Pros')).toBeInTheDocument();
+    expect(screen.getByText('Cons')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('list', { name: `Pros for ${TRIP_TITLE}` })).getByText(
+        'Flights are already booked',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('list', { name: `Cons for ${TRIP_TITLE}` })).getByText('Nothing sorted yet'),
+    ).toBeInTheDocument();
+  });
+
   // The half that matters: the card is still the trip, fully readable.
   it('leaves a viewer the whole card to read', async () => {
     await cardFor('viewer');
@@ -189,5 +217,17 @@ describe('TripCard — what each role may do to it', () => {
 
     expect(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: `Save ${TRIP_TITLE} for later` })).toBeInTheDocument();
+  });
+
+  // The other direction, so the test above can fail: an owner keeps every
+  // pros/cons control the viewer lost.
+  it('leaves an owner the whole pros and cons control', async () => {
+    await cardFor('owner');
+
+    expect(screen.getByRole('button', { name: `Add a pro to ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Add a con to ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Remove pro: Flights are already booked' }),
+    ).toBeInTheDocument();
   });
 });
