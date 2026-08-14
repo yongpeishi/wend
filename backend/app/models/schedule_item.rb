@@ -1,4 +1,6 @@
 class ScheduleItem < ApplicationRecord
+  include Governed
+
   belongs_to :trip, class_name: "Entry"
   belongs_to :entry, class_name: "Entry", optional: true
   belongs_to :chosen_entry, class_name: "Entry", optional: true
@@ -11,6 +13,12 @@ class ScheduleItem < ApplicationRecord
             numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 1439 },
             allow_nil: true
   validate :ends_not_before_starts
+
+  # The trip alone. entry_id and chosen_entry_id are references to what was placed,
+  # not authority over it.
+  def governing_entry_ids
+    [ trip_id ]
+  end
 
   private
 

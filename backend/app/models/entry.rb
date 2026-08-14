@@ -3,7 +3,10 @@
 # contain sub-ideas, bundles gather ideas) lives entirely in the self-referencing
 # EntryLink join table, never in a column on Entry itself. See doc/architecture.md §2-3.
 class Entry < ApplicationRecord
+  include Governed
+
   DEFAULT_DEPTH_CAP = 10
+  VISIBILITY_DEPTH_CAP = 20
 
   # Bounds on the pros/cons JSON columns -- see the pros/cons section below.
   PRO_CON_LIMIT = 50
@@ -25,6 +28,8 @@ class Entry < ApplicationRecord
   has_many :schedule_items_as_trip, class_name: "ScheduleItem", foreign_key: :trip_id, dependent: :destroy
   has_many :schedule_items_as_entry, class_name: "ScheduleItem", foreign_key: :entry_id, dependent: :nullify
 
+  has_many :trip_memberships, class_name: "TripMembership", foreign_key: :trip_id, inverse_of: :trip, dependent: :delete_all
+
   enum :kind, { trip: "trip", idea: "idea", bundle: "bundle" }, validate: true
   enum :category, {
     place: "place", food: "food", activity: "activity",
@@ -33,12 +38,64 @@ class Entry < ApplicationRecord
 
   validates :title, presence: true
 
+  after_save :sync_owner_membership, if: :saved_change_to_kind?
+
   scope :active, -> { where(archived_at: nil) }
   scope :archived_only, -> { where.not(archived_at: nil) }
 
   # The library: ideas with no trip ancestor (collection mode, not yet committed
   # to a trip). Computed with a single bounded recursive query, not per-row.
   scope :library, -> { idea.where.not(id: with_trip_ancestor_ids) }
+
+  # --- Visibility ------------------------------------------------------------
+  # Every entry a user may see, as one bounded recursive walk. Same shape and same
+  # depth guard as with_trip_ancestor_ids below.
+  #
+  #   (a) descend from every trip the user holds a grant on
+  #   (b) their own entries that hang under no trip at all -- the library case, and
+  #       orphan bundles. kind <> 'trip' is deliberate: trip access has exactly one
+  #       authority, a membership row, with no created_by fallback.
+  VISIBLE_IDS_SQL = <<~SQL.freeze
+    WITH RECURSIVE
+      granted(entry_id, role_rank, depth) AS (
+        SELECT m.trip_id,
+               CASE m.role WHEN 'owner' THEN 3 WHEN 'member' THEN 2 ELSE 1 END,
+               0
+          FROM trip_memberships m
+         WHERE m.user_id = :user_id
+        UNION
+        SELECT el.child_id, g.role_rank, g.depth + 1
+          FROM entry_links el
+          INNER JOIN granted g ON el.parent_id = g.entry_id
+         WHERE g.depth < :depth_cap
+      ),
+      in_any_trip(entry_id, depth) AS (
+        SELECT el.child_id, 1
+          FROM entry_links el
+          INNER JOIN entries e ON e.id = el.parent_id AND e.kind = 'trip'
+        UNION
+        SELECT el.child_id, t.depth + 1
+          FROM entry_links el
+          INNER JOIN in_any_trip t ON el.parent_id = t.entry_id
+         WHERE t.depth < :depth_cap
+      )
+    SELECT entry_id FROM granted
+    UNION
+    SELECT e.id FROM entries e
+     WHERE e.created_by_id = :user_id
+       AND e.kind <> 'trip'
+       AND e.id NOT IN (SELECT entry_id FROM in_any_trip)
+  SQL
+
+  # An IN subquery, not a pluck: no ids round-trip through Ruby and the scope
+  # composes with the other filters in EntriesController#index.
+  #
+  # archived_at does NOT affect visibility. It is a listing filter only -- the
+  # owner must be able to see a set-aside trip in order to restore it.
+  scope :visible_to, ->(user) {
+    where("entries.id IN (#{VISIBLE_IDS_SQL})",
+          user_id: user.id, depth_cap: VISIBILITY_DEPTH_CAP)
+  }
 
   # --- Pros / cons -----------------------------------------------------------
   # The qualitative sibling of Vote: free-text reasons for and against, on every
@@ -151,7 +208,46 @@ class Entry < ApplicationRecord
     update!(archived_at: nil)
   end
 
+  # --- Permission ------------------------------------------------------------
+
+  # An Entry speaks for itself.
+  def governing_entry_ids
+    [ id ]
+  end
+
+  # Effective role on one entry: the strongest grant across its trip ancestors, because
+  # an idea can sit under more than one trip. Entries with no trip ancestor belong to
+  # their creator outright.
+  #
+  # Walks UP, which is cheap -- one entry's ancestor set is tiny. Never call this in
+  # a loop; the list path resolves roles in one bulk query instead.
+  def role_for(user)
+    # ancestor_ids_of returns raw select_values, which are not guaranteed Integer --
+    # the same .map(&:to_i) EntryLink#no_cycles does.
+    ancestor_ids = trip? ? [ id ] : self.class.ancestor_ids_of(id).map(&:to_i)
+    roles = TripMembership.where(trip_id: ancestor_ids, user_id: user.id).pluck(:role)
+    return roles.max_by { |r| TripMembership::RANK.fetch(r, 0) } if roles.any?
+
+    # The fallback is the library case, and it must agree with VISIBLE_IDS_SQL's
+    # second branch exactly: under no TRIP, not under nothing at all -- an idea
+    # inside an orphan bundle is still its creator's.
+    return nil if trip? || created_by_id != user.id
+
+    "owner" if self.class.where(id: ancestor_ids, kind: "trip").none?
+  end
+
   private
+
+  # A trip needs exactly one owner; an entry that stops being a trip has no use for
+  # memberships. Keyed on the kind transition rather than on create, because lift and
+  # absorb both change kind after the row already exists.
+  def sync_owner_membership
+    if trip?
+      TripMembership.find_or_create_by!(trip_id: id, user_id: created_by_id) { |m| m.role = "owner" }
+    else
+      TripMembership.where(trip_id: id).delete_all
+    end
+  end
 
   # Rows written before the columns existed read back as NULL, and nothing
   # downstream should have to think about that: always an Array.
