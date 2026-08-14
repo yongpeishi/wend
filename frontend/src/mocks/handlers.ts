@@ -7,7 +7,6 @@ import {
   ensureTripDay,
   findDayVersion,
   findEntry,
-  findTripDay,
   firstLiveVersionId,
   inFinalPlan,
   isScheduled,
@@ -559,72 +558,6 @@ export const handlers = [
       });
     }
     return tripDayResponse(version);
-  }),
-
-  // Ungroup: one bundle item becomes one item per member, sharing its span.
-  http.post('/api/schedule_items/:id/ungroup', ({ params }) => {
-    const item = db.scheduleItems.find((s) => s.id === Number(params.id));
-    if (!item) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
-    const entry = item.entry_id !== null ? findEntry(item.entry_id) : undefined;
-    if (!entry || entry.kind !== 'bundle') {
-      return HttpResponse.json({ errors: { entry: ['is not a bundle'] } }, { status: 422 });
-    }
-    const members = childIdsOf(entry.id)
-      .map((id) => findEntry(id))
-      .filter((e): e is NonNullable<typeof e> => Boolean(e));
-    if (!members.length) {
-      return HttpResponse.json({ errors: { members: ['has nothing in it'] } }, { status: 422 });
-    }
-
-    const start = item.starts_at_minutes;
-    const end = item.ends_at_minutes;
-    const span = start !== null && end !== null ? end - start : null;
-    // Proportional only when every member states a duration; otherwise even.
-    const proportional = members.every((m) => (m.duration_minutes ?? 0) > 0);
-    const weights = members.map((m) => (proportional ? (m.duration_minutes as number) : 1));
-    const weightTotal = weights.reduce((sum, w) => sum + w, 0);
-
-    let cursor = start;
-    const created = members.map((member, index) => {
-      let startsAt: number | null = null;
-      let endsAt: number | null = null;
-      if (span !== null && start !== null && cursor !== null) {
-        startsAt = cursor;
-        // Cumulative rounding: slots stay whole minutes and the last member
-        // lands exactly on the bundle's old end, with no drift in between.
-        const covered = weights.slice(0, index + 1).reduce((sum, w) => sum + w, 0);
-        endsAt = index === members.length - 1 ? end : start + Math.round((span * covered) / weightTotal);
-        cursor = endsAt;
-      }
-      const replacement: ScheduleItem = {
-        id: allocateId(),
-        trip_id: item.trip_id,
-        entry_id: member.id,
-        chosen_entry_id: null,
-        day: item.day,
-        day_version_id: item.day_version_id,
-        starts_at_minutes: startsAt,
-        ends_at_minutes: endsAt,
-        // Anything the traveller typed on the bundle rides along on the first
-        // member rather than being thrown away with the bundle item.
-        note: index === 0 ? item.note : null,
-        position: item.position + index,
-      };
-      return replacement;
-    });
-
-    // Later items in the same version slide down to keep positions distinct.
-    for (const sibling of db.scheduleItems) {
-      if (sibling.day_version_id === item.day_version_id && sibling.position > item.position) {
-        sibling.position += members.length - 1;
-      }
-    }
-    // The bundle item goes; the bundle Entry itself is untouched.
-    db.scheduleItems = db.scheduleItems.filter((s) => s.id !== item.id);
-    db.scheduleItems.push(...created);
-
-    const tripDay = findTripDay(item.trip_id, item.day) ?? ensureTripDay(item.trip_id, item.day);
-    return HttpResponse.json({ trip_day: toTripDay(tripDay) });
   }),
 
   // ---- Nearby ------------------------------------------------------------

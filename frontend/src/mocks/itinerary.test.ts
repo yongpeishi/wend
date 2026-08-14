@@ -6,8 +6,8 @@ import type { ScheduleItem, TripDay } from '../api/types';
 
 // The MSW itinerary routes are the only backend the UI tests and the browser
 // dev server see, so the rules they stand in for — fork letters, keep/restore,
-// ungroup, version resolution — are worth testing on their own. Everything
-// here goes through the real api client, exactly as the hooks do.
+// version resolution — are worth testing on their own. Everything here goes
+// through the real api client, exactly as the hooks do.
 
 const TRIP_ID = 1;
 const BUNDLE_DAY = '2026-11-02'; // Nishiki market crawl, 11:00–13:00
@@ -170,67 +170,6 @@ describe('keep, archive and restore', () => {
     expect((error as ApiError).status).toBe(422);
     // Still there, still live.
     expect(names(await dayFor(TWO_VERSION_DAY))).toEqual(['Version A']);
-  });
-});
-
-describe('ungroup', () => {
-  async function bundleItem(): Promise<ScheduleItem> {
-    const day = await dayFor(BUNDLE_DAY);
-    const item = day.versions[0]?.schedule_items.find((i) => i.members.length > 0);
-    if (!item) throw new Error('no bundle item seeded');
-    return item;
-  }
-
-  it('divides the span in duration proportion and destroys the bundle item', async () => {
-    const item = await bundleItem();
-    const { trip_day } = await api.post<{ trip_day: TripDay }>(`/schedule_items/${item.id}/ungroup`);
-    const items = trip_day.versions[0]?.schedule_items ?? [];
-
-    // 30 / 60 / 30 minutes of a 120-minute span, back to back, 11:00 to 13:00.
-    expect(items.map((i) => [i.entry?.title, i.starts_at_minutes, i.ends_at_minutes])).toEqual([
-      ['Nanzen-ji', 540, 580],
-      ['Coffee at Weekenders', 660, 690],
-      ['Nishiki market', 690, 750],
-      ['Teramachi arcade', 750, 780],
-    ]);
-    expect(items.some((i) => i.id === item.id)).toBe(false);
-    // The bundle Entry itself is untouched — only the placement went.
-    expect(db.entries.some((e) => e.id === item.entry_id)).toBe(true);
-  });
-
-  it('divides evenly when a member has no duration of its own', async () => {
-    const coffee = db.entries.find((e) => e.title === 'Coffee at Weekenders');
-    if (coffee) coffee.duration_minutes = null;
-
-    const item = await bundleItem();
-    const { trip_day } = await api.post<{ trip_day: TripDay }>(`/schedule_items/${item.id}/ungroup`);
-    const placed = (trip_day.versions[0]?.schedule_items ?? []).filter((i) => i.id !== item.id).slice(1);
-    expect(placed.map((i) => [i.starts_at_minutes, i.ends_at_minutes])).toEqual([
-      [660, 700],
-      [700, 740],
-      [740, 780],
-    ]);
-  });
-
-  it('carries the bundle item’s note onto the first member', async () => {
-    const item = await bundleItem();
-    await api.patch(`/schedule_items/${item.id}`, { schedule_item: { note: 'Cash only' } });
-    const { trip_day } = await api.post<{ trip_day: TripDay }>(`/schedule_items/${item.id}/ungroup`);
-    expect((trip_day.versions[0]?.schedule_items ?? []).map((i) => i.note)).toEqual([null, 'Cash only', null, null]);
-  });
-
-  it('refuses a plain idea and a bundle with nothing in it', async () => {
-    const day = await dayFor(BUNDLE_DAY);
-    const loose = day.versions[0]?.schedule_items.find((i) => i.members.length === 0);
-    await expect(api.post(`/schedule_items/${loose?.id}/ungroup`)).rejects.toMatchObject({ status: 422 });
-
-    const { entry } = await api.post<{ entry: { id: number } }>('/entries', {
-      entry: { kind: 'bundle', title: 'An empty bundle' },
-    });
-    const { schedule_item } = await api.post<{ schedule_item: ScheduleItem }>(`/trips/${TRIP_ID}/schedule`, {
-      schedule_item: { entry_id: entry.id, day: BUNDLE_DAY, starts_at_minutes: 900, ends_at_minutes: 960 },
-    });
-    await expect(api.post(`/schedule_items/${schedule_item.id}/ungroup`)).rejects.toMatchObject({ status: 422 });
   });
 });
 

@@ -13,7 +13,6 @@ export interface VersionColumnsProps {
   onFill?: (versionId: number, slot: { start: number; end: number }) => void;
   onEditTime?: (itemId: number, startsAtMinutes: number | null, endsAtMinutes: number | null) => void;
   onRemoveItem?: (itemId: number) => void;
-  onUngroup?: (itemId: number) => void;
   onAdd?: (versionId: number) => void;
   /** `Day 4 · Wed 15`, so a Keep button says which day it settles. */
   dayLabel?: string;
@@ -34,7 +33,6 @@ export function VersionColumns({
   onFill,
   onEditTime,
   onRemoveItem,
-  onUngroup,
   onAdd,
   dayLabel,
 }: VersionColumnsProps) {
@@ -59,7 +57,6 @@ export function VersionColumns({
                 onFill={onFill && ((slot) => onFill(version.id, slot))}
                 onEditTime={onEditTime}
                 onRemoveItem={onRemoveItem}
-                onUngroup={onUngroup}
               />
             )}
 

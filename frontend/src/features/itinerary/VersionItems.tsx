@@ -11,7 +11,6 @@ export interface VersionItemsProps {
   onFill?: (slot: { start: number; end: number }) => void;
   onEditTime?: (itemId: number, startsAtMinutes: number | null, endsAtMinutes: number | null) => void;
   onRemoveItem?: (itemId: number) => void;
-  onUngroup?: (itemId: number) => void;
   /** Archived versions are shown, not edited. */
   readOnly?: boolean;
 }
@@ -27,7 +26,6 @@ export function VersionItems({
   onFill,
   onEditTime,
   onRemoveItem,
-  onUngroup,
   readOnly = false,
 }: VersionItemsProps) {
   return (
@@ -51,7 +49,6 @@ export function VersionItems({
               key={item.id}
               item={item}
               readOnly={readOnly}
-              onUngroup={onUngroup && (() => onUngroup(item.id))}
               onEditTime={onEditTime && ((start, end) => onEditTime(item.id, start, end))}
               onRemove={onRemoveItem && (() => onRemoveItem(item.id))}
             />

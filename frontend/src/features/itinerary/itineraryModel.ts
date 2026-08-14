@@ -198,21 +198,16 @@ export interface DerivedSpan {
  * The hours each member of a placed bundle would get, DERIVED FOR DISPLAY ONLY.
  *
  * Nothing here is stored: a bundle sits on a day as one `schedule_item` with
- * one span, and its members have no rows of their own until you ungroup. But
- * the design's rule is that "a bundle member and a loose idea look identical"
+ * one span, and its members have no rows of their own at all. But the design's
+ * rule is that "a bundle member and a loose idea look identical"
  * (itinerary-decisions.md) — a member with an empty time column reads as an
  * indented orphan, not as one more thing on the day.
  *
- * So these are computed with **exactly** the rule the server's `ungroup` uses
- * (`ScheduleItem#split_slots`, contract §2): divide the span in
+ * So the band's span is divided between its members here, for display: in
  * `duration_minutes` proportion when every member has a usable one, evenly
  * otherwise; consecutive, non-overlapping slots; the last member lands exactly
- * on the bundle's end so rounding never leaves or steals a minute. Which means
- * what a member shows here is precisely what it is given if you ungroup it —
- * the display never promises hours the server would not hand out.
- *
- * Keep this in step with `backend/app/models/schedule_item.rb` if that rule
- * ever changes.
+ * on the bundle's end so rounding never leaves or steals a minute. The hours a
+ * member shows therefore always add back up to the band above it.
  */
 export function bundleMemberSpans(
   item: Pick<ItineraryItem, 'starts_at_minutes' | 'ends_at_minutes' | 'members'>,

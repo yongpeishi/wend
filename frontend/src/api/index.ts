@@ -8,7 +8,7 @@ export { useCreateLink, useUpdateLinkPosition, useDeleteLink, useReorderLinks } 
 export { useVote, useDeleteVote } from './votes';
 export { useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo } from './todos';
 export { useSchedule, useCreateScheduleItem, useUpdateScheduleItem, useDeleteScheduleItem, formatMinutes } from './schedule';
-export { useItinerary, useUpdateTripDay, useForkDay, useKeepVersion, useRestoreVersion, useArchiveVersion, useUngroupItem } from './itinerary';
+export { useItinerary, useUpdateTripDay, useForkDay, useKeepVersion, useRestoreVersion, useArchiveVersion } from './itinerary';
 export { useNearby } from './nearby';
 export { useMe, useSignIn, useSignUp, useSignOut } from './session';
 export { useFeedbacks, useCreateFeedback } from './feedback';

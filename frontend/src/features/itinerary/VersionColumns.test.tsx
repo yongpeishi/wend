@@ -62,7 +62,6 @@ function renderColumns(props: Partial<Parameters<typeof VersionColumns>[0]> = {}
       onFill={props.onFill}
       onEditTime={props.onEditTime}
       onRemoveItem={props.onRemoveItem}
-      onUngroup={props.onUngroup}
       onAdd={props.onAdd}
     />,
   );

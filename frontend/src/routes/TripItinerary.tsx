@@ -25,7 +25,6 @@ import {
   useItinerary,
   useKeepVersion,
   useRestoreVersion,
-  useUngroupItem,
   useUpdateTripDay,
 } from '../api/itinerary';
 import type { Entry, EntrySummary, ScheduleItem } from '../api/types';
@@ -88,7 +87,6 @@ export function TripItinerary() {
   const forkDay = useForkDay(trip.id);
   const keepVersion = useKeepVersion(trip.id);
   const restoreVersion = useRestoreVersion(trip.id);
-  const ungroupItem = useUngroupItem(trip.id);
   const createItem = useCreateScheduleItem(trip.id);
   const deleteItem = useDeleteScheduleItem();
   const editItemHours = useEditItemHours();
@@ -313,7 +311,6 @@ export function TripItinerary() {
                       },
                     )
                   }
-                  onUngroup={(itemId) => ungroupItem.mutate({ itemId }, { onError })}
                   onEditTime={(itemId, startsAtMinutes, endsAtMinutes) =>
                     editItemHours.mutate({ itemId, starts_at_minutes: startsAtMinutes, ends_at_minutes: endsAtMinutes }, { onError })
                   }

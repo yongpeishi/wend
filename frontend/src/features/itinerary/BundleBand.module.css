@@ -61,11 +61,9 @@
   outline-offset: var(--focus-offset);
 }
 
-.ungroup {
-  margin-left: auto;
-}
-
+/* margin-left: auto — the only action in the head, pinned to its right edge. */
 .remove {
+  margin-left: auto;
   flex: none;
   display: flex;
   align-items: center;

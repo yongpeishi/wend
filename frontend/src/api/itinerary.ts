@@ -10,8 +10,8 @@ import type { TripDay, TripDayWritePayload } from './types';
  * writes that day straight into the `useItinerary` cache by date instead of
  * refetching (no window where the screen shows the pre-mutation day). They
  * also invalidate the schedule queries: the final-schedule screen reads the
- * same `schedule_items` rows from a different endpoint, and forking, keeping
- * or ungrouping changes what it would show.
+ * same `schedule_items` rows from a different endpoint, and forking or keeping
+ * changes what it would show.
  */
 export function useItinerary(tripId: number | undefined) {
   return useQuery({
@@ -88,16 +88,6 @@ export function useArchiveVersion(tripId: number) {
   return useMutation({
     mutationFn: ({ versionId }: { versionId: number }) =>
       api.delete<{ trip_day: TripDay }>(`/day_versions/${versionId}`).then((r) => r.trip_day),
-    onSuccess: applyTripDay,
-  });
-}
-
-/** Splits a placed bundle into one item per member, sharing the bundle's span. */
-export function useUngroupItem(tripId: number) {
-  const applyTripDay = useApplyTripDay(tripId);
-  return useMutation({
-    mutationFn: ({ itemId }: { itemId: number }) =>
-      api.post<{ trip_day: TripDay }>(`/schedule_items/${itemId}/ungroup`).then((r) => r.trip_day),
     onSuccess: applyTripDay,
   });
 }

@@ -66,7 +66,6 @@ const HANDLERS = () => ({
   onFork: vi.fn(),
   onKeepVersion: vi.fn(),
   onAddItem: vi.fn(),
-  onUngroup: vi.fn(),
   onEditTime: vi.fn(),
   onRemoveItem: vi.fn(),
   onSetLodging: vi.fn(),
@@ -101,9 +100,9 @@ describe('DayCard — the open day', () => {
 
   // "Every idea is one 15px regular line with its time in mono at a fixed
   // 104px column. A bundle member and a loose idea look identical."
-  // (itinerary-decisions.md). The hours are derived, never stored: they are
-  // the share the server's ungroup would hand each member.
-  it('gives every bundle member the hours it would get if you ungrouped it', () => {
+  // (itinerary-decisions.md). The hours are derived, never stored: each member
+  // shows its share of the band's span.
+  it('gives every bundle member its share of the band’s hours', () => {
     renderCard();
 
     // 08:00–12:30 is 4 hr 30, split evenly between two 2-hour members.
@@ -209,15 +208,6 @@ describe('DayCard — placing things', () => {
 });
 
 describe('DayCard — editing what is on the day', () => {
-  it('splits a bundle in place', async () => {
-    const user = userEvent.setup();
-    const handlers = renderCard();
-
-    await user.click(screen.getByRole('button', { name: 'Ungroup' }));
-
-    expect(handlers.onUngroup).toHaveBeenCalledWith(50);
-  });
-
   it('changes an item’s hours from its own time column', async () => {
     const user = userEvent.setup();
     const handlers = renderCard();

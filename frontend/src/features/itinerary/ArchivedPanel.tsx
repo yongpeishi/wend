@@ -34,8 +34,8 @@ export interface ArchivedPanelProps {
  *
  * So there are no gap rows and no bundle bands either. A hole between two
  * things you already set aside is not a hole you can fill, and a bundle you
- * cannot ungroup is just one more title in the list. Bring it back and it
- * becomes a live version again, drawn in full on its own day.
+ * cannot edit is just one more title in the list. Bring it back and it becomes
+ * a live version again, drawn in full on its own day.
  */
 export function ArchivedPanel({ archived, open, onToggle, onRestore }: ArchivedPanelProps) {
   if (archived.length === 0) return null;

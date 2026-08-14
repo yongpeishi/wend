@@ -38,7 +38,6 @@ export interface DayCardProps {
    * knows exactly which hours it is offering.
    */
   onAddItem: (versionId: number, entryId: number, slot: { start: number; end: number } | null) => void;
-  onUngroup: (itemId: number) => void;
   onEditTime: (itemId: number, startsAtMinutes: number | null, endsAtMinutes: number | null) => void;
   onRemoveItem: (itemId: number) => void;
   /** Both keys together: one clears the other, and both null clears the night. */
@@ -66,7 +65,6 @@ export function DayCard({
   onFork,
   onKeepVersion,
   onAddItem,
-  onUngroup,
   onEditTime,
   onRemoveItem,
   onSetLodging,
@@ -144,7 +142,6 @@ export function DayCard({
           onKeep={onKeepVersion}
           onEditTime={onEditTime}
           onRemoveItem={onRemoveItem}
-          onUngroup={onUngroup}
           onAdd={(versionId) => setPicker({ versionId, slot: null })}
           onFill={(versionId, slot) => setPicker({ versionId, slot })}
         />
@@ -155,7 +152,6 @@ export function DayCard({
               items={firstVersion.schedule_items}
               onEditTime={onEditTime}
               onRemoveItem={onRemoveItem}
-              onUngroup={onUngroup}
               onFill={(slot) => setPicker({ versionId: firstVersion.id, slot })}
             />
             <button

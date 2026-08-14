@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import { Button } from '../../design/components/core/Button';
 import type { ItineraryItem } from '../../api/types';
 import { joinMeta } from '../../lib/formatDates';
 import { bundleMemberSpans, formatDuration, formatSpan } from './itineraryModel';
@@ -9,8 +8,6 @@ import styles from './BundleBand.module.css';
 
 export interface BundleBandProps {
   item: ItineraryItem;
-  /** Splits the bundle into one item per member, in place. */
-  onUngroup?: () => void;
   onEditTime?: (startsAtMinutes: number | null, endsAtMinutes: number | null) => void;
   /** Takes the whole bundle off the day. The bundle entry itself is untouched. */
   onRemove?: () => void;
@@ -24,16 +21,15 @@ export interface BundleBandProps {
  * sub-information, not hierarchy, so the band adds no border, no heavier type
  * and no shadow, and each member line is drawn exactly like a loose idea.
  *
- * Members carry no hours of their own — the model gives a bundle one span, and
- * the server divides it into rows only when you ungroup (contract §2). But a
- * blank time column turns a member into an indented orphan and breaks the one
- * rule the layout exists to keep, so each member's hours are DERIVED FOR
- * DISPLAY by `bundleMemberSpans`, with exactly the rule `ungroup` uses. What a
- * member shows is what it would be given if you split the bundle right now.
- * Nothing here is stored, and the band's own span stays the thing you click to
- * change the hours — a derived time is not an editable one.
+ * Members carry no hours of their own — the model gives a bundle one span and
+ * no rows of its own per member. But a blank time column turns a member into an
+ * indented orphan and breaks the one rule the layout exists to keep, so each
+ * member's hours are DERIVED FOR DISPLAY by `bundleMemberSpans`: the band's span
+ * divided between them. Nothing here is stored, and the band's own span stays
+ * the thing you click to change the hours — a derived time is not an editable
+ * one.
  */
-export function BundleBand({ item, onUngroup, onEditTime, onRemove, readOnly = false }: BundleBandProps) {
+export function BundleBand({ item, onEditTime, onRemove, readOnly = false }: BundleBandProps) {
   const [editing, setEditing] = useState(false);
 
   const title = item.entry?.title ?? 'Bundle';
@@ -57,12 +53,6 @@ export function BundleBand({ item, onUngroup, onEditTime, onRemove, readOnly = f
           </button>
         ) : (
           <span className={styles.span}>{span || 'No time yet'}</span>
-        )}
-
-        {onUngroup && !readOnly && (
-          <Button size="small" variant="quiet" className={styles.ungroup} onClick={onUngroup}>
-            Ungroup
-          </Button>
         )}
 
         {onRemove && !readOnly && (
