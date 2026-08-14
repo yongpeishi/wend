@@ -36,5 +36,14 @@ Rails.application.routes.draw do
     delete "schedule_items/:id", to: "schedule_items#destroy"
 
     get "trips/:trip_id/nearby", to: "nearby#index"
+
+    # Who is on a trip. Keyed by user_id rather than membership id: the client knows
+    # who it is looking at, never which row says so. hand_over is a verb endpoint for
+    # the same reason lift/absorb/fork are -- it is one act, not an edit to a field.
+    get "trips/:trip_id/collaborators", to: "collaborators#index"
+    post "trips/:trip_id/collaborators", to: "collaborators#create"
+    patch "trips/:trip_id/collaborators/:user_id", to: "collaborators#update"
+    delete "trips/:trip_id/collaborators/:user_id", to: "collaborators#destroy"
+    post "trips/:trip_id/collaborators/:user_id/hand_over", to: "collaborators#hand_over"
   end
 end

@@ -16,6 +16,10 @@ class EntrySerializer
       children_counts = EntryLink.where(parent_id: ids).group(:parent_id).count
       open_todo_counts = Todo.where(entry_id: ids, done_at: nil).group(:entry_id).count
       scheduled_ids = scheduled_entry_ids(ids, trip_id: trip_id)
+      # One bulk query like every other line above, never one per row. Only trips
+      # have a role of their own; ideas and bundles inherit their trip's, which the
+      # client already holds.
+      roles = current_user ? TripMembership.where(user_id: current_user.id, trip_id: ids).pluck(:trip_id, :role).to_h : {}
 
       entries.map do |entry|
         base(entry).merge(
@@ -23,7 +27,8 @@ class EntrySerializer
           "todos_open_count" => open_todo_counts[entry.id] || 0,
           "vote_tally" => tallies[entry.id] || { "total" => 0, "count" => 0, "average" => 0.0 },
           "my_vote" => my_votes[entry.id],
-          "scheduled" => scheduled_ids.include?(entry.id)
+          "scheduled" => scheduled_ids.include?(entry.id),
+          "my_role" => entry.kind == "trip" ? roles[entry.id] : nil
         )
       end
     end
@@ -40,16 +45,35 @@ class EntrySerializer
       { "id" => entry.id, "kind" => entry.kind, "title" => entry.title, "category" => entry.category }
     end
 
+    # parents and children go through the visibility scope, not the raw
+    # association. An idea can sit in two trips at once, and naming the other one --
+    # even only its title -- tells the caller about a trip they may not see. The
+    # same is true downwards for a library idea somebody else has hung something
+    # under.
     def detail(entry, current_user: nil)
       one(entry, current_user: current_user).merge(
-        "parents" => entry.parents.map { |p| summary(p) },
-        "children" => list(entry.children.to_a, current_user: current_user),
+        "parents" => visible(entry.parents, current_user).map { |p| summary(p) },
+        "children" => list(visible(entry.children, current_user).to_a, current_user: current_user),
         "todos" => TodoSerializer.list(entry.todos.order(:position).to_a),
-        "votes" => entry.votes.includes(:user).map { |v| VoteSerializer.one(v) }
+        "votes" => entry.votes.includes(:user).map { |v| VoteSerializer.one(v) },
+        "collaborators_count" => collaborators_count(entry)
       )
     end
 
     private
+
+    def visible(relation, current_user)
+      current_user ? relation.visible_to(current_user) : relation.none
+    end
+
+    # The people on the trip this entry belongs to, so an idea reports the trip it
+    # sits in rather than a count of its own. Distinct users, because an idea can
+    # sit in two trips and the same person can be on both. 0 in the library, where
+    # there is no trip and so nobody to be on it.
+    def collaborators_count(entry)
+      trip_ids = entry.kind == "trip" ? [ entry.id ] : Entry.ancestor_ids_of(entry.id).map(&:to_i)
+      TripMembership.where(trip_id: trip_ids).distinct.count(:user_id)
+    end
 
     def base(entry)
       {

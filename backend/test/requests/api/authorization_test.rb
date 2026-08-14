@@ -132,6 +132,19 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
         get "/api/trips/#{@trip.id}/nearby", params: { lat: 35.0, lng: 135.75, radius_km: 5 }
       } ],
 
+      "api/collaborators#index" => [ :denied, -> { get "/api/trips/#{@trip.id}/collaborators" } ],
+      "api/collaborators#create" => [ :denied, lambda {
+        post "/api/trips/#{@trip.id}/collaborators",
+             params: { email: @owner.email, role: "member" }, as: :json
+      } ],
+      "api/collaborators#update" => [ :denied, lambda {
+        patch "/api/trips/#{@trip.id}/collaborators/#{@owner.id}", params: { role: "viewer" }, as: :json
+      } ],
+      "api/collaborators#destroy" => [ :denied, -> { delete "/api/trips/#{@trip.id}/collaborators/#{@owner.id}" } ],
+      "api/collaborators#hand_over" => [ :denied, lambda {
+        post "/api/trips/#{@trip.id}/collaborators/#{@owner.id}/hand_over"
+      } ],
+
       "api/feedbacks#index" => [ :empty, -> { get "/api/feedbacks" } ],
       "api/feedbacks#create" => [ :open, lambda {
         post "/api/feedbacks", params: { feedback: { message: "Mine, about the app" } }, as: :json
