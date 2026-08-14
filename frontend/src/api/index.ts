@@ -11,3 +11,5 @@ export { useSchedule, useCreateScheduleItem, useUpdateScheduleItem, useDeleteSch
 export { useNearby } from './nearby';
 export { useMe, useSignIn, useSignUp, useSignOut } from './session';
 export { useFeedbacks, useCreateFeedback } from './feedback';
+export { useCollaborators, useAddCollaborator, useChangeCollaboratorRole, useRemoveCollaborator, useHandOverTrip } from './collaborators';
+export type { GrantableRole } from './collaborators';
