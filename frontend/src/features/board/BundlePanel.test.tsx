@@ -171,7 +171,7 @@ describe('BundlePanel — the bundles-only rail', () => {
  * one action the header owns, and the way back out of the archive.
  */
 describe('BundlePanel — reading along', () => {
-  function renderAsViewer() {
+  function renderAsViewer(overrides: Partial<Parameters<typeof BundlePanel>[0]> = {}) {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
       <QueryClientProvider client={queryClient}>
@@ -186,6 +186,7 @@ describe('BundlePanel — reading along', () => {
                   members={new Map([[BUNDLE.id, MEMBERS]])}
                   loading={false}
                   onToast={() => {}}
+                  {...overrides}
                 />
               </DndContext>
             </TripRoleProvider>
@@ -219,6 +220,27 @@ describe('BundlePanel — reading along', () => {
 
     expect(screen.getByText(ARCHIVED.title)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Pick it back up' })).not.toBeInTheDocument();
+  });
+
+  // The empty rail's copy used to send everyone to a header action a viewer
+  // never gets. An empty rail is simply what this trip looks like to them.
+  it('states an empty rail rather than pointing at an action that is not there', () => {
+    renderAsViewer({ bundles: [], members: new Map() });
+
+    expect(screen.getByText('No bundles on this trip yet.')).toBeInTheDocument();
+    expect(screen.queryByText(/start one/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/an empty bundle is a fine place to start/i)).not.toBeInTheDocument();
+  });
+
+  it('still invites an editor to start the first one', () => {
+    renderPanel({ bundles: [], members: new Map() });
+
+    expect(
+      screen.getByText(
+        'No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('No bundles on this trip yet.')).not.toBeInTheDocument();
   });
 
   it('leaves an owner the action and the way back', async () => {

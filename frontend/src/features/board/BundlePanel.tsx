@@ -111,8 +111,15 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, loading
         {loading ? (
           <Spinner label="Finding your bundles" />
         ) : newestFirst.length === 0 ? (
+          // An editor's empty rail is a prompt: the header's action is right
+          // there, so the copy points at it. A viewer has no such action, and
+          // pointing at one that was never rendered is a dead end — for them an
+          // empty rail is a normal, permanent state, so it is stated and left
+          // alone. Same treatment as the schedule's empty day.
           <p className={styles.empty}>
-            No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.
+            {canEdit
+              ? 'No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.'
+              : 'No bundles on this trip yet.'}
           </p>
         ) : (
           newestFirst.map((bundle) => (
