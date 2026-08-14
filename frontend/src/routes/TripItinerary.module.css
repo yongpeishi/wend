@@ -33,12 +33,24 @@
 
 /* The header brings its own card ground and rule, so the days start below it
    on paper. The horizontal padding matches the header's so the day rows line
-   up with the title above them. */
+   up with the title above them.
+
+   The top is --space-6, matching ItineraryHeader's own top padding, so the
+   block reads as one frame: 24px above the title, 24px below the rule. It used
+   to ask for --space-5, which the scale does not define — the 4px scale skips
+   5 on purpose — and one bad custom property invalidates the WHOLE shorthand
+   at computed-value time, so the browser dropped the declaration and the list
+   had no padding at all. Do not reintroduce a --space-5 token to fix this.
+
+   --space-4 was the other candidate and is the wrong one: at 16px the first
+   day row would sit only 4px further from the rule than the rows sit from each
+   other (gap: --space-3), so the list would never read as having started.
+   --space-6 is twice the row gap, and the --space-12 bottom is twice it again. */
 .list {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-5) var(--space-8) var(--space-12);
+  padding: var(--space-6) var(--space-8) var(--space-12);
 }
 
 /* Narrow enough that 300px of rail would leave the days unreadable: the rail
@@ -62,6 +74,6 @@
      the screen gutter used to be free, because TripLayout's own padding made
      up the difference, and now it would just break the alignment. */
   .list {
-    padding: var(--space-5) var(--space-8) var(--space-8);
+    padding: var(--space-6) var(--space-8) var(--space-8);
   }
 }

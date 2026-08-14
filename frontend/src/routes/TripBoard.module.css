@@ -169,13 +169,25 @@
    the list stops at its measure and the whole surplus goes to the map: at
    1920px that is a ~566px map instead of ~380px, and at 2560px a ~1200px one.
 
-   --measure-body (66ch, ~560px at the 17px body size) is the measure the rest
-   of the product reads at, and it is the right one here too — the row's own
-   chrome is about 26px, so the title still gets its full line. */
+   560px, written out rather than taken from --measure-body. This used to read
+   `max-width: var(--measure-body)` under a comment calling that "66ch, ~560px
+   at the 17px body size" — the arithmetic was wrong by 30%. A ch in this face
+   is about 11px, not 8.5, so 66ch computes to 727px in the browser, and the two
+   numbers above were both written against the 560px the author believed they
+   were getting: at 1920px a 727px list leaves the map 399px, nineteen pixels
+   over its own flex basis, which is not "the whole surplus goes to the map" and
+   does not answer the request this cap came from. At 560px the map gets the
+   566px and the ~1200px the paragraph promises.
+
+   The token stays as it is — six other files read --measure-body for actual
+   prose, where 727px is a defensible measure and not this file's business. An
+   idea row is not prose: it is one line of title plus a couple of meta chips,
+   with about 26px of its own chrome, so it wants the tighter number. .noneInView
+   below is a real sentence and keeps the shared token. */
 .listCell {
   flex: 1 1 440px;
   min-width: 320px;
-  max-width: var(--measure-body);
+  max-width: 560px;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
