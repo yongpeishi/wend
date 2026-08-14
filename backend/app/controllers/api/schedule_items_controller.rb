@@ -1,7 +1,7 @@
 module Api
   class ScheduleItemsController < Api::BaseController
     before_action :set_trip, only: [:index, :create]
-    before_action :set_item, only: [:update, :destroy, :ungroup]
+    before_action :set_item, only: [:update, :destroy]
 
     # The Final schedule screen: one plan per day, never two stacked on top of
     # each other and never one the user rejected. `in_final_plan` is what draws
@@ -40,24 +40,6 @@ module Api
     def destroy
       @item.destroy
       head :no_content
-    end
-
-    # Replace a placed bundle with one item per member, inside the same
-    # version. See ScheduleItem#ungroup! for why destroying the bundle row is
-    # not a violation of "nothing is discarded".
-    def ungroup
-      resolve_day_version!(@item)
-      @item.save! if @item.changed?
-
-      unless @item.ungroupable?
-        render json: { errors: { entry_id: ["must be a bundle with at least one member"] } },
-               status: :unprocessable_entity
-        return
-      end
-
-      trip_day = @item.day_version&.trip_day
-      @item.ungroup!
-      render json: { trip_day: TripDaySerializer.one(trip_day.reload) }
     end
 
     private

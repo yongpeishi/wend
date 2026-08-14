@@ -9,11 +9,11 @@ class Api::ItineraryTest < ActionDispatch::IntegrationTest
     link!(parent: @trip, child: @idea)
   end
 
-  def bundle_with_members!(titles, durations: [])
+  def bundle_with_members!(titles)
     bundle = create_bundle(title: "Higashiyama", created_by: @user)
     link!(parent: @trip, child: bundle)
     titles.each_with_index do |title, index|
-      member = create_idea(title: title, created_by: @user, duration_minutes: durations[index])
+      member = create_idea(title: title, created_by: @user)
       link!(parent: bundle, child: member, position: index)
     end
     bundle
@@ -203,53 +203,129 @@ class Api::ItineraryTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  # --- POST /api/schedule_items/:id/ungroup ----------------------------------
+  # --- POST /api/trips/:trip_id/itinerary/swap_days --------------------------
 
-  test "POST ungroup replaces the bundle with its members and returns the day" do
-    bundle = bundle_with_members!(["Walk", "Lunch"], durations: [60, 120])
-    trip_day = day!
-    item = trip_day.first_live_version.schedule_items.create!(
-      trip: @trip, entry: bundle, day: trip_day.day, starts_at_minutes: 540, ends_at_minutes: 720
-    )
+  def dated_trip!
+    @trip.update!(starts_on: "2026-10-10", ends_on: "2026-10-15")
+    @trip
+  end
 
-    post "/api/schedule_items/#{item.id}/ungroup"
+  def plan!(day, title:, lodging: nil)
+    trip_day = day!(day)
+    trip_day.update!(lodging_label: lodging) if lodging
+    idea = create_idea(title: title, created_by: @user)
+    link!(parent: @trip, child: idea)
+    trip_day.first_live_version.schedule_items.create!(trip: @trip, entry: idea, day: trip_day.day)
+    trip_day
+  end
+
+  def swap!(a, b)
+    post "/api/trips/#{@trip.id}/itinerary/swap_days", params: { a: a, b: b }, as: :json
+  end
+
+  def titles_by_day
+    JSON.parse(response.body)["trip_days"].to_h do |row|
+      [row["day"], row["versions"].flat_map { |v| v["schedule_items"].map { |i| i.dig("entry", "title") } }]
+    end
+  end
+
+  test "swap_days exchanges two planned days, lodging and all" do
+    dated_trip!
+    day_two = plan!("2026-10-11", title: "Nijo", lodging: "Hotel A")
+    day_three = plan!("2026-10-12", title: "Fushimi", lodging: "Hotel B")
+
+    swap!("2026-10-11", "2026-10-12")
     assert_response :success
 
-    items = JSON.parse(response.body).dig("trip_day", "versions").first["schedule_items"]
-    assert_equal ["Walk", "Lunch"], items.map { |i| i.dig("entry", "title") }
-    assert_equal [[540, 600], [600, 720]], items.map { |i| [i["starts_at_minutes"], i["ends_at_minutes"]] }
-    assert_not ScheduleItem.exists?(item.id)
-    assert Entry.exists?(bundle.id), "the bundle entry survives"
+    assert_equal({ "2026-10-11" => ["Fushimi"], "2026-10-12" => ["Nijo"] }, titles_by_day)
+    assert_equal Date.new(2026, 10, 12), day_two.reload.day
+    assert_equal Date.new(2026, 10, 11), day_three.reload.day
+    assert_equal "Hotel A", day_two.lodging_label
+    assert_equal "Hotel B", day_three.lodging_label
   end
 
-  test "POST ungroup on a non-bundle is a 422" do
-    trip_day = day!
-    item = trip_day.first_live_version.schedule_items.create!(
-      trip: @trip, entry: @idea, day: trip_day.day, starts_at_minutes: 540, ends_at_minutes: 600
-    )
+  test "swap_days moves a plan onto an empty date and leaves the old one empty" do
+    dated_trip!
+    day_two = plan!("2026-10-11", title: "Nijo", lodging: "Hotel A")
 
-    post "/api/schedule_items/#{item.id}/ungroup"
+    swap!("2026-10-11", "2026-10-13")
+    assert_response :success
+
+    assert_equal({ "2026-10-13" => ["Nijo"] }, titles_by_day)
+    assert_equal Date.new(2026, 10, 13), day_two.reload.day
+    assert_nil TripDay.find_by(trip_id: @trip.id, day: "2026-10-11")
+  end
+
+  test "swap_days returns the whole trip in date order" do
+    dated_trip!
+    plan!("2026-10-10", title: "Arrive")
+    plan!("2026-10-11", title: "Nijo")
+    plan!("2026-10-14", title: "Leave")
+
+    swap!("2026-10-11", "2026-10-14")
+    assert_response :success
+
+    assert_equal ["2026-10-10", "2026-10-11", "2026-10-14"],
+                 JSON.parse(response.body)["trip_days"].map { |d| d["day"] }
+    assert_equal ["Arrive"], titles_by_day["2026-10-10"]
+    assert_equal ["Leave"], titles_by_day["2026-10-11"]
+    assert_equal ["Nijo"], titles_by_day["2026-10-14"]
+  end
+
+  test "swap_days keeps each item on its own version" do
+    dated_trip!
+    trip_day = plan!("2026-10-11", title: "Nijo")
+    version = trip_day.first_live_version
+    item = version.schedule_items.sole
+
+    swap!("2026-10-11", "2026-10-12")
+    assert_response :success
+
+    assert_equal version.id, item.reload.day_version_id
+    assert_equal Date.new(2026, 10, 12), item.day
+    assert_equal Date.new(2026, 10, 12), version.reload.trip_day.day
+  end
+
+  test "swap_days on the same date is a no-op" do
+    dated_trip!
+    plan!("2026-10-11", title: "Nijo")
+
+    swap!("2026-10-11", "2026-10-11")
+    assert_response :success
+    assert_equal({ "2026-10-11" => ["Nijo"] }, titles_by_day)
+  end
+
+  test "swap_days refuses a date outside the trip" do
+    dated_trip!
+    plan!("2026-10-11", title: "Nijo")
+
+    swap!("2026-10-11", "2026-10-16")
     assert_response :unprocessable_entity
-    assert ScheduleItem.exists?(item.id)
+    assert_equal "day_outside_trip", JSON.parse(response.body)["error"]
+    assert_equal Date.new(2026, 10, 11), TripDay.for_trip(@trip.id).sole.day
   end
 
-  test "POST ungroup on a bundle with no members is a 422" do
-    bundle = bundle_with_members!([])
-    trip_day = day!
-    item = trip_day.first_live_version.schedule_items.create!(
-      trip: @trip, entry: bundle, day: trip_day.day, starts_at_minutes: 540, ends_at_minutes: 600
-    )
+  test "swap_days refuses when the trip has no dates at all" do
+    day!("2026-10-11")
 
-    post "/api/schedule_items/#{item.id}/ungroup"
+    swap!("2026-10-11", "2026-10-12")
     assert_response :unprocessable_entity
+    assert_equal "day_outside_trip", JSON.parse(response.body)["error"]
   end
 
-  test "POST ungroup requires a signed-in user" do
-    trip_day = day!
-    item = trip_day.first_live_version.schedule_items.create!(trip: @trip, entry: @idea, day: trip_day.day)
+  test "swap_days rejects a date it cannot parse" do
+    dated_trip!
+
+    swap!("2026-10-11", "not-a-date")
+    assert_response :unprocessable_entity
+    assert_equal "invalid_day", JSON.parse(response.body)["error"]
+  end
+
+  test "swap_days requires a signed-in user" do
+    dated_trip!
     delete "/api/session"
 
-    post "/api/schedule_items/#{item.id}/ungroup"
+    swap!("2026-10-11", "2026-10-12")
     assert_response :unauthorized
   end
 end

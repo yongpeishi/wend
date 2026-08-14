@@ -6,8 +6,8 @@ class DayVersion < ApplicationRecord
 
   # Schedule items are join-ish rows: the Entry they point at is what was kept,
   # and it survives untouched. So unlike entries and versions they may be
-  # destroyed outright -- `ungroup` does exactly that to the bundle row it
-  # replaces. `nullify` here only matters in a cascade from a destroyed trip.
+  # destroyed outright. `nullify` here only matters in a cascade from a
+  # destroyed trip.
   has_many :schedule_items, -> { order(:starts_at_minutes, :position, :id) },
            inverse_of: :day_version, dependent: :nullify
 

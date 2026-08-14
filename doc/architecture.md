@@ -135,8 +135,8 @@ them as 24-hour `HH:MM`.
 
 A schedule_item is a **placement, not a kept thing**: the Entry it points at is what the
 user saved, and it outlives the placement. So unlike entries and day_versions, these rows
-may be destroyed outright — `POST /schedule_items/:id/ungroup` does exactly that to the
-bundle row it replaces, and nothing kept is lost.
+may be destroyed outright — unplacing something, or a trip's dates shrinking out from
+under it, does exactly that, and nothing kept is lost.
 
 `day_version_id` stays nullable so the older `POST /trips/:id/schedule` path, which sends
 a bare `day`, cannot 500. The controller resolves the day's first live version on write,
@@ -279,6 +279,27 @@ POST   /api/entries/:id/absorb   { into_id }            -> 200 { entry }
 POST   /api/entries/:id/fork                            -> 201 { entry }
 ```
 
+**Moving a trip's dates moves its plan.** Placement is keyed by a real calendar date,
+but "Day 2" is what the user planned — an offset from the start. So a PATCH that changes
+`starts_on` shifts every `trip_day` and every `schedule_item` of the trip by
+`new starts_on - old starts_on`, and Day 2 stays Day 2. A trip that had no `starts_on`
+has nothing to preserve and nothing moves.
+
+After the shift, any day outside `starts_on..ends_on` is **dropped**. Because that loses
+placements, the attempt is its own preview: unless the body carries
+`confirm_dropped_days: true` alongside `entry`, nothing at all is written and the response
+is 422
+```jsonc
+{ "error": "dropped_days_need_confirmation",
+  "dropped_days": ["2026-08-23", "2026-08-25"],  // ISO, ascending, post-shift
+  "dropped_item_count": 5 }
+```
+With confirmation, the shift and the removal happen in one transaction: the dropped days'
+`schedule_items`, `trip_days` and `day_versions` are destroyed and the success shape is
+the usual `{ entry }`. No Entry is touched, so those ideas reappear under "Not placed yet".
+A PATCH that names neither date never drops anything, even a day that was already out of
+range.
+
 ### Links
 ```
 POST   /api/entries/:id/links     { child_id, position? }   -> 201 { link }
@@ -310,8 +331,6 @@ GET    /api/trips/:trip_id/schedule?day=YYYY-MM-DD   -> 200 { schedule_items: [S
 POST   /api/trips/:trip_id/schedule  { schedule_item: {...} }  -> 201
 PATCH  /api/schedule_items/:id                                 -> 200
 DELETE /api/schedule_items/:id                                 -> 204
-
-POST   /api/schedule_items/:id/ungroup               -> 200 { trip_day: TripDay }
 ```
 `schedule_item` accepts `day_version_id` on both write paths. **Omit it and the item lands
 on that day's first live version**, creating the `trip_day` and its "Version A" if this is
@@ -319,16 +338,12 @@ the first thing placed there — which is how the final-schedule screen, which k
 about versions, keeps working unchanged. A PATCH that moves an item to another date and
 does not name a version re-resolves it against the new date.
 
-`ungroup` replaces one placed **bundle** with one item per member, inside the same version:
-the bundle's span is divided between members in `duration_minutes` proportion when every
-member has one, evenly otherwise. Members take consecutive, non-overlapping slots covering
-exactly the old span; the bundle's note rides along on the first. The bundle's
-schedule_item is destroyed (a placement, not a kept thing — the bundle Entry is untouched).
-A non-bundle item, or a bundle with no members, returns 422.
-
 ### Itinerary
 ```
 GET    /api/trips/:trip_id/itinerary          -> 200 { trip_days: [TripDay] }
+POST   /api/trips/:trip_id/itinerary/swap_days  { a: "YYYY-MM-DD", b: "YYYY-MM-DD" }
+                                              -> 200 { trip_days: [TripDay] }   # whole trip, ascending
+                                              -> 422 { error: "day_outside_trip" | "invalid_day" }
 
 PATCH  /api/trips/:trip_id/days/:day          { trip_day: { lodging_entry_id?, lodging_label? } }
                                               -> 200 { trip_day: TripDay }
@@ -343,6 +358,12 @@ no `trip_day` row to address — both day routes create one on demand. `index` r
 days that have a row. Every mutation answers with the **whole affected TripDay** so the
 client replaces one day in its cache without a refetch race. Sending both lodging keys as
 null clears the lodging.
+
+`swap_days` is the exception that answers with the whole trip: "move Day 2 to be Day 3"
+**exchanges** the two dates rather than pushing every later day along, and that renumbers
+both. Everything the date owns travels — the `trip_day` row (so lodging and every version
+go with it) and the `day` of each `schedule_item` on it. Either date may be empty; that
+just moves the plan onto the empty date. Both dates must be inside `starts_on..ends_on`.
 
 ### Nearby (flexibility on the road)
 ```

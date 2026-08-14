@@ -33,6 +33,41 @@ class TripDay < ApplicationRecord
     trip_day
   end
 
+  # Exchange two dates of a trip: "move Day 2 to be Day 3" puts Day 3's plan on
+  # Day 2 in return, rather than pushing every later day up. Everything the
+  # date owns travels -- the trip_day row (so lodging and every version go with
+  # it) and the `day` of each schedule_item on it.
+  #
+  # Either date may be empty; swapping a planned day with an empty one just
+  # moves the plan onto the empty date.
+  def self.swap_days!(trip_id:, a:, b:)
+    return if a == b
+
+    transaction do
+      row_a = find_by(trip_id: trip_id, day: a)
+      row_b = find_by(trip_id: trip_id, day: b)
+
+      # [trip_id, day] is unique, so the two rows cannot cross over directly:
+      # park the first on a date past everything this trip owns, then land it.
+      if row_a && row_b
+        parking = where(trip_id: trip_id).maximum(:day) + 1
+        row_a.update_columns(day: parking, updated_at: Time.current)
+        row_b.update_columns(day: a, updated_at: Time.current)
+        row_a.update_columns(day: b, updated_at: Time.current)
+      else
+        row_a&.update_columns(day: b, updated_at: Time.current)
+        row_b&.update_columns(day: a, updated_at: Time.current)
+      end
+
+      # No unique index on schedule_items.day -- but both sides must be read
+      # before either is written, or the first update swallows the second.
+      items_a = ScheduleItem.where(trip_id: trip_id, day: a).to_a
+      items_b = ScheduleItem.where(trip_id: trip_id, day: b).to_a
+      items_a.each { |item| item.update_columns(day: b, updated_at: Time.current) }
+      items_b.each { |item| item.update_columns(day: a, updated_at: Time.current) }
+    end
+  end
+
   def ensure_first_version!
     return if day_versions.reload.any?
 

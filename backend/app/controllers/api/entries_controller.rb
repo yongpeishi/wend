@@ -69,8 +69,31 @@ module Api
       render json: { errors: e.record.errors.to_hash(true) }, status: :unprocessable_entity
     end
 
+    # Moving a trip's dates moves its plan with them: see TripDateShift. The
+    # attempt is its own preview -- a change that would push planned days off
+    # the end of the trip is refused with the list of them, and the client
+    # re-sends with `confirm_dropped_days: true` once the user has said yes.
     def update
-      if @entry.update(entry_params)
+      shift = TripDateShift.for(@entry, entry_params)
+
+      if shift.dropped_days? && !truthy?(params[:confirm_dropped_days])
+        render json: {
+          error: "dropped_days_need_confirmation",
+          dropped_days: shift.dropped_days.map(&:iso8601),
+          dropped_item_count: shift.dropped_item_count
+        }, status: :unprocessable_entity
+        return
+      end
+
+      saved = false
+      ActiveRecord::Base.transaction do
+        saved = @entry.update(entry_params)
+        raise ActiveRecord::Rollback unless saved
+
+        shift.apply!
+      end
+
+      if saved
         render json: { entry: EntrySerializer.one(@entry, current_user: current_user) }
       else
         render json: { errors: @entry.errors.to_hash(true) }, status: :unprocessable_entity
