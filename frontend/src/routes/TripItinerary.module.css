@@ -5,8 +5,20 @@
 
    No gap between them: the rail carries its own border-left and card ground,
    so a gap here would leave a strip of paper beside that rule and turn an edge
-   of the screen into a floating box. */
+   of the screen into a floating box.
+
+   Full body width, and none of the shell's gutter, for that same reason one
+   level up. TripLayout pads every screen by --gutter-screen and caps it at
+   1360px, and both of those were landing UNDER this screen: the rail's rule
+   stopped 20px short of the window (a floating box, exactly what the zero gap
+   exists to prevent) and the day rows sat ~52px in from the page edge, which
+   is what read as ".list's padding not working" — two paddings stacked, only
+   one of them this file's. --screen-measure is TripLayout's opt-out; the
+   negative margin cancels its gutter exactly, so this fills the shell's border
+   box and no more, and .list's padding is the only padding left. */
 .screen {
+  --screen-measure: none;
+  margin-inline: calc(var(--gutter-screen) * -1);
   display: flex;
   align-items: stretch;
   min-height: 60vh;
@@ -45,7 +57,11 @@
     border-top: var(--border-width) solid var(--border-subtle);
   }
 
+  /* Only the bottom relaxes. The sides stay --space-8 so the day rows keep
+     lining up with ItineraryHeader's title at every width — dropping them to
+     the screen gutter used to be free, because TripLayout's own padding made
+     up the difference, and now it would just break the alignment. */
   .list {
-    padding: var(--space-5) var(--gutter-screen) var(--space-8);
+    padding: var(--space-5) var(--space-8) var(--space-8);
   }
 }
