@@ -489,8 +489,8 @@ export function seed() {
     duration_minutes: durationMinutes,
   });
 
-  // 30 + 60 + 30 = the bundle's two-hour span exactly, so ungroup divides it
-  // into whole, obviously-proportional slots.
+  // 30 + 60 + 30 = the bundle's two-hour span exactly, so the members' derived
+  // hours come out as whole, obviously-proportional slots.
   const coffee = idea(6, 'Coffee at Weekenders', 'food', 30, 'Weekenders Coffee');
   const nishiki = idea(7, 'Nishiki market', 'food', 60, 'Nishiki-koji');
   const teramachi = idea(8, 'Teramachi arcade', 'activity', 30, 'Teramachi');

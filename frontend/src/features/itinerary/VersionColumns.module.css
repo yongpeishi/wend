@@ -22,6 +22,15 @@
   padding: 14px;
 }
 
+/* Mid-drag, the column under the pointer takes the same leaf outline the whole
+   day takes — the aim point of a split day is the column, so it has to say so
+   in exactly the language the day says it in. Green means "this will land
+   here"; apricot is only ever "you are here". */
+.column[data-drop-target] {
+  outline: var(--border-width-strong) solid var(--wend-leaf);
+  outline-offset: 2px;
+}
+
 .head {
   display: flex;
   align-items: baseline;

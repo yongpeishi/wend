@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { DndContext } from '@dnd-kit/core';
 import type { DayVersion, EntrySummary, ItineraryItem } from '../../api/types';
+import { versionDroppableId } from './useDayDrop';
 import { VersionColumns } from './VersionColumns';
+
+const DAY = '2026-10-15';
 
 function summary(id: number, title: string, kind: EntrySummary['kind'] = 'idea'): EntrySummary {
   return { id, kind, title, category: 'place', duration_minutes: 60, location_name: 'Kyoto west' };
@@ -52,18 +56,22 @@ const VERSION_B = version({
   schedule_items: [item({ id: 201, starts_at_minutes: 9 * 60, ends_at_minutes: 11 * 60 })],
 });
 
+/** Every column is a drop target, so the columns only exist in a DndContext. */
 function renderColumns(props: Partial<Parameters<typeof VersionColumns>[0]> = {}) {
   const onKeep = vi.fn();
   render(
-    <VersionColumns
-      versions={props.versions ?? [VERSION_A, VERSION_B]}
-      dayLabel="Day 4 · Wed 15"
-      onKeep={props.onKeep ?? onKeep}
-      onFill={props.onFill}
-      onEditTime={props.onEditTime}
-      onRemoveItem={props.onRemoveItem}
-      onAdd={props.onAdd}
-    />,
+    <DndContext>
+      <VersionColumns
+        day={DAY}
+        versions={props.versions ?? [VERSION_A, VERSION_B]}
+        dayLabel="Day 4 · Wed 15"
+        onKeep={props.onKeep ?? onKeep}
+        onFill={props.onFill}
+        onEditTime={props.onEditTime}
+        onRemoveItem={props.onRemoveItem}
+        onAdd={props.onAdd}
+      />
+    </DndContext>,
   );
   return { onKeep };
 }
@@ -145,5 +153,15 @@ describe('VersionColumns', () => {
     await user.click(within(columnB).getByRole('button', { name: 'Take Kinkaku-ji off this day' }));
 
     expect(onRemoveItem).toHaveBeenCalledWith(201);
+  });
+
+  // Feedback 014#2: with one drop target per day, a split day could only ever
+  // resolve to its first live version. Each column carries its own now.
+  it('makes every column a drop target of its own, named for its version', () => {
+    renderColumns();
+
+    expect(document.querySelector(`[data-drop-id="${versionDroppableId(DAY, 1)}"]`)).not.toBeNull();
+    expect(document.querySelector(`[data-drop-id="${versionDroppableId(DAY, 2)}"]`)).not.toBeNull();
+    expect(document.querySelectorAll('[data-drop-id]')).toHaveLength(2);
   });
 });

@@ -27,15 +27,6 @@
   font-family: var(--font-mono);
 }
 
-/* No red exists in the token set — an error reads as bold body text, the same
-   way Field.module.css handles it. */
-.error {
-  margin: 0;
-  font-size: var(--text-min-size);
-  font-weight: var(--weight-bold);
-  color: var(--text-strong);
-}
-
 .actions {
   display: flex;
   gap: var(--space-2);

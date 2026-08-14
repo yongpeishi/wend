@@ -8,7 +8,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { DragStartEvent } from '@dnd-kit/core';
+import type { Active, Announcements, DragStartEvent, Over, ScreenReaderInstructions } from '@dnd-kit/core';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '../design/components/core/Button';
 import { EntryRow } from '../components/EntryRow';
@@ -40,11 +40,30 @@ import {
   nextFreeSlot,
 } from '../features/itinerary';
 import type { ArchivedVersion, ItineraryDay, ItineraryDragData } from '../features/itinerary';
+// Not through the barrel: these are the drag machinery the DndContext itself
+// is wired with, rather than parts the screen draws.
+import {
+  dayDroppableId,
+  itineraryCollisionDetection,
+  itineraryKeyboardCoordinates,
+  versionDroppableId,
+} from '../features/itinerary/useDayDrop';
 import { formatTripLength } from '../lib/formatDates';
 import styles from './TripItinerary.module.css';
 
 /** What a failed write says. Nothing is lost — the screen still holds it. */
 const SAVE_FAILED = "That didn't save. It's still here — try again.";
+
+/**
+ * What a screen reader is told about the grip before anything moves. Says the
+ * whole gesture, including the part that is easy to miss: on a split day the
+ * arrow keys stop on each version separately, so Version B is somewhere you
+ * can land rather than somewhere only a mouse can reach.
+ */
+const DRAG_INSTRUCTIONS: ScreenReaderInstructions = {
+  draggable:
+    'Press space to lift this, then the arrow keys to move it between the days. A split day offers each of its versions as its own stop. Press space again to leave it there, or escape to put it back.',
+};
 
 /**
  * /trips/:id/itinerary — the second planning phase: the ideas and bundles you
@@ -153,8 +172,49 @@ export function TripItinerary() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor),
+    // The keyboard walks the drop targets one press per target rather than
+    // nudging the drag in pixels — see itineraryKeyboardCoordinates. It is the
+    // only route that can reach the second column of a split day without a
+    // steady hand, and the only one an automated check can drive at all.
+    useSensor(KeyboardSensor, { coordinateGetter: itineraryKeyboardCoordinates }),
   );
+
+  /**
+   * What each drop target is called out loud. Every version of a split day is
+   * named, because "over Day 2" while hovering one of two columns is the one
+   * thing a screen reader must not say here.
+   */
+  const dropTargetNames = useMemo(() => {
+    const names = new Map<string, string>();
+    for (const day of days) {
+      names.set(dayDroppableId(day.day), day.label);
+      if (day.versions.length < 2) continue;
+      for (const version of day.versions) {
+        names.set(versionDroppableId(day.day, version.id), `${version.name} of ${day.label}`);
+      }
+    }
+    return names;
+  }, [days]);
+
+  const announcements: Announcements = useMemo(() => {
+    const what = (active: Active) => (active.data.current as ItineraryDragData | undefined)?.title ?? 'It';
+    const where = (over: Over | null) => (over ? (dropTargetNames.get(String(over.id)) ?? null) : null);
+
+    return {
+      onDragStart: ({ active }) => `Lifted ${what(active)}.`,
+      onDragOver: ({ active, over }) => {
+        const target = where(over);
+        return target ? `${what(active)} is over ${target}.` : `${what(active)} is over no day.`;
+      },
+      onDragEnd: ({ active, over }) => {
+        const target = where(over);
+        return target
+          ? `${what(active)} was left on ${target}.`
+          : `${what(active)} was let go where no day takes it. Nothing changed.`;
+      },
+      onDragCancel: ({ active }) => `${what(active)} was put back. Nothing changed.`,
+    };
+  }, [dropTargetNames]);
 
   const openDay = useCallback((day: string) => {
     setOpenDays((prev) => (prev.includes(day) ? prev : [...prev, day]));
@@ -207,11 +267,19 @@ export function TripItinerary() {
     );
   }
 
-  /** The rail's ⋯ menu and its drop targets both land here. */
-  function placeOnDay(entryId: number, dayIso: string) {
+  /**
+   * The rail's ⋯ menu and every drop target land here.
+   *
+   * `versionId` is the version the drop named — a split day's columns are drop
+   * targets in their own right, so "into Version B" arrives as B's id and is
+   * honoured. Null is everything that cannot name one: the ⋯ menu, a collapsed
+   * row, an unsplit day. Those take the day's first live version, which is the
+   * only version there is to take.
+   */
+  function placeOnDay(entryId: number, dayIso: string, versionId: number | null = null) {
     const day = days.find((d) => d.day === dayIso);
     if (!day) return;
-    const version = day.versions[0];
+    const version = (versionId !== null && day.versions.find((v) => v.id === versionId)) || day.versions[0];
     if (!version) return;
     placeEntry(day, version.id, entryId, null);
   }
@@ -221,8 +289,9 @@ export function TripItinerary() {
     if (data) setDragging(data);
   }
 
-  // The drop itself is handled by useDayDrop's own monitor inside each day, so
-  // there is nothing to do at the end of a drag but put the overlay away.
+  // The drop itself is handled by the monitor inside whichever target the
+  // context resolved to — a day, or one column of a split day — so there is
+  // nothing to do at the end of a drag but put the overlay away.
   const endDrag = () => setDragging(null);
 
   if (datesOpen || !trip.starts_on || !trip.ends_on) {
@@ -271,7 +340,16 @@ export function TripItinerary() {
   }
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={endDrag} onDragCancel={endDrag}>
+    <DndContext
+      sensors={sensors}
+      // The innermost target wins, so a split day's columns are aimable
+      // instead of being swallowed by the day around them.
+      collisionDetection={itineraryCollisionDetection}
+      accessibility={{ announcements, screenReaderInstructions: DRAG_INSTRUCTIONS }}
+      onDragStart={handleDragStart}
+      onDragEnd={endDrag}
+      onDragCancel={endDrag}
+    >
       <div className={styles.screen}>
         <div className={styles.main}>
           <ItineraryHeader
@@ -291,7 +369,7 @@ export function TripItinerary() {
                   lodgingChoices={lodgingChoices}
                   addChoices={unplaced}
                   onToggle={() => toggleDay(day.day)}
-                  onDropItem={(entryId) => placeOnDay(entryId, day.day)}
+                  onDropItem={(entryId, versionId) => placeOnDay(entryId, day.day, versionId)}
                   onAddItem={(versionId, entryId, slot) => placeEntry(day, versionId, entryId, slot)}
                   onFork={() =>
                     forkDay.mutate(

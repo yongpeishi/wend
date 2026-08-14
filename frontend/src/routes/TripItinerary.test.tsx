@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -49,6 +49,107 @@ function setDate(label: string, value: string) {
 async function openDay(user: ReturnType<typeof userEvent.setup>, label: string) {
   await user.click(screen.getByText(label));
   return screen.findByRole('heading', { name: label });
+}
+
+/**
+ * Gives the drop targets rectangles, for the length of one test.
+ *
+ * jsdom lays every element out at 0×0 on the origin, and @dnd-kit resolves a
+ * drop entirely by geometry, so without this a drag has nothing to aim at and
+ * every target is equally the winner. The shape stated here is the real one:
+ * a day card, and — when the day is split — two columns side by side *inside*
+ * it, which is the nesting that made the day swallow the drop (feedback 014#2).
+ *
+ * The targets name themselves in the DOM as `data-drop-id`, so this needs no
+ * knowledge of the components beyond that one attribute. It only reaches the
+ * open days, which is why the drag tests expand the list first: a collapsed
+ * row would keep jsdom's 0×0 at the origin and win everything by default.
+ */
+function layOutDropTargets() {
+  const original = Element.prototype.getBoundingClientRect;
+  const WIDTH = 600;
+  const HEAD = 60;
+  const COLUMNS = 200;
+  const ROW = 80;
+  const GAP = 10;
+
+  function box(left: number, top: number, width: number, height: number): DOMRect {
+    return {
+      x: left,
+      y: top,
+      left,
+      top,
+      width,
+      height,
+      right: left + width,
+      bottom: top + height,
+      toJSON: () => ({}),
+    } as DOMRect;
+  }
+
+  /** Recomputed per call: opening a day adds targets mid-test. */
+  function boxes() {
+    const laidOut = new Map<string, DOMRect>();
+    let top = 0;
+    const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-drop-id]')).filter(
+      (element) => !element.dataset.dropId?.includes('-version-'),
+    );
+
+    for (const card of cards) {
+      const columns = Array.from(card.querySelectorAll<HTMLElement>('[data-drop-id]'));
+      const height = columns.length > 0 ? HEAD + COLUMNS : ROW;
+      laidOut.set(card.dataset.dropId as string, box(0, top, WIDTH, height));
+      columns.forEach((column, index) => {
+        laidOut.set(
+          column.dataset.dropId as string,
+          box((index * WIDTH) / columns.length, top + HEAD, WIDTH / columns.length, COLUMNS),
+        );
+      });
+      top += height + GAP;
+    }
+
+    return laidOut;
+  }
+
+  Element.prototype.getBoundingClientRect = function measured(this: Element) {
+    const id = (this as HTMLElement).dataset?.dropId;
+    return (id ? boxes().get(id) : undefined) ?? original.call(this);
+  };
+
+  return () => {
+    Element.prototype.getBoundingClientRect = original;
+  };
+}
+
+/** What a screen reader is being told about the drag, right now. */
+function announcement(): string {
+  return document.querySelector('[role="status"][aria-live="assertive"]')?.textContent ?? '';
+}
+
+/**
+ * Carries a drag by keyboard until the announcement names `target`, then
+ * leaves it there. Arrow-by-arrow rather than a fixed number of presses: the
+ * point being proved is that the target is reachable and says so, not how many
+ * presses away it happens to sit.
+ */
+async function dragByKeyboardOnto(user: ReturnType<typeof userEvent.setup>, grip: HTMLElement, target: string) {
+  grip.focus();
+  await user.keyboard('[Space]');
+  // The lift measures the targets and attaches the arrow-key listener on the
+  // next task, so the first arrow has to wait for it.
+  await waitFor(() => expect(announcement()).not.toBe(''));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  for (let press = 0; press < 12 && !announcement().includes(target); press += 1) {
+    await user.keyboard('{ArrowDown}');
+  }
+  if (!announcement().includes(target)) {
+    throw new Error(`Never reached ${target}. The drag ended up: ${announcement()}`);
+  }
+
+  await user.keyboard('[Space]');
 }
 
 describe('TripItinerary — the dates gate', () => {
@@ -179,6 +280,134 @@ describe('TripItinerary — placing what is waiting', () => {
     // Placed somewhere, so it stops waiting — but nothing was consumed: the
     // other two are still on the rail.
     expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feedback 014#2: "When there is 2 versions, dragging an idea into day only
+ * append Version A. Unable to drag into version B."
+ *
+ * Driven by the keyboard throughout, and not only for coverage: the pointer
+ * sensor needs a stream of intermediate pointermove events that neither jsdom
+ * nor the browser check that verifies this screen can produce. The keyboard is
+ * the route that can be driven end to end, so it is the route the fix is
+ * pinned to — and it is the route a keyboard user has either way.
+ */
+describe('TripItinerary — dragging onto a split day', () => {
+  let restoreLayout: () => void;
+
+  beforeEach(() => {
+    restoreLayout = layOutDropTargets();
+  });
+  afterEach(() => restoreLayout());
+
+  /** Every day open, so every day is a card with a rectangle to aim at. */
+  async function openEveryDay(user: ReturnType<typeof userEvent.setup>) {
+    await screen.findByText('Day 2 · Tue 3');
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    // Day 2 is the seeded split day: Version A and Version B, neither settled.
+    await screen.findByRole('heading', { name: 'Version B' });
+  }
+
+  it('places into Version B when Version B is what the drag was carried to', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await openEveryDay(user);
+
+    await dragByKeyboardOnto(
+      user,
+      screen.getByRole('button', { name: 'Drag Kiyamachi onto a day' }),
+      'Version B of Day 2 · Tue 3',
+    );
+
+    // In Version B's column, and in no other. Before the fix the day was the
+    // only target it could resolve to, and every drop landed in Version A.
+    const columnB = await screen.findByRole('heading', { name: 'Version B' });
+    const inB = columnB.closest('[data-drop-id]') as HTMLElement;
+    expect(await within(inB).findByText('Kiyamachi')).toBeInTheDocument();
+
+    const inA = screen.getByRole('heading', { name: 'Version A' }).closest('[data-drop-id]') as HTMLElement;
+    expect(within(inA).queryByText('Kiyamachi')).not.toBeInTheDocument();
+    expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+  });
+
+  it('names the version being aimed at, rather than only the day', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await openEveryDay(user);
+
+    const grip = screen.getByRole('button', { name: 'Drag Kiyamachi onto a day' });
+    grip.focus();
+    await user.keyboard('[Space]');
+    await waitFor(() => expect(announcement()).not.toBe(''));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    // Every stop on the walk is announced. Both ends of the list, so nothing
+    // is missed for having started in the middle of it.
+    const heard = new Set<string>([announcement()]);
+    for (let press = 0; press < 10; press += 1) {
+      await user.keyboard('{ArrowUp}');
+      heard.add(announcement());
+    }
+    for (let press = 0; press < 10; press += 1) {
+      await user.keyboard('{ArrowDown}');
+      heard.add(announcement());
+    }
+    await user.keyboard('{Escape}');
+
+    // The two versions of the split day are two stops with two names.
+    expect([...heard]).toContain('Kiyamachi is over Version A of Day 2 · Tue 3.');
+    expect([...heard]).toContain('Kiyamachi is over Version B of Day 2 · Tue 3.');
+    // The day around them is never a stop while its columns are on screen —
+    // it would be "Version A by default", one press before Version A itself.
+    expect([...heard]).not.toContain('Kiyamachi is over Day 2 · Tue 3.');
+    // Every other day still is one.
+    expect([...heard]).toContain('Kiyamachi is over Day 1 · Mon 2.');
+    expect([...heard]).toContain('Kiyamachi is over Day 7 · Sun 8.');
+  });
+
+  it('leaves an unsplit day to pick its own version, and omits the id the API has to mint', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await openEveryDay(user);
+
+    // Day 4 has no row on the server at all, so the only version the screen
+    // can draw is the synthetic one, whose id is a placeholder. Sending that id
+    // would 422: the placement has to leave day_version_id out and let the API
+    // make both the day and its Version A. An unsplit day is one target, and
+    // the version it resolves to is the day's business, not the drop's.
+    await dragByKeyboardOnto(
+      user,
+      screen.getByRole('button', { name: 'Drag Kiyamachi onto a day' }),
+      'Day 4 · Thu 5',
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Change the hours for Kiyamachi, now 09:00–10:30' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("That didn't save. It's still here — try again.")).not.toBeInTheDocument();
+    expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+  });
+
+  it('does not let the day take a drop one of its columns has already taken', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await openEveryDay(user);
+
+    await dragByKeyboardOnto(
+      user,
+      screen.getByRole('button', { name: 'Drag Kiyamachi onto a day' }),
+      'Version B of Day 2 · Tue 3',
+    );
+    await screen.findByText('Not placed yet · 2');
+
+    // One placement on the day, not two: the column and the day around it are
+    // mutually exclusive, so the day's own monitor stayed quiet rather than
+    // placing a second copy into Version A alongside the column's.
+    const day2 = screen.getByRole('heading', { name: 'Day 2 · Tue 3' }).closest('[data-drop-id]') as HTMLElement;
+    await waitFor(() => expect(within(day2).getAllByText('Kiyamachi')).toHaveLength(1));
   });
 });
 

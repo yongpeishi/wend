@@ -10,6 +10,7 @@ import type { ItineraryDay } from './itineraryModel';
 import { LodgingEditor } from './LodgingEditor';
 import { LodgingPill } from './LodgingPill';
 import { useDayDrop } from './useDayDrop';
+import type { ItineraryDropHandler } from './useDayDrop';
 import { VersionColumns } from './VersionColumns';
 import { VersionItems } from './VersionItems';
 import styles from './DayCard.module.css';
@@ -42,8 +43,13 @@ export interface DayCardProps {
   onRemoveItem: (itemId: number) => void;
   /** Both keys together: one clears the other, and both null clears the night. */
   onSetLodging: (value: { lodging_entry_id: number | null; lodging_label: string | null }) => void;
-  /** Something from the rail was dropped here. Must be inside a `<DndContext>`. */
-  onDropItem?: (entryId: number) => void;
+  /**
+   * Something from the rail was dropped on this day. Must be inside a
+   * `<DndContext>`. The second argument is the version it landed in: a number
+   * when the day is split and the drop was aimed at one of its columns, null
+   * when it landed on the day itself and the day is the one that decides.
+   */
+  onDropItem?: ItineraryDropHandler;
 }
 
 /**
@@ -70,7 +76,7 @@ export function DayCard({
   onSetLodging,
   onDropItem,
 }: DayCardProps) {
-  const { setNodeRef, isOver } = useDayDrop(day.day, onDropItem);
+  const { setNodeRef, isOver, dropId } = useDayDrop(day.day, onDropItem);
   const [lodgingOpen, setLodgingOpen] = useState(false);
   const [picker, setPicker] = useState<PickerTarget | null>(null);
 
@@ -81,6 +87,7 @@ export function DayCard({
     <div
       ref={setNodeRef}
       className={styles.card}
+      data-drop-id={dropId}
       data-drop-target={isDropTarget || isOver || undefined}
     >
       <div className={styles.head}>
@@ -137,6 +144,7 @@ export function DayCard({
 
       {split ? (
         <VersionColumns
+          day={day.day}
           versions={day.versions}
           dayLabel={day.label}
           onKeep={onKeepVersion}
@@ -144,6 +152,7 @@ export function DayCard({
           onRemoveItem={onRemoveItem}
           onAdd={(versionId) => setPicker({ versionId, slot: null })}
           onFill={(versionId, slot) => setPicker({ versionId, slot })}
+          onDropItem={onDropItem}
         />
       ) : (
         firstVersion && (

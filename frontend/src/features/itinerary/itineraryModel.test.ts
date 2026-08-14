@@ -340,10 +340,10 @@ describe('versionSpan', () => {
 });
 
 /**
- * These are display-only times — a bundle sits on a day as one row and its
- * members have none of their own until it is ungrouped. The rule below is
- * therefore checked against what `ScheduleItem#ungroup!` would actually
- * produce: if the two ever drift, a member is showing hours it will not get.
+ * These are display-only times — a bundle sits on a day as one row with one
+ * span, and its members have no rows, and so no hours, of their own at all.
+ * The rules below are the whole definition of what a member's hours are: every
+ * member's share adds back up to the band above it, exactly.
  */
 describe('bundleMemberSpans', () => {
   function bundle(start: string, end: string, durations: (number | null)[]): ItineraryItem {
