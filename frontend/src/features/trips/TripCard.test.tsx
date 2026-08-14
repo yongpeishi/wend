@@ -142,3 +142,52 @@ describe('TripCard', () => {
     expect(archived).toBe(true);
   });
 });
+
+/**
+ * `/` is outside every trip, so there is no role provider here — each card reads
+ * its own `my_role` off the trip it was handed. Which is the point: the grid can
+ * hold a trip you own next to one you are only reading.
+ */
+describe('TripCard — what each role may do to it', () => {
+  async function cardFor(role: Entry['my_role']) {
+    const trip = await loadTrip();
+    renderCard({ ...trip, my_role: role });
+  }
+
+  it('gives a viewer no rename and no way to set the trip aside', async () => {
+    await cardFor('viewer');
+
+    expect(screen.queryByRole('button', { name: `Rename ${TRIP_TITLE}` })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Save ${TRIP_TITLE} for later` })).not.toBeInTheDocument();
+  });
+
+  // The half that matters: the card is still the trip, fully readable.
+  it('leaves a viewer the whole card to read', async () => {
+    await cardFor('viewer');
+
+    expect(screen.getByRole('link', { name: TRIP_TITLE })).toBeInTheDocument();
+    const description = screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` });
+    expect(description).toHaveValue(TRIP_DESCRIPTION);
+    // readOnly, not disabled — full contrast, still selectable and copyable.
+    expect(description).toHaveAttribute('readonly');
+    expect(description).toBeEnabled();
+    expect(screen.getByText('Flights are already booked')).toBeInTheDocument();
+    expect(screen.getByText('Nothing sorted yet')).toBeInTheDocument();
+  });
+
+  // A member may unmake their own work, not the trip everyone else is standing
+  // on — so they rename and they do not archive.
+  it('lets a member rename but not set the trip aside', async () => {
+    await cardFor('member');
+
+    expect(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Save ${TRIP_TITLE} for later` })).not.toBeInTheDocument();
+  });
+
+  it('gives the owner both', async () => {
+    await cardFor('owner');
+
+    expect(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Save ${TRIP_TITLE} for later` })).toBeInTheDocument();
+  });
+});

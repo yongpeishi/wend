@@ -1,11 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
+import { TripRoleProvider } from '../auth/TripRoleContext';
+import { setRole } from '../mocks/db';
 import { TripBoard } from './TripBoard';
+import type { TripRole } from '../api/types';
 import type { MapViewProps } from '../features/map/MapView';
 
 /**
@@ -55,18 +58,28 @@ function TestTripLayout() {
   return <Outlet context={{ trip: { id: 1, title: 'Six days in Kyoto' } }} />;
 }
 
-function renderBoard() {
+/**
+ * `role` mounts the provider TripLayout mounts in the app. Omitted, there is no
+ * provider at all and the context hands back its editable default — which is
+ * what every test below this line was written against and must stay true for:
+ * a board outside a trip is nobody's but yours.
+ */
+function renderBoard(role?: TripRole) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const board = (
+    <MemoryRouter initialEntries={['/trips/1']}>
+      <Routes>
+        <Route path="/trips/:id" element={<TestTripLayout />}>
+          <Route index element={<TripBoard />} />
+        </Route>
+      </Routes>
+    </MemoryRouter>
+  );
+
   return render(
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <MemoryRouter initialEntries={['/trips/1']}>
-          <Routes>
-            <Route path="/trips/:id" element={<TestTripLayout />}>
-              <Route index element={<TripBoard />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        {role ? <TripRoleProvider role={role}>{board}</TripRoleProvider> : board}
       </ToastProvider>
     </QueryClientProvider>,
   );
@@ -425,5 +438,80 @@ describe('TripBoard — filters compose with the map', () => {
     expect(screen.queryByText('Somewhere far away')).not.toBeInTheDocument();
     // And the way out of the chips is still on the same line.
     expect(screen.getByRole('button', { name: 'See all' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * The test this whole slice exists for. It is written in two halves on purpose:
+ * the first asserts the affordances are gone, and the second asserts every idea
+ * is still on the screen. A test with only the first half passes on a blank
+ * page, which is the one outcome read-only mode must never produce.
+ */
+describe('TripBoard — as a viewer', () => {
+  beforeEach(async () => {
+    // Signed in and genuinely a viewer in the fixtures, not merely told to
+    // render as one: GET /api/entries answers exactly as the app will see it.
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    setRole(TRIP_ID, 1, 'viewer');
+  });
+
+  it('takes every way of changing the board away', async () => {
+    renderBoard('viewer');
+    await screen.findByText('Nanzen-ji');
+
+    expect(screen.queryByRole('button', { name: /new idea/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new bundle/i })).not.toBeInTheDocument();
+    // The row's actions menu and its drag handle, by their real accessible names.
+    expect(screen.queryByRole('button', { name: 'Actions for Nanzen-ji' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Drag Nanzen-ji onto a bundle to add it there' }),
+    ).not.toBeInTheDocument();
+    // Select mode only ever led to a bar of edits, so the way in goes with them.
+    expect(screen.queryByRole('button', { name: 'Select' })).not.toBeInTheDocument();
+  });
+
+  it('still shows every idea, every bundle and every count', async () => {
+    renderBoard('viewer');
+
+    expect(await screen.findByText('Nanzen-ji')).toBeInTheDocument();
+    expect(screen.getByText('Kiyamachi')).toBeInTheDocument();
+    expect(screen.getByText('Day one dinner options')).toBeInTheDocument();
+    expect(screen.getByText(/Showing 2 of 2/)).toBeInTheDocument();
+  });
+
+  // Filtering, grouping and the map decide what is on screen, which is the whole
+  // of what reading along is. None of them may be taken away with the edits.
+  it('keeps every way of looking at the board', async () => {
+    const user = userEvent.setup();
+    renderBoard('viewer');
+    await screen.findByText('Nanzen-ji');
+
+    await showMap(user);
+    expect(screen.getByRole('switch', { name: 'Follow the map' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: pin('Nanzen-ji') })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^Filter/ }));
+    await user.click(screen.getByRole('button', { name: 'Place' }));
+    expect(await screen.findByText(/Showing 1 of 2/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'See all' })).toBeInTheDocument();
+  });
+
+  // dnd-kit does not care how a row is styled, so the sensors are the kill
+  // switch — and the grip is the only draggable the board draws. With neither
+  // there is nothing left to start a drag from, by pointer or by keyboard.
+  it('leaves nothing on the board that a drag could start from', async () => {
+    renderBoard('viewer');
+    await screen.findByText('Nanzen-ji');
+
+    expect(screen.queryByRole('button', { name: /^Drag / })).not.toBeInTheDocument();
+  });
+
+  it('gives the whole board back to a member', async () => {
+    setRole(TRIP_ID, 1, 'member');
+    renderBoard('member');
+    await screen.findByText('Nanzen-ji');
+
+    expect(screen.getByRole('button', { name: '+ New idea' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Actions for Nanzen-ji' })).toBeInTheDocument();
   });
 });

@@ -21,14 +21,24 @@ function heightPx(startMinutes: number, endMinutes: number | null): number {
 export interface DayColumnProps {
   items: ScheduleItem[];
   entries: Entry[];
+  /**
+   * May you change this day? Threaded down to every block rather than read from
+   * the context here, so the column stays the pure layout component it is and a
+   * gallery or a test can draw a read-only day without a provider. Defaults to
+   * true, matching a null role.
+   */
+  canEdit?: boolean;
 }
 
 /**
  * The hour-by-hour grid for a single day: hours down the left in 24-hour
  * `HH:MM` (the `Data` type role, sized to survive bright sun), items placed
  * as blocks sized by duration, transport slots as dotted trail segments.
+ *
+ * A viewer sees the whole day exactly as it stands — the plan is the thing they
+ * came to read. Only the verbs inside the blocks go.
  */
-export function DayColumn({ items, entries }: DayColumnProps) {
+export function DayColumn({ items, entries, canEdit = true }: DayColumnProps) {
   const ordered = sortDayItems(items);
   const timed = ordered.filter((item) => item.starts_at_minutes !== null);
   const untimed = ordered.filter((item) => item.starts_at_minutes === null);
@@ -48,6 +58,7 @@ export function DayColumn({ items, entries }: DayColumnProps) {
               item={item}
               entry={entryFor(entries, item.entry_id)}
               style={{ position: 'static' }}
+              canEdit={canEdit}
             />
           ))}
         </div>
@@ -77,7 +88,15 @@ export function DayColumn({ items, entries }: DayColumnProps) {
                   />
                 );
               }
-              return <ScheduleBlock key={item.id} item={item} entry={entryFor(entries, item.entry_id)} style={style} />;
+              return (
+                <ScheduleBlock
+                  key={item.id}
+                  item={item}
+                  entry={entryFor(entries, item.entry_id)}
+                  style={style}
+                  canEdit={canEdit}
+                />
+              );
             })}
           </div>
         </div>

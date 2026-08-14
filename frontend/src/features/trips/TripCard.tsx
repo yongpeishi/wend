@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ProsCons } from './ProsCons';
 import { useUpdateEntry } from '../../api/entries';
+import { canDelete, canEdit } from '../../auth/tripRole';
+import { ReadOnly } from '../../components/ReadOnly';
 import { useToast } from '../../components/Toast';
 import { formatTripDates, joinMeta } from '../../lib/formatDates';
 import type { Entry } from '../../api/types';
@@ -39,6 +41,14 @@ function metaLine(trip: Entry): string {
 export function TripCard({ trip, onArchive }: TripCardProps) {
   const updateTrip = useUpdateEntry(trip.id);
   const { show } = useToast();
+
+  // From the trip in hand, not from the trip-role context: `/` is outside every
+  // trip, so there is no provider here and each card in the grid carries a
+  // different answer. `?? null` because `my_role` is optional — see tripRole.ts.
+  const editable = canEdit(trip.my_role ?? null);
+  // Setting a trip aside is the owner's alone: a member can unmake their own
+  // work, not the trip everyone else is standing on.
+  const deletable = canDelete(trip.my_role ?? null);
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(trip.title);
@@ -135,7 +145,7 @@ export function TripCard({ trip, onArchive }: TripCardProps) {
           )}
         </h2>
         <div className={styles.headActions}>
-          {!editingTitle && (
+          {editable && !editingTitle && (
             <button
               type="button"
               className={styles.editTitle}
@@ -159,45 +169,59 @@ export function TripCard({ trip, onArchive }: TripCardProps) {
               </svg>
             </button>
           )}
-          <button
-            type="button"
-            className={styles.archive}
-            title="Save for later"
-            aria-label={`Save ${titleDraft} for later`}
-            onClick={onArchive}
-          >
-            <svg
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+          {deletable && (
+            <button
+              type="button"
+              className={styles.archive}
+              title="Save for later"
+              aria-label={`Save ${titleDraft} for later`}
+              onClick={onArchive}
             >
-              <rect x="3" y="4" width="18" height="5" rx="1" />
-              <path d="M5 9v9a2 2 0 002 2h10a2 2 0 002-2V9" />
-              <path d="M10 13h4" />
-            </svg>
-          </button>
+              <svg
+                width="17"
+                height="17"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="3" y="4" width="18" height="5" rx="1" />
+                <path d="M5 9v9a2 2 0 002 2h10a2 2 0 002-2V9" />
+                <path d="M10 13h4" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
+      {/* readOnly, not disabled: a description is content, and a viewer keeps it
+          at full contrast and still selectable. The placeholder goes with the
+          capability — "Add a description" is an invitation nobody here can
+          accept, and an empty box says the same thing more honestly. */}
       <textarea
         ref={descriptionRef}
         className={styles.description}
         rows={1}
-        placeholder="Add a description"
+        readOnly={!editable}
+        placeholder={editable ? 'Add a description' : undefined}
         aria-label={`Description for ${titleDraft}`}
         value={descriptionDraft}
         onChange={(e) => setDescriptionDraft(e.target.value)}
         onBlur={(e) => saveDescription(e.target.value)}
       />
 
+      {/* The region gate rather than a prop: ProsCons belongs to no slice of this
+          change, so its remove and "+ add" buttons go inert inside a disabled
+          fieldset instead of disappearing the way the house rule prefers. The
+          reasons themselves stay fully readable, which is the half that matters.
+          See the report accompanying this change. */}
       <div className={styles.reasons}>
-        <ProsCons entryId={trip.id} tripTitle={titleDraft} pros={trip.pros} cons={trip.cons} />
+        <ReadOnly canEdit={editable}>
+          <ProsCons entryId={trip.id} tripTitle={titleDraft} pros={trip.pros} cons={trip.cons} />
+        </ReadOnly>
       </div>
 
       <p className={styles.meta}>{metaLine(trip)}</p>

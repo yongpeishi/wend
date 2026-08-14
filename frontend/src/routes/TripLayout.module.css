@@ -4,10 +4,21 @@
   margin: 0 auto;
 }
 
-/* The header is the title block alone: the tab bar moved to the sidebar and the
-   progress trail was retired, so this carries the full gap to the page body. */
+/* The tab bar moved to the sidebar and the progress trail was retired, so this
+   carries the full gap to the page body. */
 .head {
   margin-bottom: var(--gap-section);
+}
+
+/* The title on the left, the one trip-wide action on the right. It wraps rather
+   than shrinking the title: a long trip name is the thing this screen is about,
+   and a button that drops to its own line is still a button. */
+.headTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
 }
 
 .titleBlock {
@@ -43,6 +54,19 @@
   color: var(--text-muted);
 }
 
+/* Body text, not a warning: nothing has gone wrong, this is simply how the trip
+   stands for this reader. Apricot is the focus ring and the "you are here" mark
+   and is never text, so the line is told apart by its position under the title
+   rather than by a colour. */
+.viewerNote {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
 /* The schedule is the one dark surface in the product: it inverts for
    outdoor reading. The shell follows it so the page does not sit in two tones. */
 .onDark {
@@ -59,6 +83,10 @@
 }
 
 .onDark .noDates {
+  color: var(--text-on-dark-muted);
+}
+
+.onDark .viewerNote {
   color: var(--text-on-dark-muted);
 }
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Input } from '../design/components/core/Input';
 import { Select } from '../design/components/core/Select';
+import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
@@ -22,6 +23,7 @@ import styles from './TripChecklist.module.css';
 export function TripChecklist() {
   const { trip } = useOutletContext<{ trip: Entry }>();
   const { show } = useToast();
+  const canEdit = useCanEdit();
 
   const todosQuery = useTodos({ trip_id: trip.id });
   const entriesQuery = useEntries({ trip_id: trip.id });
@@ -68,36 +70,43 @@ export function TripChecklist() {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.addRow}>
-        <Input
-          placeholder="What needs doing?"
-          hint="↵"
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleAdd();
-          }}
-          aria-label="What needs doing?"
-        />
-        <label className={styles.forLabel}>
-          <span className={styles.forLabelText}>For</span>
-          {/* wrapperClassName, not className: the wrapper is the flex child of
-              .forLabel, so `flex: 1` has to land there for the field to take
-              the rest of the row. */}
-          <Select
-            wrapperClassName={styles.selectWrapper}
-            value={forEntryId}
-            onChange={(e) => setForEntryId(e.target.value === '' ? '' : Number(e.target.value))}
-          >
-            <option value="">the whole trip</option>
-            {entries.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.title}
-              </option>
-            ))}
-          </Select>
-        </label>
-      </div>
+      {/* Not rendered rather than made readOnly. The rule that a text field goes
+          readOnly is about fields holding something to read; this one is empty
+          by definition — it is a button with a place to type in it, and an
+          inert one would be chrome standing where a control used to be. The
+          share panel's own add form is hidden the same way for the same reason. */}
+      {canEdit && (
+        <div className={styles.addRow}>
+          <Input
+            placeholder="What needs doing?"
+            hint="↵"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAdd();
+            }}
+            aria-label="What needs doing?"
+          />
+          <label className={styles.forLabel}>
+            <span className={styles.forLabelText}>For</span>
+            {/* wrapperClassName, not className: the wrapper is the flex child of
+                .forLabel, so `flex: 1` has to land there for the field to take
+                the rest of the row. */}
+            <Select
+              wrapperClassName={styles.selectWrapper}
+              value={forEntryId}
+              onChange={(e) => setForEntryId(e.target.value === '' ? '' : Number(e.target.value))}
+            >
+              <option value="">the whole trip</option>
+              {entries.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.title}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+      )}
 
       {todos.length === 0 ? (
         <EmptyState message="Nothing to check off. That's either very good or very early." />
@@ -105,7 +114,7 @@ export function TripChecklist() {
         <>
           <ul className={styles.list}>
             {openSorted.map((todo) => (
-              <TodoRow key={todo.id} todo={todo} />
+              <TodoRow key={todo.id} todo={todo} canEdit={canEdit} />
             ))}
           </ul>
 
@@ -122,7 +131,7 @@ export function TripChecklist() {
               {showDone && (
                 <ul className={`${styles.list} ${styles.doneList}`}>
                   {done.map((todo) => (
-                    <TodoRow key={todo.id} todo={todo} />
+                    <TodoRow key={todo.id} todo={todo} canEdit={canEdit} />
                   ))}
                 </ul>
               )}
@@ -134,9 +143,16 @@ export function TripChecklist() {
   );
 }
 
-/** One checklist line. The circle is the same keep-toggle idiom as the board:
- * filled when done, ringed when open. Nothing is ever struck through. */
-function TodoRow({ todo }: { todo: Todo }) {
+/**
+ * One checklist line. The circle is the same keep-toggle idiom as the board:
+ * filled when done, ringed when open. Nothing is ever struck through.
+ *
+ * For a viewer the circle stays and stops being a button. It is the only place
+ * this row says whether the thing is done, so removing it would remove the
+ * answer along with the affordance — the mark is drawn on a span instead, with
+ * the state still spelled out for a screen reader.
+ */
+function TodoRow({ todo, canEdit }: { todo: Todo; canEdit: boolean }) {
   const { show } = useToast();
   const updateTodo = useUpdateTodo(todo.id);
   const isDone = todo.done_at !== null;
@@ -155,16 +171,26 @@ function TodoRow({ todo }: { todo: Todo }) {
 
   return (
     <li className={isDone ? `${styles.row} ${styles.rowDone}` : styles.row}>
-      <button
-        type="button"
-        className={isDone ? `${styles.toggle} ${styles.toggleDone}` : styles.toggle}
-        onClick={toggle}
-        aria-pressed={isDone}
-      >
-        <span className={styles.srOnly}>
-          {isDone ? `Mark ${todo.title} as still to do` : `Check off ${todo.title}`}
+      {canEdit ? (
+        <button
+          type="button"
+          className={isDone ? `${styles.toggle} ${styles.toggleDone}` : styles.toggle}
+          onClick={toggle}
+          aria-pressed={isDone}
+        >
+          <span className={styles.srOnly}>
+            {isDone ? `Mark ${todo.title} as still to do` : `Check off ${todo.title}`}
+          </span>
+        </button>
+      ) : (
+        <span
+          className={[styles.toggle, styles.toggleStill, isDone ? styles.toggleDone : '']
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <span className={styles.srOnly}>{isDone ? 'Done' : 'Still to do'}</span>
         </span>
-      </button>
+      )}
       <span className={styles.body}>
         <span className={styles.title}>{todo.title}</span>
         {meta && <span className={styles.meta}>{meta}</span>}

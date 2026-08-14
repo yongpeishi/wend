@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
+import { setRole } from '../mocks/db';
 import { TripsList } from './TripsList';
 import type { Entry, EntryNote } from '../api/types';
 
@@ -29,6 +30,7 @@ function renderTrips() {
 // The seeded trip (src/mocks/db.ts): "Six days in Kyoto", 2–8 Nov, three linked
 // children, one pro and one con already on it.
 const SEEDED_TRIP_ID = 1;
+const DEMO_USER_ID = 1;
 const TRIP_TITLE = 'Six days in Kyoto';
 
 /** Reads the trip straight from the mock API — proof a change was persisted,
@@ -179,5 +181,41 @@ describe('TripsList', () => {
     await user.click(screen.getByRole('button', { name: 'Add trip' }));
 
     expect(await screen.findByText('Trip page')).toBeInTheDocument();
+  });
+});
+
+/**
+ * `/` shows the trips you are on, whatever you may do to each of them, so this
+ * is the one screen where roles sit side by side. Signed in, the fixtures make
+ * the demo user the owner of the seeded trip; `setRole` moves them.
+ */
+describe('TripsList — a trip you are only reading', () => {
+  async function signIn() {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+  }
+
+  it('keeps the trip in the grid, and starting a new one is still yours to do', async () => {
+    await signIn();
+    setRole(SEEDED_TRIP_ID, DEMO_USER_ID, 'viewer');
+    renderTrips();
+
+    expect(await screen.findByRole('link', { name: TRIP_TITLE })).toBeInTheDocument();
+    // A trip you start is a trip you own — nothing about reading someone else's
+    // takes that away.
+    expect(screen.getByRole('button', { name: '+ New trip' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Save ${TRIP_TITLE} for later` })).not.toBeInTheDocument();
+  });
+
+  it('offers no way to bring back a trip you did not set aside', async () => {
+    await signIn();
+    await api.delete(`/entries/${SEEDED_TRIP_ID}`);
+    setRole(SEEDED_TRIP_ID, DEMO_USER_ID, 'member');
+    renderTrips();
+
+    // Still listed under "Saved for later" — it is nobody's secret that it is
+    // there, only the owner's to undo.
+    expect(await screen.findByText('Saved for later')).toBeInTheDocument();
+    expect(screen.getByText(TRIP_TITLE)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Bring back' })).not.toBeInTheDocument();
   });
 });

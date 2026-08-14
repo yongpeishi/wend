@@ -98,6 +98,12 @@
   outline-offset: var(--focus-offset);
 }
 
+/* The same line, with nothing behind it — see OptionsBlock. A pointer cursor
+   over something that cannot be tapped is a promise the block cannot keep. */
+div.option {
+  cursor: default;
+}
+
 .optionDimmed {
   opacity: 0.5;
 }

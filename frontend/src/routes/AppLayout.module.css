@@ -227,8 +227,15 @@
   list-style: none;
 }
 
+.avatarItem {
+  display: flex;
+  flex: none;
+}
+
 /* Leaf on deep leaf: the one green that reads as a filled shape against the
-   sidebar without becoming another surface. */
+   sidebar without becoming another surface. Rendered as a button for anyone who
+   can bring someone along and as a span for anyone who cannot, so the two look
+   identical and only one of them is a door. */
 .avatar {
   display: flex;
   align-items: center;
@@ -236,11 +243,33 @@
   width: var(--space-8);
   height: var(--space-8);
   flex: none;
+  padding: 0;
+  border: none;
   border-radius: var(--radius-pill);
   background: var(--wend-leaf);
+  font-family: var(--font-sans);
   font-size: var(--text-code-size);
   font-weight: var(--weight-bold);
   color: var(--wend-paper);
+}
+
+/* Hover and press are opacity, never a second colour. */
+button.avatar {
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+button.avatar:hover {
+  opacity: 0.7;
+}
+
+button.avatar:active {
+  opacity: 0.55;
+}
+
+button.avatar:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .srOnly {
