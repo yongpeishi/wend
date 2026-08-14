@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/layout/Card';
 import { Input } from '../../design/components/core/Input';
 import { useToast } from '../../components/Toast';
+import { useCanEdit } from '../../auth/TripRoleContext';
 import { useArchiveEntry, useDeleteLink, useReorderLinks, useUpdateEntry, useUpdateLinkPosition } from '../../api';
 import type { Entry } from '../../api/types';
 import { useLinkMutations } from './useLinkMutations';
@@ -102,6 +103,10 @@ export interface BundleCardProps {
  */
 export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
   const navigate = useNavigate();
+  // The hook rather than a prop: unlike IdeaRow this card takes none of its
+  // verbs from its caller — it owns its own mutations — so the capability comes
+  // from the same tree the mutations do.
+  const canEdit = useCanEdit();
   const { show } = useToast();
   const archiveEntry = useArchiveEntry();
   const updateEntry = useUpdateEntry(bundle.id);
@@ -117,9 +122,13 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
   // means the user has already moved on — pulling focus back to the name
   // would trap anyone Tabbing out of the card.
   const returnFocus = useRef(false);
+  // A read-only card is not a drop target. Styling alone would not stop it:
+  // dnd-kit resolves a drop against every registered droppable, so without this
+  // a viewer could still land an idea here and watch the request be refused.
   const { setNodeRef, isOver } = useDroppable({
     id: `bundle-${bundle.id}`,
     data: { bundleId: bundle.id, title: bundle.title },
+    disabled: !canEdit,
   });
 
   useEffect(() => {
@@ -243,7 +252,13 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
       className={[styles.card, isOver ? styles.over : ''].filter(Boolean).join(' ')}
     >
       <div className={styles.header}>
-        {editingName ? (
+        {!canEdit ? (
+          /* The name is still the anchor of the card, so it keeps its type and
+             its place — it just stops being a control. A button labelled
+             "Rename Kyoto dinner" that opens a field the server will refuse is
+             a worse answer than plain text. */
+          <p className={styles.titleReading}>{bundle.title}</p>
+        ) : editingName ? (
           <Input
             aria-label="Bundle name"
             autoFocus
@@ -285,20 +300,27 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
             reach the bundle. The label names the bundle because a rail of
             these otherwise offers a column of identical "Remove" buttons to
             anyone reading by label. */}
-        <button
-          type="button"
-          className={styles.iconButton}
-          aria-label={`Remove bundle ${bundle.title}`}
-          onClick={removeBundle}
-        >
-          <X size={16} strokeWidth={1.5} aria-hidden="true" />
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            className={styles.iconButton}
+            aria-label={`Remove bundle ${bundle.title}`}
+            onClick={removeBundle}
+          >
+            <X size={16} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+        )}
       </div>
 
       <p className={styles.meta}>{meta}</p>
 
       {members.length === 0 ? (
-        <p className={styles.emptyDrop}>Drag ideas here, or use "Add to bundle" on a row.</p>
+        /* An empty bundle still says it is empty for a viewer — but not by
+           naming two gestures they do not have. The sentence reports the state
+           instead of instructing. */
+        <p className={styles.emptyDrop}>
+          {canEdit ? 'Drag ideas here, or use "Add to bundle" on a row.' : 'Nothing in here yet.'}
+        </p>
       ) : (
         <ul className={styles.memberList}>
           {members.map((member, index) => (
@@ -307,14 +329,22 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
               className={[styles.member, draggedId !== null && draggedId !== member.id ? styles.dropTarget : '']
                 .filter(Boolean)
                 .join(' ')}
-              draggable
-              onDragStart={() => setDraggedId(member.id)}
-              onDragOver={(event: DragEvent<HTMLLIElement>) => event.preventDefault()}
-              onDrop={(event: DragEvent<HTMLLIElement>) => {
-                event.preventDefault();
-                handleDrop(member.id);
-              }}
-              onDragEnd={() => setDraggedId(null)}
+              /* The native reorder accelerator, dropped whole for a viewer —
+                 the attribute AND its handlers, because `draggable` is what the
+                 browser reads and leaving the handlers on a row that cannot
+                 start a drag is dead wiring. */
+              draggable={canEdit || undefined}
+              onDragStart={canEdit ? () => setDraggedId(member.id) : undefined}
+              onDragOver={canEdit ? (event: DragEvent<HTMLLIElement>) => event.preventDefault() : undefined}
+              onDrop={
+                canEdit
+                  ? (event: DragEvent<HTMLLIElement>) => {
+                      event.preventDefault();
+                      handleDrop(member.id);
+                    }
+                  : undefined
+              }
+              onDragEnd={canEdit ? () => setDraggedId(null) : undefined}
             >
               <span
                 className={[styles.dot, member.scheduled ? styles.dotScheduled : styles.dotWaiting].join(' ')}
@@ -331,34 +361,38 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
                   {`${member.todos_open_count} ${member.todos_open_count === 1 ? 'to-do' : 'to-dos'}`}
                 </span>
               )}
-              <span className={styles.memberActions}>
-                <button
-                  type="button"
-                  className={styles.iconButton}
-                  aria-label={`Move ${member.title} up`}
-                  disabled={index === 0}
-                  onClick={() => moveMember(index, -1)}
-                >
-                  <ChevronUp size={16} strokeWidth={1.5} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className={styles.iconButton}
-                  aria-label={`Move ${member.title} down`}
-                  disabled={index === members.length - 1}
-                  onClick={() => moveMember(index, 1)}
-                >
-                  <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" />
-                </button>
-                <button
-                  type="button"
-                  className={styles.iconButton}
-                  aria-label={`Remove ${member.title} from ${bundle.title}`}
-                  onClick={() => removeMember(member)}
-                >
-                  <X size={16} strokeWidth={1.5} aria-hidden="true" />
-                </button>
-              </span>
+              {/* The member itself — its dot, its name, its to-do count — is
+                  content and stays. Only the three verbs on the end go. */}
+              {canEdit && (
+                <span className={styles.memberActions}>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    aria-label={`Move ${member.title} up`}
+                    disabled={index === 0}
+                    onClick={() => moveMember(index, -1)}
+                  >
+                    <ChevronUp size={16} strokeWidth={1.5} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    aria-label={`Move ${member.title} down`}
+                    disabled={index === members.length - 1}
+                    onClick={() => moveMember(index, 1)}
+                  >
+                    <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.iconButton}
+                    aria-label={`Remove ${member.title} from ${bundle.title}`}
+                    onClick={() => removeMember(member)}
+                  >
+                    <X size={16} strokeWidth={1.5} aria-hidden="true" />
+                  </button>
+                </span>
+              )}
             </li>
           ))}
         </ul>

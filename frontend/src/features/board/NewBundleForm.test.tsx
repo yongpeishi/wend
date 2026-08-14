@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { ToastProvider } from '../../components/Toast';
+import { TripRoleProvider } from '../../auth/TripRoleContext';
 import { NewBundleForm } from './NewBundleForm';
 import { api } from '../../api';
 
@@ -102,5 +103,19 @@ describe('NewBundleForm — naming a bundle in the rail', () => {
     await user.keyboard('{Enter}');
     expect(post).not.toHaveBeenCalled();
     post.mockRestore();
+  });
+
+  // A viewer never reaches this — BundlePanel's "+ New bundle" is gone — but a
+  // create surface refuses on its own account rather than trusting its caller.
+  it('does not render for a viewer', () => {
+    render(
+      <TripRoleProvider role="viewer">
+        <NewBundleForm tripId={TRIP_ID} onToast={() => {}} onClose={() => {}} />
+      </TripRoleProvider>,
+      { wrapper: makeWrapper() },
+    );
+
+    expect(screen.queryByLabelText('Name a new bundle')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Create' })).not.toBeInTheDocument();
   });
 });

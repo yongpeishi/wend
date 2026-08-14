@@ -56,6 +56,22 @@
   outline-offset: var(--focus-offset);
 }
 
+/* The name with nothing behind it — what a viewer gets. Same slot, same type,
+   same weight as `.title`; what it drops is `cursor: pointer`, the hover fade
+   and the focus ring, because none of those belong on text that does nothing.
+   Full contrast, never dimmed: the rule is that a viewer reads everything, and
+   greying is reserved for nothing at all (doc/architecture.md §5). */
+.titleReading {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-body-size);
+  line-height: var(--text-subtitle-line);
+  color: var(--text-strong);
+}
+
 /* The name mid-edit. It takes the same flex slot as the static name so the
    card does not jump a pixel when the field opens — the whole point of
    editing in place is that nothing moves. Input draws its own border and

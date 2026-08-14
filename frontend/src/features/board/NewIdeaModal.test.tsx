@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../components/Toast';
+import { TripRoleProvider } from '../../auth/TripRoleContext';
 import { NewIdeaModal } from './NewIdeaModal';
 import { api } from '../../api';
 
@@ -113,5 +114,27 @@ describe('NewIdeaModal', () => {
   it('the Keep it button stays disabled with an empty name', () => {
     renderModal(vi.fn());
     expect(screen.getByRole('button', { name: 'Keep it' })).toBeDisabled();
+  });
+
+  /**
+   * The board keeps this mounted whether it is open or not, so a viewer would
+   * otherwise be one state flag away from a create form. There is no read-only
+   * version of "add an idea" — an empty form nobody can submit is not content —
+   * so it refuses to render rather than opening inert.
+   */
+  it('does not render at all for a viewer, even asked to open', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <TripRoleProvider role="viewer">
+            <NewIdeaModal open onClose={vi.fn()} parentId={TRIP_ID} />
+          </TripRoleProvider>
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Keep it' })).not.toBeInTheDocument();
   });
 });

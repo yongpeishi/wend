@@ -51,7 +51,7 @@ const ENTRIES = [
 function renderList(
   groupMode: GroupMode,
   entries = ENTRIES,
-  extra: { selectMode?: boolean; selectedIds?: number[] } = {},
+  extra: { selectMode?: boolean; selectedIds?: number[]; canEdit?: boolean } = {},
 ) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -67,6 +67,7 @@ function renderList(
               selectMode={extra.selectMode}
               selectedIds={extra.selectedIds ?? []}
               onToggleSelect={() => {}}
+              canEdit={extra.canEdit}
             />
           </DndContext>
         </ToastProvider>
@@ -173,5 +174,30 @@ describe('IdeaList', () => {
       }
       view.unmount();
     }
+  });
+
+  /**
+   * The list draws no affordance of its own — it only has to hand the
+   * capability on. The proof is at the rows: no grips, no ⋯ menus, and every
+   * idea still there to read.
+   */
+  it('passes read-only down to every row, in every grouping, without losing an idea', () => {
+    for (const mode of ['none', 'category', 'location'] as const) {
+      const view = renderList(mode, ENTRIES, { canEdit: false });
+
+      for (const entry of ENTRIES) {
+        expect(screen.getByRole('button', { name: new RegExp(`^${entry.title}`) })).toBeInTheDocument();
+      }
+      expect(screen.queryByRole('button', { name: /^Drag / })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Actions for / })).not.toBeInTheDocument();
+
+      view.unmount();
+    }
+  });
+
+  it('leaves the rows their affordances by default, so nothing outside a trip changes', () => {
+    renderList('none');
+    expect(screen.getAllByRole('button', { name: /^Drag / })).toHaveLength(ENTRIES.length);
+    expect(screen.getAllByRole('button', { name: /^Actions for / })).toHaveLength(ENTRIES.length);
   });
 });
