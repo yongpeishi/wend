@@ -6,6 +6,9 @@ export type EntryKind = 'trip' | 'idea' | 'bundle';
 
 export type EntryCategory = 'place' | 'food' | 'activity' | 'lodging' | 'transport' | 'other';
 
+/** What you may do on a trip. Ranked viewer < member < owner. */
+export type TripRole = 'owner' | 'member' | 'viewer';
+
 /**
  * One line of a trip's pros/cons list. `id` is generated on the client
  * (`crypto.randomUUID()`) and is what remove targets — the server stores the
@@ -52,6 +55,19 @@ export interface Entry {
   vote_tally: VoteTally;
   my_vote: number | null;
   scheduled: boolean;
+  /**
+   * Your role on this trip. Null on ideas and bundles — a subtree inherits its
+   * trip's role — and null on an entry that is in no trip at all, which means
+   * it is yours: see `auth/tripRole.ts`, where null reads as editable.
+   *
+   * The wire always carries this key; it is optional here only because ten
+   * `makeEntry(overrides: Partial<Entry>)` test fixtures would otherwise stop
+   * compiling, and they belong to other slices. Read it as
+   * `canEdit(entry.my_role ?? null)` — the compiler will insist, which is the
+   * point: `undefined` must never fall through to a predicate, where it would
+   * read as "not an owner and not a member".
+   */
+  my_role?: TripRole | null;
   /** Present only on GET /api/trips/:trip_id/nearby results. */
   distance_km?: number;
 }
@@ -77,6 +93,33 @@ export interface EntryDetailResponse {
   children: Entry[];
   todos: Todo[];
   votes: Vote[];
+  /** How many people are on the trip this entry belongs to. 0 outside a trip. */
+  collaborators_count: number;
+}
+
+/** One person on a trip. GET /api/trips/:trip_id/collaborators. */
+export interface Collaborator {
+  user_id: number;
+  name: string;
+  /** Null unless you are an owner or a member — viewers do not see addresses. */
+  email: string | null;
+  role: TripRole;
+  is_you: boolean;
+  /** ISO 8601. */
+  added_at: string;
+}
+
+/** GET /api/trips/:trip_id/collaborators. */
+export interface CollaboratorsResponse {
+  collaborators: Collaborator[];
+  my_role: TripRole;
+}
+
+/** POST /api/trips/:trip_id/collaborators — identical for every non-error case. */
+export interface AddCollaboratorPayload {
+  email: string;
+  /** `owner` is rejected — handing the trip over is its own endpoint. */
+  role: Exclude<TripRole, 'owner'>;
 }
 
 export interface EntryTree {

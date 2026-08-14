@@ -2,18 +2,33 @@ import { http, HttpResponse } from 'msw';
 import {
   allocateId,
   childIdsOf,
+  collaboratorsFor,
   db,
   findEntry,
+  governingTripId,
   isScheduled,
   now,
   parentIdsOf,
+  roleFor,
   seed,
+  setRole,
   toEntry,
   toEntryDetail,
   tripAncestorId,
   voteTallyFor,
 } from './db';
-import type { Entry, EntryCategory, EntryKind, Feedback, ScheduleItem, Todo, User } from '../api/types';
+import type { StoredMembership } from './db';
+import type {
+  Collaborator,
+  Entry,
+  EntryCategory,
+  EntryKind,
+  Feedback,
+  ScheduleItem,
+  Todo,
+  TripRole,
+  User,
+} from '../api/types';
 
 function currentUser(): User | null {
   const user = db.users.find((u) => u.id === db.currentUserId);
@@ -25,6 +40,53 @@ function requireAuth(): User | HttpResponse<{ error: string }> {
   if (!user) return HttpResponse.json({ error: 'Not signed in' }, { status: 401 });
   return user;
 }
+
+function notFound() {
+  return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+}
+
+function forbidden(message: string) {
+  return HttpResponse.json({ error: message }, { status: 403 });
+}
+
+/**
+ * Your role on a trip you are allowed to know exists. Null covers both "no such
+ * trip" and "a trip you are not on", because callers answer both with 404 —
+ * a trip outside your world must not be distinguishable from one that was
+ * never there.
+ */
+function visibleTripRole(tripIdParam: unknown, userId: number): TripRole | null {
+  const trip = findEntry(Number(tripIdParam));
+  if (!trip || trip.kind !== 'trip') return null;
+  return roleFor(trip.id, userId);
+}
+
+function toCollaborator(membership: StoredMembership, viewer: User, viewerRole: TripRole): Collaborator {
+  const user = db.users.find((u) => u.id === membership.user_id);
+  return {
+    user_id: membership.user_id,
+    name: user?.name ?? 'Someone',
+    // A viewer sees who is here, not how to reach them.
+    email: viewerRole === 'viewer' ? null : (user?.email ?? null),
+    role: membership.role,
+    is_you: membership.user_id === viewer.id,
+    added_at: membership.added_at,
+  };
+}
+
+function collaboratorsBody(tripId: number, viewer: User, viewerRole: TripRole) {
+  return {
+    collaborators: collaboratorsFor(tripId).map((m) => toCollaborator(m, viewer, viewerRole)),
+    my_role: viewerRole,
+  };
+}
+
+/** Deliberately loose — the real check is the backend's, and a mock that
+ * rejects a valid address is worse than one that accepts a silly one. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The owner is load-bearing: someone has to be able to hand the trip on. */
+const OWNER_IS_STUCK = 'You started this trip, so it needs you until someone else takes it on.';
 
 function isDescendantOfTrip(entryId: number, tripId: number): boolean {
   const visited = new Set<number>();
@@ -116,6 +178,18 @@ export const handlers = [
       results = results.filter((e) => isScheduled(e.id) === want);
     }
 
+    // You see the trips you are on, and everything that is in no trip at all —
+    // the library is nobody's but yours. Signed out, nothing is filtered: the
+    // mock keeps its old behaviour so screens that render without a session
+    // still have content, and the real API answers 401 well before this.
+    const userId = db.currentUserId;
+    if (userId !== null) {
+      results = results.filter((e) => {
+        const tripId = governingTripId(e.id);
+        return tripId === null || roleFor(tripId, userId) !== null;
+      });
+    }
+
     return HttpResponse.json({ entries: results.map((e) => toEntry(e, db.currentUserId)) });
   }),
 
@@ -154,6 +228,9 @@ export const handlers = [
       const position = childIdsOf(body.parent_id).length;
       db.links.push({ id: allocateId(), parent_id: body.parent_id, child_id: id, position, created_at: timestamp, updated_at: timestamp });
     }
+    // Starting a trip puts you on it. Without this, the entries filter above
+    // would hide the trip you just made.
+    if (body.entry.kind === 'trip' && db.currentUserId !== null) setRole(id, db.currentUserId, 'owner');
     const entry = findEntry(id);
     if (!entry) return HttpResponse.json({ error: 'Failed to create entry' }, { status: 500 });
     return HttpResponse.json({ entry: toEntry(entry, db.currentUserId) }, { status: 201 });
@@ -215,6 +292,8 @@ export const handlers = [
     if (!entry) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
     entry.kind = 'trip';
     db.links = db.links.filter((l) => l.child_id !== entry.id);
+    // Lifting an idea into a trip makes it yours to run.
+    if (db.currentUserId !== null) setRole(entry.id, db.currentUserId, 'owner');
     return HttpResponse.json({ entry: toEntry(entry, db.currentUserId) });
   }),
 
@@ -224,6 +303,9 @@ export const handlers = [
     const body = (await request.json()) as { into_id?: number };
     if (!body.into_id) return HttpResponse.json({ errors: { into_id: ["can't be blank"] } }, { status: 422 });
     entry.kind = 'idea';
+    // It is no longer a trip, so nobody is on it — it inherits from whatever
+    // it was absorbed into.
+    db.memberships = db.memberships.filter((m) => m.trip_id !== entry.id);
     const position = childIdsOf(body.into_id).length;
     db.links.push({ id: allocateId(), parent_id: body.into_id, child_id: entry.id, position, created_at: now(), updated_at: now() });
     return HttpResponse.json({ entry: toEntry(entry, db.currentUserId) });
@@ -444,6 +526,123 @@ export const handlers = [
       .sort((a, b) => a.distance_km - b.distance_km);
 
     return HttpResponse.json({ entries: results });
+  }),
+
+  // ---- Collaborators -----------------------------------------------------
+  http.get('/api/trips/:tripId/collaborators', ({ params }) => {
+    const auth = requireAuth();
+    if (auth instanceof HttpResponse) return auth;
+
+    const myRole = visibleTripRole(params.tripId, auth.id);
+    if (myRole === null) return notFound();
+
+    return HttpResponse.json(collaboratorsBody(Number(params.tripId), auth, myRole));
+  }),
+
+  /**
+   * Answers `202 {"status":"accepted"}` to every non-error case: the address
+   * matched someone, matched nobody, matched someone already here, or matched
+   * you. The reply must not say which, or it becomes a way to ask whether an
+   * address has an account.
+   *
+   * Timing is not equalised — no artificial sleep — so parity is exact on the
+   * status and the bytes, best-effort on the clock.
+   */
+  http.post('/api/trips/:tripId/collaborators', async ({ params, request }) => {
+    const auth = requireAuth();
+    if (auth instanceof HttpResponse) return auth;
+
+    const myRole = visibleTripRole(params.tripId, auth.id);
+    if (myRole === null) return notFound();
+    if (myRole === 'viewer') return forbidden('You can read this trip, but not bring people onto it.');
+
+    const body = (await request.json()) as { email?: string; role?: string };
+    const email = (body.email ?? '').trim();
+    const role = body.role;
+    const errors: Record<string, string[]> = {};
+    if (!email) errors.email = ["can't be blank"];
+    else if (!EMAIL_SHAPE.test(email)) errors.email = ['is not an email address'];
+    // No second owner: handing the trip on is its own door.
+    if (!role) errors.role = ["can't be blank"];
+    else if (role !== 'member' && role !== 'viewer') errors.role = ['must be member or viewer'];
+    if (Object.keys(errors).length > 0) return HttpResponse.json({ errors }, { status: 422 });
+
+    const tripId = Number(params.tripId);
+    const target = db.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (target && target.id !== auth.id && roleFor(tripId, target.id) === null) {
+      setRole(tripId, target.id, role as TripRole);
+    }
+
+    return HttpResponse.json({ status: 'accepted' }, { status: 202 });
+  }),
+
+  http.patch('/api/trips/:tripId/collaborators/:userId', async ({ params, request }) => {
+    const auth = requireAuth();
+    if (auth instanceof HttpResponse) return auth;
+
+    const myRole = visibleTripRole(params.tripId, auth.id);
+    if (myRole === null) return notFound();
+    if (myRole !== 'owner') return forbidden('Only the person who started this trip can change what people can do.');
+
+    const tripId = Number(params.tripId);
+    const userId = Number(params.userId);
+    const membership = collaboratorsFor(tripId).find((m) => m.user_id === userId);
+    if (!membership) return notFound();
+    if (userId === auth.id) return forbidden(OWNER_IS_STUCK);
+
+    const body = (await request.json()) as { role?: string };
+    if (body.role !== 'member' && body.role !== 'viewer') {
+      return HttpResponse.json({ errors: { role: ['must be member or viewer'] } }, { status: 422 });
+    }
+
+    membership.role = body.role;
+    return HttpResponse.json({ collaborator: toCollaborator(membership, auth, myRole) });
+  }),
+
+  http.delete('/api/trips/:tripId/collaborators/:userId', ({ params }) => {
+    const auth = requireAuth();
+    if (auth instanceof HttpResponse) return auth;
+
+    const myRole = visibleTripRole(params.tripId, auth.id);
+    if (myRole === null) return notFound();
+
+    const tripId = Number(params.tripId);
+    const userId = Number(params.userId);
+    const membership = collaboratorsFor(tripId).find((m) => m.user_id === userId);
+    if (!membership) return notFound();
+    // Covers an owner trying to leave and anyone trying to push them out.
+    if (membership.role === 'owner') return forbidden(OWNER_IS_STUCK);
+    // Anyone may leave. Only the owner may take someone else off.
+    if (userId !== auth.id && myRole !== 'owner') {
+      return forbidden('Only the person who started this trip can take someone off it.');
+    }
+
+    setRole(tripId, userId, null);
+    return new HttpResponse(null, { status: 204 });
+  }),
+
+  http.post('/api/trips/:tripId/collaborators/:userId/hand_over', ({ params }) => {
+    const auth = requireAuth();
+    if (auth instanceof HttpResponse) return auth;
+
+    const myRole = visibleTripRole(params.tripId, auth.id);
+    if (myRole === null) return notFound();
+    if (myRole !== 'owner') return forbidden('Only the person who started this trip can hand it on.');
+
+    const tripId = Number(params.tripId);
+    const userId = Number(params.userId);
+    const membership = collaboratorsFor(tripId).find((m) => m.user_id === userId);
+    if (!membership) return notFound();
+    if (userId === auth.id) {
+      return HttpResponse.json({ errors: { user_id: ['already has this trip'] } }, { status: 422 });
+    }
+
+    // One owner at a time: you step back to member as they step up. Roles are
+    // swapped in place so neither of you looks like you joined just now.
+    const mine = collaboratorsFor(tripId).find((m) => m.user_id === auth.id);
+    if (mine) mine.role = 'member';
+    membership.role = 'owner';
+    return HttpResponse.json(collaboratorsBody(tripId, auth, 'member'));
   }),
 
   // ---- Feedback ----------------------------------------------------------

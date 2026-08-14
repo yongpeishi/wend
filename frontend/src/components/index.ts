@@ -21,6 +21,9 @@ export type { ModalProps } from './Modal';
 export { Drawer } from './Drawer';
 export type { DrawerProps } from './Drawer';
 
+export { ReadOnly } from './ReadOnly';
+export type { ReadOnlyProps } from './ReadOnly';
+
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 
