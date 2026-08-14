@@ -1,7 +1,9 @@
 /*
- * The selection bar. A full pill with a 2px deep-leaf edge — the heavier border
+ * The selection bar. Card radius with a 2px deep-leaf edge — the heavier border
  * is the design system's "this border carries an action" weight, and it is what
- * separates this from the hairline cards it sits under.
+ * separates this from the hairline cards it sits under. The shape is the card
+ * shape because everything on this bar is, so the bar and its buttons read as
+ * one family rather than a pill holding pills.
  *
  * `position: relative` is load-bearing: the "Add to" popover is positioned
  * against this bar, and opens upward out of it.
@@ -15,11 +17,12 @@
   /* 18px: the scale steps 16 -> 24 and neither sets this bar far enough off the
      last row without floating it. */
   margin-top: 18px;
-  /* 9px: half of --space-4, which is what a pill this size needs vertically;
-     18px on the left balances the pill's own curve against the count. */
-  padding: 9px var(--space-3) 9px 18px;
+  /* 9px: half of --space-4, which is what a bar this size needs vertically. The
+     left inset is on the scale now — the old 18px was paying for a pill's curve
+     against the count, and a 12px corner does not charge for that. */
+  padding: 9px var(--space-3) 9px var(--space-4);
   border: var(--border-width-strong) solid var(--wend-deep-leaf);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-card);
   background: var(--surface-card);
 }
 
@@ -40,12 +43,13 @@
 /*
  * The three quiet verbs. Not <Button variant="quiet">: that variant is an
  * underlined leaf link at 48px tall, which would make three of them shout
- * louder than the one filled button beside them and burst the pill.
+ * louder than the one filled button beside them and overrun the bar. They take
+ * the card radius anyway, so they match the filled button they sit next to.
  */
 .quiet {
   padding: var(--space-2) var(--space-3);
   border: none;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-card);
   background: none;
   font-family: var(--font-sans);
   /* The design sets 14px; 15px is this product's readable floor (architecture.md
@@ -58,14 +62,14 @@
 
 /*
  * Solid leaf: the one thing on the bar worth doing. Hand-rolled rather than
- * <Button variant="primary"> because that is a --radius-card button with a 48px
- * floor, and this is a pill inside a pill — the geometry, not the colour, is
- * what differs.
+ * <Button variant="primary"> only because of the 48px floor that variant
+ * carries — the shape is the same --radius-card, and the 16px horizontal
+ * padding is the same as <Button size="small" variant="primary">.
  */
 .primary {
   padding: 9px var(--space-4);
   border: none;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-card);
   background: var(--action-primary);
   color: var(--action-primary-text);
   font-family: var(--font-sans);
