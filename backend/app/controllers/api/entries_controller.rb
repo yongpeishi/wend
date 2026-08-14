@@ -80,7 +80,11 @@ module Api
         render json: {
           error: "dropped_days_need_confirmation",
           dropped_days: shift.dropped_days.map(&:iso8601),
-          dropped_item_count: shift.dropped_item_count
+          # Ideas coming back to the rail, not rows destroyed -- the warning
+          # counts what the user gets back. The wire name is the older one the
+          # client already reads; TripDateShift#dropped_entry_count says what
+          # it is.
+          dropped_item_count: shift.dropped_entry_count
         }, status: :unprocessable_entity
         return
       end

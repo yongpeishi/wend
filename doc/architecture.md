@@ -294,6 +294,11 @@ is 422
   "dropped_days": ["2026-08-23", "2026-08-25"],  // ISO, ascending, post-shift
   "dropped_item_count": 5 }
 ```
+`dropped_item_count` is how many **ideas go back to "Not placed yet"** — entries left with
+no placement anywhere in the trip, counted once each — not how many `schedule_items` are
+destroyed. An idea also placed on a day inside the new range stays placed and is not one
+of them; nor is one that only a day's archived version holds, since it is already on the
+rail. (`TripDateShift#dropped_entry_count`. The wire name is the older one.)
 With confirmation, the shift and the removal happen in one transaction: the dropped days'
 `schedule_items`, `trip_days` and `day_versions` are destroyed and the success shape is
 the usual `{ entry }`. No Entry is touched, so those ideas reappear under "Not placed yet".

@@ -75,6 +75,9 @@ export function useUpdateEntry(id: number) {
  * `dropped_days` is a refusal, not a failure — NOTHING has been written when
  * it arrives. There is deliberately no preview endpoint: the attempt is the
  * preview, and the same call sent again with `confirm: true` is the answer.
+ *
+ * `droppedItemCount` is ideas coming back to "Not placed yet", not placements
+ * destroyed — see DroppedDaysBody.
  */
 export type ChangeTripDatesResult =
   | { status: 'saved'; entry: Entry }

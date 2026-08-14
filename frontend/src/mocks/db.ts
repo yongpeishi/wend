@@ -402,7 +402,8 @@ export interface TripDateShift {
   shiftDays: number;
   /** Post-shift dates that fall outside the new range, ascending. */
   droppedDays: string[];
-  droppedItemCount: number;
+  /** Ideas the drop hands back to the rail — see droppedEntryCount below. */
+  droppedEntryCount: number;
 }
 
 /**
@@ -416,7 +417,7 @@ export function tripDateShiftFor(trip: StoredEntry, attrs: Partial<StoredEntry>)
   const namesStart = 'starts_on' in attrs;
   const namesEnd = 'ends_on' in attrs;
   if (!namesStart && !namesEnd) {
-    return { tripId: trip.id, shiftDays: 0, droppedDays: [], droppedItemCount: 0 };
+    return { tripId: trip.id, shiftDays: 0, droppedDays: [], droppedEntryCount: 0 };
   }
 
   const startsOn = namesStart ? (attrs.starts_on ?? null) : trip.starts_on;
@@ -437,10 +438,36 @@ export function tripDateShiftFor(trip: StoredEntry, attrs: Partial<StoredEntry>)
     .filter((day) => !inRange(day))
     .sort();
 
-  const before = new Set(droppedDays.map((day) => shiftIso(day, -shiftDays)));
-  const droppedItemCount = db.scheduleItems.filter((s) => s.trip_id === trip.id && before.has(s.day)).length;
+  const droppedEntryCount = ideasComingBack(trip.id, droppedDays, shiftDays);
+  return { tripId: trip.id, shiftDays, droppedDays, droppedEntryCount };
+}
 
-  return { tripId: trip.id, shiftDays, droppedDays, droppedItemCount };
+/**
+ * How many ideas the drop hands back to "Not placed yet" — mirrors
+ * TripDateShift#dropped_entry_count. This is what the warning promises, and it
+ * is NOT the number of schedule items destroyed: one idea can hold several of
+ * those rows, and it only comes back if none of its placements survives.
+ *
+ * - on a dropped day AND on a day that stays: still placed, so not counted.
+ * - on the same dropped day twice: one idea, counted once.
+ * - only in an archived version: already off the rail, so nothing the user can
+ *   see comes back — not counted, though the row is destroyed with the rest.
+ *   `isPlaced` is the same rule the rail computes for itself.
+ * - a bundle: the row points at the bundle entry and the rail lists a bundle
+ *   as one item, so it counts once and its members not at all.
+ * - an archived idea never reaches the rail, so it cannot return to it.
+ */
+function ideasComingBack(tripId: number, droppedDays: string[], shiftDays: number): number {
+  if (droppedDays.length === 0) return 0;
+
+  const leaving = new Set(droppedDays.map((day) => shiftIso(day, -shiftDays)));
+  const visible = db.scheduleItems.filter(
+    (s) => s.trip_id === tripId && s.entry_id !== null && isPlaced(s) && findEntry(s.entry_id)?.archived_at === null,
+  );
+
+  const coming = new Set(visible.filter((s) => leaving.has(s.day)).map((s) => s.entry_id));
+  for (const item of visible) if (!leaving.has(item.day)) coming.delete(item.entry_id);
+  return coming.size;
 }
 
 /** Move the plan, then clear whatever ended up off the end. */

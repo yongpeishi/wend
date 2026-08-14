@@ -7,7 +7,12 @@ export interface DateShiftWarningModalProps {
   open: boolean;
   /** ISO `YYYY-MM-DD`, ascending — the dates that fall outside the new range. */
   droppedDays: string[];
-  /** How many placed things sit on them. Zero is normal: a day can be empty. */
+  /**
+   * How many ideas go back to "Not placed yet" if this goes ahead — not how
+   * many placements the days hold. An idea that is also on a day inside the
+   * new dates is still placed afterwards and is not one of these. Zero is
+   * normal: the days can be empty, or hold only ideas that live elsewhere too.
+   */
   droppedItemCount: number;
   /** Changes nothing. The gate stays open on the dates that were typed. */
   onCancel: () => void;
@@ -32,8 +37,8 @@ function listDays(days: string[]): string {
  *
  * Singular and plural are written out rather than pluralised with an "(s)":
  * one day losing its plan is a different sentence from three, and both halves
- * have to agree — the days ("it"/"them") and the ideas on them, which do not
- * count together.
+ * have to agree — the days ("it"/"them") and the ideas coming back, which are
+ * counted separately and rarely match.
  *
  * Kept unexported deliberately: this file exports one component, and a second
  * export from it costs a Fast Refresh warning for something the modal's own
@@ -48,10 +53,16 @@ function dateShiftWarningCopy(droppedDays: string[], droppedItemCount: number) {
   const lines = [`${listDays(droppedDays)} ${oneDay ? 'falls' : 'fall'} outside the new dates, so what you've placed on ${it} comes off.`];
 
   if (droppedItemCount === 0) {
-    lines.push(`Nothing is placed on ${it}, so nothing is lost.`);
+    // Two ways to get here, and the sentence has to be true of both: the days
+    // hold nothing at all, or everything on them is on another day as well.
+    // "Nothing is placed on them" would be a lie about the second.
+    lines.push(`Nothing goes back to "Not placed yet", so nothing is lost.`);
   } else {
+    // Counted, not located: "the 3 ideas on them" would claim the days hold
+    // three, when five things can sit on them and only three come back. So the
+    // sentence is about what returns to the rail and says nothing else.
     lines.push(
-      `The ${oneItem ? 'idea' : `${droppedItemCount} ideas`} on ${it} ${oneItem ? 'goes' : 'go'} back to "Not placed yet", so nothing is lost — you can place ${oneItem ? 'it' : 'them'} on another day.`,
+      `${droppedItemCount} ${oneItem ? 'idea goes' : 'ideas go'} back to "Not placed yet", so nothing is lost — you can place ${oneItem ? 'it' : 'them'} on another day.`,
       `If you'd rather keep ${oneDay ? 'that plan' : 'those plans'}, move the ideas onto ${oneDay ? 'a day' : 'days'} inside the new dates first, then change the dates.`,
     );
   }

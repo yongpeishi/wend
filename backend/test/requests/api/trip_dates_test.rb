@@ -18,6 +18,21 @@ class Api::TripDatesTest < ActionDispatch::IntegrationTest
     trip_day
   end
 
+  # A second, archived version of the day -- a plan set aside. Nothing in one
+  # is on the rail's radar, so nothing in one comes back off it either.
+  def archived_version_on!(day)
+    trip_day = TripDay.ensure!(trip_id: @trip.id, day: day)
+    version = trip_day.fork!
+    version.update!(archived_at: Time.current)
+    version
+  end
+
+  def other_idea!(title)
+    idea = create_idea(title: title, created_by: @user)
+    link!(parent: @trip, child: idea)
+    idea
+  end
+
   # `:unset` leaves the key out of the body entirely, which is not the same as
   # sending it as null.
   def patch_dates(starts_on: :unset, ends_on: :unset, confirm: nil, **extra)
@@ -78,8 +93,8 @@ class Api::TripDatesTest < ActionDispatch::IntegrationTest
 
   test "shrinking the trip is refused with the days it would drop and how much is on them" do
     place!("2026-08-10")
-    dropped = place!("2026-08-13")
-    place!("2026-08-14")
+    dropped = place!("2026-08-13", entry: other_idea!("Kiyamachi"))
+    place!("2026-08-14", entry: other_idea!("Uji"))
 
     patch_dates(starts_on: "2026-08-09", ends_on: "2026-08-12")
     assert_response :unprocessable_entity
@@ -103,6 +118,45 @@ class Api::TripDatesTest < ActionDispatch::IntegrationTest
     patch_dates(starts_on: "2026-08-11")
     assert_response :unprocessable_entity
     assert_equal ["2026-08-15"], JSON.parse(response.body)["dropped_days"]
+  end
+
+  # Feedback 014#5, as the browser check found it: the warning counted rows
+  # going away, so it promised back more ideas than the rail ever showed.
+  test "the count is ideas coming back, not placements destroyed" do
+    bundle = create_bundle(title: "Nishiki market crawl", created_by: @user)
+    link!(parent: @trip, child: bundle)
+    link!(parent: bundle, child: create_idea(title: "Nishiki market", created_by: @user))
+    coffee = other_idea!("Coffee at Weekenders")
+
+    # Day 1 survives, and holds Nanzen-ji as well as the coffee.
+    place!("2026-08-09")
+    place!("2026-08-09", entry: coffee)
+    # The two days that go. The 14th also carries a set-aside plan, which
+    # forking copies Nanzen-ji into.
+    place!("2026-08-13", entry: bundle)
+    place!("2026-08-13", entry: other_idea!("Kiyamachi"))
+    place!("2026-08-14")
+    archived_version_on!("2026-08-14").schedule_items.create!(trip: @trip, entry: coffee, day: "2026-08-14")
+
+    patch_dates(ends_on: "2026-08-12", starts_on: :unset)
+    assert_response :unprocessable_entity
+
+    body = JSON.parse(response.body)
+    assert_equal %w[2026-08-13 2026-08-14], body["dropped_days"]
+    # Five rows go; the bundle and Kiyamachi are the only ideas that end up
+    # with no placement left, so those are the two the rail gets back.
+    assert_equal 5, ScheduleItem.where(trip_id: @trip.id, day: %w[2026-08-13 2026-08-14]).count
+    assert_equal 2, body["dropped_item_count"]
+
+    patch_dates(ends_on: "2026-08-12", starts_on: :unset, confirm: true)
+    assert_response :success
+
+    get "/api/entries", params: { trip_id: @trip.id, scheduled: false }
+    unplaced = JSON.parse(response.body)["entries"].map { |e| e["title"] }
+    assert_includes unplaced, "Nishiki market crawl"
+    assert_includes unplaced, "Kiyamachi"
+    assert_not_includes unplaced, "Nanzen-ji"
+    assert_not_includes unplaced, "Coffee at Weekenders"
   end
 
   test "confirming drops the placements and returns the ideas to Not placed yet" do

@@ -46,10 +46,24 @@ class TripDateShift
     @dropped_days ||= planned_days.map { |day| day + shift_days }.reject { |day| in_range?(day) }.sort
   end
 
-  def dropped_item_count
+  # How many ideas the drop actually hands back to "Not placed yet". That is
+  # what the warning promises, and it is NOT the number of schedule_items
+  # destroyed -- one idea can hold several of those rows, and it only comes
+  # back if none of its placements survives:
+  #
+  # - on a dropped day AND on a day that stays: still placed, so not counted.
+  # - on the same dropped day twice: one idea, counted once.
+  # - only in an ARCHIVED version: already off the rail, so nothing the user
+  #   can see comes back -- not counted, even though the row is destroyed with
+  #   the rest. `.placed` is the same rule the rail computes for itself.
+  # - a bundle: the row points at the bundle Entry and the rail lists a bundle
+  #   as one item, so it counts once and its members not at all.
+  def dropped_entry_count
     return 0 if dropped_days.empty?
 
-    ScheduleItem.where(trip_id: trip.id, day: dropped_days.map { |day| day - shift_days }).count
+    leaving = dropped_days.map { |day| day - shift_days }
+    going, staying = visible_placements.partition { |_entry_id, day| leaving.include?(day) }
+    (going.map(&:first).uniq - staying.map(&:first)).size
   end
 
   def dropped_days?
@@ -77,6 +91,20 @@ class TripDateShift
       TripDay.where(trip_id: trip.id).pluck(:day) +
         ScheduleItem.where(trip_id: trip.id).distinct.pluck(:day)
     ).compact.uniq
+  end
+
+  # [entry_id, day] for every placement the unplaced rail can see: a live
+  # version (or no version at all, for rows written before day_versions
+  # existed) holding an idea that has not been archived. A row pointing at no
+  # entry, or at an archived one, drops out -- nothing appears on the rail when
+  # it goes, so counting it would over-state what comes back.
+  #
+  # Dates are pre-shift, like everything else read before `apply!`.
+  def visible_placements
+    @visible_placements ||= ScheduleItem.where(trip_id: trip.id)
+                                        .placed
+                                        .where(entry_id: Entry.active.select(:id))
+                                        .pluck(:entry_id, :day)
   end
 
   def in_range?(day)

@@ -328,7 +328,10 @@ export interface SimpleErrorBody {
  * is what applies it.
  *
  * `dropped_days` are the dates AFTER the shift, ascending;
- * `dropped_item_count` is how many placed things sit on them.
+ * `dropped_item_count` is how many ideas go back to "Not placed yet" — the
+ * count the warning promises, not the number of placements on those days. An
+ * idea also placed on a day inside the new dates stays placed and is not one
+ * of them, and one idea placed twice counts once.
  */
 export interface DroppedDaysBody {
   error: 'dropped_days_need_confirmation';

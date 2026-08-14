@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { api, ApiError } from '../api/client';
-import { db } from './db';
+import { allocateId, db, findEntry, now } from './db';
 import { resetDb } from './handlers';
 import type { ScheduleItem, TripDay } from '../api/types';
 
@@ -14,6 +14,13 @@ const BUNDLE_DAY = '2026-11-02'; // Nishiki market crawl, 11:00–13:00
 const TWO_VERSION_DAY = '2026-11-03';
 const ARCHIVED_DAY = '2026-11-04';
 const EMPTY_DAY = '2026-11-06'; // inside the trip, no row seeded
+
+// Seeded ids, for the tests that have to reach past the API into the store.
+const NANZENJI_ID = 2;
+const COFFEE_ID = 6; // 4 Nov's archived version, and nowhere else
+const NIGHT_BUNDLE_ID = 9; // 4 Nov's live version
+const LIVE_VERSION_ON_BUNDLE_DAY = 1;
+const LIVE_VERSION_ON_ARCHIVED_DAY = 4;
 
 function itinerary(): Promise<{ trip_days: TripDay[] }> {
   return api.get(`/trips/${TRIP_ID}/itinerary`);
@@ -258,8 +265,8 @@ describe('PATCH /entries/:id — moving the trip’s dates', () => {
   });
 
   it('refuses a shorter trip with the days it would clear, and writes nothing', async () => {
-    // 2–3 Nov leaves the seeded 4 Nov outside: one dropped day, and the two
-    // items on it (one live, one in the archived version).
+    // 2–3 Nov leaves the seeded 4 Nov outside: one dropped day, carrying the
+    // night out (live) and the coffee (in the archived version).
     const error = await setDates('2026-11-02', '2026-11-03').catch((e: ApiError) => e);
 
     expect((error as ApiError).status).toBe(422);
@@ -270,7 +277,7 @@ describe('PATCH /entries/:id — moving the trip’s dates', () => {
     expect(entry.ends_on).toBe('2026-11-08');
   });
 
-  it('names the dropped dates and how much is on them, so the warning can say it', async () => {
+  it('names the dropped dates and the ideas coming back, so the warning can say it', async () => {
     const response = await fetch(`/api/entries/${TRIP_ID}`, {
       method: 'PATCH',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
@@ -280,7 +287,97 @@ describe('PATCH /entries/:id — moving the trip’s dates', () => {
     expect(await response.json()).toEqual({
       error: 'dropped_days_need_confirmation',
       dropped_days: [ARCHIVED_DAY],
-      dropped_item_count: 2,
+      // Two rows go, one idea comes back: the night out. The coffee is in the
+      // day's archived version, so it was already on the rail — and a bundle
+      // is one rail item, not three.
+      dropped_item_count: 1,
+    });
+  });
+
+  /**
+   * The count the warning reads is ideas returning to "Not placed yet", not
+   * schedule items destroyed — feedback 014#5's follow-up, where the modal
+   * promised five ideas back and the rail showed three. Mirrors the cases in
+   * backend/test/models/trip_date_shift_test.rb.
+   */
+  describe('the count is what comes back to the rail', () => {
+    /** One more placement in the store, the way the seed writes them. */
+    function place(day: string, entryId: number, dayVersionId: number) {
+      db.scheduleItems.push({
+        id: allocateId(),
+        trip_id: TRIP_ID,
+        entry_id: entryId,
+        chosen_entry_id: null,
+        day,
+        day_version_id: dayVersionId,
+        starts_at_minutes: null,
+        ends_at_minutes: null,
+        note: null,
+        position: 9,
+      });
+    }
+
+    /** The refused write's `dropped_item_count`, for a trip ending 3 Nov. */
+    async function count(): Promise<number> {
+      const response = await fetch(`/api/entries/${TRIP_ID}`, {
+        method: 'PATCH',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entry: { ends_on: '2026-11-03' } }),
+      });
+      const body = (await response.json()) as { dropped_item_count: number };
+      return body.dropped_item_count;
+    }
+
+    it('leaves out an idea that is on a day inside the new dates too', async () => {
+      // The night out also sits on 2 Nov, which survives: nothing comes back.
+      place(BUNDLE_DAY, NIGHT_BUNDLE_ID, LIVE_VERSION_ON_BUNDLE_DAY);
+
+      expect(await count()).toBe(0);
+    });
+
+    it('counts an idea placed twice on the same dropped day once', async () => {
+      place(ARCHIVED_DAY, NIGHT_BUNDLE_ID, LIVE_VERSION_ON_ARCHIVED_DAY);
+
+      expect(await count()).toBe(1);
+    });
+
+    it('counts nothing for a row that only an archived version holds', async () => {
+      // The coffee is in 4 Nov's archived version and nowhere else, so it is
+      // already on the rail. Its row goes with the day all the same.
+      expect(db.scheduleItems.filter((s) => s.entry_id === COFFEE_ID)).toHaveLength(1);
+      expect(await count()).toBe(1);
+
+      await setDates('2026-11-02', '2026-11-03', true);
+      expect(db.scheduleItems.filter((s) => s.entry_id === COFFEE_ID)).toEqual([]);
+    });
+
+    it('counts an idea whose only surviving placement is in an archived version', async () => {
+      // Take Nanzen-ji off the days it is really on, leave it in a set-aside
+      // plan for 2 Nov, and place it on the day that goes. The surviving row
+      // is one the rail cannot see, so Nanzen-ji does come back.
+      db.scheduleItems = db.scheduleItems.filter((s) => s.entry_id !== NANZENJI_ID);
+      const setAside = {
+        id: allocateId(),
+        trip_day_id: 1,
+        name: 'Version B',
+        position: 1,
+        archived_at: '2026-10-20T09:00:00.000Z',
+        created_at: now(),
+        updated_at: now(),
+      };
+      db.dayVersions.push(setAside);
+      place(BUNDLE_DAY, NANZENJI_ID, setAside.id);
+      place(ARCHIVED_DAY, NANZENJI_ID, LIVE_VERSION_ON_ARCHIVED_DAY);
+
+      // Nanzen-ji and the night out.
+      expect(await count()).toBe(2);
+    });
+
+    it('leaves out an archived idea — the rail never lists it, so it cannot return', async () => {
+      const bundle = findEntry(NIGHT_BUNDLE_ID);
+      if (bundle) bundle.archived_at = now();
+
+      expect(await count()).toBe(0);
     });
   });
 

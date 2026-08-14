@@ -209,7 +209,9 @@ export const handlers = [
         {
           error: 'dropped_days_need_confirmation',
           dropped_days: shift.droppedDays,
-          dropped_item_count: shift.droppedItemCount,
+          // Ideas coming back to the rail, not rows destroyed. The wire name
+          // is the older one the client already reads.
+          dropped_item_count: shift.droppedEntryCount,
         },
         { status: 422 },
       );

@@ -60,13 +60,15 @@ describe('DateShiftWarningModal — what it says', () => {
   });
 
   // The whole reason this is a question and not a refusal: nothing is deleted.
-  // The placements go, the ideas come back to the rail.
+  // The placements go, the ideas come back to the rail. The count is of what
+  // comes back — never "the 5 ideas on them", which would also be claiming
+  // that five is all the days hold.
   it('says where the ideas go, and that moving them out first is the alternative', () => {
     renderModal({ droppedDays: ['2026-08-23', '2026-08-25'], droppedItemCount: 5 });
 
     expect(
       screen.getByText(
-        'The 5 ideas on them go back to "Not placed yet", so nothing is lost — you can place them on another day.',
+        '5 ideas go back to "Not placed yet", so nothing is lost — you can place them on another day.',
       ),
     ).toBeInTheDocument();
     expect(
@@ -76,23 +78,30 @@ describe('DateShiftWarningModal — what it says', () => {
     ).toBeInTheDocument();
   });
 
+  // A numeral even at the head of the sentence, the way the rest of the app
+  // writes small counts ("Selected 1 idea near here.", "clear 1 day?").
   it('counts one idea as one idea', () => {
     renderModal({ droppedDays: ['2026-08-23'], droppedItemCount: 1 });
 
     expect(
       screen.getByText(
-        'The idea on it goes back to "Not placed yet", so nothing is lost — you can place it on another day.',
+        '1 idea goes back to "Not placed yet", so nothing is lost — you can place it on another day.',
       ),
     ).toBeInTheDocument();
   });
 
-  // A day can have a row — lodging, an empty version — with nothing placed on
-  // it. Promising ideas back that were never there would be a lie.
-  it('says plainly that an empty day costs nothing, rather than inventing ideas', () => {
+  // Zero arrives two ways: a day with a row but nothing on it (lodging, an
+  // empty version), and a day whose every idea is also on a day that survives.
+  // One sentence has to be true of both, so it talks about what comes back
+  // rather than about what is on the day — "nothing is placed on them" would
+  // be a lie about the second, and inventing ideas a lie about the first.
+  it('says nothing comes back, which is true of an empty day and a doubled-up one alike', () => {
     renderModal({ droppedDays: ['2026-08-23', '2026-08-25'], droppedItemCount: 0 });
 
-    expect(screen.getByText('Nothing is placed on them, so nothing is lost.')).toBeInTheDocument();
-    expect(screen.queryByText(/Not placed yet/)).not.toBeInTheDocument();
+    expect(screen.getByText('Nothing goes back to "Not placed yet", so nothing is lost.')).toBeInTheDocument();
+    // And none of the promises that only hold when something really comes back.
+    expect(screen.queryByText(/you can place/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/If you'd rather keep/)).not.toBeInTheDocument();
   });
 });
 
