@@ -12,6 +12,12 @@ export interface IdeaRowProps {
   entry: Entry;
   bundles: Entry[];
   members: Map<number, Entry[]>;
+  /**
+   * The board is picking several ideas at once. This turns the state dot into
+   * the pick circle — see the `Dot` comment for why one element plays both
+   * parts, and what that costs.
+   */
+  selectMode: boolean;
   selected: boolean;
   onToggleSelect: (id: number, shiftKey: boolean) => void;
   /**
@@ -102,7 +108,8 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
  *     (`data: { entryId, title }` is what the bundle drop targets read, and what
  *     TripBoard's onDragEnd turns into a link). Its pointer-free equivalent is
  *     the bundle list inside the ⋯ menu — every drag in Wend has one.
- *   - The multi-select checkbox, which is what `BulkBar` acts on.
+ *   - Multi-select, which is what `BulkBar` acts on — but as a mode now rather
+ *     than a permanent checkbox on every row. See the pick circle below.
  *   - Set aside. Nothing on the board is ever deleted; the archive action
  *     soft-archives and `SetAsideSection` brings it back. It moved into the ⋯
  *     menu with the rest of the row's verbs.
@@ -116,7 +123,16 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
  * there are no shadows. A selected row is bordered apricot — the same "this one"
  * accent the design uses for the row under the cursor's attention.
  */
-export function IdeaRow({ entry, bundles, members, selected, onToggleSelect, onEdit, onToast }: IdeaRowProps) {
+export function IdeaRow({
+  entry,
+  bundles,
+  members,
+  selectMode,
+  selected,
+  onToggleSelect,
+  onEdit,
+  onToast,
+}: IdeaRowProps) {
   const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `idea-${entry.id}`,
@@ -150,15 +166,53 @@ export function IdeaRow({ entry, bundles, members, selected, onToggleSelect, onE
 
   return (
     <div className={styles.row} data-selected={selected || undefined} data-dragging={isDragging || undefined}>
-      <input
-        type="checkbox"
-        className={styles.checkbox}
-        checked={selected}
-        aria-label={`Select ${entry.title}`}
-        onChange={(event) => onToggleSelect(entry.id, (event.nativeEvent as MouseEvent).shiftKey)}
-      />
+      {/*
+        One slot, two jobs. Out of select mode this is the 10px state dot and
+        nothing else; in select mode it grows to a 22px pick circle, and that
+        growth IS how the board says it is in a different mode — no banner, no
+        row of ghost checkboxes waiting to be used.
 
-      <span className={[styles.stateDot, STATE_CLASS[state]].join(' ')} role="img" aria-label={STATE_LABEL[state]} />
+        The two are different elements rather than one element wearing two
+        hats, because they are genuinely different things to assistive tech: an
+        image that describes the idea's state, and a control you can operate.
+        Rendering a `role="checkbox"` that is not operable, or a dot that
+        claims to be checkable, would be a lie in one direction or the other.
+        The state meaning is not lost while picking — the open-todo count is
+        still spelled out in words in the meta line, and the state returns the
+        moment select mode ends.
+
+        A <button role="checkbox"> rather than <input type="checkbox">: the
+        visual is a filled circle with a tick, which no native checkbox will
+        render without being hidden and redrawn anyway, and the shift-click
+        range gesture needs the modifier off a click event. Space and Enter
+        both activate a button, so the keyboard contract is intact.
+      */}
+      {selectMode ? (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={selected}
+          aria-label={`Select ${entry.title}`}
+          className={[styles.pick, selected ? styles.pickOn : ''].filter(Boolean).join(' ')}
+          onClick={(event) => {
+            // Picking is not opening. Without this the click carries on to the
+            // row and the edit drawer arrives on top of the selection.
+            event.stopPropagation();
+            onToggleSelect(entry.id, event.shiftKey);
+          }}
+        >
+          {/* Colour is never the only signal: the tick and the heavier border
+              say "picked" as loudly as the leaf fill does. Decorative, because
+              aria-checked already carries the state. */}
+          {selected && (
+            <span className={styles.pickTick} aria-hidden="true">
+              ✓
+            </span>
+          )}
+        </button>
+      ) : (
+        <span className={[styles.stateDot, STATE_CLASS[state]].join(' ')} role="img" aria-label={STATE_LABEL[state]} />
+      )}
 
       <button type="button" className={styles.main} onClick={edit}>
         <span className={styles.headline}>

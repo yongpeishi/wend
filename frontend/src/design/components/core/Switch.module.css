@@ -1,0 +1,93 @@
+/* The whole control is one button: track, then words. 9px between them is the
+   design's own figure — it sits between --space-2 and --space-3, and rounding
+   it either way visibly changes the balance of a 34px track against a 15px
+   word, so it stays a literal here rather than being forced onto the scale.
+
+   The 6px block padding is not decoration: the track is 20px tall, well under
+   the 32px pointer minimum this product holds itself to (architecture.md §5),
+   so the button grows its own hit area around it. Touch takes the full 48. */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+@media (pointer: coarse) {
+  .switch {
+    min-height: var(--tap-min);
+  }
+}
+
+/* Hover and press are opacity only, everywhere in this system. */
+.switch:hover {
+  opacity: 0.82;
+}
+
+.switch:active {
+  opacity: 0.7;
+}
+
+.switch:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-card);
+}
+
+/* 34 x 20, so the 16px knob has a 2px surround on every side and travels
+   exactly 14px. `position: relative` is what the knob's left/top resolve
+   against; `flex: none` keeps the track from being squeezed when the row it
+   sits in runs out of width, because a squashed track would read as a
+   different state rather than a narrower one. */
+.track {
+  position: relative;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  transition: background-color var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.trackOn {
+  background: var(--wend-leaf);
+}
+
+/* Paper, on both tracks: the knob is the thing that moves, and a knob that also
+   changed colour would make the movement harder to see rather than easier. */
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--wend-paper);
+  transition: left var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.knobOn {
+  left: 16px;
+}
+
+/* No motion for anyone who asked for none — the state still changes, it just
+   arrives rather than slides. */
+@media (prefers-reduced-motion: reduce) {
+  .track,
+  .knob,
+  .switch {
+    transition: none;
+  }
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  white-space: nowrap;
+}

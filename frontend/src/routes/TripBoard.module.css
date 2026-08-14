@@ -56,18 +56,23 @@
    direction, because it asks for slightly less height than there is and so
    never introduces a page scrollbar that was not already earned by the ideas.
 
-   48%, not the 40% this started at. A member row that carries an open-to-do
-   count spends about 58px on it (see BundleCard's .memberTodos), which is 58px
-   the title no longer has. At 40% a 1074px window put the rail on its 336px
-   floor and left a labelled title six characters before the ellipsis —
-   "Kaiseki at Giro Giro Hitoshina" read as "Kaisek…". 48% covers the label's
-   cost in the band where the percentage actually binds; the 480px cap is
-   unchanged, so nothing moves on a wide window, and the floors are unchanged,
-   so nothing moves at the bottom of the two-column range either. */
+   34%, from the design's own aside, down from the 48% this last sat at. The
+   ideas column has a second occupant now — the map opens BESIDE the list rather
+   than over it — so the percentage has to leave room for two things where it
+   used to size one. At 1360px that is a 462px rail (still capped at 480) and a
+   ~880px ideas column, which is the map's 380 and the list's 440 with room to
+   spare; at 48% the two would have wrapped onto separate rows on a window wide
+   enough to hold them side by side.
+
+   The floor stays 336px rather than the design's 240px. That number is this
+   file's own arithmetic, spelled out above, and it is about a member row
+   remaining readable — the design's aside carries no member rows at all, so
+   240px is a number about a different drawing. Report: this is a deliberate
+   departure from the handoff. */
 .grid {
   --board-rail-height: calc(100vh - 240px);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(336px, 48%, 480px);
+  grid-template-columns: minmax(0, 1fr) clamp(336px, 34%, 480px);
   gap: 0;
   align-items: stretch;
   min-height: var(--board-rail-height);
@@ -89,8 +94,68 @@
    a 738px board, so 384px still lets the ideas keep 322px. */
 @media (pointer: coarse) {
   .grid {
-    grid-template-columns: minmax(0, 1fr) clamp(384px, 48%, 480px);
+    grid-template-columns: minmax(0, 1fr) clamp(384px, 34%, 480px);
   }
+}
+
+/* The map and the list, side by side inside the ideas column.
+
+   No breakpoints, on purpose: the flex basis and the min-width do the whole
+   job, exactly as the design prototype does it. Below about 740px of column the
+   pair simply wraps and the map sits above the list, without anyone having to
+   pick a magic width at which that should happen — and it stays correct when the
+   rail's own clamp changes what this column is given, which a hard-coded
+   viewport breakpoint would not.
+
+   The map is first in source order because it is first in the design, and
+   because wrapping should put the map ABOVE the list: a map underneath a long
+   list is a map nobody scrolls to. */
+.body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+/* Sticky, so panning stays possible while reading down a long list — the map is
+   a control for the list beside it, and a control that scrolls away stops being
+   one.
+
+   The height is a viewport calculation rather than a match to the list, because
+   the two are not the same length and never will be: 190px is the board chrome
+   above the map (the trip title block, the filter row) plus the breathing room
+   under it, measured against the design. A percentage height would resolve
+   against a row sized by the list and give the map an accordion. */
+.mapCell {
+  flex: 1 1 380px;
+  min-width: 300px;
+  align-self: flex-start;
+  position: sticky;
+  top: var(--gutter-screen);
+  height: calc(100vh - 190px);
+  min-height: 0;
+}
+
+/* The wider basis of the two: this is the column being read, so when there is
+   not enough room for both preferences the list keeps more of what there is. */
+.listCell {
+  flex: 1 1 440px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Nothing survived the narrowing. Same voice and same measure as /library's own
+   "nothing in view" line. */
+.noneInView {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+  max-width: var(--measure-body);
 }
 
 /* The floor cannot push the board sideways on the way down to this

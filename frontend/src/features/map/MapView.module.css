@@ -45,16 +45,51 @@
   outline-offset: var(--focus-offset);
 }
 
+/* Zoom: two circles, top-right, 8px apart, 14px in from the corner. This is
+   still Leaflet's own control — it keeps the keyboard handling and the
+   disabled state at min/max zoom, which a custom control would have to
+   reimplement — so every rule here fights a Leaflet default and needs
+   !important to win against `.leaflet-bar a` / `.leaflet-touch .leaflet-bar a`. */
 :global(.leaflet-control-zoom) {
   border: none !important;
   box-shadow: none !important;
+  margin: 14px 14px 0 0 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 :global(.leaflet-control-zoom a) {
+  position: relative;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
   background: var(--surface-card) !important;
   color: var(--text-strong) !important;
   border: var(--border-width) solid var(--border-subtle) !important;
   box-shadow: none !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  line-height: 1;
+  /* Leaflet nudges its glyphs 1px right to centre them in its own square box;
+     flex centring already does that, so the nudge would only be an off-centre. */
+  text-indent: 0;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+:global(.leaflet-control-zoom a:hover) {
+  opacity: 0.8;
+}
+
+/* At min/max zoom the button stays in place and stops working — say so by
+   tone, not by removing it, so the pair never reflows under the pointer. */
+:global(.leaflet-control-zoom a.leaflet-disabled) {
+  background: var(--surface-card) !important;
+  color: var(--text-strong) !important;
+  opacity: 0.5;
 }
 
 :global(.leaflet-control-zoom a:focus-visible) {
@@ -62,12 +97,45 @@
   outline-offset: var(--focus-offset);
 }
 
+/* The mark stays 36px because that is the drawing; the target grows to the
+   48px a finger needs. A pseudo-element does it without moving anything. */
+@media (pointer: coarse) {
+  :global(.leaflet-control-zoom a)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 48px;
+    height: 48px;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Not in the mockup, and not optional: OSM's tile terms require the credit.
+   So it is drawn as chrome that belongs — a card-tone pill in the opposite
+   corner from the zoom pair — rather than as the grey strip Leaflet ships. */
 :global(.leaflet-control-attribution) {
-  background: var(--surface-page) !important;
+  background: var(--surface-card) !important;
   color: var(--text-muted) !important;
   font-family: var(--font-sans);
-  font-size: 11px;
+  /* Leaflet sets 11px from a two-class selector this module can't out-specify. */
+  font-size: 12px !important;
+  line-height: 1.5;
+  padding: 2px 10px !important;
+  border-radius: var(--radius-pill);
+  border: var(--border-width) solid var(--border-subtle);
+  margin: 0 14px 14px 0 !important;
   box-shadow: none !important;
+}
+
+:global(.leaflet-control-attribution a) {
+  color: var(--text-muted) !important;
+  text-decoration: underline;
+}
+
+:global(.leaflet-control-attribution a:focus-visible) {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /* A single pin — the brand's stop-circle geometry, never Leaflet's default marker. */
@@ -95,6 +163,81 @@
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
   border-radius: 50%;
+}
+
+/* The name-pill pin (pinVariant='label'). Its colours arrive as custom
+   properties rather than classes-with-colours because markerIcon.ts builds
+   this element as an HTML string and cannot see a token file; the tone
+   modifiers below are the whole colour contract. The wrapper is a 0x0 anchor
+   point (the pill is as wide as its title, which nothing can know in advance),
+   so the pill centres itself on the coordinate. */
+:global(.wend-pin-label-icon) {
+  background: transparent;
+  border: none;
+  width: 0;
+  height: 0;
+}
+
+:global(.wend-pin-label) {
+  --pin-label-bg: var(--surface-card);
+  --pin-label-text: var(--text-strong);
+  --pin-label-border: var(--border-strong);
+  display: block;
+  width: max-content;
+  transform: translate(-50%, -50%);
+  /* The design bundle draws this pill at 13px; 15px is the product's readable
+     floor (architecture.md §5) and the floor wins — this is a place name a
+     reader scans across a map, not a caption. The padding steps down 6/12 ->
+     5/11 to pay for the two extra pixels of type: same 1:2 proportion, and the
+     pill still renders exactly 28px tall (5 + 15 + 5 + two 1.5px edges), which
+     is the height markerIcon.ts's LABEL_HEIGHT assumes when it lifts the popup
+     clear. Colour and tracking are the design's, untouched. */
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: var(--pin-label-bg);
+  color: var(--pin-label-text);
+  border: var(--border-width) solid var(--pin-label-border);
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+:global(.wend-pin-label:hover) {
+  opacity: 0.8;
+}
+
+/* Already in a bundle — the trip's own colour, the same plum a bundle card carries. */
+:global(.wend-pin-label--bundled) {
+  --pin-label-bg: var(--wend-plum);
+  --pin-label-text: var(--wend-paper);
+  --pin-label-border: var(--wend-plum);
+}
+
+/* In the list you can currently see. */
+:global(.wend-pin-label--in-view) {
+  --pin-label-bg: var(--wend-leaf);
+  --pin-label-text: var(--wend-paper);
+  --pin-label-border: var(--wend-leaf);
+}
+
+/* Outside the current view — present, quiet, still readable. */
+:global(.wend-pin-label--off-view) {
+  --pin-label-bg: var(--surface-card);
+  --pin-label-text: var(--text-strong);
+  --pin-label-border: var(--border-strong);
+}
+
+/* Selection reads exactly like focus does elsewhere — same apricot, same
+   3px at 3px — because "this is the one you mean" is the same message. */
+:global(.wend-pin-label.is-selected),
+:global(.wend-pin-label:focus-visible) {
+  outline: var(--focus-width) solid var(--wend-apricot);
+  outline-offset: var(--focus-offset);
 }
 
 /* A cluster mark: card tone, a count, no shadow — "zooms" on click, per screens.md. */

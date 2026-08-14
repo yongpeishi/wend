@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boundsForPoints, entriesInBounds, isWithinBounds } from './bounds';
+import { boundsForPoints, boundsTupleForPoints, entriesInBounds, isWithinBounds } from './bounds';
 
 describe('boundsForPoints', () => {
   it('returns null for an empty list — there is nothing to fit to', () => {
@@ -15,6 +15,24 @@ describe('boundsForPoints', () => {
       0.5,
     );
     expect(bounds).toEqual({ north: 12.5, south: 9.5, east: 22.5, west: 19.5 });
+  });
+});
+
+describe('boundsTupleForPoints', () => {
+  it('returns null for an empty list — there is no view to fit', () => {
+    expect(boundsTupleForPoints([])).toBeNull();
+  });
+
+  it('orders the corners south-west first, then north-east, the way a map expects them', () => {
+    expect(
+      boundsTupleForPoints([
+        { id: 1, lat: 10, lng: 20 },
+        { id: 2, lat: 12, lng: 22 },
+      ]),
+    ).toEqual([
+      [9.99, 19.99],
+      [12.01, 22.01],
+    ]);
   });
 });
 

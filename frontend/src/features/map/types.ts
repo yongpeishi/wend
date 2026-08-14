@@ -6,12 +6,24 @@
 /** Mirrors the trail vocabulary from architecture.md §5 and screens.md. */
 export type PinState = 'scheduled' | 'potential' | 'destination';
 
+/**
+ * How a pin relates to what the screen around it is currently saying —
+ * "already in a bundle", "in the list you can see", "out of view". It is
+ * deliberately NOT derived here: only the board holds both the viewport
+ * bounds and the bundle membership, so the board computes tone and hands it
+ * down. MapView draws what it is told; giving the map that knowledge would
+ * put board vocabulary inside the provider seam and break the swap.
+ */
+export type PinTone = 'bundled' | 'inView' | 'offView';
+
 export interface MapPin {
   id: number;
   lat: number;
   lng: number;
   title: string;
   state: PinState;
+  /** Optional. Absent means "no opinion" — the pin draws in its neutral resting tone. */
+  tone?: PinTone;
 }
 
 /** A plain lat/lng box — the provider-agnostic stand-in for LatLngBounds. */

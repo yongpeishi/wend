@@ -48,7 +48,11 @@ const ENTRIES = [
   makeEntry({ id: 4, title: 'Somewhere unplaced', category: 'other' }),
 ];
 
-function renderList(groupMode: GroupMode, entries = ENTRIES) {
+function renderList(
+  groupMode: GroupMode,
+  entries = ENTRIES,
+  extra: { selectMode?: boolean; selectedIds?: number[] } = {},
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -60,7 +64,8 @@ function renderList(groupMode: GroupMode, entries = ENTRIES) {
               groupMode={groupMode}
               bundles={[]}
               members={new Map()}
-              selectedIds={[]}
+              selectMode={extra.selectMode}
+              selectedIds={extra.selectedIds ?? []}
               onToggleSelect={() => {}}
             />
           </DndContext>
@@ -145,6 +150,19 @@ describe('IdeaList', () => {
 
     expect(screen.getByRole('button', { name: /^Kyoto west/ })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: /^Kinkaku-ji/ })).toBeInTheDocument();
+  });
+
+  it('leaves every row showing its state, not a checkbox, until the board says otherwise', () => {
+    renderList('none');
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+  });
+
+  it('hands select mode to every row it renders, grouped or not', () => {
+    renderList('category', ENTRIES, { selectMode: true, selectedIds: [2] });
+
+    expect(screen.getAllByRole('checkbox')).toHaveLength(ENTRIES.length);
+    expect(screen.getByRole('checkbox', { name: 'Select Nishiki Market' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Select Fushimi Inari' })).not.toBeChecked();
   });
 
   it('renders every entry it is given, in every mode — grouping hides nothing', () => {

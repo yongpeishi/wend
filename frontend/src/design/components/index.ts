@@ -10,6 +10,9 @@ export type { InputProps } from './core/Input';
 export { Select } from './core/Select';
 export type { SelectProps } from './core/Select';
 
+export { Switch } from './core/Switch';
+export type { SwitchProps } from './core/Switch';
+
 export { Logo } from './brand/Logo';
 export type { LogoProps, LogoVariant } from './brand/Logo';
 
