@@ -31,7 +31,6 @@ Decisions marked **↩ reversible cheaply** can be changed late without a rewrit
   external reference. Do not build upload affordances or design around future photos.
 - **Import from Instagram / TikTok / Maps links.** Paste a URL, title it yourself.
 - **Offline / PWA.**
-- **Sharing and invites** — see §2.
 - **Transport routing and live times.** Transport is an Entry between two Entries with a
   duration you type. No API lookups.
 - **A dedicated trip-option compare screen.** Trip options are sibling `kind: "trip"`
@@ -40,12 +39,31 @@ Decisions marked **↩ reversible cheaply** can be changed late without a rewrit
 
 ## 2. Auth and collaboration
 
-Email + password with a signed session cookie. Trips are shared by default among all
-signed-in users — one household or travel party. No invite flow, no permissions model, no
-realtime.
+Email + password with a signed session cookie. A trip is private to the people who hold a
+grant on it. Grants live in `trip_memberships` — a row of trip, user and role, where the
+role is **Owner**, **Member** or **Viewer**. The Owner started the trip; only they can
+delete it, change what someone else may do, or hand the trip on. A Member can add, change
+and rearrange everything inside it, and bring others along. A Viewer reads it and leaves it
+as they found it. Exactly one Owner per trip, enforced by an index. No realtime.
 
-Votes are keyed by `user_id`, so multi-user voting works at the data layer from day one and
-adding invites later is additive rather than a rewrite.
+You can see an entry if it is reachable downward from a trip you hold a grant on, or if it
+is yours and hangs under no trip at all — the library case. An idea can sit in two trips, so
+your effective role on one is the most permissive grant across its trip ancestors.
+
+Sharing is by email address, and no email is sent. If the address belongs to an account, the
+trip is waiting for that person the next time they sign in; if it belongs to nobody, nothing
+happens. The response is the same either way, because saying which one happened would answer
+"does this person have an account here" to anyone who asks. For the same reason anything
+outside what you can see answers **404, not 403** — a 403 confirms the trip exists and makes
+trip ids enumerable, which is the whole thing this is for.
+
+Votes are keyed by `user_id`, so multi-user voting worked at the data layer from day one and
+adding grants on top was additive rather than a rewrite: no vote, todo or schedule row
+changed shape, and access is read off the entry tree that was already there.
+
+**The table is `trip_memberships`; the API resource is `collaborators`.** They differ on
+purpose — "membership" already means the derived entry-belongs-to-trip relationship here
+(§5), so the resource that names people had to be spelled differently.
 
 ## 3. Maps
 
@@ -91,7 +109,9 @@ cheaply** — re-merge if a future release fixes duplicate-package type resoluti
 entry is among its ancestors, rather than carrying a `trip_id` column. This is what makes
 "reuse my research" work — one idea can sit in two trips at once. Cost: ancestor walks are
 recursive queries, mitigated with a depth cap and eager loading. If it gets slow, add a
-materialised closure table rather than caching in the UI.
+materialised closure table rather than caching in the UI. This is the *entry* sense of
+membership — which trip a thing is in. Who may open that trip is a separate, stored thing:
+the `trip_memberships` rows in §2, exposed as `collaborators` to keep the two apart.
 
 **Bundles are Entries, not their own table.** `kind: "bundle"` reuses the entry tree
 wholesale, so a bundle can be nested, forked, voted on, and given todos for free. Cost:
