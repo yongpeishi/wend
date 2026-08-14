@@ -45,6 +45,13 @@ function setDate(label: string, value: string) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
+/** One day's element, open or closed, found by the id its drop target carries. */
+function dayBox(iso: string): HTMLElement {
+  const box = document.querySelector(`[data-drop-id="itinerary-day-${iso}"]`);
+  if (!box) throw new Error(`no day on screen for ${iso}`);
+  return box as HTMLElement;
+}
+
 /** Opens one day by clicking its collapsed row. */
 async function openDay(user: ReturnType<typeof userEvent.setup>, label: string) {
   await user.click(screen.getByText(label));
@@ -198,6 +205,154 @@ describe('TripItinerary — the dates gate', () => {
     expect(screen.queryByRole('button', { name: 'Back to ideas' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Back to your days' }));
     expect(await screen.findByText('Day 1 · Mon 2')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feedback 014#4 and 014#5. Moving the dates carries the plan with them, so
+ * Day 2 stays Day 2 — but a shorter trip has nowhere to put the days off its
+ * end. The server refuses that write and answers with the dates it would have
+ * to clear; nothing is written until the same call comes back confirmed.
+ *
+ * The seeded trip runs 2–8 Nov with rows on the 2nd, 3rd and 4th, so ending it
+ * on the 3rd drops exactly one day — the one carrying the night out (in its
+ * live version) and the coffee (in its archived one).
+ */
+describe('TripItinerary — dates that would cost a day', () => {
+  /** Reopens the gate and asks for a trip that ends a day early. */
+  async function shortenTheTrip(user: ReturnType<typeof userEvent.setup>) {
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await user.click(screen.getByRole('button', { name: 'Change dates' }));
+    setDate('Last day', '2026-11-03');
+    await user.click(screen.getByRole('button', { name: 'Open the days' }));
+    return screen.findByRole('heading', { name: 'Change the dates and clear 1 day?' });
+  }
+
+  it('asks first, and has changed nothing by the time it asks', async () => {
+    const user = userEvent.setup();
+    await shortenTheTrip(user);
+
+    expect(
+      screen.getByText("4 Nov falls outside the new dates, so what you've placed on it comes off."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The 2 ideas on it go back to "Not placed yet", so nothing is lost — you can place them on another day.',
+      ),
+    ).toBeInTheDocument();
+    // The write was refused outright: the trip still runs to the 8th.
+    expect(findEntry(SEEDED_TRIP_ID)?.ends_on).toBe('2026-11-08');
+  });
+
+  it('leaves the trip alone when the answer is no, on the dates you typed', async () => {
+    const user = userEvent.setup();
+    await shortenTheTrip(user);
+
+    await user.click(screen.getByRole('button', { name: "No, don't change the dates" }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // Still the gate, still holding what was typed — cancelling is a change of
+    // mind about the warning, not about the dates.
+    expect(screen.getByLabelText('Last day')).toHaveValue('2026-11-03');
+    expect(findEntry(SEEDED_TRIP_ID)?.ends_on).toBe('2026-11-08');
+
+    await user.click(screen.getByRole('button', { name: 'Back to your days' }));
+    expect(await screen.findByText('Day 7 · Sun 8')).toBeInTheDocument();
+    expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
+  });
+
+  it('clears the day when the answer is yes, and the ideas on it come back to the rail', async () => {
+    const user = userEvent.setup();
+    await shortenTheTrip(user);
+
+    await user.click(screen.getByRole('button', { name: 'Yes, clear that day' }));
+
+    expect(await screen.findByText('Day 2 · Tue 3')).toBeInTheDocument();
+    expect(screen.queryByText('Day 3 · Wed 4')).not.toBeInTheDocument();
+    // Nothing kept was destroyed: the night out was only ever placed on that
+    // day, so losing the day puts it back among the things waiting.
+    expect(await screen.findByText('Not placed yet · 4')).toBeInTheDocument();
+    expect(screen.getByText('A night out in Pontocho')).toBeInTheDocument();
+    expect(screen.getByText('Your days are open. What came off is waiting on the right.')).toBeInTheDocument();
+  });
+
+  it('says nothing at all when the new dates cost no day', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+
+    // Two days later at both ends: everything planned moves with it, so there
+    // is nothing to warn about and nothing to confirm.
+    await user.click(screen.getByRole('button', { name: 'Change dates' }));
+    setDate('First day', '2026-11-04');
+    setDate('Last day', '2026-11-10');
+    await user.click(screen.getByRole('button', { name: 'Open the days' }));
+
+    expect(await screen.findByText('Day 1 · Wed 4')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // Day 1's plan is still Day 1's plan, two dates along.
+    expect(within(dayBox('2026-11-04')).getByText('Nanzen-ji · Nishiki market crawl')).toBeInTheDocument();
+    expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feedback 014#6: "Add ability to swap day. Eg: Move day 2 to be day 3."
+ *
+ * An exchange, not a reorder — Day 3 comes back to Day 2 rather than being
+ * pushed along. Everything the date owns travels with it, lodging included.
+ */
+describe('TripItinerary — swapping two days', () => {
+  it('exchanges two planned days from a closed row, pushing nothing along', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+
+    await user.click(screen.getByRole('button', { name: 'Swap Day 1 · Mon 2 with another day' }));
+    await user.click(screen.getByRole('button', { name: 'Swap with Day 3 · Wed 4' }));
+
+    const first = await screen.findByText('A night out in Pontocho');
+    expect(dayBox('2026-11-02')).toContainElement(first);
+    expect(within(dayBox('2026-11-04')).getByText('Nanzen-ji · Nishiki market crawl')).toBeInTheDocument();
+    // Lodging travels with the day it belongs to.
+    expect(within(dayBox('2026-11-02')).getByText('Sleeping on the night train')).toBeInTheDocument();
+    expect(within(dayBox('2026-11-04')).getByText('Machiya near Gion')).toBeInTheDocument();
+    // The day between them was never touched, and no fourth day appeared.
+    expect(within(dayBox('2026-11-03')).getByText('2 versions · not settled')).toBeInTheDocument();
+    expect(screen.getAllByText('Nothing here yet')).toHaveLength(4);
+    expect(screen.getByText('Day 1 · Mon 2 and Day 3 · Wed 4 have swapped.')).toBeInTheDocument();
+  });
+
+  it('moves the plan onto an empty day, rather than refusing to swap with one', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+
+    await user.click(screen.getByRole('button', { name: 'Swap Day 1 · Mon 2 with another day' }));
+    await user.click(screen.getByRole('button', { name: 'Swap with Day 6 · Sat 7' }));
+
+    const moved = await within(dayBox('2026-11-07')).findByText('Nanzen-ji · Nishiki market crawl');
+    expect(moved).toBeInTheDocument();
+    expect(within(dayBox('2026-11-07')).getByText('Machiya near Gion')).toBeInTheDocument();
+    // And the day it came from is now the empty one.
+    expect(within(dayBox('2026-11-02')).getByText('Nothing here yet')).toBeInTheDocument();
+  });
+
+  it('offers the same swap from the open day, and never offers the day itself', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await openDay(user, 'Day 1 · Mon 2');
+
+    await user.click(screen.getByRole('button', { name: 'Swap Day 1 · Mon 2 with another day' }));
+    expect(screen.queryByRole('button', { name: 'Swap with Day 1 · Mon 2' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Swap with Day 2 · Tue 3' }));
+
+    // Day 1 stays open on its date, now showing what Day 2 was holding: two
+    // versions, neither settled.
+    expect(await within(dayBox('2026-11-02')).findByRole('heading', { name: 'Version B' })).toBeInTheDocument();
+    expect(within(dayBox('2026-11-03')).getByText('Nanzen-ji · Nishiki market crawl')).toBeInTheDocument();
   });
 });
 

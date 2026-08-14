@@ -225,6 +225,144 @@ describe('version resolution on schedule writes', () => {
   });
 });
 
+/**
+ * Mirrors backend/app/models/trip_date_shift.rb and its request test. The
+ * browser check drives this mock rather than Rails, so a mock that merely
+ * saved the dates would make that check pass against a lie.
+ */
+describe('PATCH /entries/:id — moving the trip’s dates', () => {
+  const days = async () => (await itinerary()).trip_days.map((d) => d.day);
+
+  /** Every date the trip has anything on, trip_day row or not. */
+  const itemDays = () => [...new Set(db.scheduleItems.filter((s) => s.trip_id === TRIP_ID).map((s) => s.day))].sort();
+
+  async function setDates(starts_on: string, ends_on: string, confirm = false) {
+    return api.patch(`/entries/${TRIP_ID}`, {
+      entry: { starts_on, ends_on },
+      ...(confirm ? { confirm_dropped_days: true } : {}),
+    });
+  }
+
+  it('carries the whole plan by the same delta, so Day 2 stays Day 2', async () => {
+    // 2–8 Nov becomes 5–11 Nov: three days later, and so is everything on it.
+    await setDates('2026-11-05', '2026-11-11');
+
+    expect(await days()).toEqual(['2026-11-05', '2026-11-06', '2026-11-07']);
+    expect(itemDays()).toEqual(['2026-11-05', '2026-11-06', '2026-11-07']);
+  });
+
+  it('leaves a rename alone — naming neither date can never drop a day', async () => {
+    await api.patch(`/entries/${TRIP_ID}`, { entry: { title: 'Seven days in Kyoto' } });
+
+    expect(await days()).toEqual([BUNDLE_DAY, TWO_VERSION_DAY, ARCHIVED_DAY]);
+  });
+
+  it('refuses a shorter trip with the days it would clear, and writes nothing', async () => {
+    // 2–3 Nov leaves the seeded 4 Nov outside: one dropped day, and the two
+    // items on it (one live, one in the archived version).
+    const error = await setDates('2026-11-02', '2026-11-03').catch((e: ApiError) => e);
+
+    expect((error as ApiError).status).toBe(422);
+    expect((error as ApiError).message).toBe('dropped_days_need_confirmation');
+    // Nothing moved: the attempt is the preview, not the change.
+    expect(await days()).toEqual([BUNDLE_DAY, TWO_VERSION_DAY, ARCHIVED_DAY]);
+    const { entry } = await api.get<{ entry: { ends_on: string } }>(`/entries/${TRIP_ID}`);
+    expect(entry.ends_on).toBe('2026-11-08');
+  });
+
+  it('names the dropped dates and how much is on them, so the warning can say it', async () => {
+    const response = await fetch(`/api/entries/${TRIP_ID}`, {
+      method: 'PATCH',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entry: { starts_on: '2026-11-02', ends_on: '2026-11-03' } }),
+    });
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({
+      error: 'dropped_days_need_confirmation',
+      dropped_days: [ARCHIVED_DAY],
+      dropped_item_count: 2,
+    });
+  });
+
+  it('clears the dropped days once confirmed, and keeps every entry they held', async () => {
+    const entriesBefore = db.entries.length;
+    await setDates('2026-11-02', '2026-11-03', true);
+
+    expect(await days()).toEqual([BUNDLE_DAY, TWO_VERSION_DAY]);
+    expect(itemDays()).toEqual([BUNDLE_DAY, TWO_VERSION_DAY]);
+    // Placements only. The ideas are still there, which is what puts them back
+    // under "Not placed yet".
+    expect(db.entries).toHaveLength(entriesBefore);
+    expect(db.dayVersions.filter((v) => v.trip_day_id === 3)).toEqual([]);
+  });
+
+  it('shifts and drops in one write, reading the plan before any of it moves', async () => {
+    // 4–5 Nov: two days later, and two days long. The three planned days move
+    // to 4, 5 and 6 Nov, and only the last of them is past the new end.
+    const error = await setDates('2026-11-04', '2026-11-05').catch((e: ApiError) => e);
+    expect((error as ApiError).status).toBe(422);
+
+    await setDates('2026-11-04', '2026-11-05', true);
+    expect(await days()).toEqual(['2026-11-04', '2026-11-05']);
+    // The survivors are the first two days' plans, on their new dates.
+    expect(itemDays()).toEqual(['2026-11-04', '2026-11-05']);
+  });
+});
+
+describe('POST /trips/:id/itinerary/swap_days', () => {
+  const swap = (a: string, b: string) => api.post<{ trip_days: TripDay[] }>(`/trips/${TRIP_ID}/itinerary/swap_days`, { a, b });
+
+  it('exchanges two planned days, lodging and all', async () => {
+    const { trip_days } = await swap(BUNDLE_DAY, ARCHIVED_DAY);
+
+    const first = trip_days.find((d) => d.day === BUNDLE_DAY);
+    const third = trip_days.find((d) => d.day === ARCHIVED_DAY);
+    // The night train was on 4 Nov and the machiya on 2 Nov; they have traded.
+    expect(first?.lodging_title).toBe('Sleeping on the night train');
+    expect(third?.lodging_title).toBe('Machiya near Gion');
+    // And so has everything placed on them, versions included.
+    expect(first?.versions[0]?.schedule_items.map((i) => i.entry?.title)).toEqual(['A night out in Pontocho']);
+    expect(first?.archived_versions).toHaveLength(1);
+    expect(third?.versions[0]?.schedule_items.map((i) => i.entry?.title)).toEqual([
+      'Nanzen-ji',
+      'Nishiki market crawl',
+    ]);
+  });
+
+  it('moves the plan when the other day is empty, rather than refusing', async () => {
+    const { trip_days } = await swap(BUNDLE_DAY, EMPTY_DAY);
+
+    expect(trip_days.map((d) => d.day)).toEqual([TWO_VERSION_DAY, ARCHIVED_DAY, EMPTY_DAY]);
+    const moved = trip_days.find((d) => d.day === EMPTY_DAY);
+    expect(moved?.lodging_title).toBe('Machiya near Gion');
+    expect(moved?.versions[0]?.schedule_items).toHaveLength(2);
+    expect(moved?.versions[0]?.schedule_items.every((i) => i.day === EMPTY_DAY)).toBe(true);
+  });
+
+  it('is a swap and not a reorder — the day it displaces comes back', async () => {
+    await swap(TWO_VERSION_DAY, ARCHIVED_DAY);
+    const { trip_days } = await itinerary();
+
+    // Day 3's single version is now on Day 2's date, and Day 2's two versions
+    // on Day 3's. Nothing was pushed along to a fourth date.
+    expect(trip_days.map((d) => d.versions.length)).toEqual([1, 1, 2]);
+    expect(trip_days.map((d) => d.day)).toEqual([BUNDLE_DAY, TWO_VERSION_DAY, ARCHIVED_DAY]);
+  });
+
+  it('refuses a date outside the trip, and a date that is not one', async () => {
+    await expect(swap(BUNDLE_DAY, '2026-12-25')).rejects.toMatchObject({
+      status: 422,
+      message: 'day_outside_trip',
+    });
+    await expect(swap(BUNDLE_DAY, 'next-tuesday')).rejects.toMatchObject({
+      status: 422,
+      message: 'invalid_day',
+    });
+    // Refused means unchanged.
+    expect((await itinerary()).trip_days.map((d) => d.day)).toEqual([BUNDLE_DAY, TWO_VERSION_DAY, ARCHIVED_DAY]);
+  });
+});
+
 describe('seed()', () => {
   it('rebuilds the links instead of appending to them', async () => {
     // Regression: seed() reset db.entries but not db.links, so every resetDb()

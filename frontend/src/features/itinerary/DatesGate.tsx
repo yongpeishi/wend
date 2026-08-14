@@ -50,11 +50,12 @@ function keptLine(keptCount: number, tripTitle: string): string {
  * gate is up, so the level is semantics and the size is the truth about what
  * you are looking at. The eyebrow over it stays a paragraph.
  *
- * Rough is fine and the copy says so — but only as far as it is true. Changing
- * the dates is cheap and allowed; what it does not do is carry placed things
- * along with it. Each schedule item keeps the date it was given, and a day that
- * falls outside the new range simply stops being drawn. So the copy promises
- * the date you chose for a thing will hold, and promises nothing more.
+ * Rough is fine and the copy says so — and now it is true in the way people
+ * assumed it was. Moving the dates moves the plan: every trip day and every
+ * placed thing shifts by the same delta, so Day 2 is still Day 2 on its new
+ * date. What the copy still may not promise is that a shorter trip keeps
+ * everything — days pushed off the end lose their placements, which is why the
+ * confirmation modal exists (DateShiftWarningModal) rather than a line here.
  *
  * A length chip is the third way in, for the trip that has a starting day and a
  * shape but no return flight yet — it fills the first day with today if you
@@ -95,8 +96,8 @@ export function DatesGate({
           <p className={styles.eyebrow}>Before the days appear</p>
           <h2 className={styles.title}>When are you going?</h2>
           <p className={styles.body}>
-            Days come from your dates. Rough is fine — you can change them later, and anything you've already
-            placed stays on the day you put it on.
+            Days come from your dates. Rough is fine — you can change them later, and your plan moves with
+            them, so Day 2 stays Day 2.
           </p>
         </div>
 

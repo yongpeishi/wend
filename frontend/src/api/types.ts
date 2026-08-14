@@ -247,6 +247,13 @@ export interface CreateEntryParams {
 
 export interface UpdateEntryParams {
   entry: EntryWritePayload;
+  /**
+   * Only read when the write moves a trip's dates. Moving them moves the whole
+   * plan by the same delta (Day 2 stays Day 2), and a shorter trip can push
+   * planned days off the end — the server refuses that with
+   * `DroppedDaysBody` until this says yes. Defaults to false.
+   */
+  confirm_dropped_days?: boolean;
 }
 
 export interface EntriesQuery {
@@ -312,4 +319,19 @@ export interface ValidationErrorBody {
 /** { "error": "message" } — generic 4xx/5xx shape. */
 export interface SimpleErrorBody {
   error: string;
+}
+
+/**
+ * The 422 PATCH /api/entries/:id answers with when the new dates would push
+ * planned days off the end of the trip. Nothing has changed when this arrives:
+ * the attempt is its own preview, and re-sending with `confirm_dropped_days`
+ * is what applies it.
+ *
+ * `dropped_days` are the dates AFTER the shift, ascending;
+ * `dropped_item_count` is how many placed things sit on them.
+ */
+export interface DroppedDaysBody {
+  error: 'dropped_days_need_confirmation';
+  dropped_days: string[];
+  dropped_item_count: number;
 }

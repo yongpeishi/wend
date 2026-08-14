@@ -275,6 +275,58 @@ describe('DayCard — lodging', () => {
   });
 });
 
+describe('DayCard — swapping it with another day', () => {
+  const TRIP_DAYS = [
+    { day: '2026-10-12', label: 'Day 1 · Mon 12' },
+    { day: '2026-10-13', label: 'Day 2 · Tue 13' },
+    { day: '2026-10-14', label: 'Day 3 · Wed 14' },
+  ];
+
+  it('offers no swap at all when the container has not wired one', () => {
+    renderCard({ swapChoices: TRIP_DAYS });
+
+    expect(screen.queryByRole('button', { name: /^Swap/ })).not.toBeInTheDocument();
+  });
+
+  // Beside "Fork this day" and the close chevron: the day's other actions all
+  // live in the header, and swapping is done to the day, not to what is on it.
+  it('sits with the day’s other actions, not in its running order', async () => {
+    const user = userEvent.setup();
+    renderCard({ swapChoices: TRIP_DAYS, onSwapDay: vi.fn() });
+
+    const trigger = screen.getByRole('button', { name: 'Swap Day 2 · Tue 13 with another day' });
+    const fork = screen.getByRole('button', { name: 'Fork this day' });
+    expect(fork.parentElement).toContainElement(trigger);
+
+    await user.click(trigger);
+    expect(screen.getByRole('button', { name: 'Swap with Day 1 · Mon 12' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Swap with Day 2 · Tue 13' })).not.toBeInTheDocument();
+  });
+
+  it('names the day it is exchanging with, and leaves the swap to the container', async () => {
+    const user = userEvent.setup();
+    const onSwapDay = vi.fn();
+    renderCard({ swapChoices: TRIP_DAYS, onSwapDay });
+
+    await user.click(screen.getByRole('button', { name: 'Swap Day 2 · Tue 13 with another day' }));
+    await user.click(screen.getByRole('button', { name: 'Swap with Day 1 · Mon 12' }));
+
+    expect(onSwapDay).toHaveBeenCalledWith('2026-10-12');
+  });
+
+  it('closes the menu again on Escape, without swapping anything', async () => {
+    const user = userEvent.setup();
+    const onSwapDay = vi.fn();
+    renderCard({ swapChoices: TRIP_DAYS, onSwapDay });
+
+    await user.click(screen.getByRole('button', { name: 'Swap Day 2 · Tue 13 with another day' }));
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('button', { name: 'Swap with Day 1 · Mon 12' })).not.toBeInTheDocument();
+    expect(onSwapDay).not.toHaveBeenCalled();
+  });
+});
+
 describe('DayCard — as a drop target', () => {
   it('marks itself when the container says the drag is over it', () => {
     renderCard({ isDropTarget: true });

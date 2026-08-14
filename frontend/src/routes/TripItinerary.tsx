@@ -17,7 +17,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
 import { api } from '../api/client';
-import { useEntries, useUpdateEntry } from '../api/entries';
+import { useChangeTripDates, useEntries } from '../api/entries';
 import { queryKeys } from '../api/queryKeys';
 import { useCreateScheduleItem, useDeleteScheduleItem } from '../api/schedule';
 import {
@@ -25,11 +25,13 @@ import {
   useItinerary,
   useKeepVersion,
   useRestoreVersion,
+  useSwapDays,
   useUpdateTripDay,
 } from '../api/itinerary';
 import type { Entry, EntrySummary, ScheduleItem } from '../api/types';
 import {
   ArchivedPanel,
+  DateShiftWarningModal,
   DatesGate,
   DayCard,
   DayRow,
@@ -53,6 +55,14 @@ import styles from './TripItinerary.module.css';
 
 /** What a failed write says. Nothing is lost — the screen still holds it. */
 const SAVE_FAILED = "That didn't save. It's still here — try again.";
+
+/** Dates the server refused, held until the warning modal is answered. */
+interface PendingDates {
+  startsOn: string;
+  endsOn: string;
+  droppedDays: string[];
+  droppedItemCount: number;
+}
 
 /**
  * What a screen reader is told about the grip before anything moves. Says the
@@ -100,12 +110,20 @@ export function TripItinerary() {
   const [datesOpen, setDatesOpen] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [dragging, setDragging] = useState<ItineraryDragData | null>(null);
+  /**
+   * The dates the server refused, and what it said refusing them. Set from the
+   * 422, cleared by either answer. Holding the dates here is what lets
+   * "confirm" re-send exactly what was typed — the attempt is the preview, so
+   * there is nothing else to re-read it from.
+   */
+  const [pendingDates, setPendingDates] = useState<PendingDates | null>(null);
 
-  const updateTrip = useUpdateEntry(trip.id);
+  const changeDates = useChangeTripDates(trip.id);
   const updateTripDay = useUpdateTripDay(trip.id);
   const forkDay = useForkDay(trip.id);
   const keepVersion = useKeepVersion(trip.id);
   const restoreVersion = useRestoreVersion(trip.id);
+  const swapDays = useSwapDays(trip.id);
   const createItem = useCreateScheduleItem(trip.id);
   const deleteItem = useDeleteScheduleItem();
   const editItemHours = useEditItemHours();
@@ -142,6 +160,9 @@ export function TripItinerary() {
 
   const unplaced = useMemo(() => kept.filter((entry) => !placedEntryIds.has(entry.id)), [kept, placedEntryIds]);
   const lodgingChoices = useMemo(() => kept.filter((entry) => entry.category === 'lodging'), [kept]);
+  // Every day, labelled as the screen labels it. Each day's own menu drops
+  // itself out — nothing swaps with itself.
+  const swapChoices = useMemo(() => days.map((day) => ({ day: day.day, label: day.label })), [days]);
 
   // Trip-wide, so every row has to say which day it came from — the panel sits
   // in the rail, nowhere near the day it belongs to.
@@ -284,6 +305,60 @@ export function TripItinerary() {
     placeEntry(day, version.id, entryId, null);
   }
 
+  /**
+   * Exchange two dates of the trip — "move Day 2 to be Day 3". A swap, not a
+   * reorder: the other day's plan lands here in return, so nothing is pushed
+   * along and nothing is lost. The whole day list comes back from the server,
+   * because two days changed at once.
+   */
+  function swapWithDay(dayIso: string, otherIso: string) {
+    const here = days.find((d) => d.day === dayIso);
+    const there = days.find((d) => d.day === otherIso);
+    swapDays.mutate(
+      { a: dayIso, b: otherIso },
+      {
+        onSuccess: () => show(`${here?.label} and ${there?.label} have swapped.`, 'success'),
+        onError,
+      },
+    );
+  }
+
+  /**
+   * Send the trip's dates.
+   *
+   * There is no preview endpoint: the attempt itself is the preview. A change
+   * that would push planned days off the end comes back refused, with NOTHING
+   * written, and the warning modal takes over — confirming re-sends exactly
+   * these dates with the flag set.
+   */
+  function submitDates(startsOn: string, endsOn: string, confirm = false) {
+    changeDates.mutate(
+      { startsOn, endsOn, confirm },
+      {
+        onSuccess: (result) => {
+          if (result.status === 'dropped_days') {
+            setPendingDates({
+              startsOn,
+              endsOn,
+              droppedDays: result.droppedDays,
+              droppedItemCount: result.droppedItemCount,
+            });
+            return;
+          }
+          setPendingDates(null);
+          setDatesOpen(false);
+          // The ideas off a cleared day are not gone: the rail is where they
+          // land, and saying so here is cheaper than making someone find out.
+          show(
+            confirm ? 'Your days are open. What came off is waiting on the right.' : 'Your days are open.',
+            'success',
+          );
+        },
+        onError,
+      },
+    );
+  }
+
   function handleDragStart(event: DragStartEvent) {
     const data = event.active.data.current as ItineraryDragData | undefined;
     if (data) setDragging(data);
@@ -296,29 +371,34 @@ export function TripItinerary() {
 
   if (datesOpen || !trip.starts_on || !trip.ends_on) {
     return (
-      <DatesGate
-        tripTitle={trip.title}
-        keptCount={kept.length}
-        saving={updateTrip.isPending}
-        initialStart={trip.starts_on}
-        initialEnd={trip.ends_on}
-        // Reopened over a dated trip, "back" is the day list you came from;
-        // reached because the trip has no dates at all, it is the ideas board,
-        // which is where the material for a day comes from.
-        onBack={() => (datesOpen ? setDatesOpen(false) : navigate(`/trips/${trip.id}`))}
-        onConfirm={(startsOn, endsOn) =>
-          updateTrip.mutate(
-            { entry: { starts_on: startsOn, ends_on: endsOn } },
-            {
-              onSuccess: () => {
-                setDatesOpen(false);
-                show('Your days are open.', 'success');
-              },
-              onError,
-            },
-          )
-        }
-      />
+      // The modal is a sibling of the gate, not a replacement for it: cancelling
+      // has to land back on the dates that were typed, and those live in the
+      // gate's own state. Unmounting it would throw them away.
+      <>
+        <DatesGate
+          tripTitle={trip.title}
+          keptCount={kept.length}
+          saving={changeDates.isPending}
+          initialStart={trip.starts_on}
+          initialEnd={trip.ends_on}
+          // Reopened over a dated trip, "back" is the day list you came from;
+          // reached because the trip has no dates at all, it is the ideas board,
+          // which is where the material for a day comes from.
+          onBack={() => (datesOpen ? setDatesOpen(false) : navigate(`/trips/${trip.id}`))}
+          onConfirm={(startsOn, endsOn) => submitDates(startsOn, endsOn)}
+        />
+
+        <DateShiftWarningModal
+          open={pendingDates !== null}
+          droppedDays={pendingDates?.droppedDays ?? []}
+          droppedItemCount={pendingDates?.droppedItemCount ?? 0}
+          saving={changeDates.isPending}
+          onCancel={() => setPendingDates(null)}
+          onConfirm={() => {
+            if (pendingDates) submitDates(pendingDates.startsOn, pendingDates.endsOn, true);
+          }}
+        />
+      </>
     );
   }
 
@@ -368,6 +448,8 @@ export function TripItinerary() {
                   day={day}
                   lodgingChoices={lodgingChoices}
                   addChoices={unplaced}
+                  swapChoices={swapChoices}
+                  onSwapDay={(otherDay) => swapWithDay(day.day, otherDay)}
                   onToggle={() => toggleDay(day.day)}
                   onDropItem={(entryId, versionId) => placeOnDay(entryId, day.day, versionId)}
                   onAddItem={(versionId, entryId, slot) => placeEntry(day, versionId, entryId, slot)}
@@ -405,6 +487,8 @@ export function TripItinerary() {
                 <DayRow
                   key={day.day}
                   day={day}
+                  swapChoices={swapChoices}
+                  onSwapDay={(otherDay) => swapWithDay(day.day, otherDay)}
                   onToggle={() => toggleDay(day.day)}
                   onDropItem={(entryId) => placeOnDay(entryId, day.day)}
                 />

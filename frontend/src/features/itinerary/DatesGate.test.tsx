@@ -32,11 +32,13 @@ describe('DatesGate — what it asks for', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'When are you going?' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
     expect(screen.getAllByRole('heading')).toHaveLength(1);
-    // Changing the dates does not move placed things — days outside the new
-    // range just stop being drawn. The copy has to say only what is true.
+    // Changing the dates now carries the plan along — every day and everything
+    // on it shifts by the same delta. The copy says that, and no more: a
+    // shorter trip can still lose the days off its end, which is the warning
+    // modal's job to say rather than this line's.
     expect(
       screen.getByText(
-        "Days come from your dates. Rough is fine — you can change them later, and anything you've already placed stays on the day you put it on.",
+        'Days come from your dates. Rough is fine — you can change them later, and your plan moves with them, so Day 2 stays Day 2.',
       ),
     ).toBeInTheDocument();
   });

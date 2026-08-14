@@ -9,6 +9,8 @@ import { formatSpan } from './itineraryModel';
 import type { ItineraryDay } from './itineraryModel';
 import { LodgingEditor } from './LodgingEditor';
 import { LodgingPill } from './LodgingPill';
+import { SwapDayMenu } from './SwapDayMenu';
+import type { SwapDayChoice } from './SwapDayMenu';
 import { useDayDrop } from './useDayDrop';
 import type { ItineraryDropHandler } from './useDayDrop';
 import { VersionColumns } from './VersionColumns';
@@ -27,6 +29,8 @@ export interface DayCardProps {
   lodgingChoices?: EntrySummary[];
   /** Kept ideas and bundles that sit in no live version yet. */
   addChoices?: EntrySummary[];
+  /** Every day of the trip, for the swap menu. Omitted, no swap is offered. */
+  swapChoices?: SwapDayChoice[];
   /** The container's own reading of the drag — the card also lights up on its own. */
   isDropTarget?: boolean;
   onToggle: () => void;
@@ -43,6 +47,11 @@ export interface DayCardProps {
   onRemoveItem: (itemId: number) => void;
   /** Both keys together: one clears the other, and both null clears the night. */
   onSetLodging: (value: { lodging_entry_id: number | null; lodging_label: string | null }) => void;
+  /**
+   * Exchange this day with another date of the trip — the two plans trade
+   * places, lodging and all. Needs `swapChoices` to have anything to offer.
+   */
+  onSwapDay?: (otherDay: string) => void;
   /**
    * Something from the rail was dropped on this day. Must be inside a
    * `<DndContext>`. The second argument is the version it landed in: a number
@@ -66,6 +75,7 @@ export function DayCard({
   day,
   lodgingChoices = [],
   addChoices = [],
+  swapChoices = [],
   isDropTarget = false,
   onToggle,
   onFork,
@@ -74,6 +84,7 @@ export function DayCard({
   onEditTime,
   onRemoveItem,
   onSetLodging,
+  onSwapDay,
   onDropItem,
 }: DayCardProps) {
   const { setNodeRef, isOver, dropId } = useDayDrop(day.day, onDropItem);
@@ -109,6 +120,13 @@ export function DayCard({
           <Button size="small" variant="secondary" onClick={onFork}>
             {split ? 'Add another' : 'Fork this day'}
           </Button>
+
+          {/* Beside the day's other actions rather than in the body: swapping
+              is something done TO the day, like forking it, not something done
+              to what is on it. */}
+          {onSwapDay && (
+            <SwapDayMenu day={day.day} dayLabel={day.label} choices={swapChoices} onSwap={onSwapDay} />
+          )}
 
           <button
             type="button"

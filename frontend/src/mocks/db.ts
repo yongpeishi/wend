@@ -23,7 +23,7 @@ interface StoredUser extends User {
   password: string;
 }
 
-interface StoredEntry {
+export interface StoredEntry {
   id: number;
   kind: Entry['kind'];
   title: string;
@@ -374,6 +374,128 @@ export function toTripDay(tripDay: StoredTripDay): TripDay {
     versions: liveVersionsOf(tripDay.id).map(toDayVersion),
     archived_versions: archivedVersionsOf(tripDay.id).map(toDayVersion),
   };
+}
+
+// ---- Moving a trip's dates -------------------------------------------------
+// Mirrors backend/app/models/trip_date_shift.rb. Placement is keyed by a real
+// date, but "Day 2" is what was planned — an offset from the trip's start — so
+// moving the start moves every trip_day and every schedule_item by the same
+// delta. A day that ends up outside the new range is DROPPED: its placements
+// go, the entries they pointed at do not, so those ideas fall back onto the
+// unplaced rail.
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** `2026-11-02` + 3 -> `2026-11-05`. UTC throughout, so no zone shifts a day. */
+export function shiftIso(day: string, delta: number): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + delta * DAY_MS).toISOString().slice(0, 10);
+}
+
+/** Whole days from `from` to `to`, signed. */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS);
+}
+
+/** What a PATCH of these attributes would do to everything planned on the trip. */
+export interface TripDateShift {
+  tripId: number;
+  shiftDays: number;
+  /** Post-shift dates that fall outside the new range, ascending. */
+  droppedDays: string[];
+  droppedItemCount: number;
+}
+
+/**
+ * Build the shift, without applying any of it.
+ *
+ * A write that names neither date is a no-op — renaming a trip must never drop
+ * a day, even one that was already out of range — which is why this reads the
+ * keys' presence rather than their values.
+ */
+export function tripDateShiftFor(trip: StoredEntry, attrs: Partial<StoredEntry>): TripDateShift {
+  const namesStart = 'starts_on' in attrs;
+  const namesEnd = 'ends_on' in attrs;
+  if (!namesStart && !namesEnd) {
+    return { tripId: trip.id, shiftDays: 0, droppedDays: [], droppedItemCount: 0 };
+  }
+
+  const startsOn = namesStart ? (attrs.starts_on ?? null) : trip.starts_on;
+  const endsOn = namesEnd ? (attrs.ends_on ?? null) : trip.ends_on;
+  // No previous start means there was no "Day 2" to preserve, so nothing moves.
+  const shiftDays = startsOn && trip.starts_on ? daysBetween(trip.starts_on, startsOn) : 0;
+
+  // Both tables, not just trip_days: a placement can sit on a date that never
+  // got a trip_day row of its own, and it must travel with the rest.
+  const planned = new Set<string>([
+    ...db.tripDays.filter((d) => d.trip_id === trip.id).map((d) => d.day),
+    ...db.scheduleItems.filter((s) => s.trip_id === trip.id).map((s) => s.day),
+  ]);
+
+  const inRange = (day: string) => !(startsOn && day < startsOn) && !(endsOn && day > endsOn);
+  const droppedDays = [...planned]
+    .map((day) => shiftIso(day, shiftDays))
+    .filter((day) => !inRange(day))
+    .sort();
+
+  const before = new Set(droppedDays.map((day) => shiftIso(day, -shiftDays)));
+  const droppedItemCount = db.scheduleItems.filter((s) => s.trip_id === trip.id && before.has(s.day)).length;
+
+  return { tripId: trip.id, shiftDays, droppedDays, droppedItemCount };
+}
+
+/** Move the plan, then clear whatever ended up off the end. */
+export function applyTripDateShift(shift: TripDateShift) {
+  const { tripId, shiftDays, droppedDays } = shift;
+  if (shiftDays === 0 && droppedDays.length === 0) return;
+
+  if (shiftDays !== 0) {
+    for (const tripDay of db.tripDays.filter((d) => d.trip_id === tripId)) {
+      tripDay.day = shiftIso(tripDay.day, shiftDays);
+      tripDay.updated_at = now();
+    }
+    for (const item of db.scheduleItems.filter((s) => s.trip_id === tripId)) {
+      item.day = shiftIso(item.day, shiftDays);
+    }
+  }
+
+  if (droppedDays.length === 0) return;
+  const dropped = new Set(droppedDays);
+  // Placements only. The Entry each one pointed at is untouched, which is what
+  // puts those ideas back under "Not placed yet" rather than losing them.
+  db.scheduleItems = db.scheduleItems.filter((s) => !(s.trip_id === tripId && dropped.has(s.day)));
+  const goneDayIds = new Set(db.tripDays.filter((d) => d.trip_id === tripId && dropped.has(d.day)).map((d) => d.id));
+  db.tripDays = db.tripDays.filter((d) => !goneDayIds.has(d.id));
+  db.dayVersions = db.dayVersions.filter((v) => !goneDayIds.has(v.trip_day_id));
+}
+
+/**
+ * Exchange two dates of a trip — mirrors `TripDay.swap_days!`. Everything the
+ * date owns travels: the row (so lodging and every version go with it) and the
+ * `day` of each schedule item on it. Either date may be empty, which is how
+ * swapping a planned day with an empty one just moves the plan.
+ */
+export function swapTripDays(tripId: number, a: string, b: string) {
+  if (a === b) return;
+  const rowA = findTripDay(tripId, a);
+  const rowB = findTripDay(tripId, b);
+  // Both sides read before either is written, or the first write swallows the second.
+  const itemsA = db.scheduleItems.filter((s) => s.trip_id === tripId && s.day === a);
+  const itemsB = db.scheduleItems.filter((s) => s.trip_id === tripId && s.day === b);
+
+  if (rowA) {
+    rowA.day = b;
+    rowA.updated_at = now();
+  }
+  if (rowB) {
+    rowB.day = a;
+    rowB.updated_at = now();
+  }
+  itemsA.forEach((item) => {
+    item.day = b;
+  });
+  itemsB.forEach((item) => {
+    item.day = a;
+  });
 }
 
 function addLink(parentId: number, childId: number, position: number) {

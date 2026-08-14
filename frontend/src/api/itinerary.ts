@@ -82,6 +82,30 @@ export function useRestoreVersion(tripId: number) {
   });
 }
 
+/**
+ * Exchanges two dates of the trip — "move Day 2 to be Day 3".
+ *
+ * A SWAP, not a reorder: Day 3 comes back to Day 2 rather than being pushed
+ * along. Everything the date owns travels with it, lodging included, and
+ * either date may be empty. The whole trip comes back rather than one day,
+ * because two days changed, so the list is written back whole.
+ *
+ * 422 `day_outside_trip` / `invalid_day` are the only refusals; the screen
+ * shows them through its ordinary save-failed toast.
+ */
+export function useSwapDays(tripId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ a, b }: { a: string; b: string }) =>
+      api.post<{ trip_days: TripDay[] }>(`/trips/${tripId}/itinerary/swap_days`, { a, b }).then((r) => r.trip_days),
+    onSuccess: (tripDays) => {
+      queryClient.setQueryData<TripDay[]>(queryKeys.itinerary.trip(tripId), tripDays);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.itinerary.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.schedule.all });
+    },
+  });
+}
+
 /** Archives a version. Rejected with a 422 when it is the day's last live one. */
 export function useArchiveVersion(tripId: number) {
   const applyTripDay = useApplyTripDay(tripId);

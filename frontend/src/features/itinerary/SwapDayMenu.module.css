@@ -1,0 +1,91 @@
+/* The trigger and its popup. Same shapes as the rail's ⋯ menu
+   (UnplacedRail.module.css) — one menu pattern on this screen, not two. */
+.wrap {
+  flex: none;
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 32px: the pointer floor. */
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.trigger:hover {
+  opacity: 0.7;
+}
+
+.trigger:active {
+  opacity: 0.55;
+}
+
+.trigger:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Card tone with a strong hairline — no shadow, so the border is what
+   separates it from whatever is behind. */
+.menu {
+  position: absolute;
+  top: 34px;
+  right: 0;
+  z-index: 5;
+  width: 220px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.item {
+  background: none;
+  border: none;
+  border-radius: var(--radius-card);
+  padding: 9px 10px;
+  /* 32px rather than 48px: a long trip's list would otherwise run off a short
+     window. Same call the rail's menu makes. */
+  min-height: 32px;
+  text-align: left;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.item:hover {
+  opacity: 0.7;
+}
+
+.item:active {
+  opacity: 0.55;
+}
+
+.item:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.empty {
+  margin: 0;
+  padding: 9px 10px;
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}

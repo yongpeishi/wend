@@ -26,6 +26,12 @@ export type { ItineraryDragData } from './useDayDrop';
 export { DatesGate } from './DatesGate';
 export type { DatesGateProps } from './DatesGate';
 
+export { DateShiftWarningModal } from './DateShiftWarningModal';
+export type { DateShiftWarningModalProps } from './DateShiftWarningModal';
+
+export { SwapDayMenu } from './SwapDayMenu';
+export type { SwapDayChoice, SwapDayMenuProps } from './SwapDayMenu';
+
 export { ItineraryHeader } from './ItineraryHeader';
 export type { ItineraryHeaderProps } from './ItineraryHeader';
 

@@ -47,11 +47,28 @@ function renderRow(props: Partial<Parameters<typeof DayRow>[0]> = {}) {
   const onToggle = vi.fn();
   render(
     <DndContext>
-      <DayRow day={props.day ?? day()} isDropTarget={props.isDropTarget} onToggle={props.onToggle ?? onToggle} />
+      <DayRow
+        day={props.day ?? day()}
+        isDropTarget={props.isDropTarget}
+        swapChoices={props.swapChoices}
+        onSwapDay={props.onSwapDay}
+        onToggle={props.onToggle ?? onToggle}
+      />
     </DndContext>,
   );
   return { onToggle };
 }
+
+/** The row itself — the drop target and the card, around the toggle button. */
+function row(): HTMLElement {
+  return document.querySelector('[data-drop-id]') as HTMLElement;
+}
+
+const TRIP_DAYS = [
+  { day: '2026-10-12', label: 'Day 1 · Mon 12' },
+  { day: '2026-10-13', label: 'Day 2 · Tue 13' },
+  { day: '2026-10-14', label: 'Day 3 · Wed 14' },
+];
 
 describe('DayRow — what a closed day says about itself', () => {
   it('names the day and lists what is on it', () => {
@@ -135,12 +152,66 @@ describe('DayRow — as a drop target', () => {
   it('marks itself when the container says the drag is over it', () => {
     renderRow({ isDropTarget: true });
 
-    expect(screen.getByRole('button')).toHaveAttribute('data-drop-target', 'true');
+    expect(row()).toHaveAttribute('data-drop-target', 'true');
   });
 
   it('is unmarked the rest of the time', () => {
     renderRow();
 
-    expect(screen.getByRole('button')).not.toHaveAttribute('data-drop-target');
+    expect(row()).not.toHaveAttribute('data-drop-target');
+  });
+
+  // The only handle anything outside React — a browser check aiming a drag, a
+  // test laying out geometry — has on a target. The open day and the version
+  // columns have carried it since S7; the collapsed row was the gap.
+  it('names itself in the DOM, the way every other drop target does', () => {
+    renderRow();
+
+    expect(row()).toHaveAttribute('data-drop-id', 'itinerary-day-2026-10-13');
+  });
+});
+
+describe('DayRow — swapping it with another day', () => {
+  it('offers no swap at all when the container has not wired one', () => {
+    renderRow({ swapChoices: TRIP_DAYS });
+
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /^Swap/ })).not.toBeInTheDocument();
+  });
+
+  it('offers every other day of the trip, and never this one', async () => {
+    const user = userEvent.setup();
+    renderRow({ swapChoices: TRIP_DAYS, onSwapDay: vi.fn() });
+
+    await user.click(screen.getByRole('button', { name: 'Swap Day 2 · Tue 13 with another day' }));
+
+    expect(screen.getByRole('button', { name: 'Swap with Day 1 · Mon 12' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Swap with Day 3 · Wed 14' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Swap with Day 2 · Tue 13' })).not.toBeInTheDocument();
+  });
+
+  it('names the day it is exchanging with, and leaves the swap to the container', async () => {
+    const user = userEvent.setup();
+    const onSwapDay = vi.fn();
+    renderRow({ swapChoices: TRIP_DAYS, onSwapDay });
+
+    await user.click(screen.getByRole('button', { name: 'Swap Day 2 · Tue 13 with another day' }));
+    await user.click(screen.getByRole('button', { name: 'Swap with Day 3 · Wed 14' }));
+
+    expect(onSwapDay).toHaveBeenCalledWith('2026-10-14');
+  });
+
+  // A button cannot live inside a button, so the row is a toggle inside a
+  // wrapper rather than being the toggle itself. Opening the day must still be
+  // a click on the row, and the swap trigger must not open it.
+  it('keeps opening the day a click on the row, with the swap beside it', async () => {
+    const user = userEvent.setup();
+    const { onToggle } = renderRow({ swapChoices: TRIP_DAYS, onSwapDay: vi.fn() });
+
+    await user.click(screen.getByText('Day 2 · Tue 13'));
+    expect(onToggle).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: 'Swap Day 2 · Tue 13 with another day' }));
+    expect(onToggle).toHaveBeenCalledTimes(1);
   });
 });
