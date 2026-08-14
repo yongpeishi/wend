@@ -17,6 +17,22 @@ class Api::SessionsTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  # A session says who you are, not what you may reach: signing in is the start of
+  # the question, never the answer to it.
+  test "a session reaches only its own user's world" do
+    owner = create_user(email: "owner-sess@example.com")
+    theirs = create_trip(title: "Theirs", created_by: owner)
+    stranger = create_user(email: "stranger-sess@example.com")
+    sign_in_as(stranger)
+
+    get "/api/me"
+    assert_response :success
+    assert_equal stranger.id, JSON.parse(response.body).dig("user", "id")
+
+    get "/api/entries/#{theirs.id}"
+    assert_response :not_found
+  end
+
   test "POST /api/session signs in with correct credentials" do
     user = create_user(email: "sess@example.com")
     post "/api/session", params: { email: "sess@example.com", password: "password123" }, as: :json

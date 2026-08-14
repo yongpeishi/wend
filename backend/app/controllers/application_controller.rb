@@ -1,8 +1,14 @@
 class ApplicationController < ActionController::API
   include ActionController::Cookies
+  include Pundit::Authorization
 
   rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
   rescue_from ActiveRecord::RecordInvalid, with: :render_unprocessable
+
+  # Anything outside the user's world is a 404, never a 403: a 403 confirms the trip
+  # exists and makes trip ids enumerable, which undoes the feature. RecordNotFound is
+  # already rescued to 404 above, so scoped finds need no extra handling.
+  rescue_from Pundit::NotAuthorizedError, with: :render_not_found
 
   private
 

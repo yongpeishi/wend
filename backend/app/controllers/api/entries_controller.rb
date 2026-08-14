@@ -4,7 +4,9 @@ module Api
 
     def index
       trip_id = params[:trip_id].presence
-      scope = Entry.all
+      # Everything the caller may see, as an IN subquery -- every filter below chains
+      # onto it unchanged, and none of them can widen it.
+      scope = policy_scope(Entry)
       scope = scope.where(kind: params[:kind]) if params[:kind].present?
       scope = scope.where(category: params[:category]) if params[:category].present?
 
@@ -46,7 +48,8 @@ module Api
         parents: detail["parents"],
         children: detail["children"],
         votes: detail["votes"],
-        todos: detail["todos"]
+        todos: detail["todos"],
+        collaborators_count: detail["collaborators_count"]
       }
     end
 
@@ -54,10 +57,16 @@ module Api
       entry = Entry.new(entry_params)
       entry.created_by = current_user
 
+      # A create can insert a node into anyone's trip, so the gate is the parent's
+      # write rule, checked before anything is linked. With no parent this is a
+      # library entry, which belongs to whoever makes it.
+      parent = params[:parent_id].present? ? Entry.find(params[:parent_id]) : nil
+      parent ? authorize(parent, :write?) : authorize(entry, :create?)
+
       ActiveRecord::Base.transaction do
         entry.save!
-        if params[:parent_id].present?
-          EntryLink.create!(parent_id: params[:parent_id], child: entry, position: next_position(params[:parent_id]))
+        if parent
+          EntryLink.create!(parent_id: parent.id, child: entry, position: next_position(parent.id))
         end
       end
 
@@ -88,7 +97,7 @@ module Api
 
     def tree
       depth = (params[:depth] || 3).to_i
-      descendants = Entry.where(id: Entry.descendant_ids_of(@entry.id, depth_cap: depth)).to_a
+      descendants = policy_scope(Entry).where(id: Entry.descendant_ids_of(@entry.id, depth_cap: depth)).to_a
       render json: {
         entry: EntrySerializer.one(@entry, current_user: current_user),
         descendants: EntrySerializer.list(descendants, current_user: current_user)
@@ -101,7 +110,9 @@ module Api
     def lift
       ActiveRecord::Base.transaction do
         @entry.parent_links.destroy_all
-        @entry.update!(kind: "trip", category: nil)
+        # The lifter becomes the trip's owner: sync_owner_membership keys off the kind
+        # transition and reads created_by, so this has to be set before the save.
+        @entry.update!(kind: "trip", category: nil, created_by: current_user)
       end
       render json: { entry: EntrySerializer.one(@entry, current_user: current_user) }
     rescue ActiveRecord::RecordInvalid => e
@@ -111,7 +122,11 @@ module Api
     # Fold this trip into another: it becomes an idea and gains the target as
     # a parent, keeping all of its own descendants.
     def absorb
+      # Owner on both sides: absorbing puts one trip's whole tree inside another, so
+      # being owner of only the trip being folded away is not enough. @entry's side is
+      # checked by set_entry, via EntryPolicy#absorb?.
       into = Entry.find(params[:into_id])
+      authorize into, :manage?
       ActiveRecord::Base.transaction do
         @entry.update!(kind: "idea")
         EntryLink.create!(parent: into, child: @entry, position: next_position(into.id))
@@ -125,6 +140,11 @@ module Api
     # children linked (not deep-copied), sitting alongside the original under
     # the same parent(s) so two versions can be compared side by side.
     def fork
+      # A fork lands beside the original under every one of its parents, so it writes
+      # into each of them. Checked up front rather than inside the transaction: a
+      # denial is a 404, not a half-built copy rolled back.
+      @entry.parents.each { |parent| authorize parent, :write? }
+
       new_entry = nil
       ActiveRecord::Base.transaction do
         new_entry = @entry.dup
@@ -149,8 +169,13 @@ module Api
 
     private
 
+    # Two gates, not one: the scope decides whether this id exists as far as the
+    # caller is concerned (so an invisible entry is a 404 from find, indistinguishable
+    # from a deleted one), and the policy decides whether this particular action is
+    # allowed on it.
     def set_entry
-      @entry = Entry.find(params[:id])
+      @entry = policy_scope(Entry).find(params[:id])
+      authorize @entry
     end
 
     def next_position(parent_id)

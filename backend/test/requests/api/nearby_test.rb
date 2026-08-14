@@ -7,6 +7,13 @@ class Api::NearbyTest < ActionDispatch::IntegrationTest
     @trip = create_trip(created_by: @user)
   end
 
+  test "requires access to the trip" do
+    theirs = create_trip(created_by: create_user)
+
+    get "/api/trips/#{theirs.id}/nearby", params: { lat: 35.0, lng: 135.7594, radius_km: 5 }
+    assert_response :not_found
+  end
+
   test "returns entries within radius_km with distance_km, ordered nearest first" do
     # Kyoto station area
     near = create_idea(title: "Near", created_by: @user, lat: 35.0000, lng: 135.7594)

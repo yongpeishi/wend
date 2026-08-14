@@ -27,6 +27,15 @@ export interface IdeaRowProps {
    */
   onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
+  /**
+   * May you change this trip? A prop rather than `useCanEdit()` because this row
+   * already takes every one of its verbs as a callback from the board — the
+   * capability arrives by the same road as the actions it governs, so a row
+   * rendered outside a trip (or in a test) says so in one place instead of
+   * needing a provider around it. Defaults to true: the not-in-a-trip case is
+   * yours, exactly as `tripRole.ts` reads a null role.
+   */
+  canEdit?: boolean;
 }
 
 /**
@@ -132,11 +141,16 @@ export function IdeaRow({
   onToggleSelect,
   onEdit,
   onToast,
+  canEdit = true,
 }: IdeaRowProps) {
   const navigate = useNavigate();
+  // Disabled, not merely un-gripped: dnd-kit binds its listeners to whatever
+  // element takes them, and a viewer with a keyboard would still be able to
+  // start a drag that the server is only going to refuse.
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `idea-${entry.id}`,
     data: { entryId: entry.id, title: entry.title },
+    disabled: !canEdit,
   });
 
   const state = ideaState(entry);
@@ -227,26 +241,36 @@ export function IdeaRow({
         {bundleNames.length > 0 && <span className={styles.bundleLine}>in {bundleNames.join(', ')}</span>}
       </button>
 
-      <div className={styles.actions}>
-        <IdeaActionsMenu
-          entry={entry}
-          bundles={bundles}
-          members={members}
-          onEdit={edit}
-          onToast={onToast}
-        />
+      {/*
+        A viewer gets the row and nothing else on it. Not a greyed ⋯ and not a
+        grip that refuses — an unlabelled handle that does nothing is worse than
+        an absent one, and doc/architecture.md §5 will not let a control be
+        greyed to mean "no". Everything the row SAYS is above this line and is
+        untouched: title, category, meta, the bundles it sits in, and the button
+        that opens it for reading.
+      */}
+      {canEdit && (
+        <div className={styles.actions}>
+          <IdeaActionsMenu
+            entry={entry}
+            bundles={bundles}
+            members={members}
+            onEdit={edit}
+            onToast={onToast}
+          />
 
-        <button
-          type="button"
-          ref={setNodeRef}
-          {...listeners}
-          {...attributes}
-          className={[styles.iconButton, styles.grip].join(' ')}
-          aria-label={`Drag ${entry.title} onto a bundle to add it there`}
-        >
-          <GripVertical size={18} strokeWidth={1.5} aria-hidden="true" />
-        </button>
-      </div>
+          <button
+            type="button"
+            ref={setNodeRef}
+            {...listeners}
+            {...attributes}
+            className={[styles.iconButton, styles.grip].join(' ')}
+            aria-label={`Drag ${entry.title} onto a bundle to add it there`}
+          >
+            <GripVertical size={18} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,6 +9,26 @@ class Api::ScheduleItemsTest < ActionDispatch::IntegrationTest
     link!(parent: @trip, child: @idea)
   end
 
+  # PATCH and DELETE /api/schedule_items/:id carry no trip_id, so the row's own trip
+  # is the only authority there is.
+  test "requires access to the trip, including on the routes that carry no trip_id" do
+    their_trip = create_trip(created_by: create_user)
+    their_item = ScheduleItem.create!(trip: their_trip, day: "2026-04-01", starts_at_minutes: 540)
+
+    get "/api/trips/#{their_trip.id}/schedule"
+    assert_response :not_found
+
+    post "/api/trips/#{their_trip.id}/schedule", params: { schedule_item: { day: "2026-04-01" } }, as: :json
+    assert_response :not_found
+
+    patch "/api/schedule_items/#{their_item.id}", params: { schedule_item: { starts_at_minutes: 600 } }, as: :json
+    assert_response :not_found
+
+    delete "/api/schedule_items/#{their_item.id}"
+    assert_response :not_found
+    assert ScheduleItem.exists?(their_item.id)
+  end
+
   test "POST creates a schedule item for a trip" do
     post "/api/trips/#{@trip.id}/schedule",
          params: { schedule_item: { entry_id: @idea.id, day: "2026-04-01", starts_at_minutes: 540, ends_at_minutes: 600 } },

@@ -25,7 +25,8 @@ module Api
     SQL
 
     def index
-      trip = Entry.find(params[:trip_id])
+      trip = policy_scope(Entry).find(params[:trip_id])
+      authorize trip, :show?
       lat = params[:lat].to_f
       lng = params[:lng].to_f
       radius_km = (params[:radius_km] || 2).to_f
@@ -50,9 +51,13 @@ module Api
         distances = distances.reject { |id, _| scheduled_ids.include?(id) }
       end
 
-      entries_by_id = Entry.where(id: distances.keys).index_by(&:id)
-      results = distances.keys.map do |id|
-        EntrySerializer.one_with_distance(entries_by_id[id], distances[id], current_user: current_user, trip_id: trip.id)
+      entries_by_id = policy_scope(Entry).where(id: distances.keys).index_by(&:id)
+      # filter_map, not map: everything under a visible trip is visible, so the scope
+      # above should drop nothing -- but if it ever does, skip the row rather than
+      # serialize a nil.
+      results = distances.keys.filter_map do |id|
+        entry = entries_by_id[id]
+        EntrySerializer.one_with_distance(entry, distances[id], current_user: current_user, trip_id: trip.id) if entry
       end
 
       render json: { entries: results }

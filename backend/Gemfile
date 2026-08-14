@@ -26,6 +26,10 @@ gem "thruster", require: false
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors"
 
+# Authorization: plain policy objects plus the deny-by-default after_action hooks
+# (verify_authorized / verify_policy_scoped) that make a missed check a test failure.
+gem "pundit", "~> 2.5"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
