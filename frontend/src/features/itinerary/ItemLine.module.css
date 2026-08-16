@@ -1,0 +1,125 @@
+/* One placed thing. Card tone with a hairline edge, the same row language as
+   the idea list — a bundle member and a loose idea are drawn identically on
+   purpose. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  /* 11px 13px: the design's own row geometry, between --space-3 and --space-4. */
+  padding: 11px 13px;
+}
+
+/* The fixed 104px time column is what makes the day scannable down its left
+   edge. The design sets it at 12px; --text-min-size (15px) is this product's
+   readable floor, so the column keeps its width and takes the larger type. */
+.time {
+  flex: none;
+  width: 104px;
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+  text-align: left;
+}
+
+/* The time is the control: clicking it opens the editor in place. */
+.timeButton {
+  background: none;
+  border: none;
+  padding: 0;
+  /* The line is dense, so this sits under the 48px touch minimum by design —
+     it is never the only way to set the hours (the ⋯ menu route places an item
+     with a slot already chosen), and it clears the 32px pointer floor. */
+  min-height: 32px;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.timeButton:hover {
+  opacity: 0.7;
+}
+
+.timeButton:active {
+  opacity: 0.55;
+}
+
+.timeButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+}
+
+/* The design sets metadata at 13px; raised to the 15px floor. */
+.meta {
+  flex: none;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+.remove {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 32px: the pointer floor. The row is one line tall and a 48px control would
+     set the height of every item on the day. */
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.remove:hover {
+  opacity: 0.7;
+}
+
+.remove:active {
+  opacity: 0.55;
+}
+
+.remove:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Narrow list (a split day drawn side by side, or a squeezed window): the
+   clock, the title, the metadata and the close button no longer fit on one
+   line, and left alone the title is the thing that breaks — mid-phrase, which
+   is the least readable place to break it. So the metadata drops to its own
+   line under the title, indented to the same mono column, and the title keeps
+   the whole width of the row.
+
+   The same rule and the same threshold govern a bundle's members
+   (BundleBand.module.css), because a member and a loose idea have to keep
+   looking identical at every width. The container is VersionItems' .rows. */
+@container itinerary-rows (max-width: 430px) {
+  .line {
+    flex-wrap: wrap;
+    row-gap: var(--space-1);
+  }
+
+  .meta {
+    /* Ordered after the close button so the button stays on the first line
+       where the rest of the row's controls are. */
+    order: 1;
+    flex: 1 1 100%;
+    padding-left: calc(104px + var(--space-3));
+  }
+}

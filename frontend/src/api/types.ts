@@ -56,11 +56,19 @@ export interface Entry {
   distance_km?: number;
 }
 
+/**
+ * The compact form of an Entry that other resources embed — `parents`,
+ * `Todo.entry`, and the itinerary's `ItineraryItem.entry`/`members`. Mirrors
+ * `EntrySerializer.summary`. `duration_minutes` and `location_name` carry the
+ * same nullability they have on the full `Entry`.
+ */
 export interface EntrySummary {
   id: number;
   kind: EntryKind;
   title: string;
   category: EntryCategory | null;
+  duration_minutes: number | null;
+  location_name: string | null;
 }
 
 /**
@@ -119,11 +127,62 @@ export interface ScheduleItem {
   entry_id: number | null;
   chosen_entry_id: number | null;
   day: string;
+  /**
+   * Which version of the day this item sits in — see DayVersion. Nullable
+   * because the column stays nullable for legacy rows written through
+   * POST /api/trips/:id/schedule before the itinerary existed; every item the
+   * itinerary creates has one.
+   */
+  day_version_id: number | null;
   /** Minutes from midnight, 0..1439. Null = unscheduled that day. */
   starts_at_minutes: number | null;
   ends_at_minutes: number | null;
   note: string | null;
   position: number;
+}
+
+// ---- Itinerary -----------------------------------------------------------
+// A trip day can be planned more than one way. Each way is a "version" — an
+// alternative running order for the same date ("Version A", "Version B") that
+// you compare side by side and then settle with `keep`. Keeping one version
+// archives its siblings rather than deleting them: `archived_at` means
+// "kept, but not the one we chose", and an archived version can be restored.
+
+/** A ScheduleItem as the itinerary endpoints serialize it, with its entry inlined. */
+export interface ItineraryItem extends ScheduleItem {
+  entry: EntrySummary | null;
+  /** The bundle's direct children in link order. Empty unless entry.kind === 'bundle'. */
+  members: EntrySummary[];
+}
+
+/** One alternative plan for a single day. */
+export interface DayVersion {
+  id: number;
+  trip_day_id: number;
+  /** "Version A", "Version B", … — renamed as versions are kept and restored. */
+  name: string;
+  position: number;
+  /** Set = this version was kept aside rather than chosen. Null = live. */
+  archived_at: string | null;
+  /** Ordered by starts_at_minutes, then position. */
+  schedule_items: ItineraryItem[];
+}
+
+/** One date of a trip, from GET /api/trips/:trip_id/itinerary. */
+export interface TripDay {
+  id: number;
+  trip_id: number;
+  /** ISO date, "2026-10-12". */
+  day: string;
+  lodging_entry_id: number | null;
+  /** Free text, for when where you sleep is not a kept place ("On the plane"). */
+  lodging_label: string | null;
+  /** Resolved by the server: the entry's title, else lodging_label, else null. */
+  lodging_title: string | null;
+  /** Live versions only, ordered by position. Always at least one. */
+  versions: DayVersion[];
+  /** Kept-but-not-chosen versions, most recently archived first. */
+  archived_versions: DayVersion[];
 }
 
 export interface User {
@@ -188,6 +247,13 @@ export interface CreateEntryParams {
 
 export interface UpdateEntryParams {
   entry: EntryWritePayload;
+  /**
+   * Only read when the write moves a trip's dates. Moving them moves the whole
+   * plan by the same delta (Day 2 stays Day 2), and a shorter trip can push
+   * planned days off the end — the server refuses that with
+   * `DroppedDaysBody` until this says yes. Defaults to false.
+   */
+  confirm_dropped_days?: boolean;
 }
 
 export interface EntriesQuery {
@@ -214,9 +280,23 @@ export interface TodosQuery {
 export type ScheduleItemWritePayload = Partial<
   Pick<
     ScheduleItem,
-    'entry_id' | 'chosen_entry_id' | 'day' | 'starts_at_minutes' | 'ends_at_minutes' | 'note' | 'position'
+    | 'entry_id'
+    | 'chosen_entry_id'
+    | 'day'
+    // Omitted on create = the day's first live version, created if the day has none.
+    | 'day_version_id'
+    | 'starts_at_minutes'
+    | 'ends_at_minutes'
+    | 'note'
+    | 'position'
   >
 >;
+
+/**
+ * PATCH /api/trips/:trip_id/days/:day — the lodging is all a day owns directly.
+ * Sending both keys as null clears it.
+ */
+export type TripDayWritePayload = Partial<Pick<TripDay, 'lodging_entry_id' | 'lodging_label'>>;
 
 /** Only what the reporter may set — `status` and `user_id` are server-owned. */
 export type FeedbackWritePayload = Pick<Feedback, 'message'> &
@@ -239,4 +319,22 @@ export interface ValidationErrorBody {
 /** { "error": "message" } — generic 4xx/5xx shape. */
 export interface SimpleErrorBody {
   error: string;
+}
+
+/**
+ * The 422 PATCH /api/entries/:id answers with when the new dates would push
+ * planned days off the end of the trip. Nothing has changed when this arrives:
+ * the attempt is its own preview, and re-sending with `confirm_dropped_days`
+ * is what applies it.
+ *
+ * `dropped_days` are the dates AFTER the shift, ascending;
+ * `dropped_item_count` is how many ideas go back to "Not placed yet" — the
+ * count the warning promises, not the number of placements on those days. An
+ * idea also placed on a day inside the new dates stays placed and is not one
+ * of them, and one idea placed twice counts once.
+ */
+export interface DroppedDaysBody {
+  error: 'dropped_days_need_confirmation';
+  dropped_days: string[];
+  dropped_item_count: number;
 }

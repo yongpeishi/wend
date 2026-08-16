@@ -15,8 +15,8 @@ module ActiveSupport
       User.create!(name: name, email: email, password: password)
     end
 
-    def create_trip(title: "Trip", created_by: create_user)
-      Entry.create!(kind: "trip", title: title, created_by: created_by)
+    def create_trip(title: "Trip", created_by: create_user, **attrs)
+      Entry.create!(kind: "trip", title: title, created_by: created_by, **attrs)
     end
 
     def create_idea(title: "Idea", category: "place", created_by: create_user, **attrs)

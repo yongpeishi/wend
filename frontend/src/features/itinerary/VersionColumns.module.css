@@ -1,0 +1,95 @@
+/* Side by side while a day is split. The columns wrap rather than scroll: two
+   plans squeezed to 150px each are unreadable, and a narrow window is exactly
+   when you most need to read them. */
+.columns {
+  display: flex;
+  gap: var(--space-3);
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+/* Paper tone inside the day's card, so a version reads as a hollow in the day.
+   Each column stretches to the tallest so the Keep buttons line up. */
+.column {
+  flex: 1 1 300px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--surface-page);
+  border-radius: var(--radius-card);
+  /* 14px: the vertical rhythm sits between --space-3 (12) and --space-4 (16). */
+  padding: 14px;
+}
+
+/* Mid-drag, the column under the pointer takes the same leaf outline the whole
+   day takes — the aim point of a split day is the column, so it has to say so
+   in exactly the language the day says it in. Green means "this will land
+   here"; apricot is only ever "you are here". */
+.column[data-drop-target] {
+  outline: var(--border-width-strong) solid var(--wend-leaf);
+  outline-offset: 2px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.name {
+  margin: 0;
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+/* Raised from the design's 12px to --text-min-size, the readable floor. */
+.note {
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+/* The dashed invitation, the same shape as the one on a single-version day. */
+.add {
+  border: var(--border-width) dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  background: transparent;
+  padding: 11px 12px;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+  text-align: center;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.add:hover {
+  opacity: 0.7;
+}
+
+.add:active {
+  opacity: 0.55;
+}
+
+.add:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Pushed to the foot of the column so the two Keep buttons sit on one line
+   however uneven the two plans are. --radius-card, like every button here —
+   the design's 99px pill is not this codebase's button. */
+.keep {
+  margin-top: auto;
+  width: 100%;
+}

@@ -17,9 +17,10 @@
 
    The 480px ceiling is the same arithmetic from the other side: none of that
    chrome grows, so every pixel past it lands on one line of title text in an
-   increasingly empty card. TripLayout caps the board at 1360px, so an unclamped
-   40% would top out near 528px — wide enough to read as a second page instead
-   of a rail, which is exactly what the fixed width was protecting against.
+   increasingly empty card. The ceiling matters more now that the board takes
+   the full body width — 34% of a 2300px board is 780px, wide enough to read as
+   a second page instead of a rail, which is exactly what the fixed width was
+   protecting against.
 
    The gap is zero on purpose. BundlePanel draws the design's rail itself: a
    hairline border-left, the card ground behind it and its own 24px inner
@@ -69,7 +70,21 @@
    remaining readable — the design's aside carries no member rows at all, so
    240px is a number about a different drawing. Report: this is a deliberate
    departure from the handoff. */
+
+/* Full body width, and none of the shell's gutter. TripLayout pads every screen
+   by --gutter-screen and caps it at 1360px; the board wants neither. The cap
+   was the whole reason a wider desk never reached the map — the rail is a
+   percentage, so the two columns split a frozen 1320px between them and the map
+   stayed near its 380px basis even on a 2560px monitor. The gutter goes because
+   the bundle rail's card ground and hairline are an EDGE of the page, not a
+   panel floating 20px in from one; it comes back on .ideas alone, which is the
+   only part of the board that is read rather than framed.
+
+   --screen-measure is TripLayout's opt-out; the negative margin cancels its
+   gutter exactly, so the grid fills the shell's border box and no more. */
 .grid {
+  --screen-measure: none;
+  margin-inline: calc(var(--gutter-screen) * -1);
   --board-rail-height: calc(100vh - 240px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) clamp(336px, 34%, 480px);
@@ -78,11 +93,16 @@
   min-height: var(--board-rail-height);
 }
 
+/* The left gutter is the shell's own --gutter-screen, so the filter row and the
+   ideas start on the same vertical as the trip title above them. The right side
+   keeps the wider --space-8: that edge is not the window, it is the strip of
+   paper before the rail's hairline, and it does the job a grid gap cannot. */
 .ideas {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  padding-left: var(--gutter-screen);
   padding-right: var(--space-8);
 }
 
@@ -138,10 +158,36 @@
 }
 
 /* The wider basis of the two: this is the column being read, so when there is
-   not enough room for both preferences the list keeps more of what there is. */
+   not enough room for both preferences the list keeps more of what there is.
+
+   The ceiling is the other half of that bargain. An idea row is a title, a
+   couple of meta chips and a state dot — a line of text — so past a reading
+   measure the extra width lands on white space inside the card and the row gets
+   HARDER to scan, not easier. Without a ceiling the two cells share every
+   surplus pixel evenly, which is why widening the window used to widen the list
+   and the map in lockstep and the map never actually gained anything. Capped,
+   the list stops at its measure and the whole surplus goes to the map: at
+   1920px that is a ~566px map instead of ~380px, and at 2560px a ~1200px one.
+
+   560px, written out rather than taken from --measure-body. This used to read
+   `max-width: var(--measure-body)` under a comment calling that "66ch, ~560px
+   at the 17px body size" — the arithmetic was wrong by 30%. A ch in this face
+   is about 11px, not 8.5, so 66ch computes to 727px in the browser, and the two
+   numbers above were both written against the 560px the author believed they
+   were getting: at 1920px a 727px list leaves the map 399px, nineteen pixels
+   over its own flex basis, which is not "the whole surplus goes to the map" and
+   does not answer the request this cap came from. At 560px the map gets the
+   566px and the ~1200px the paragraph promises.
+
+   The token stays as it is — six other files read --measure-body for actual
+   prose, where 727px is a defensible measure and not this file's business. An
+   idea row is not prose: it is one line of title plus a couple of meta chips,
+   with about 26px of its own chrome, so it wants the tighter number. .noneInView
+   below is a real sentence and keeps the shared token. */
 .listCell {
   flex: 1 1 440px;
   min-width: 320px;
+  max-width: 560px;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -160,13 +206,14 @@
 
 /* The floor cannot push the board sideways on the way down to this
    breakpoint. At 901px — the last viewport width that still gets two columns —
-   the shell has already spent 246px on the sidebar and 40px on TripLayout's
-   gutters, leaving a 615px grid. The rail takes its floor — 336px, or 384px on
-   touch — and the ideas column, sized minmax(0, 1fr) and carrying min-width: 0,
-   absorbs the rest rather than refusing to shrink. Neither floor is close to
-   615px, so the board never gains a horizontal scrollbar on the way down here;
-   raising a floor past ~570px, or giving the ideas column a min-width, is what
-   would bring one back. */
+   the shell has already spent 246px on the sidebar, leaving a 655px grid — the
+   board cancels TripLayout's 40px of gutters, so it is 40px wider here than it
+   used to be. The rail takes its floor — 336px, or 384px on touch — and the
+   ideas column, sized minmax(0, 1fr) and carrying min-width: 0, absorbs the
+   rest rather than refusing to shrink. Neither floor is close to 655px, so the
+   board never gains a horizontal scrollbar on the way down here; raising a
+   floor past ~600px, or giving the ideas column a min-width, is what would
+   bring one back. */
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
@@ -181,8 +228,17 @@
 
   /* Stacked, the rail is no longer beside anything, so the reserved strip
      would just be a ragged right edge. BundlePanel moves its own hairline to
-     its top edge at this width. */
+     its top edge at this width. The right side takes the plain screen gutter
+     instead of nothing: the grid cancels TripLayout's padding, so zero here
+     would put the idea cards against the window edge. */
   .ideas {
-    padding-right: 0;
+    padding-right: var(--gutter-screen);
+  }
+
+  /* One column means the map is stacked above the list rather than beside it,
+     so the ceiling has nothing to hand its surplus to — it would just leave a
+     strip of empty paper down the right of the list, under a full-width map. */
+  .listCell {
+    max-width: none;
   }
 }

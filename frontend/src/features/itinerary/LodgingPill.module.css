@@ -1,0 +1,63 @@
+/* The lodging pill. --radius-pill is right here: this is a true chip, one of
+   the only two on the screen (the other is the day's status tag). Everything
+   else, buttons included, takes --radius-card. */
+.pill {
+  max-width: 220px;
+  min-width: 0;
+  /* Chip sits at 48px in a header row of 32px controls; this is the same
+     32px pointer floor the rest of the day header keeps to. */
+  min-height: 32px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.icon {
+  flex: none;
+  color: var(--wend-plum);
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-regular);
+  color: var(--text-strong);
+}
+
+/* Unset: the same shape drawn as an outline, so a day with no bed and a day
+   with one keep the same header rhythm. Plum-tint, because it is still the
+   lodging slot — just empty. */
+.empty {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 6px 14px;
+  border: var(--border-width) dashed var(--wend-plum-tint);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.empty:hover {
+  opacity: 0.75;
+}
+
+.empty:active {
+  opacity: 0.6;
+}
+
+.empty:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.iconEmpty {
+  flex: none;
+  color: var(--wend-plum-tint);
+}

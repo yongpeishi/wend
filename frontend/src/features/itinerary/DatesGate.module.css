@@ -1,0 +1,105 @@
+/* One card, centred on the page. It replaces the screen rather than sitting
+   over it — there is nothing behind it to come back to yet. */
+.gate {
+  display: flex;
+  justify-content: center;
+  padding: 56px var(--space-12);
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+  box-sizing: border-box;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The uppercase eyebrow keeps its letter-spacing but takes --text-min-size
+   (15px) rather than the design's 12px — the floor applies to caps too. */
+.eyebrow {
+  margin: 0;
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+/* An <h2> under TripLayout's trip title, but sized as the focus of the screen
+   rather than as a section label — the card is the whole page while the gate
+   is up, and the question is the thing you answer. Heading level is semantics
+   here, not size. */
+.title {
+  margin: 0;
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.body {
+  margin: 0;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-body);
+  max-width: var(--measure-body);
+}
+
+.fields {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.fields > * {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+/* A date is data, so it is set in the mono face. */
+.dateInput {
+  font-family: var(--font-mono);
+  font-size: var(--text-body-size);
+}
+
+.lengths {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Raised from the design's 14px to --text-min-size, the readable floor. */
+.lengthsLabel {
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+/* Paper inside the card: the quiet reassurance that nothing kept is lost. */
+.kept {
+  margin: 0;
+  background: var(--surface-page);
+  border-radius: var(--radius-card);
+  padding: 14px var(--space-4);
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-body);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}

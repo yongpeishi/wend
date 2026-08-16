@@ -217,6 +217,17 @@ ScheduleItem.find_or_create_by!(trip: japan, entry: shibuya_afternoon, day: "202
   s.note = "Harajuku first, then down to Shibuya, then sit in the park."
 end
 
+# The itinerary view of the same rows. Everything placed above lands on that
+# day's "Version A"; the Higashiyama day also gets a second version to compare
+# against and somewhere to sleep, so the screen has all its states on first run.
+ScheduleItem.where(trip: japan, day_version_id: nil).find_each do |item|
+  item.update!(day_version: TripDay.ensure!(trip_id: japan.id, day: item.day).first_live_version)
+end
+
+higashiyama_trip_day = TripDay.ensure!(trip_id: japan.id, day: "2026-11-10")
+higashiyama_trip_day.update!(lodging_entry: hotel)
+higashiyama_trip_day.fork! if higashiyama_trip_day.day_versions.count < 2
+
 # --- Malaysia trip: lift/absorb exercise ------------------------------------
 
 malaysia = entry!(kind: "trip", title: "Malaysia", created_by: peter, description: "Not yet sure how many days.")

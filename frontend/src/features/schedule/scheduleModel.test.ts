@@ -41,6 +41,7 @@ function makeItem(overrides: Partial<ScheduleItem>): ScheduleItem {
     entry_id: null,
     chosen_entry_id: null,
     day: '2026-11-02',
+    day_version_id: null,
     starts_at_minutes: null,
     ends_at_minutes: null,
     note: null,

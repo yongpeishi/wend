@@ -1,0 +1,158 @@
+/* The bundle band. A tint and nothing else — no border, no heavier type, no
+   shadow: grouping is sub-information, not hierarchy. --radius-card, like the
+   rows it wraps. */
+.band {
+  background: var(--wend-hatch-b);
+  border-radius: var(--radius-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  /* 8px 10px 10px: the design's own band inset, snug around its member rows. */
+  padding: var(--space-2) 10px 10px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: 0 3px 2px;
+}
+
+/* The uppercase eyebrow keeps its letter-spacing but takes --text-min-size
+   (15px) rather than the design's 12px — the floor applies to caps too. */
+.label {
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+/* Raised from the design's 12px to the 15px floor. */
+.span {
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.spanButton {
+  background: none;
+  border: none;
+  padding: 0;
+  /* 32px: the pointer floor. A 48px control here would push the band's head
+     taller than the member rows it labels. */
+  min-height: 32px;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.spanButton:hover {
+  opacity: 0.7;
+}
+
+.spanButton:active {
+  opacity: 0.55;
+}
+
+.spanButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* margin-left: auto — the only action in the head, pinned to its right edge. */
+.remove {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.remove:hover {
+  opacity: 0.7;
+}
+
+.remove:active {
+  opacity: 0.55;
+}
+
+.remove:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* A member reads exactly like a loose idea — same tone, same radius, same
+   geometry as ItemLine, minus the hairline border the tint already replaces. */
+.member {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  background: var(--surface-card);
+  border-radius: var(--radius-card);
+  padding: 11px 13px;
+}
+
+/* The same fixed 104px mono column as ItemLine, holding the member's derived
+   share of the bundle's span. Identical geometry is the point: a bundle member
+   and a loose idea are the same kind of thing on the day. */
+.memberTime {
+  flex: none;
+  width: 104px;
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.memberTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+}
+
+/* Raised from the design's 13px to the 15px floor. */
+.memberMeta {
+  flex: none;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+/* Narrow column (a split day side by side, or any window that squeezes one):
+   the head and the member rows are asked to hold four things on a line that no
+   longer has room for four things. Rather than let the last one fall off the
+   end on its own, the break is chosen — the band's name takes its own line
+   above the clock and its actions, and a member's metadata drops under its
+   title, aligned to the same mono column so the row still reads as one row.
+   The title then has the whole remaining width and stops breaking mid-phrase.
+
+   The container is declared on VersionItems' .rows, which wraps every list of
+   items on this screen, so the same threshold governs the open day, a version
+   column and anywhere else these rows are drawn. */
+@container itinerary-rows (max-width: 430px) {
+  .label {
+    flex: 1 1 100%;
+  }
+
+  .member {
+    flex-wrap: wrap;
+    row-gap: var(--space-1);
+  }
+
+  .memberMeta {
+    flex: 1 1 100%;
+    /* The mono column plus the row's gap: the metadata lines up under the
+       title it belongs to rather than under the clock. */
+    padding-left: calc(104px + var(--space-3));
+  }
+}

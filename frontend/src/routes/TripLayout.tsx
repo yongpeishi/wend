@@ -5,7 +5,7 @@ import { Spinner } from '../components/Spinner';
 import { formatTripDates } from '../lib/formatDates';
 import styles from './TripLayout.module.css';
 
-const TAB_KEYS = ['board', 'map', 'schedule', 'checklist'];
+const TAB_KEYS = ['board', 'itinerary', 'checklist', 'schedule', 'map'];
 
 /**
  * Which tab the current URL is on. `/trips/:id` itself is the board. The tab
