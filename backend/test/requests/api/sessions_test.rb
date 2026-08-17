@@ -58,4 +58,57 @@ class Api::SessionsTest < ActionDispatch::IntegrationTest
     get "/api/me"
     assert_response :unauthorized
   end
+
+  # The tests above share their cookie jar with the server, so they would still
+  # pass if the browser were never told to drop the cookie. These assert on the
+  # wire instead: the Set-Cookie header the browser actually receives.
+  test "DELETE /api/session tells the browser to expire the user_id cookie" do
+    user = create_user
+    sign_in_as(user)
+    delete "/api/session"
+    assert_response :no_content
+
+    directives = user_id_set_cookie
+    assert directives, "expected a Set-Cookie for user_id on sign out"
+    assert_equal "", directives.first.split("=", 2).last, "expected the cookie value to be emptied"
+    assert_includes directives, "expires=thu, 01 jan 1970 00:00:00 gmt"
+  end
+
+  test "DELETE /api/session clears the cookie on the same path sign in set it on" do
+    user = create_user
+    sign_in_as(user)
+    assert_includes user_id_set_cookie, "path=/", "sign in should scope the cookie to the whole site"
+
+    delete "/api/session"
+    assert_includes user_id_set_cookie, "path=/", "a delete on a narrower path would not match the cookie"
+  end
+
+  test "DELETE /api/session is 204 when already signed out" do
+    delete "/api/session"
+    assert_response :no_content
+  end
+
+  test "signing out ends access to protected endpoints, not just /api/me" do
+    user = create_user
+    sign_in_as(user)
+    get "/api/entries"
+    assert_response :success
+
+    delete "/api/session"
+
+    get "/api/entries"
+    assert_response :unauthorized
+  end
+
+  private
+
+  # The `user_id=...` cookie from the last response, split into its lowercased
+  # directives (`["user_id=", "path=/", ...]`), or nil if the response set none.
+  def user_id_set_cookie
+    header = response.headers["Set-Cookie"]
+    return nil if header.blank?
+
+    cookie = Array(header).flat_map { |value| value.split("\n") }.find { |value| value.start_with?("user_id=") }
+    cookie&.split(";")&.map { |directive| directive.strip.downcase }
+  end
 end

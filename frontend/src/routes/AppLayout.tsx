@@ -5,6 +5,7 @@ import { useEntry } from '../api/entries';
 import { useCollaborators } from '../api/collaborators';
 import { useAuth } from '../auth/AuthContext';
 import { canShare } from '../auth/tripRole';
+import { useToast } from '../components/Toast';
 import { FeedbackButton } from '../features/feedback/FeedbackButton';
 import { SharePanel } from '../features/trips/SharePanel';
 import { formatTripDates, formatTripLength, joinMeta } from '../lib/formatDates';
@@ -51,7 +52,22 @@ function initial(name: string): string {
  * everything inside it belongs to the trip named at the top.
  */
 export function AppLayout() {
-  const { signOut } = useAuth();
+  const { signOut, isSigningOut } = useAuth();
+  const { show } = useToast();
+
+  /*
+   * Signing out is a request that can fail, so it is treated as one. The
+   * rejection is caught here — left uncaught it was an unhandled promise and
+   * the traveller was silently left signed in — and the failure is said out
+   * loud, in the one place they just clicked.
+   *
+   * There is deliberately no redirect on success: ProtectedRoute already
+   * navigates to /signin the moment `user` goes null, and a second navigation
+   * would race it.
+   */
+  const handleSignOut = () => {
+    signOut().catch(() => show('Could not sign you out. Check your connection and try again.', 'error'));
+  };
 
   // `/trips/:id/*` covers every child view; the bare pattern catches the index
   // route on routers that do not let the splat match zero segments. Both hooks
@@ -196,8 +212,11 @@ export function AppLayout() {
           )}
         </div>
 
-        <button type="button" className={styles.signOut} onClick={() => signOut()}>
-          Sign out
+        {/* The label carries the pending state rather than a spinner: this is a
+            text control, and "Signing out…" is both the status and the reason
+            the button has stopped taking clicks. */}
+        <button type="button" className={styles.signOut} onClick={handleSignOut} disabled={isSigningOut}>
+          {isSigningOut ? 'Signing out…' : 'Sign out'}
         </button>
       </nav>
 

@@ -3,7 +3,9 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { api } from '../api';
+import { server } from '../mocks/server';
 import { findEntry, setRole } from '../mocks/db';
 import { AppLayout } from './AppLayout';
 import { AuthProvider, useAuth } from '../auth/AuthContext';
@@ -220,5 +222,58 @@ describe('AppLayout', () => {
 
     await user.click(screen.getByRole('button', { name: 'Sign out' }));
     await waitFor(() => expect(screen.getByTestId('whoami')).toHaveTextContent('anonymous'));
+  });
+
+  // The button is the only thing on screen that knows the request is running,
+  // so it has to say so — and stop taking clicks while it does, or an impatient
+  // second click fires a second DELETE.
+  it('says it is signing out and refuses a second click while the request is in flight', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    // Held open by hand rather than by a timer: the assertion runs against a
+    // request that is genuinely still in flight, with no sleep to tune.
+    let release = () => {};
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(
+      http.delete('/api/session', async () => {
+        await inFlight;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId('whoami')).toHaveTextContent('Demo Traveler'));
+
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    const pending = await screen.findByRole('button', { name: 'Signing out…' });
+    expect(pending).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+
+    release();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sign out' })).toBeEnabled());
+  });
+
+  // A sign out that fails must not look like one that worked: you are still
+  // signed in, and you are told so rather than left guessing.
+  it('keeps you signed in and says so when signing out fails', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    server.use(http.delete('/api/session', () => HttpResponse.json({ error: 'Boom' }, { status: 500 })));
+
+    const user = userEvent.setup();
+    renderShell();
+    await waitFor(() => expect(screen.getByTestId('whoami')).toHaveTextContent('Demo Traveler'));
+
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
+
+    expect(
+      await screen.findByText('Could not sign you out. Check your connection and try again.'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('whoami')).toHaveTextContent('Demo Traveler');
+    // Still offered, and still clickable: failing left the traveller exactly
+    // where they were, with the same way out.
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeEnabled();
   });
 });
