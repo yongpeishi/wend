@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DeadlineField } from './DeadlineField';
 
-const LABEL = 'Deadline for Buy the JR regional pass';
+const LABEL = 'By when for Buy the JR regional pass';
 
 function renderField(props: Partial<Parameters<typeof DeadlineField>[0]> = {}) {
   const onChange = vi.fn();
@@ -46,8 +46,16 @@ describe('DeadlineField — a deadline you can set', () => {
   it('offers to add one, rather than showing an empty date field', () => {
     renderField();
 
-    expect(screen.getByRole('button', { name: LABEL })).toHaveTextContent('+ Deadline');
+    expect(screen.getByRole('button', { name: LABEL })).toHaveTextContent('+ By when?');
     expect(document.querySelector('input')).toBeNull();
+  });
+
+  // The empty state asks a question; it does not name a consequence. Pinned so
+  // the harder word cannot drift back in with the next copy edit.
+  it('asks by when rather than announcing a deadline', () => {
+    renderField();
+
+    expect(screen.queryByText(/deadline/i)).not.toBeInTheDocument();
   });
 
   it('opens a date picker on the deadline it already has, ready to type into', async () => {

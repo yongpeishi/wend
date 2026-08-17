@@ -11,7 +11,7 @@ export interface DeadlineFieldProps {
   onChange?: (next: string | null) => void;
   /** Render as text, never as a control. Returns null when there is no value. */
   readOnly?: boolean;
-  /** Accessible name, e.g. "Deadline for Buy JR pass". Never rendered visibly. */
+  /** Accessible name, e.g. "By when for Buy JR pass". Never rendered visibly. */
   label: string;
   /** Placed on the outermost element so the caller can position it. */
   className?: string;
@@ -22,8 +22,17 @@ function classes(...names: (string | undefined)[]): string {
 }
 
 /**
- * A deadline on a checklist row: `by 3 Oct` when there is one, `+ Deadline`
+ * A deadline on a checklist row: `by 3 Oct` when there is one, `+ By when?`
  * when there is not, and a native date picker while you are changing it.
+ *
+ * The empty state asks rather than labels, and it asks softly. "Deadline" is a
+ * word about consequences — it belongs to work you will be held to, and this is
+ * a list of things somebody wants to have done before a holiday. "By when?" is
+ * the same question with none of the threat in it, and it reads as a question
+ * because that is what an empty control is. The component, its file and its
+ * class names still say deadline: `due_on` is what the API calls the field and
+ * a deadline is what it holds, so renaming the module would buy a reader
+ * nothing and cost them the thread back to the endpoint.
  *
  * Collapsed until opened, for the reason NewTripModal.tsx already writes down
  * for the trip's own dates: a native `type="date"` input paints `mm/dd/yyyy`
@@ -164,7 +173,7 @@ export function DeadlineField({
       aria-label={label}
       onClick={handleOpen}
     >
-      {value === null ? '+ Deadline' : `by ${formatDay(value)}`}
+      {value === null ? '+ By when?' : `by ${formatDay(value)}`}
     </button>
   );
 }

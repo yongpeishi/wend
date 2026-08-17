@@ -177,7 +177,7 @@
   white-space: nowrap;
 }
 
-/* Never shrinks. "by 3 Oct" and "+ Deadline" are short and are the whole point
+/* Never shrinks. "by 3 Oct" and "+ By when?" are short and are the whole point
    of the cell — a truncated deadline says nothing — so all the giving happens
    in .source. */
 .deadline {

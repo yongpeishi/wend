@@ -115,7 +115,7 @@ export function TripChecklist() {
               className={styles.addDeadline}
               value={dueOn}
               onChange={setDueOn}
-              label="Deadline for the new item"
+              label="By when for the new item"
             />
           </div>
         </div>
@@ -230,7 +230,7 @@ function TodoRow({ todo, canEdit }: { todo: Todo; canEdit: boolean }) {
               value={todo.due_on}
               onChange={(next) => save({ due_on: next })}
               readOnly={!canEdit}
-              label={`Deadline for ${todo.title}`}
+              label={`By when for ${todo.title}`}
             />
           </span>
         )}

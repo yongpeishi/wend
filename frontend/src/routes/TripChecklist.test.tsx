@@ -78,13 +78,13 @@ describe('TripChecklist', () => {
     expect(screen.queryByRole('option', { name: 'the whole trip' })).not.toBeInTheDocument();
   });
 
-  it('takes a deadline for a new item alongside what it is for', async () => {
+  it('asks by when for a new item, alongside what it is for', async () => {
     renderChecklist();
     await screen.findByText(TRIP_TODO);
 
     expect(
-      screen.getByRole('button', { name: 'Deadline for the new item' }),
-    ).toHaveTextContent('+ Deadline');
+      screen.getByRole('button', { name: 'By when for the new item' }),
+    ).toHaveTextContent('+ By when?');
   });
 
   it('puts a deadline on a line that had none once you leave the field, and keeps it', async () => {
@@ -92,17 +92,17 @@ describe('TripChecklist', () => {
     renderChecklist();
     await screen.findByText(ENTRY_TODO);
 
-    await user.click(screen.getByRole('button', { name: `Deadline for ${ENTRY_TODO}` }));
+    await user.click(screen.getByRole('button', { name: `By when for ${ENTRY_TODO}` }));
     // A date input is filled in by the browser's own control, not by keystrokes.
     // Its `change` only drafts — a half-typed date fires one too — so it is
     // leaving the field that saves.
-    fireEvent.change(screen.getByLabelText(`Deadline for ${ENTRY_TODO}`), {
+    fireEvent.change(screen.getByLabelText(`By when for ${ENTRY_TODO}`), {
       target: { value: '2026-11-05' },
     });
-    fireEvent.blur(screen.getByLabelText(`Deadline for ${ENTRY_TODO}`));
+    fireEvent.blur(screen.getByLabelText(`By when for ${ENTRY_TODO}`));
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: `Deadline for ${ENTRY_TODO}` })).toHaveTextContent(
+      expect(screen.getByRole('button', { name: `By when for ${ENTRY_TODO}` })).toHaveTextContent(
         'by 5 Nov',
       ),
     );
@@ -112,7 +112,7 @@ describe('TripChecklist', () => {
     renderChecklist();
     await screen.findByText(TRIP_TODO);
 
-    expect(screen.getByRole('button', { name: `Deadline for ${TRIP_TODO}` })).toHaveTextContent(
+    expect(screen.getByRole('button', { name: `By when for ${TRIP_TODO}` })).toHaveTextContent(
       'by 1 Oct',
     );
     // Seeded dated (1 Oct) before seeded undated — sortOpenTodos' ordering,
@@ -155,10 +155,10 @@ describe('TripChecklist — as a viewer', () => {
 
     // The dated line still says when — as text.
     expect(screen.getByText('by 1 Oct')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: `Deadline for ${TRIP_TODO}` })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `By when for ${TRIP_TODO}` })).not.toBeInTheDocument();
     // And the undated line says nothing at all, rather than inviting one.
-    expect(screen.queryByRole('button', { name: `Deadline for ${ENTRY_TODO}` })).not.toBeInTheDocument();
-    expect(screen.queryByText('+ Deadline')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `By when for ${ENTRY_TODO}` })).not.toBeInTheDocument();
+    expect(screen.queryByText('+ By when?')).not.toBeInTheDocument();
   });
 
   it('still shows every line, and still says where each one stands', async () => {
