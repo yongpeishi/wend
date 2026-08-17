@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../components/Toast';
@@ -18,8 +17,6 @@ import { TripLayout } from './TripLayout';
 const TRIP_ID = 1;
 const DEMO_USER_ID = 1;
 const SARAH_USER_ID = 2;
-
-const SHARE = 'Bring someone along';
 
 async function signIn() {
   await api.post('/session', { email: 'demo@wend.app', password: 'password' });
@@ -56,33 +53,23 @@ describe('TripLayout — the header', () => {
   });
 });
 
-describe('TripLayout — the share trigger', () => {
-  it('offers it to the owner', async () => {
-    renderLayout();
-    expect(await screen.findByRole('button', { name: SHARE })).toBeInTheDocument();
-  });
-
-  it('offers it to a member too — bringing others along is not the owner’s alone', async () => {
-    setRole(TRIP_ID, DEMO_USER_ID, 'member');
-    renderLayout();
-    await screen.findByRole('heading', { name: 'Six days in Kyoto' });
-    expect(screen.getByRole('button', { name: SHARE })).toBeInTheDocument();
-  });
-
-  it('keeps it away from a viewer — absent, never disabled', async () => {
-    setRole(TRIP_ID, DEMO_USER_ID, 'viewer');
+/**
+ * There is one door to the roster now, and it is the sidebar's "Planning with"
+ * cluster (AppLayout). The header used to hold a second one; these tests are
+ * here so it cannot quietly grow back and give the same job two places to live.
+ */
+describe('TripLayout — the header offers no share control', () => {
+  it('has no "Bring someone along" button, even for the owner who once had one', async () => {
     renderLayout();
     await screen.findByRole('heading', { name: 'Six days in Kyoto' });
-    expect(screen.queryByRole('button', { name: SHARE })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Bring someone along' })).not.toBeInTheDocument();
   });
 
-  it('opens the panel that says who is on the trip', async () => {
-    const user = userEvent.setup();
+  it('offers an owner no control at all up here — the header is text', async () => {
     renderLayout();
-
-    await user.click(await screen.findByRole('button', { name: SHARE }));
-
-    expect(await screen.findByRole('dialog', { name: "Who's on this trip" })).toBeInTheDocument();
+    await screen.findByRole('heading', { name: 'Six days in Kyoto' });
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(screen.queryByRole('dialog', { name: "Who's on this trip" })).not.toBeInTheDocument();
   });
 });
 
