@@ -1,0 +1,44 @@
+/* The closed control is metadata that happens to be clickable, so it borrows
+   the quiet-label idiom from TripChecklist.module.css's .doneToggle: sans,
+   muted, no surface and no border of its own. A row with a deadline should look
+   like a row with one more word on it, not like a row with a form in it. The
+   tap target is still a full --tap-min tall even though the text is small. */
+.trigger {
+  min-height: var(--tap-min);
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  color: var(--text-muted);
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.trigger:hover {
+  opacity: 0.7;
+}
+
+/* Card radius is button radius — there is no separate button-radius token. */
+.trigger:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-card);
+}
+
+/* The same words with nothing behind them, for a trip you can only read. */
+.readOnly {
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* <Input> is a full-width form field by default, which is right in a form and
+   wrong in a list row: here it should take exactly as much room as the native
+   date control needs and give the rest back to the title. Everything else about
+   the open field — surface, border, radius, focus wash — stays Input's. */
+.inputWrapper {
+  width: fit-content;
+}
