@@ -40,24 +40,16 @@ describe('VoteControl', () => {
     expect(screen.getByText('1.5 · 2')).toBeInTheDocument();
   });
 
-  it('disables every stop when disabled is set', () => {
+  // `disabled` is the caller's "not right now" — a save in flight, for someone
+  // who may vote again the moment it lands. The stops are coming back, so they
+  // grey rather than go.
+  it('greys the stops but keeps them when disabled is set, since the ask is still open', () => {
     render(<VoteControl value={null} onChange={() => {}} disabled />);
-    for (const radio of screen.getAllByRole('radio')) {
+    const stops = screen.getAllByRole('radio');
+    expect(stops).toHaveLength(5);
+    for (const radio of stops) {
       expect(radio).toBeDisabled();
     }
-  });
-
-  // Viewers cannot vote — a backend rule too, so this is the client saying the
-  // same thing the server would rather than a decoration.
-  it('disables every stop for someone who cannot edit, while still showing the tally', () => {
-    render(<VoteControl value={2} onChange={() => {}} canEdit={false} average={1.5} count={2} />);
-
-    for (const radio of screen.getAllByRole('radio')) {
-      expect(radio).toBeDisabled();
-    }
-    // The stops are also the picture of what has been decided, so they stay.
-    expect(screen.getByRole('radio', { name: 'Really want this' })).toBeChecked();
-    expect(screen.getByText('1.5 · 2')).toBeInTheDocument();
   });
 
   it('is editable by default, so nothing outside a trip has to say so', () => {
@@ -65,5 +57,61 @@ describe('VoteControl', () => {
     for (const radio of screen.getAllByRole('radio')) {
       expect(radio).toBeEnabled();
     }
+  });
+});
+
+/**
+ * The complaint this answers: a viewer was shown five stops to vote with, then
+ * refused at all five. That is a ballot they cannot fill in, and it reads as
+ * being shut out rather than as a result. They are not being asked, so there is
+ * no question to render — only what everyone else already said.
+ */
+describe('VoteControl — someone who cannot edit', () => {
+  it('offers nothing to vote with — not a greyed stop, no stop at all', () => {
+    const { container } = render(
+      <VoteControl value={2} onChange={() => {}} canEdit={false} average={1.5} count={2} />,
+    );
+
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    // Belt and braces: the roles above would also be absent if the buttons were
+    // merely hidden from assistive tech, and the point is that there are none.
+    expect(container.querySelectorAll('button')).toHaveLength(0);
+  });
+
+  it('says the average and how many people said it', () => {
+    render(<VoteControl value={null} onChange={() => {}} canEdit={false} average={1.5} count={2} />);
+    expect(screen.getByText('1.5 · 2 votes')).toBeInTheDocument();
+  });
+
+  it('counts one vote in the singular, because "1 votes" reads as a bug', () => {
+    render(<VoteControl value={null} onChange={() => {}} canEdit={false} average={2} count={1} />);
+    expect(screen.getByText('2.0 · 1 vote')).toBeInTheDocument();
+  });
+
+  it('says nobody has said anything yet rather than printing a hollow 0.0', () => {
+    render(<VoteControl value={null} onChange={() => {}} canEdit={false} average={0} count={0} />);
+    expect(screen.getByText('No votes yet')).toBeInTheDocument();
+  });
+
+  it('says the same when there is no tally to read at all', () => {
+    render(<VoteControl value={null} onChange={() => {}} canEdit={false} />);
+    expect(screen.getByText('No votes yet')).toBeInTheDocument();
+  });
+
+  /** A bare number tells a screen reader nothing about what was rated; the
+   * sighted reader has the heading above it, so the label rides in front. */
+  it('keeps the caller-given label on the summary, out of sight', () => {
+    render(
+      <VoteControl
+        value={null}
+        onChange={() => {}}
+        canEdit={false}
+        average={1.5}
+        count={2}
+        aria-label="Everyone's rating for Fushimi Inari"
+      />,
+    );
+    expect(screen.getByText("Everyone's rating for Fushimi Inari:")).toBeInTheDocument();
   });
 });

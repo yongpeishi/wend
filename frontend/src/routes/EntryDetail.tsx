@@ -325,17 +325,26 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
         )}
 
         <section className={styles.section}>
-          <h3 className={styles.sectionLabel}>How much do you want this?</h3>
-          {/* Disabled, not hidden: the stops are also the picture of what
-              everyone else wanted, and a viewer reads that. Voting is a write on
-              the backend too (VotePolicy#create? is write?), so this is the
-              client saying the same thing the server would. */}
+          {/* A viewer is not being asked, so the heading stops asking. The
+              question mark is the whole difference between a ballot and a
+              result. */}
+          <h3 className={styles.sectionLabel}>
+            {canEdit ? 'How much do you want this?' : 'How much everyone wants this'}
+          </h3>
+          {/* Not greyed-out stops: five refusing radios read as being locked
+              out of the vote rather than as its result. A viewer gets the
+              average and the headcount, and the per-person list below — which
+              everyone sees — is where the substance of "what others said"
+              actually lives. Voting is a write on the backend too
+              (VotePolicy#create? is write?), so nothing here is decoration. */}
           <VoteControl
             canEdit={canEdit}
             value={entry.my_vote}
             average={entry.vote_tally.average}
             count={entry.vote_tally.count}
-            aria-label={`Your rating for ${entry.title}`}
+            aria-label={
+              canEdit ? `Your rating for ${entry.title}` : `Everyone's rating for ${entry.title}`
+            }
             onChange={(score) =>
               vote.mutate(score, {
                 onError: () => show("That didn't save. It's still here — try again.", 'error'),

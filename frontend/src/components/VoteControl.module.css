@@ -49,8 +49,29 @@
 }
 
 .tally {
-  margin-left: var(--space-2);
   font-family: var(--font-mono);
   font-size: var(--text-code-size);
   color: var(--text-muted);
+}
+
+/* Beside the stops the tally needs air between it and the last dot. Alone in
+   the read-only summary there is nothing to its left to be pushed off. */
+.group .tally {
+  margin-left: var(--space-2);
+}
+
+.summary {
+  margin: 0;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

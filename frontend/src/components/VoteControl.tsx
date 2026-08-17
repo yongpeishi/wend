@@ -29,17 +29,19 @@ export interface VoteControlProps {
   onChange: (score: VoteScore) => void;
   /** Clicking the already-selected stop withdraws the vote (score becomes null). */
   onClear?: () => void;
+  /** The caller's "not right now" — a save in flight. Greys the stops; they
+   * come back. Not the same question as `canEdit`. */
   disabled?: boolean;
   /**
    * May you change this trip? A prop rather than `useCanEdit()` because this
    * control already takes its verb as a callback — the capability arrives beside
-   * the action it governs. Separate from `disabled`, which is the caller's own
-   * "not right now" (a save in flight); a viewer is a permanent no, and a caller
-   * should never have to merge the two by hand. Defaults to true, matching a
-   * null role.
+   * the action it governs. False is a permanent no, and swaps the whole control
+   * for the read-only summary below; it does not merely disable the stops.
+   * Defaults to true, matching a null role.
    */
   canEdit?: boolean;
-  /** Optional aggregate, shown in DM Mono after the stops, e.g. "1.5 · 2". */
+  /** Optional aggregate. Shown in DM Mono after the stops, e.g. "1.5 · 2", and
+   * for a viewer it is the entire control, e.g. "1.5 · 2 votes". */
   average?: number | null;
   count?: number;
   'aria-label'?: string;
@@ -50,11 +52,17 @@ export interface VoteControlProps {
  * size encodes how strongly you feel, fill marks your current vote. Never uses
  * apricot — that colour is reserved for "where you are now" navigation.
  *
- * Disabled rather than hidden for a viewer, which is the one place this product
- * greys something out. The stops are not only a control: their fill is the
- * picture of what has already been decided, and taking them away would take the
- * answer with them. `readOnly` has no meaning on a radio group, so `disabled` is
- * what is left.
+ * A viewer gets the answer, not the ballot. Five greyed-out stops are still a
+ * question — they take up the shape of "pick one" and then refuse, which reads
+ * as being locked out of the vote rather than as a result. So `canEdit={false}`
+ * drops the radio group entirely and prints what everyone else has said: an
+ * average and a headcount, in the same DM Mono the tally always uses. The
+ * per-person list of names and scores lives beside this on the entry drawer and
+ * is what carries the detail; this line is the summary above it.
+ *
+ * `disabled` is a different thing and stays one: the caller's "not right now",
+ * a save in flight, for someone who may vote once it lands. That one still
+ * greys the live stops, because they are coming back.
  */
 export function VoteControl({
   value,
@@ -66,7 +74,23 @@ export function VoteControl({
   count,
   'aria-label': ariaLabel = 'Desire rating',
 }: VoteControlProps) {
-  const inert = disabled || !canEdit;
+  if (!canEdit) {
+    const votes = count ?? 0;
+    const summary =
+      typeof average === 'number' && votes > 0
+        ? `${average.toFixed(1)} · ${votes} ${votes === 1 ? 'vote' : 'votes'}`
+        : 'No votes yet';
+
+    // The number alone says nothing about what was rated, so the caller's label
+    // rides in front of it where only a screen reader hears it — the sighted
+    // reader already has the section heading above.
+    return (
+      <p className={styles.summary}>
+        <span className={styles.srOnly}>{ariaLabel}: </span>
+        <span className={styles.tally}>{summary}</span>
+      </p>
+    );
+  }
 
   return (
     <div className={styles.group} role="radiogroup" aria-label={ariaLabel}>
@@ -80,7 +104,7 @@ export function VoteControl({
             aria-checked={selected}
             aria-label={LABELS[score]}
             className={styles.stop}
-            disabled={inert}
+            disabled={disabled}
             onClick={() => (selected && onClear ? onClear() : onChange(score))}
           >
             <span

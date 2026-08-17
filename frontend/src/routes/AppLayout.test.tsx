@@ -8,6 +8,7 @@ import { api } from '../api';
 import { server } from '../mocks/server';
 import { findEntry, setRole } from '../mocks/db';
 import { AppLayout } from './AppLayout';
+import styles from './AppLayout.module.css';
 import { AuthProvider, useAuth } from '../auth/AuthContext';
 import { ToastProvider } from '../components/Toast';
 
@@ -212,6 +213,56 @@ describe('AppLayout', () => {
     // No + either: the cluster ends at the last face rather than offering a
     // door that would be shut in their face.
     expect(screen.queryByRole('button', { name: 'Add someone to this trip' })).not.toBeInTheDocument();
+  });
+
+  // Having no door is the whole problem: a viewer cannot press a face to see
+  // the roster, so the cluster itself has to say who is here — everyone at
+  // once, in roster order, on hover or on focus.
+  it('spells out every planner beside a viewer’s cluster', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    setRole(SEEDED_TRIP_ID, DEMO_USER_ID, 'viewer');
+    setRole(SEEDED_TRIP_ID, SARAH_USER_ID, 'viewer');
+    const { container } = renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    await screen.findByText('Planning with');
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
+
+    const revealed = container.querySelector<HTMLElement>(`.${styles.plannerNames}`);
+    expect(revealed).toBeInTheDocument();
+    expect(Array.from(revealed?.children ?? []).map((line) => line.textContent)).toEqual([
+      'Demo Traveler',
+      'Sarah',
+    ]);
+    // Silent on purpose: every face already carries its planner's name in an
+    // .srOnly span, so announcing this too would read the roster twice.
+    expect(revealed).toHaveAttribute('aria-hidden', 'true');
+
+    setRole(SEEDED_TRIP_ID, SARAH_USER_ID, null);
+  });
+
+  // The browser's own tooltip is slow and names one person at a time; left on,
+  // it would arrive on top of the reveal that has already answered.
+  it('takes the native tooltip off a viewer’s faces', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    setRole(SEEDED_TRIP_ID, DEMO_USER_ID, 'viewer');
+    const { container } = renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    await screen.findByText('Planning with');
+    await waitFor(() => expect(screen.getByRole('listitem')).toHaveTextContent('Demo Traveler'));
+    expect(container.querySelector('[title="Demo Traveler"]')).toBeNull();
+  });
+
+  // Nothing changes for anyone who can share: their face is a door, and a panel
+  // opening under the pointer on the way to it would only be in the way.
+  it('leaves a sharer their tooltip and no group reveal', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    const { container } = renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    expect(await screen.findByRole('button', { name: 'Demo Traveler' })).toHaveAttribute(
+      'title',
+      'Demo Traveler',
+    );
+    expect(container.querySelector(`.${styles.plannerNames}`)).toBeNull();
   });
 
   // Gated on the roster alone, an owner whose collaborator list came back empty

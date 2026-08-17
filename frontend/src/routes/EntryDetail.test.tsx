@@ -14,18 +14,25 @@ import type { TripRole } from '../api/types';
  * long it takes, or notes. Both halves of "what does a viewer see?" are in one
  * entry.
  */
-const IDEA = 5;
+const IDEA = { id: 5, title: 'Fushimi Inari at dawn' };
+
+/**
+ * Seeded entry 2 — the one two people have actually rated (+2 from Demo
+ * Traveler, -1 from Sarah). Entry 5 has no votes at all, so the rating section
+ * needs a second fixture to have anything to say.
+ */
+const RATED = { id: 2, title: 'Nanzen-ji' };
 
 /** `role` mounts the provider TripLayout mounts in the app; null is the
  * no-trip-here case, which is editable on purpose (see tripRole.ts). */
-function renderDrawer(role: TripRole | null) {
+function renderDrawer(role: TripRole | null, entry = IDEA) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <TripRoleProvider role={role}>
           <MemoryRouter>
-            <EntryDetailDrawer entryId={IDEA} onClose={() => {}} />
+            <EntryDetailDrawer entryId={entry.id} onClose={() => {}} />
           </MemoryRouter>
         </TripRoleProvider>
       </ToastProvider>
@@ -40,9 +47,9 @@ function renderDrawer(role: TripRole | null) {
  * asserted inside the drawer, which is portalled to the body and shares it with
  * the toasts.
  */
-async function openDrawer(role: TripRole | null) {
-  renderDrawer(role);
-  await screen.findByRole('heading', { name: 'Fushimi Inari at dawn' });
+async function openDrawer(role: TripRole | null, entry = IDEA) {
+  renderDrawer(role, entry);
+  await screen.findByRole('heading', { name: entry.title });
   return screen.getByRole('dialog');
 }
 
@@ -94,12 +101,36 @@ describe('EntryDetail — a viewer reads it', () => {
     expect(link).toHaveAttribute('href', 'https://example.com/fushimi-inari');
   });
 
-  it('keeps the rating readable while leaving it unvotable', async () => {
-    const drawer = await openDrawer('viewer');
+  /**
+   * The rating was the last locked-out form on the screen: five stops offered
+   * and then refused. A viewer is not being asked, so the question goes and the
+   * answer stays.
+   */
+  it('is told what everyone wants rather than asked what they want', async () => {
+    const drawer = await openDrawer('viewer', RATED);
+    const read = within(drawer);
 
-    const stops = within(drawer).getAllByRole('radio');
-    expect(stops).toHaveLength(5);
-    for (const stop of stops) expect(stop).toBeDisabled();
+    expect(read.getByRole('heading', { name: 'How much everyone wants this' })).toBeInTheDocument();
+    expect(read.queryByRole('heading', { name: 'How much do you want this?' })).not.toBeInTheDocument();
+    expect(read.queryAllByRole('radio')).toHaveLength(0);
+    expect(read.getByText('0.5 · 2 votes')).toBeInTheDocument();
+  });
+
+  it('says so plainly when nobody has rated it yet', async () => {
+    const drawer = await openDrawer('viewer');
+    expect(within(drawer).getByText('No votes yet')).toBeInTheDocument();
+  });
+
+  /** The summary is the shape; this list is the substance of "votes others
+   * submitted", and it is the same list for everyone. */
+  it('still sees who said what, by name and score', async () => {
+    const drawer = await openDrawer('viewer', RATED);
+    const read = within(drawer);
+
+    expect(read.getByText('Demo Traveler')).toBeInTheDocument();
+    expect(read.getByText('+2')).toBeInTheDocument();
+    expect(read.getByText('Sarah')).toBeInTheDocument();
+    expect(read.getByText('-1')).toBeInTheDocument();
   });
 
   it('offers neither way to move the idea', async () => {
@@ -119,6 +150,15 @@ describe('EntryDetail — anyone who can edit', () => {
     expect(read.getByRole('textbox', { name: 'What is it?' })).toHaveValue('Fushimi Inari at dawn');
     expect(read.getByRole('textbox', { name: 'Address' })).toHaveValue('');
     expect(read.getByRole('combobox', { name: 'What kind of thing?' })).toHaveValue('place');
+  });
+
+  it('is still asked the question, with the stops to answer it', async () => {
+    const drawer = await openDrawer('member', RATED);
+    const read = within(drawer);
+
+    expect(read.getByRole('heading', { name: 'How much do you want this?' })).toBeInTheDocument();
+    expect(read.getAllByRole('radio')).toHaveLength(5);
+    for (const stop of read.getAllByRole('radio')) expect(stop).toBeEnabled();
   });
 
   /**
