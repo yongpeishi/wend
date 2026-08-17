@@ -106,8 +106,9 @@ export interface BundleCardProps {
  * A member's name opens it, and when the board offers `onOpen` it opens in
  * place rather than by navigating to /entries/:id — the same bargain IdeaRow
  * strikes with the board. Two things depend on staying put: the drawer's scrim
- * is nearly opaque paper, so on a route of its own it covers an empty page and
- * reads as see-through with nothing behind it to show; and off the board the
+ * is paper at 0.92, so over the board the page shows faintly through and it
+ * reads as see-through, while on a route of its own it covers an empty page
+ * with nothing behind it to show and reads as opaque; and off the board the
  * member is outside the trip's TripRoleProvider, where the editable default
  * applies and a viewer would be handed the form. Opening over the board keeps
  * the page under the scrim and keeps the member inside the trip's role. The
