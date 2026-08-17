@@ -8,46 +8,16 @@
   max-width: 900px;
 }
 
-.addRow {
+/* Holds the one control that opens the composer, and nothing else. A flex row
+   only so the button is sized to its own label instead of being stretched the
+   width of .wrap by the column above it — the same job BundlePanel's .cta does
+   for "+ New bundle". Once the composer is open this wrapper is gone and the
+   form is the column's own child, so it takes the full measure. Everything the
+   old always-open add row needed — the "For ___" line, its label, its select
+   wrapper — moved to NewTodoForm.module.css with the form itself. */
+.addCta {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-/* What the new item is for and when it's due: one line while there is room. */
-.addMeta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.forLabel {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex: 1;
-  min-width: 0;
-}
-
-.addDeadline {
-  flex: none;
-}
-
-.forLabelText {
-  font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-label-size);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-/* The field itself — surface, border, radius, chevron and focus ring — is
-   <Select> (design/components/core/Select.tsx). All that is left locally is
-   telling it how much of the "For ___" row to occupy. */
-.selectWrapper {
-  flex: 1;
-  min-width: 0;
+  align-items: baseline;
 }
 
 .list {
@@ -231,12 +201,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-1);
-  }
-
-  .addMeta {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-3);
   }
 
   /* Stacked, the pair sits on its own line under the title, so the cap on the

@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Input } from '../design/components/core/Input';
-import { Select } from '../design/components/core/Select';
+import { Button } from '../design/components/core/Button';
 import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
 import { useEntries } from '../api/entries';
-import { useCreateTodo, useTodos, useUpdateTodo } from '../api/todos';
+import { useTodos, useUpdateTodo } from '../api/todos';
 import type { Entry, Todo } from '../api/types';
 import { splitDoneOpen, sortOpenTodos } from '../features/checklist/checklistModel';
 import { DeadlineField } from '../features/checklist/DeadlineField';
+import { NewTodoForm } from '../features/checklist/NewTodoForm';
 import styles from './TripChecklist.module.css';
 
 /**
@@ -22,18 +22,13 @@ import styles from './TripChecklist.module.css';
  */
 export function TripChecklist() {
   const { trip } = useOutletContext<{ trip: Entry }>();
-  const { show } = useToast();
   const canEdit = useCanEdit();
 
   const todosQuery = useTodos({ trip_id: trip.id });
   const entriesQuery = useEntries({ trip_id: trip.id });
 
-  const [newTitle, setNewTitle] = useState('');
-  const [forEntryId, setForEntryId] = useState<number | ''>('');
-  const [dueOn, setDueOn] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [showDone, setShowDone] = useState(false);
-
-  const createTodo = useCreateTodo();
 
   const todos = useMemo(() => todosQuery.data ?? [], [todosQuery.data]);
   const entries = useMemo(() => entriesQuery.data ?? [], [entriesQuery.data]);
@@ -49,77 +44,31 @@ export function TripChecklist() {
   const { open, done } = useMemo(() => splitDoneOpen(todos), [todos]);
   const openSorted = useMemo(() => sortOpenTodos(open, scheduledIds), [open, scheduledIds]);
 
-  function handleAdd() {
-    const title = newTitle.trim();
-    if (!title) return;
-    createTodo.mutate(
-      {
-        title,
-        ...(forEntryId === '' ? { trip_id: trip.id } : { entry_id: Number(forEntryId) }),
-        ...(dueOn === null ? {} : { due_on: dueOn }),
-      },
-      {
-        onSuccess: () => {
-          setNewTitle('');
-          setForEntryId('');
-          setDueOn(null);
-        },
-        onError: () => show("That didn't save. It's still here — try again.", 'error'),
-      },
-    );
-  }
-
   if (todosQuery.isLoading) return <Spinner label="Finding your checklist" />;
 
   return (
     <div className={styles.wrap}>
-      {/* Not rendered rather than made readOnly. The rule that a text field goes
-          readOnly is about fields holding something to read; this one is empty
-          by definition — it is a button with a place to type in it, and an
-          inert one would be chrome standing where a control used to be. The
-          share panel's own add form is hidden the same way for the same reason. */}
-      {canEdit && (
-        <div className={styles.addRow}>
-          <Input
-            placeholder="What needs doing?"
-            hint="↵"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleAdd();
-            }}
-            aria-label="What needs doing?"
-          />
-          {/* What it's for and when it's due read as one line of settings on the
-              new item, so they sit side by side while there is room for them. */}
-          <div className={styles.addMeta}>
-            <label className={styles.forLabel}>
-              <span className={styles.forLabelText}>For</span>
-              {/* wrapperClassName, not className: the wrapper is the flex child of
-                  .forLabel, so `flex: 1` has to land there for the field to take
-                  the rest of the row. */}
-              <Select
-                wrapperClassName={styles.selectWrapper}
-                value={forEntryId}
-                onChange={(e) => setForEntryId(e.target.value === '' ? '' : Number(e.target.value))}
-              >
-                <option value="">In general</option>
-                {entries.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.title}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <DeadlineField
-              className={styles.addDeadline}
-              value={dueOn}
-              onChange={setDueOn}
-              label="By when for the new item"
-            />
+      {/* Nothing rendered rather than anything made readOnly. The rule that a
+          text field goes readOnly is about fields holding something to read;
+          a composer holds nothing by definition — it is a button with a place to
+          type in it, and an inert one would be chrome standing where a control
+          used to be. The share panel's own add form is hidden the same way for
+          the same reason. The form refuses for a viewer on its own account too;
+          this check is about not offering the door, not about locking it.
+
+          The trigger stays here and the form does not: the route owns whether
+          the composer is wanted, the composer owns everything about the todo
+          being written. Same split as BundlePanel and NewBundleForm. */}
+      {canEdit &&
+        (adding ? (
+          <NewTodoForm tripId={trip.id} entries={entries} onClose={() => setAdding(false)} />
+        ) : (
+          <div className={styles.addCta}>
+            <Button variant="secondary" size="small" onClick={() => setAdding(true)}>
+              + Add a todo
+            </Button>
           </div>
-        </div>
-      )}
+        ))}
 
       {todos.length === 0 ? (
         <EmptyState message="Nothing to check off. That's either very good or very early." />
