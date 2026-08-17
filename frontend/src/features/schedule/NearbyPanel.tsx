@@ -22,7 +22,11 @@ export interface NearbyPanelProps {
   /** The sentence under the heading. May be ''. */
   blurb: string;
   places: NearbyPlace[];
-  /** Where "you" are. Null when we do not know — the map is then omitted. */
+  /**
+   * Where "you" are. Null when nothing on the day is located and the browser
+   * will not say — the map is still drawn, because a map is what this panel
+   * is, but it has no ring on it and nothing to centre on.
+   */
   origin: { lat: number; lng: number } | null;
   loading?: boolean;
   /** Shown in place of the list: denied permission, nothing within range, etc. */
@@ -79,9 +83,6 @@ export function NearbyPanel({
   const headingId = useId();
 
   const pins = pinsFor(places);
-  // A map of nothing is worse than no map: with no fix there is no "you" to
-  // draw, and with no coordinates there is nothing to draw around you.
-  const showMap = origin !== null && pins.length > 0;
 
   // Keyed on the layout alone. Keying it on `onClose` too would let an
   // unmemoised handler yank focus back here on every render of the route.
@@ -128,29 +129,27 @@ export function NearbyPanel({
       </header>
 
       <div className={styles.body}>
-        {showMap && (
-          <div className={styles.map}>
-            {/* `pendingLocation` is named for the not-yet-saved point you are
-                capturing a new idea at, and that is not what this is — this is
-                where the reader is standing. It is used anyway because it draws
-                exactly the mark this screen needs (the apricot ring) and it is
-                the only way to put a non-pin point on the map without reaching
-                inside the provider seam, which is not this slice's to open. If
-                a second caller ever wants the same thing, MapView should grow a
-                properly named prop and this line should change to it. */}
-            <MapView
-              pins={pins}
-              pendingLocation={origin}
-              fitToPins
-              height={isOverlay ? MAP_HEIGHT_OVERLAY : MAP_HEIGHT_RAIL}
-              aria-label="Map of what is around you"
-            />
+        {/* Always drawn. It used to appear only with both a fix and a pin to
+            show, which meant the panel's one picture was missing exactly when
+            the reader had most reason to look at it: standing somewhere with
+            nothing kept nearby, or before the browser had answered. A map with
+            only "you" on it still answers "where am I", and the fit takes the
+            ring into account, so it opens on the street rather than the world. */}
+        <div className={styles.map}>
+          <MapView
+            pins={pins}
+            youAreHere={origin}
+            fitToPins
+            height={isOverlay ? MAP_HEIGHT_OVERLAY : MAP_HEIGHT_RAIL}
+            aria-label="Map of what is around you"
+          />
+          {origin && (
             <p className={styles.legend}>
               <span className={styles.here} aria-hidden="true" />
               Where you are now
             </p>
-          </div>
-        )}
+          )}
+        </div>
 
         {loading && <Spinner label="Looking around" />}
 

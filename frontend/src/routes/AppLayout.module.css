@@ -21,9 +21,18 @@
   color: var(--text-on-dark);
 }
 
+/* A column, so that a screen which wants the height can ask for it. The shell
+   is already at least a viewport tall and stretches this to match; laying it
+   out as a column is what lets a page below say `flex: 1` and have its box
+   actually reach the bottom of the window. Nothing is given that height unless
+   it asks — every child still sizes to its content — but the schedule's now bar
+   is `position: sticky; bottom: 0`, and a sticky element can only ride the
+   bottom of the window while its own box is still down there. */
 .main {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .brandRow {

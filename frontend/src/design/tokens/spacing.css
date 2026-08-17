@@ -9,6 +9,12 @@
   --space-16: 64px;
 
   --gutter-screen: 20px;
+  /* The paper under a page — the vertical counterpart to --gutter-screen, and a
+     token for the same reason: a screen that needs the window's own edge has to
+     be able to hand the floor back, and it cannot subtract a measure it has no
+     name for. TripLayout narrows it on a phone; the schedule cancels it, so its
+     now bar can sit on the floor of the window rather than 48px above it. */
+  --floor-screen: var(--space-16);
   --gap-list-row: var(--space-3);
   --gap-section: var(--space-12);
 

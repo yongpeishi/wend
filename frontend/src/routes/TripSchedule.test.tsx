@@ -332,6 +332,31 @@ describe('TripSchedule — nearby, at both widths', () => {
     expect(await screen.findByText('pin: Kiyamachi')).toBeInTheDocument();
   });
 
+  /**
+   * A refusal is only one of the ways to have no fix. Waiting on one — the
+   * prompt still up, or nobody ever answering it — is the commonest, and it
+   * used to leave the rail with no origin at all: no map, no list, a spinner
+   * with no end. The plan's place stands in until the browser knows better,
+   * and the sentence does not accuse the browser of refusing.
+   */
+  it('measures from the plan while the browser is still deciding, without calling it a refusal', async () => {
+    viewport('wide');
+    // A fix that never arrives: the request is made, and nothing answers it.
+    const geolocation = { getCurrentPosition: vi.fn() };
+    Object.defineProperty(navigator, 'geolocation', { value: geolocation, configurable: true });
+
+    try {
+      renderSchedule();
+
+      expect(await screen.findByText('Measured from Nanzen-ji, where the plan has you.')).toBeInTheDocument();
+      expect(await screen.findByText('pin: Kiyamachi')).toBeInTheDocument();
+      expect(screen.queryByText(/won't share your location/)).not.toBeInTheDocument();
+      expect(geolocation.getCurrentPosition).toHaveBeenCalled();
+    } finally {
+      Reflect.deleteProperty(navigator, 'geolocation');
+    }
+  });
+
   it('keeps the rail off a phone entirely until the bar is asked', async () => {
     viewport('narrow');
     renderSchedule();

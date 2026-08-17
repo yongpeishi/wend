@@ -152,8 +152,17 @@ export function TripSchedule() {
   const rows = buildPlanRows(dayItems, entries, { day, now });
   const line = nowLine(rows, { day, now });
 
+  // The plan's answer to "where are you" stands in whenever the browser has
+  // not given one — not only when it has refused. A refusal is one of several
+  // ways to end up without a fix, and the others (never answering the prompt,
+  // a fix that is still coming, a device that cannot) used to leave the panel
+  // with no origin, which meant no map and no list on a screen whose whole
+  // point is the map. The plan knows a place; it is used until the browser
+  // knows a better one, and the blurb says which is which.
   const originRow = planOriginRow(rows, entries);
-  const origin = geo.coords ?? (geo.denied ? coordsOf(entries, originRow) : null);
+  const planOrigin = coordsOf(entries, originRow);
+  const origin = geo.coords ?? planOrigin;
+  const fromPlan = geo.coords === null && planOrigin !== null;
 
   // The rail is always on screen, so the desk asks for a fix on arrival. The
   // phone waits to be asked: a permission prompt nobody invited is the fastest
@@ -192,7 +201,10 @@ export function TripSchedule() {
   const hereRow = rows.find((row) => row.state === 'now');
   const heading = entryFor(entries, hereRow?.entryId ?? null)?.location_name ?? 'Around you';
 
-  const nearbyLoading = geo.loading || (origin !== null && nearbyQuery.isLoading);
+  // Waiting on the browser is only worth saying when there is nothing to show
+  // meanwhile: with the plan's origin standing in, the map and the list are
+  // already up, and a spinner over them would be hiding an answer we have.
+  const nearbyLoading = (geo.loading && !origin) || (origin !== null && nearbyQuery.isLoading);
 
   // What the fallback measures from, named the way the reader would name it —
   // so the sentence under the heading can say it out loud rather than claim a
@@ -203,18 +215,22 @@ export function TripSchedule() {
   // A note replaces the list; a blurb sits under the heading and explains it.
   // Both have to stay true about where the distances are measured from.
   const note = (() => {
-    if (geo.denied && !origin) {
-      return "Your browser won't share your location, and nothing on this day has a place yet. Add a location to an idea and this will work.";
+    if (!origin) {
+      return geo.denied
+        ? "Your browser won't share your location, and nothing on this day has a place yet. Add a location to an idea and this will work."
+        : 'Nothing on this day has a place yet, so there is nothing to measure from. Add a location to an idea and this will work.';
     }
-    if (origin && nearbyQuery.data && places.length === 0) {
+    if (nearbyQuery.data && places.length === 0) {
       return 'Nothing unplaced within a short walk. A good moment for a detour.';
     }
     return null;
   })();
 
   const blurb = (() => {
-    if (geo.denied && originName) {
-      return `Your browser won't share your location, so this is measured from ${originName}, where the plan has you.`;
+    if (fromPlan && originName) {
+      return geo.denied
+        ? `Your browser won't share your location, so this is measured from ${originName}, where the plan has you.`
+        : `Measured from ${originName}, where the plan has you.`;
     }
     return places.length > 0 ? placesBlurb(places.length) : '';
   })();

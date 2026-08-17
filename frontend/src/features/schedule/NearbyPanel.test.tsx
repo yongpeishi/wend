@@ -18,15 +18,16 @@ vi.mock('../map/MapView', () => ({
       <p data-testid="map-height">height: {String(props.height)}</p>
       <p data-testid="map-fit">fit: {String(props.fitToPins)}</p>
       <p data-testid="map-origin">
-        origin: {props.pendingLocation ? `${props.pendingLocation.lat},${props.pendingLocation.lng}` : 'none'}
+        origin: {props.youAreHere ? `${props.youAreHere.lat},${props.youAreHere.lng}` : 'none'}
       </p>
-      <ul>
-        {props.pins.map((pin) => (
-          <li key={pin.id}>
-            {pin.title} ({pin.state})
-          </li>
-        ))}
-      </ul>
+      {/* Paragraphs, not list items: the map is always on screen now, so a
+          <li> here would answer the queries that ask after the panel's own
+          list of places and every one of those assertions would go quiet. */}
+      {props.pins.map((pin) => (
+        <p key={pin.id} data-testid="map-pin">
+          {pin.title} ({pin.state})
+        </p>
+      ))}
     </div>
   ),
 }));
@@ -157,20 +158,23 @@ describe('NearbyPanel', () => {
     expect(screen.getByText('Where you are now')).toBeInTheDocument();
   });
 
-  it('omits the map when we do not know where you are', () => {
+  it('still draws the map when we do not know where you are, without claiming to', () => {
     render(<NearbyPanel layout="overlay" heading="Around you" blurb="" places={PLACES} origin={null} />);
 
-    expect(screen.queryByTestId('map-view')).not.toBeInTheDocument();
+    expect(screen.getByTestId('map-view')).toBeInTheDocument();
+    expect(screen.getByTestId('map-origin')).toHaveTextContent('origin: none');
     expect(screen.queryByText('Where you are now')).not.toBeInTheDocument();
     expect(screen.getByText('Nanzen-ji')).toBeInTheDocument();
   });
 
-  it('omits the map when no place has coordinates', () => {
+  it('still draws the map when no place has coordinates — you are on it, and that is the point', () => {
     const flat: NearbyPlace[] = [{ id: 3, name: 'A note to self', meta: '', lat: null, lng: null }];
     render(<NearbyPanel layout="rail" heading="Around you" blurb="" places={flat} origin={ORIGIN} />);
 
-    expect(screen.queryByTestId('map-view')).not.toBeInTheDocument();
-    expect(screen.queryByText('Where you are now')).not.toBeInTheDocument();
+    const map = screen.getByTestId('map-view');
+    expect(within(map).queryByTestId('map-pin')).not.toBeInTheDocument();
+    expect(screen.getByTestId('map-origin')).toHaveTextContent('origin: 35,135.77');
+    expect(screen.getByText('Where you are now')).toBeInTheDocument();
     expect(screen.getByText('A note to self')).toBeInTheDocument();
   });
 

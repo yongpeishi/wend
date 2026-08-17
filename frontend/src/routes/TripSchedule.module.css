@@ -7,10 +7,23 @@
  * Phone-first. 861px is this feature's one breakpoint, matching the shell's own
  * fold in AppLayout.module.css.
  */
+/*
+ * The one screen that takes the height the shell offers, and the reason is the
+ * now bar. It is `position: sticky; bottom: 0`, and sticky can only ride the
+ * bottom of the window while this box is still down there — sized to a short
+ * day's four rows, the box ends mid-page and the bar ends with it, sitting
+ * under the last row instead of on the floor of the phone. `flex: 1` takes it
+ * to the bottom of TripLayout's wrap, and the negative margin hands back the
+ * wrap's floor, which is the last band of paper between the two. Long days are
+ * unaffected: the box was already past the bottom of the window, and the bar
+ * was already riding it.
+ */
 .screen {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  flex: 1;
+  margin-bottom: calc(var(--floor-screen) * -1);
 }
 
 /* Title over the day strip on a phone: 26px of heading and a fortnight of
@@ -79,6 +92,13 @@
  * has nothing left to say.
  */
 @media (min-width: 861px) {
+  /* No bar here, so the floor comes back. The screen still fills the window —
+     harmless, since nothing inside it stretches — and that keeps the paper
+     under a short day continuous rather than ending in a seam. */
+  .screen {
+    margin-bottom: 0;
+  }
+
   .head {
     flex-direction: row;
     align-items: center;
