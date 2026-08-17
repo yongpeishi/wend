@@ -215,7 +215,7 @@ describe('IdeaRow — the interactions that must survive', () => {
     renderRow();
     const user = await openActions();
 
-    await user.click(screen.getByRole('button', { name: 'Set aside' }));
+    await user.click(screen.getByRole('button', { name: 'Move to Set aside' }));
 
     await waitFor(() => expect(del).toHaveBeenCalledWith('/entries/42'));
     expect(screen.queryByRole('button', { name: /delete permanently/i })).not.toBeInTheDocument();
@@ -236,15 +236,18 @@ describe('IdeaRow — the ⋯ actions menu', () => {
   it('keeps the actions out of the way until they are asked for', () => {
     renderRow();
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Set aside' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Move to Set aside' })).not.toBeInTheDocument();
   });
 
-  it('offers Edit, Set aside and the bundles together', async () => {
+  // "Move to Set aside", not "Set aside": the menu is too tight for a line of
+  // explanation, so the label names the list at the foot of the board that the
+  // idea is going to — which is also the way back.
+  it('offers Edit, the way into Set aside, and the bundles together', async () => {
     renderRow({ bundles: [BUNDLE] });
     await openActions();
 
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Set aside' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move to Set aside' })).toBeInTheDocument();
     expect(screen.getByText('Add to bundle')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tuesday south' })).toBeInTheDocument();
   });

@@ -99,11 +99,13 @@ describe('BulkBar — what it says about the selection', () => {
   });
 
   // The mockup draws only "Add to a bundle". Removing two verbs that work would
-  // be a regression, so they stay — quieter, not gone.
-  it('keeps Lift out and Set aside beside the bundle verb', () => {
+  // be a regression, so they stay — quieter, not gone. Both are named for where
+  // the ideas end up rather than the motion that gets them there: a pill this
+  // size has no room for a line of explanation, so the label carries it all.
+  it('keeps the two quiet verbs beside the bundle verb', () => {
     renderBar();
-    expect(screen.getByRole('button', { name: 'Lift out' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Set aside' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Make separate trips' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move to Set aside' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Clear' })).toBeInTheDocument();
   });
 
@@ -273,7 +275,7 @@ describe('BulkBar — reading along', () => {
     );
 
     expect(screen.queryByText('2 ideas selected')).not.toBeInTheDocument();
-    for (const label of ['Add to a bundle', 'Lift out', 'Set aside', 'Clear']) {
+    for (const label of ['Add to a bundle', 'Make separate trips', 'Move to Set aside', 'Clear']) {
       expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
     }
   });

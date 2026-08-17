@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { Select } from '../design/components/core/Select';
@@ -21,6 +22,34 @@ import { formatDuration, joinMeta } from '../lib/formatDates';
 import styles from './EntryDetail.module.css';
 
 const CATEGORIES: EntryCategory[] = ['place', 'food', 'activity', 'lodging', 'transport', 'other'];
+
+/**
+ * One fact, read rather than filled in.
+ *
+ * A viewer used to get this whole panel as ten boxes with `readOnly` and
+ * `disabled` set: a form they are locked out of, which says "you may not" far
+ * louder than it says what the idea is. Same label — it is what names each
+ * fact — with the value as plain text beneath it, and no control in the tree at
+ * all.
+ *
+ * An empty value is an em dash rather than a blank line, because a fact nobody
+ * has filled in still has to read as a fact nobody has filled in; a bare gap
+ * under a label reads as something broken.
+ *
+ * It lives in this file rather than in components/: one screen needs it, and a
+ * second caller does not exist. <Field> gives its generated id to whatever
+ * child it is handed, so the label points at this paragraph — a <label> cannot
+ * be programmatically associated with a non-control, and the label text sitting
+ * directly above the value it names is what carries the association here.
+ */
+function Fact({ label, value }: { label: string; value: ReactNode }) {
+  const empty = value === null || value === undefined || value === '';
+  return (
+    <Field label={label}>
+      <p className={styles.fact}>{empty ? <span className={styles.factEmpty}>&mdash;</span> : value}</p>
+    </Field>
+  );
+}
 
 export interface EntryDetailDrawerProps {
   entryId: number | undefined;
@@ -140,125 +169,160 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
           </div>
         )}
 
-        <Field label="What is it?">
-          <input
-            className={styles.input}
-            readOnly={!canEdit}
-            value={draft.title ?? ''}
-            onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-            onBlur={(e) => save('title', e.target.value)}
-          />
-        </Field>
+        {/* The two halves of the same panel: the same facts, in the same order,
+            under the same labels. Someone who can edit gets them as fields that
+            save themselves on blur; someone reading gets them as text. The fork
+            is here rather than a `readOnly` prop on each control because a
+            locked-out form is the thing being got rid of — see <Fact>. */}
+        {canEdit ? (
+          <>
+            <Field label="What is it?">
+              <input
+                className={styles.input}
+                value={draft.title ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                onBlur={(e) => save('title', e.target.value)}
+              />
+            </Field>
 
-        <Field label="Anything worth remembering?">
-          <textarea
-            className={styles.textarea}
-            rows={3}
-            readOnly={!canEdit}
-            value={draft.description ?? ''}
-            onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-            onBlur={(e) => save('description', e.target.value)}
-          />
-        </Field>
+            <Field label="Anything worth remembering?">
+              <textarea
+                className={styles.textarea}
+                rows={3}
+                value={draft.description ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+                onBlur={(e) => save('description', e.target.value)}
+              />
+            </Field>
 
-        <Field label="What kind of thing?">
-          {/* <Select>, not a bare <select> with .input: .input styles a text
-              field, and a native select ignores that styling entirely unless
-              something resets `appearance`. Field clones this child to inject
-              id/aria-describedby, which Select spreads onto the real control. */}
-          <Select
-            disabled={!canEdit}
-            value={draft.category ?? ''}
-            onChange={(e) => {
-              setDraft((d) => ({ ...d, category: e.target.value }));
-              save('category', e.target.value);
-            }}
-          >
-            <option value="">Not sure yet</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </Select>
-        </Field>
+            <Field label="What kind of thing?">
+              {/* <Select>, not a bare <select> with .input: .input styles a text
+                  field, and a native select ignores that styling entirely unless
+                  something resets `appearance`. Field clones this child to inject
+                  id/aria-describedby, which Select spreads onto the real control. */}
+              <Select
+                value={draft.category ?? ''}
+                onChange={(e) => {
+                  setDraft((d) => ({ ...d, category: e.target.value }));
+                  save('category', e.target.value);
+                }}
+              >
+                <option value="">Not sure yet</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
+            </Field>
 
-        <Field label="Where is it?">
-          <input
-            className={styles.input}
-            readOnly={!canEdit}
-            placeholder="Name of the place"
-            value={draft.location_name ?? ''}
-            onChange={(e) => setDraft((d) => ({ ...d, location_name: e.target.value }))}
-            onBlur={(e) => save('location_name', e.target.value)}
-          />
-        </Field>
+            <Field label="Where is it?">
+              <input
+                className={styles.input}
+                placeholder="Name of the place"
+                value={draft.location_name ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, location_name: e.target.value }))}
+                onBlur={(e) => save('location_name', e.target.value)}
+              />
+            </Field>
 
-        <Field label="Address">
-          <input
-            className={styles.input}
-            readOnly={!canEdit}
-            value={draft.address ?? ''}
-            onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
-            onBlur={(e) => save('address', e.target.value)}
-          />
-        </Field>
+            <Field label="Address">
+              <input
+                className={styles.input}
+                value={draft.address ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
+                onBlur={(e) => save('address', e.target.value)}
+              />
+            </Field>
 
-        <div className={styles.pair}>
-          <Field label="Latitude">
-            <input
-              className={styles.input}
-              readOnly={!canEdit}
-              inputMode="decimal"
-              value={draft.lat ?? ''}
-              onChange={(e) => setDraft((d) => ({ ...d, lat: e.target.value }))}
-              onBlur={(e) => save('lat', e.target.value)}
+            <div className={styles.pair}>
+              <Field label="Latitude">
+                <input
+                  className={styles.input}
+                  inputMode="decimal"
+                  value={draft.lat ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, lat: e.target.value }))}
+                  onBlur={(e) => save('lat', e.target.value)}
+                />
+              </Field>
+              <Field label="Longitude">
+                <input
+                  className={styles.input}
+                  inputMode="decimal"
+                  value={draft.lng ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, lng: e.target.value }))}
+                  onBlur={(e) => save('lng', e.target.value)}
+                />
+              </Field>
+            </div>
+
+            <Field label="How long does it take?" hint="In minutes">
+              <input
+                className={styles.input}
+                inputMode="numeric"
+                value={draft.duration_minutes ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, duration_minutes: e.target.value }))}
+                onBlur={(e) => save('duration_minutes', e.target.value)}
+              />
+            </Field>
+
+            <Field label="Where did you find it?">
+              <input
+                className={styles.input}
+                placeholder="Paste a link"
+                value={draft.source_url ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, source_url: e.target.value }))}
+                onBlur={(e) => save('source_url', e.target.value)}
+              />
+            </Field>
+
+            <Field label="Notes">
+              <textarea
+                className={styles.textarea}
+                rows={3}
+                value={draft.notes ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
+                onBlur={(e) => save('notes', e.target.value)}
+              />
+            </Field>
+          </>
+        ) : (
+          <>
+            {/* Read off the entry, not the draft: the draft is the edit buffer,
+                and there is no editing going on here. */}
+            <Fact label="What is it?" value={entry.title} />
+            <Fact label="Anything worth remembering?" value={entry.description} />
+            <Fact label="What kind of thing?" value={entry.category} />
+            <Fact label="Where is it?" value={entry.location_name} />
+            <Fact label="Address" value={entry.address} />
+
+            <div className={styles.pair}>
+              <Fact label="Latitude" value={entry.lat == null ? null : String(entry.lat)} />
+              <Fact label="Longitude" value={entry.lng == null ? null : String(entry.lng)} />
+            </div>
+
+            {/* "2 hr", not "120". The minutes box exists because minutes are
+                what you type; reading it, the answer to how long it takes is
+                the same one the meta line at the top of the drawer gives. */}
+            <Fact label="How long does it take?" value={formatDuration(entry.duration_minutes)} />
+
+            <Fact
+              label="Where did you find it?"
+              value={
+                entry.source_url && (
+                  // A real link, since following it is the only thing anyone
+                  // ever wanted this field for. New tab: the drawer is an
+                  // overlay on a board, and navigating away would close both.
+                  <a className={styles.link} href={entry.source_url} target="_blank" rel="noreferrer">
+                    {entry.source_url}
+                  </a>
+                )
+              }
             />
-          </Field>
-          <Field label="Longitude">
-            <input
-              className={styles.input}
-              readOnly={!canEdit}
-              inputMode="decimal"
-              value={draft.lng ?? ''}
-              onChange={(e) => setDraft((d) => ({ ...d, lng: e.target.value }))}
-              onBlur={(e) => save('lng', e.target.value)}
-            />
-          </Field>
-        </div>
 
-        <Field label="How long does it take?" hint="In minutes">
-          <input
-            className={styles.input}
-            readOnly={!canEdit}
-            inputMode="numeric"
-            value={draft.duration_minutes ?? ''}
-            onChange={(e) => setDraft((d) => ({ ...d, duration_minutes: e.target.value }))}
-            onBlur={(e) => save('duration_minutes', e.target.value)}
-          />
-        </Field>
-
-        <Field label="Where did you find it?">
-          <input
-            className={styles.input}
-            readOnly={!canEdit}
-            placeholder="Paste a link"
-            value={draft.source_url ?? ''}
-            onChange={(e) => setDraft((d) => ({ ...d, source_url: e.target.value }))}
-            onBlur={(e) => save('source_url', e.target.value)}
-          />
-        </Field>
-
-        <Field label="Notes">
-          <textarea
-            className={styles.textarea}
-            rows={3}
-            readOnly={!canEdit}
-            value={draft.notes ?? ''}
-            onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
-            onBlur={(e) => save('notes', e.target.value)}
-          />
-        </Field>
+            <Fact label="Notes" value={entry.notes} />
+          </>
+        )}
 
         <section className={styles.section}>
           <h3 className={styles.sectionLabel}>How much do you want this?</h3>
@@ -338,33 +402,48 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
           </section>
         )}
 
+        {/* Both labels name where the idea ends up, and both carry a line
+            saying what that costs. The board's ⋯ menu and its bulk bar are
+            popups with room for a label and nothing else; the drawer has the
+            room, so this is where the whole sentence gets said. */}
         <section className={styles.actions}>
           {canEdit && entry.kind === 'idea' && (
-            <Button
-              variant="secondary"
-              onClick={() =>
-                liftEntry.mutate(entry.id, {
-                  onSuccess: () =>
-                    show('Lifted out. It&rsquo;s a trip of its own now.', 'success'),
-                  onError: () => show("That didn't save. It's still here — try again.", 'error'),
-                })
-              }
-            >
-              Lift out of trip
-            </Button>
+            <div className={styles.action}>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  liftEntry.mutate(entry.id, {
+                    onSuccess: () =>
+                      show('Lifted out. It&rsquo;s a trip of its own now.', 'success'),
+                    onError: () => show("That didn't save. It's still here — try again.", 'error'),
+                  })
+                }
+              >
+                Make it a trip of its own
+              </Button>
+              <p className={styles.note}>
+                Takes it off this trip. It keeps everything it has and gets a board of its own.
+              </p>
+            </div>
           )}
           {canEdit && !entry.archived_at && (
-            <Button
-              variant="quiet"
-              onClick={() =>
-                archiveEntry.mutate(entry.id, {
-                  onSuccess: () => show("Set aside. It's still here.", 'success'),
-                  onError: () => show("That didn't save. It's still here — try again.", 'error'),
-                })
-              }
-            >
-              Set aside
-            </Button>
+            <div className={styles.action}>
+              <Button
+                variant="quiet"
+                onClick={() =>
+                  archiveEntry.mutate(entry.id, {
+                    onSuccess: () => show("Set aside. It's still here.", 'success'),
+                    onError: () => show("That didn't save. It's still here — try again.", 'error'),
+                  })
+                }
+              >
+                Move to Set aside
+              </Button>
+              <p className={styles.note}>
+                Stays on this trip, out of the idea list. The Set aside list at the foot of the
+                board brings it back.
+              </p>
+            </div>
           )}
         </section>
       </div>

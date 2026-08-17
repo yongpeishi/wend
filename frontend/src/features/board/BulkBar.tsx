@@ -54,11 +54,17 @@ function ideaCount(count: number): string {
  * that puts it on screen.
  *
  * One primary verb, three quiet ones. "Add to a bundle" is the reason anyone
- * picks several ideas, so it is the only filled button on the bar; Lift out and
- * Set aside keep working exactly as they did but stop competing for the eye.
- * They are deliberately still here — the design only draws the bundle verb, but
- * taking two working actions away to match a picture is a regression, not a
- * simplification.
+ * picks several ideas, so it is the only filled button on the bar; "Make
+ * separate trips" and "Move to Set aside" keep working exactly as they did but
+ * stop competing for the eye. They are deliberately still here — the design
+ * only draws the bundle verb, but taking two working actions away to match a
+ * picture is a regression, not a simplification.
+ *
+ * Both of those verbs name where the ideas end up rather than the motion that
+ * gets them there: "Lift out" and "Set aside" read as jargon to anyone who has
+ * not already been told what they do. There is no room for a line of
+ * explanation in a pill this size, so the label carries the whole meaning — the
+ * edit drawer, which has the room, adds the sentence.
  *
  * The "Add to" popover opens upward, above the bar, because the bar sits at the
  * bottom of a long column: a menu dropping down would land off-screen exactly
@@ -175,10 +181,10 @@ export function BulkBar({
 
       <div className={styles.actions}>
         <button type="button" className={styles.quiet} onClick={liftOut}>
-          Lift out
+          Make separate trips
         </button>
         <button type="button" className={styles.quiet} onClick={setAside}>
-          Set aside
+          Move to Set aside
         </button>
         <button type="button" className={styles.quiet} onClick={onClear}>
           Clear

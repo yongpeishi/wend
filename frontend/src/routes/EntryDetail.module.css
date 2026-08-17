@@ -62,6 +62,29 @@
   border-color: var(--focus-ring);
 }
 
+/* A fact read rather than filled in. Deliberately unlike .input: no border, no
+   card tone, no minimum height — nothing that would still suggest a box you
+   could have typed in. `pre-wrap` is here for the two long fields, description
+   and notes, which keep the line breaks they were typed with; the short facts
+   have none to keep, so one rule covers both. `overflow-wrap` is for the source
+   link: a pasted URL is one unbroken word, and the drawer is 480px wide. */
+.fact {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-strong);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: var(--measure-body);
+}
+
+/* Nothing there yet, said quietly. Muted rather than strong so a fact that was
+   filled in is the thing the eye finds first. */
+.factEmpty {
+  color: var(--text-muted);
+}
+
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -140,10 +163,23 @@
   color: var(--text-strong);
 }
 
+/* A column, not a row. Each action now carries a line saying what it does, so
+   the two of them read as two short paragraphs you choose between rather than a
+   toolbar — and side by side there is no width left for either sentence: the
+   drawer is 480px wide, less its padding. */
 .actions {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-6);
   padding-top: var(--space-4);
+}
+
+/* The button and its hint, kept together. `align-items: flex-start` so the
+   button stays its own width instead of stretching to the hint's measure. */
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
