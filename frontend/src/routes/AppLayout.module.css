@@ -88,9 +88,10 @@
  * It does not clip. It used to (`overflow: hidden`), defensively — nothing
  * inside it has ever painted out to a corner, since every child is inset by the
  * panel's own padding. What that clip did do was swallow the planner reveal
- * whole: the cluster is the last thing in the panel, so its names open just
- * past the bottom edge and were cut off at it. A guard that only ever caught
- * the one thing it was not meant to is not a guard.
+ * whole: the names are positioned off the cluster rather than laid out in it,
+ * and a long enough roster reaches past the panel's own edge, where the clip
+ * cut it off. A guard that only ever caught the one thing it was not meant to
+ * is not a guard.
  */
 .tripCard {
   border-radius: 8px;
@@ -328,13 +329,25 @@ button.avatar:focus-visible {
  * panel, push sign out down and move the sidebar under the pointer that asked
  * the question. Nothing on the page moves.
  *
+ * It opens upward, off the top of the cluster. Being last in the PLAN panel
+ * puts the cluster low in a full-height column, and downward the list simply
+ * ran out of window: at 717px tall — an ordinary laptop — the last name landed
+ * below the viewport floor, and the Feedback button, fixed to that same bottom
+ * band and painted over the sidebar by design, sat across the first two.
+ * Neither of those is a stacking argument, so neither is answered by a bigger
+ * z-index: the window cannot be out-stacked. Upward there is always room,
+ * because what is above the cluster is the panel's own nav rows and there are
+ * always more of them than there is list. Covering those for the length of a
+ * hover is the whole price, and it is a fair one.
+ *
  * Not a target. `pointer-events: none` keeps it from standing between the
- * pointer and whatever it was actually going to click, and means it cannot
- * cover its own trigger and flicker.
+ * pointer and whatever it was actually going to click, means it cannot cover
+ * its own trigger and flicker, and is what makes covering the nav rows free:
+ * a click aimed at a view still lands on the view, through the names.
  */
 .plannerNames {
   position: absolute;
-  top: calc(100% + var(--space-1));
+  bottom: calc(100% + var(--space-1));
   left: var(--space-3);
   right: var(--space-3);
   z-index: 20;
@@ -507,8 +520,17 @@ button.avatar:focus-visible {
   /* Lying down, the cluster is only as wide as its own faces, so the panel
      stops borrowing its measure from it and takes the width of the longest
      name instead — up to half the screen, past which the names wrap rather
-     than run off the edge of a phone. */
+     than run off the edge of a phone.
+
+     It also goes back to opening downward. Upward is what standing up needs,
+     where the cluster is low in a tall column; laid out along the bar the
+     cluster is at the very top of the page instead, and there is nothing above
+     it to open into — the names would go straight out of the window, which is
+     the exact failure the upward reveal exists to avoid. Below the bar the page
+     has only just started, so the room is all there. */
   .plannerNames {
+    top: calc(100% + var(--space-1));
+    bottom: auto;
     left: 0;
     right: auto;
     width: max-content;
