@@ -25,9 +25,11 @@
   max-width: var(--screen-measure);
 }
 
-/* The header is the title block, one trip-wide action and the viewer note: the
-   tab bar moved to the sidebar and the progress trail was retired, so this
-   carries the full gap to the page body.
+/* The header is the title, the dates and the viewer note, and nothing else:
+   the tab bar moved to the sidebar, the progress trail was retired, and
+   "Bring someone along" went to the sidebar's people cluster, so this carries
+   the full gap to the page body. Its children stack in normal flow — there is
+   no second column left for a row to arrange.
 
    It KEEPS the 1360px measure that .wrap > * hands it, even on the two screens
    that decline it for themselves. Deliberate: the head is nothing but text — a
@@ -46,21 +48,6 @@
    the case this note exists to prevent. */
 .head {
   margin-bottom: var(--gap-section);
-}
-
-/* The title on the left, the one trip-wide action on the right. It wraps rather
-   than shrinking the title: a long trip name is the thing this screen is about,
-   and a button that drops to its own line is still a button. */
-.headTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-
-.titleBlock {
-  min-width: 0;
 }
 
 .title {

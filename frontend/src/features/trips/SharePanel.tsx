@@ -80,6 +80,13 @@ function confirmLabel(kind: PendingKind): string {
   return REMOVE;
 }
 
+/** The same circle the sidebar cluster draws, so the face you clicked and the
+ * row you land on are recognisably one person. The dot is for a name that is
+ * somehow blank — a circle with nothing in it looks broken. */
+function initial(name: string): string {
+  return name.trim().charAt(0).toUpperCase() || '·';
+}
+
 function messageFor(error: unknown): string {
   // The server's refusals are written in this voice already ("You started this
   // trip, so it needs you until someone else takes it on."), so show them as
@@ -192,6 +199,7 @@ export function SharePanel({ open, onClose, tripId }: SharePanelProps) {
         <Button
           key="handOver"
           variant="quiet"
+          className={styles.action}
           onClick={() => setPending({ kind: 'handOver', userId: person.user_id, name: person.name })}
         >
           {HAND_OVER}
@@ -199,6 +207,7 @@ export function SharePanel({ open, onClose, tripId }: SharePanelProps) {
         <Button
           key="remove"
           variant="quiet"
+          className={styles.action}
           onClick={() => setPending({ kind: 'remove', userId: person.user_id, name: person.name })}
         >
           {REMOVE}
@@ -212,6 +221,7 @@ export function SharePanel({ open, onClose, tripId }: SharePanelProps) {
         <Button
           key="leave"
           variant="quiet"
+          className={styles.action}
           onClick={() => setPending({ kind: 'leave', userId: person.user_id, name: person.name })}
         >
           {LEAVE}
@@ -226,35 +236,43 @@ export function SharePanel({ open, onClose, tripId }: SharePanelProps) {
     const canChangeTheirRole = iAmOwner && !person.is_you && person.role !== 'owner';
     return (
       <li key={person.user_id} className={styles.person}>
-        <div className={styles.who}>
-          <span className={styles.name}>{person.name}</span>
-          {person.is_you && <span className={styles.you}>you</span>}
+        {/* Hidden from screen readers: the name is real text an inch to the
+            right, and hearing the person twice is worse than not seeing the
+            circle at all. */}
+        <span className={styles.avatar} aria-hidden="true">
+          {initial(person.name)}
+        </span>
+        <div className={styles.details}>
+          <div className={styles.who}>
+            <span className={styles.name}>{person.name}</span>
+            {person.is_you && <span className={styles.you}>you</span>}
+          </div>
+          {/* Null for a viewer, who sees who is here without collecting addresses.
+              Absent, not the word "null" and not an empty line. */}
+          {person.email && <p className={styles.email}>{person.email}</p>}
+          {canChangeTheirRole && (
+            <Select
+              wrapperClassName={styles.roleSelect}
+              aria-label={`What ${person.name} can do`}
+              value={person.role}
+              disabled={working}
+              onChange={(e) =>
+                changeRole.mutate(
+                  { userId: person.user_id, role: e.target.value as GrantableRole },
+                  { onError: (error) => show(messageFor(error), 'error') },
+                )
+              }
+            >
+              {ROLE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          )}
+          <p className={styles.roleDescription}>{ROLE_DESCRIPTION[person.role]}</p>
+          {renderActions(person)}
         </div>
-        {/* Null for a viewer, who sees who is here without collecting addresses.
-            Absent, not the word "null" and not an empty line. */}
-        {person.email && <p className={styles.email}>{person.email}</p>}
-        {canChangeTheirRole && (
-          <Select
-            wrapperClassName={styles.roleSelect}
-            aria-label={`What ${person.name} can do`}
-            value={person.role}
-            disabled={working}
-            onChange={(e) =>
-              changeRole.mutate(
-                { userId: person.user_id, role: e.target.value as GrantableRole },
-                { onError: (error) => show(messageFor(error), 'error') },
-              )
-            }
-          >
-            {ROLE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </Select>
-        )}
-        <p className={styles.roleDescription}>{ROLE_DESCRIPTION[person.role]}</p>
-        {renderActions(person)}
       </li>
     );
   }

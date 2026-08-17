@@ -157,8 +157,10 @@ describe('AppLayout', () => {
     renderShell(`/trips/${SEEDED_TRIP_ID}`);
 
     expect(await screen.findByText('Planning with')).toBeInTheDocument();
-    // The circle shows an initial; the name is what assistive tech hears.
-    expect(screen.getByRole('listitem')).toHaveTextContent('DDemo Traveler');
+    // The circle shows an initial; the name is what assistive tech hears. The
+    // people come first — the last item in the list is the dashed +.
+    const [you] = screen.getAllByRole('listitem');
+    expect(you).toHaveTextContent('DDemo Traveler');
   });
 
   // Sarah has voted on the seeded trip but is not on it. The old list was built
@@ -169,7 +171,8 @@ describe('AppLayout', () => {
     renderShell(`/trips/${SEEDED_TRIP_ID}`);
 
     await screen.findByText('Planning with');
-    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
+    // Two people, then the dashed + that shares their list.
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(3));
     expect(screen.getByText('Sarah')).toBeInTheDocument();
 
     setRole(SEEDED_TRIP_ID, SARAH_USER_ID, null);
@@ -185,6 +188,18 @@ describe('AppLayout', () => {
     expect(await screen.findByRole('dialog', { name: "Who's on this trip" })).toBeInTheDocument();
   });
 
+  // The dashed + is the way to bring someone along, and it opens the same panel
+  // the faces do — one screen for who is on this trip, reached from the cluster.
+  it('opens the same panel from the dashed + at the end of the cluster', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    const user = userEvent.setup();
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    await user.click(await screen.findByRole('button', { name: 'Add someone to this trip' }));
+
+    expect(await screen.findByRole('dialog', { name: "Who's on this trip" })).toBeInTheDocument();
+  });
+
   // A viewer sees who they are reading along with — they simply have no door.
   it('leaves a viewer the faces without making them buttons', async () => {
     await api.post('/session', { email: 'demo@wend.app', password: 'password' });
@@ -194,6 +209,25 @@ describe('AppLayout', () => {
     await screen.findByText('Planning with');
     expect(screen.getByRole('listitem')).toHaveTextContent('DDemo Traveler');
     expect(screen.queryByRole('button', { name: 'Demo Traveler' })).not.toBeInTheDocument();
+    // No + either: the cluster ends at the last face rather than offering a
+    // door that would be shut in their face.
+    expect(screen.queryByRole('button', { name: 'Add someone to this trip' })).not.toBeInTheDocument();
+  });
+
+  // Gated on the roster alone, an owner whose collaborator list came back empty
+  // was left with no way to bring anyone along at all.
+  it('still offers the + when the roster is empty', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    server.use(
+      http.get('/api/trips/:tripId/collaborators', () =>
+        HttpResponse.json({ collaborators: [], my_role: 'owner' }),
+      ),
+    );
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    expect(
+      await screen.findByRole('button', { name: 'Add someone to this trip' }),
+    ).toBeInTheDocument();
   });
 
   it('keeps "Planning with" out when nobody is known yet', async () => {

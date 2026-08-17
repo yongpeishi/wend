@@ -168,7 +168,10 @@ export function AppLayout() {
                   ))}
                 </nav>
 
-                {planners.length > 0 && (
+                {/* Shown to anyone who can bring someone along even before the
+                    roster lands — gated on the list alone, an owner with an
+                    empty or still-loading list had no way in at all. */}
+                {(planners.length > 0 || shareable) && (
                   <div className={styles.planners}>
                     <div className={styles.rule} />
                     <div className={styles.sectionLabel}>Planning with</div>
@@ -207,6 +210,21 @@ export function AppLayout() {
                           </li>
                         );
                       })}
+                      {/* Last in the row, so bringing someone along is the next
+                          empty place at the table rather than a separate
+                          control. A viewer's cluster ends at the last face. */}
+                      {shareable && (
+                        <li className={styles.avatarItem}>
+                          <button
+                            type="button"
+                            className={styles.addPerson}
+                            onClick={() => setSharing(true)}
+                          >
+                            <span aria-hidden="true">+</span>
+                            <span className={styles.srOnly}>Add someone to this trip</span>
+                          </button>
+                        </li>
+                      )}
                     </ul>
                   </div>
                 )}

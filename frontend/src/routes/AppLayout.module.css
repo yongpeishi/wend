@@ -272,6 +272,45 @@ button.avatar:focus-visible {
   outline-offset: var(--focus-offset);
 }
 
+/* The empty place at the end of the row: same circle as a face, drawn as an
+   outline because nobody is in it yet. It is the only way to bring someone
+   along, so it stands with the people already here rather than off in the
+   header. 16px has no type token — it is the size of a glyph in a 32px circle,
+   not a step of the type scale. */
+.addPerson {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  flex: none;
+  padding: 0;
+  border: var(--border-width) dashed rgb(240 243 238 / 45%);
+  border-radius: var(--radius-pill);
+  background: none;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-on-dark-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* Opacity, like its neighbours — a second colour would make the outline read as
+   a different kind of thing from the faces beside it. */
+.addPerson:hover {
+  opacity: 0.7;
+}
+
+.addPerson:active {
+  opacity: 0.55;
+}
+
+.addPerson:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
 .srOnly {
   position: absolute;
   width: 1px;
