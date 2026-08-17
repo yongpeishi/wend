@@ -43,6 +43,20 @@ export function useSignOut() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => api.delete<void>('/session'),
-    onSuccess: () => queryClient.setQueryData(queryKeys.session, null),
+    // Signing out has to empty the whole cache, not just the session key:
+    // otherwise the next traveller to sign in on this browser sees the previous
+    // one's trips and ideas render straight from memory. The order matters.
+    // 1. Cancel first — an in-flight request that resolved after the clear
+    //    would repopulate the cache with the signed-out user's data.
+    // 2. Clear everything: entries, todos, schedule, itinerary, nearby, feedback.
+    // 3. Re-seed `session: null` immediately. `useMe` has staleTime: Infinity,
+    //    so a seeded null stops it firing a fresh GET /api/me and stops
+    //    ProtectedRoute flashing its spinner on the way to /signin.
+    // A failed sign out never reaches here, so the cache is left untouched.
+    onSuccess: async () => {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      queryClient.setQueryData(queryKeys.session, null);
+    },
   });
 }
