@@ -84,6 +84,42 @@ describe('NewIdeaModal', () => {
     expect(idea).toMatchObject({ category: 'food', location_name: 'Gion', duration_minutes: 120 });
   });
 
+  /**
+   * "Where did you find it?" was a labelled box for one URL, which most ideas
+   * never have — and once the edit panel stopped showing that box, a link typed
+   * at capture time could be written and never read again. Notes takes it, and
+   * says so before you type.
+   */
+  it('offers notes as the catch-all, and names the link as one of the things that go there', () => {
+    renderModal(vi.fn());
+
+    expect(screen.queryByLabelText('Where did you find it?')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Notes')).toHaveAttribute(
+      'placeholder',
+      expect.stringContaining('link to where you found it'),
+    );
+  });
+
+  it('keeps what was typed into notes', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderModal(onClose);
+
+    await user.type(screen.getByLabelText("What's the idea?"), 'Ramen alley, second time');
+    await user.type(
+      screen.getByLabelText('Notes'),
+      'https://example.com/ramen-alley — queue before 11',
+    );
+    await user.click(screen.getByRole('button', { name: 'Keep it' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const entries = await api.get<{ entries: { title: string; notes: string | null }[] }>('/entries', {
+      params: { trip_id: TRIP_ID, kind: 'idea' },
+    });
+    const idea = entries.entries.find((e) => e.title === 'Ramen alley, second time');
+    expect(idea?.notes).toBe('https://example.com/ramen-alley — queue before 11');
+  });
+
   it('does nothing on Cancel — no request is made and the field clears', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

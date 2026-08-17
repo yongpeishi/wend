@@ -26,7 +26,7 @@ interface Draft {
   location_name: string;
   address: string;
   duration_minutes: string;
-  source_url: string;
+  notes: string;
 }
 
 const EMPTY_DRAFT: Draft = {
@@ -36,7 +36,7 @@ const EMPTY_DRAFT: Draft = {
   location_name: '',
   address: '',
   duration_minutes: '',
-  source_url: '',
+  notes: '',
 };
 
 /**
@@ -44,9 +44,20 @@ const EMPTY_DRAFT: Draft = {
  * mode's whole point is that saving something costs almost nothing (an
  * Instagram find must land in seconds), so the name field is focused the
  * instant this opens and every other field is optional — type a name, hit
- * return, it exists. Description, category, location, duration and source
- * can be filled in now or edited later from the drawer at /entries/:id,
- * which is the same set of fields in the same order (see EntryDetail.tsx).
+ * return, it exists.
+ *
+ * What it asks for is a subset of what an idea can hold: name, description,
+ * kind, place, address, how long, notes. The coordinates are deliberately not
+ * here — nobody types a latitude at capture speed, and the map fills them in
+ * later — so the full set lives in the panel at /entries/:id
+ * (EntryDetail.tsx), which opens as the same <Modal> this one does and which
+ * anything left blank here can be finished in.
+ *
+ * Notes is the catch-all, and it is last on both surfaces: the link you found
+ * it through, the opening hours, who to ask. It used to be a "Where did you
+ * find it?" box of its own, which is a lot of form for one URL that most
+ * ideas never have — and once the edit panel stopped showing that box, a link
+ * typed here could be written and never read again.
  *
  * Unlike EntryDetail's <Field label="…"><input/></Field> usage, every Field
  * here is given its value/onChange directly as props — Field renders its own
@@ -74,6 +85,7 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const descriptionId = useId();
   const categoryId = useId();
+  const notesId = useId();
 
   // Fresh form every time this opens — NewIdeaModal itself stays mounted
   // across opens/closes (TripBoard always renders it), so the draft has to
@@ -97,7 +109,7 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
     if (draft.category) entry.category = draft.category;
     if (draft.location_name.trim()) entry.location_name = draft.location_name.trim();
     if (draft.address.trim()) entry.address = draft.address.trim();
-    if (draft.source_url.trim()) entry.source_url = draft.source_url.trim();
+    if (draft.notes.trim()) entry.notes = draft.notes.trim();
     if (draft.duration_minutes.trim()) {
       const minutes = Number(draft.duration_minutes);
       if (!Number.isNaN(minutes)) entry.duration_minutes = minutes;
@@ -205,12 +217,24 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
           onChange={(e) => setDraft((d) => ({ ...d, duration_minutes: e.target.value }))}
         />
 
-        <Field
-          label="Where did you find it?"
-          placeholder="Paste a link"
-          value={draft.source_url}
-          onChange={(e) => setDraft((d) => ({ ...d, source_url: e.target.value }))}
-        />
+        {/* A textarea rather than a <Field>, for the same reason the
+            description above is one: this is the box that takes whatever did
+            not deserve a label of its own, and the placeholder says so. Same
+            wording as the edit panel's, so the two surfaces agree about what
+            belongs here. */}
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor={notesId}>
+            Notes
+          </label>
+          <textarea
+            id={notesId}
+            className={styles.textarea}
+            rows={2}
+            placeholder="Anything else — a link to where you found it, opening hours, who to ask."
+            value={draft.notes}
+            onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
+          />
+        </div>
       </Stack>
     </Modal>
   );
