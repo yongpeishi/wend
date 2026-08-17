@@ -272,6 +272,14 @@
   opacity: 0.75;
 }
 
+/* In flight. The label already says "Signing out…", so the button only has to
+   stop inviting a second click: one step further back than hover, and no
+   pointer. Ordered after :hover so it wins at the same specificity. */
+.signOut:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .signOut:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);

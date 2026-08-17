@@ -10,6 +10,8 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<User>;
   signUp: (name: string, email: string, password: string) => Promise<User>;
   signOut: () => Promise<void>;
+  /** True while DELETE /api/session is in flight. */
+  isSigningOut: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -27,7 +29,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signIn: (email, password) => signInMutation.mutateAsync({ email, password }),
       signUp: (name, email, password) => signUpMutation.mutateAsync({ name, email, password }),
       signOut: () => signOutMutation.mutateAsync(),
+      isSigningOut: signOutMutation.isPending,
     }),
+    // `signOutMutation` covers isPending: TanStack hands back a fresh result
+    // object on every status change, so the memo recomputes with it. Listing
+    // `signOutMutation.isPending` as well is what exhaustive-deps calls an
+    // unnecessary dependency.
     [me.data, me.isLoading, signInMutation, signUpMutation, signOutMutation],
   );
 
