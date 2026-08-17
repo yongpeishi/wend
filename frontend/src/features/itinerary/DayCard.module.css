@@ -2,7 +2,7 @@
    elevation; there is no shadow anywhere in this product. */
 .card {
   background: var(--surface-card);
-  border: var(--border-width) solid var(--border-subtle);
+  border: var(--border-width) solid var(--border-width-strong);
   border-radius: var(--radius-card);
   padding: 18px;
   display: flex;

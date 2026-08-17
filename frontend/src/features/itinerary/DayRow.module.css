@@ -8,7 +8,6 @@
   width: 100%;
   box-sizing: border-box;
   background: var(--surface-card);
-  border: var(--border-width) solid var(--border-subtle);
   border-radius: var(--radius-card);
   /* 18px of the design's row inset, so the swap trigger sits at the same edge
      everything else on the screen does. The vertical inset belongs to the
@@ -62,7 +61,8 @@
 .row[data-empty] {
   background: transparent;
   border-style: dashed;
-  border-color: var(--border-strong);
+  border-color: var(--border-subtle);
+  border-width: var(--border-width);
 }
 
 /* Mid-drag, the day under the pointer takes a leaf outline. Green means
