@@ -160,3 +160,37 @@ describe('DatesGate — setting the dates', () => {
     expect(screen.getByRole('button', { name: 'Back to ideas' })).toBeInTheDocument();
   });
 });
+
+/**
+ * There is only one way to be at this gate as a viewer — the trip has no dates,
+ * and "Change dates" is not on a viewer's header to reopen it with — so the
+ * card says which of the two situations this is rather than handing over a form
+ * whose confirm button could never be pressed.
+ */
+describe('DatesGate — read only', () => {
+  it('says why there are no days, and offers no form to open them with', () => {
+    renderGate({ readOnly: true });
+
+    expect(screen.getByRole('heading', { level: 2, name: 'No days yet' })).toBeInTheDocument();
+    expect(
+      screen.getByText("The dates aren't set yet. Only someone editing this trip can open the days."),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByLabelText('First day')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Last day')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open the days' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'A week' })).not.toBeInTheDocument();
+    // The trip's title in TripLayout is still the page's only <h1>.
+    expect(screen.getAllByRole('heading')).toHaveLength(1);
+  });
+
+  // A screen with nothing on it and nowhere to go is a dead end.
+  it('keeps the way out', async () => {
+    const user = userEvent.setup();
+    const { onBack } = renderGate({ readOnly: true });
+
+    await user.click(screen.getByRole('button', { name: 'Back to ideas' }));
+
+    expect(onBack).toHaveBeenCalled();
+  });
+});

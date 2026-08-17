@@ -49,10 +49,22 @@ const ARCHIVED: DayVersion = {
   schedule_items: [item(1, 'Kinkaku-ji')],
 };
 
-function renderPanel(open = false, archived = [{ version: ARCHIVED, label: 'Day 4 · Wed 15 · Version B' }]) {
+function renderPanel(
+  open = false,
+  archived = [{ version: ARCHIVED, label: 'Day 4 · Wed 15 · Version B' }],
+  readOnly = false,
+) {
   const onToggle = vi.fn();
   const onRestore = vi.fn();
-  render(<ArchivedPanel archived={archived} open={open} onToggle={onToggle} onRestore={onRestore} />);
+  render(
+    <ArchivedPanel
+      archived={archived}
+      open={open}
+      onToggle={onToggle}
+      onRestore={onRestore}
+      readOnly={readOnly}
+    />,
+  );
   return { onToggle, onRestore };
 }
 
@@ -152,5 +164,23 @@ describe('ArchivedPanel', () => {
     await user.click(screen.getByRole('button', { name: 'Bring back Day 4 · Wed 15 · Version B' }));
 
     expect(onRestore).toHaveBeenCalledWith(9);
+  });
+
+  // What a trip set aside is part of reading the trip, so a viewer keeps the
+  // count, the disclosure and every summary in it. Only the way back goes:
+  // bringing a version back is a change to the day it came from.
+  it('still says what was set aside to someone who cannot bring it back', async () => {
+    const user = userEvent.setup();
+    const { onToggle } = renderPanel(true, undefined, true);
+
+    expect(screen.getByRole('button', { name: /Archived · 1/ })).toBeInTheDocument();
+    expect(screen.getByText('Day 4 · Wed 15 · Version B')).toBeInTheDocument();
+    expect(screen.getByText('09:00–11:00 · 1 thing')).toBeInTheDocument();
+    expect(screen.getByText('Kinkaku-ji')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bring back/ })).not.toBeInTheDocument();
+
+    // The disclosure itself is reading, not writing.
+    await user.click(screen.getByRole('button', { name: /Archived · 1/ }));
+    expect(onToggle).toHaveBeenCalled();
   });
 });

@@ -35,10 +35,11 @@ function renderRail(props: Partial<Parameters<typeof UnplacedRail>[0]> = {}) {
     <DndContext>
       <UnplacedRail
         title="Not placed yet · 2"
-        line="Drag one onto a day, or use its menu."
+        line={props.line ?? 'Drag one onto a day, or use its menu.'}
         items={props.items ?? ITEMS}
         days={props.days ?? DAYS}
         onAddToDay={props.onAddToDay ?? onAddToDay}
+        readOnly={props.readOnly}
       >
         {props.children}
       </UnplacedRail>
@@ -222,5 +223,31 @@ describe('UnplacedRail — getting something onto a day', () => {
     await user.click(screen.getByRole('button', { name: 'Add Kinkaku-ji to a day' }));
 
     expect(screen.getByText(/Set the trip's dates and the days appear here/)).toBeInTheDocument();
+  });
+});
+
+describe('UnplacedRail — read only', () => {
+  it('keeps the whole list, and both ways onto a day off it', () => {
+    // The line is the caller's to match: the editable sentence names a grip and
+    // a ⋯ menu, and a viewer has neither. See TripItinerary's RAIL_LINE.
+    renderRail({ readOnly: true, line: 'Kept for this trip, not on a day yet.' });
+
+    expect(screen.getByText('Not placed yet · 2')).toBeInTheDocument();
+    expect(screen.getByText('Kept for this trip, not on a day yet.')).toBeInTheDocument();
+    expect(screen.getByText('Kinkaku-ji')).toBeInTheDocument();
+    expect(screen.getByText('Bundle · Kyoto west · 1 hr')).toBeInTheDocument();
+    // The one thing about this rail people assume wrongly still gets said.
+    expect(screen.getByText(/Nothing here is used up/)).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: /^Drag / })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Add .* to a day$/ })).not.toBeInTheDocument();
+    // Nothing left on the rail to press at all.
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('still says plainly when everything kept is already on a day', () => {
+    renderRail({ readOnly: true, items: [] });
+
+    expect(screen.getByText(/Everything you've kept is on a day/)).toBeInTheDocument();
   });
 });

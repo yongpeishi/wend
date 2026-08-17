@@ -343,6 +343,90 @@ describe('DayCard — swapping it with another day', () => {
   });
 });
 
+/**
+ * Written in two halves on purpose, the same way TripBoard's viewer tests are:
+ * the first asserts the ways in are gone, the second asserts the day is still
+ * all there. A test with only the first half passes on an empty card, which is
+ * the one outcome read-only must never produce.
+ */
+describe('DayCard — read only', () => {
+  const TRIP_DAYS = [
+    { day: '2026-10-12', label: 'Day 1 · Mon 12' },
+    { day: '2026-10-13', label: 'Day 2 · Tue 13' },
+  ];
+
+  it('draws the whole day, and nothing that would change it', () => {
+    renderCard({
+      readOnly: true,
+      swapChoices: TRIP_DAYS,
+      onSwapDay: vi.fn(),
+      day: day({ lodgingTitle: 'Machiya near Yasaka' }),
+    });
+
+    // Still the day: its name, what is on it, the derived member hours, the
+    // hole in the middle and where the night is spent.
+    expect(screen.getByRole('heading', { name: 'Day 2 · Tue 13' })).toBeInTheDocument();
+    expect(screen.getByText('Bundle · Tuesday south')).toBeInTheDocument();
+    expect(screen.getByText('Daiso, Kyoto Station')).toBeInTheDocument();
+    expect(screen.getByText('Nishiki Market')).toBeInTheDocument();
+    expect(screen.getByText('08:00–10:15')).toBeInTheDocument();
+    expect(screen.getByText('Nothing planned · 6 hr')).toBeInTheDocument();
+    expect(screen.getByText('Machiya near Yasaka')).toBeInTheDocument();
+
+    // And none of the ways to change it.
+    expect(screen.queryByRole('button', { name: 'Fork this day' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '+ add to this day' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Fill it' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /off this day$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /the hours for/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Swap/ })).not.toBeInTheDocument();
+  });
+
+  // Where you sleep is a fact about the night, so it stays — as text, not as
+  // the pill that opens the editor.
+  it('shows where you sleep without offering to change it', () => {
+    renderCard({ readOnly: true, day: day({ lodgingTitle: 'Machiya near Yasaka' }) });
+
+    expect(screen.getByText('Machiya near Yasaka')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Where you sleep: Machiya near Yasaka. Change it.' }),
+    ).not.toBeInTheDocument();
+  });
+
+  // The unset pill has no read-only form at all: "+ where you sleep" is an
+  // invitation, and there is nothing here to accept it with.
+  it('leaves the lodging slot empty rather than inviting a viewer to fill it', () => {
+    renderCard({ readOnly: true });
+
+    expect(screen.queryByText(/where you sleep/i)).not.toBeInTheDocument();
+  });
+
+  // Closing the day is reading, not writing: it changes what is on screen and
+  // nothing about the trip.
+  it('still opens and closes', async () => {
+    const user = userEvent.setup();
+    const handlers = renderCard({ readOnly: true });
+
+    await user.click(screen.getByRole('button', { name: 'Close Day 2 · Tue 13' }));
+
+    expect(handlers.onToggle).toHaveBeenCalled();
+  });
+
+  it('keeps a split day readable as a split day, with no verdict to hand down', () => {
+    renderCard({
+      readOnly: true,
+      day: day({ versions: [version(1, 'Version A', [LOOSE_ITEM]), version(2, 'Version B', [], 1)] }),
+    });
+
+    expect(screen.getByRole('heading', { name: 'Version A' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Version B' })).toBeInTheDocument();
+    expect(screen.getByText('2 versions · not settled')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Keep Version/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add another' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^\+ add to Version/ })).not.toBeInTheDocument();
+  });
+});
+
 describe('DayCard — as a drop target', () => {
   it('marks itself when the container says the drag is over it', () => {
     renderCard({ isDropTarget: true });

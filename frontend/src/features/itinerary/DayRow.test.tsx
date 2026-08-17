@@ -53,6 +53,7 @@ function renderRow(props: Partial<Parameters<typeof DayRow>[0]> = {}) {
         swapChoices={props.swapChoices}
         onSwapDay={props.onSwapDay}
         onToggle={props.onToggle ?? onToggle}
+        readOnly={props.readOnly}
       />
     </DndContext>,
   );
@@ -221,6 +222,30 @@ describe('DayRow — swapping it with another day', () => {
   // swap cannot go inside a button, so the swap is outboard. DayCard.test.tsx
   // pins the open day to match. jsdom lays nothing out — this is DOM order,
   // not pixels.
+  // A closed row is already only a summary and a way to open it, so read-only
+  // takes exactly one thing off it — and leaves everything the row says.
+  it('takes the swap away for a viewer, and nothing else', async () => {
+    const user = userEvent.setup();
+    const { onToggle } = renderRow({
+      readOnly: true,
+      swapChoices: TRIP_DAYS,
+      onSwapDay: vi.fn(),
+      day: day({ lodgingTitle: 'Machiya near Yasaka' }),
+    });
+
+    expect(screen.queryByRole('button', { name: /^Swap/ })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+
+    const row = screen.getByRole('button');
+    expect(row).toHaveTextContent('Day 2 · Tue 13');
+    expect(row).toHaveTextContent('Fushimi Inari');
+    expect(screen.getByText('Machiya near Yasaka')).toBeInTheDocument();
+
+    // Opening it is reading, not writing.
+    await user.click(row);
+    expect(onToggle).toHaveBeenCalled();
+  });
+
   it('puts the chevron before the swap, the order the open day matches', () => {
     renderRow({ swapChoices: TRIP_DAYS, onSwapDay: vi.fn() });
 

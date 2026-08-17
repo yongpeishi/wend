@@ -19,6 +19,12 @@ export interface DayRowProps {
   onDropItem?: (entryId: number) => void;
   /** Exchange this day with another date of the trip. Needs `swapChoices`. */
   onSwapDay?: (otherDay: string) => void;
+  /**
+   * A viewer's row. Almost nothing changes here — a closed day is already only
+   * a summary and a way to open it — so this takes exactly one thing away: the
+   * swap menu beside it, which is the row's only control that writes.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -37,7 +43,15 @@ export interface DayRowProps {
  * carries the day's drop target and its outline; the button carries the
  * gesture.
  */
-export function DayRow({ day, isDropTarget = false, swapChoices = [], onToggle, onDropItem, onSwapDay }: DayRowProps) {
+export function DayRow({
+  day,
+  isDropTarget = false,
+  swapChoices = [],
+  onToggle,
+  onDropItem,
+  onSwapDay,
+  readOnly = false,
+}: DayRowProps) {
   const { setNodeRef, isOver, dropId } = useDayDrop(day.day, onDropItem);
   const items = day.versions[0]?.schedule_items ?? [];
   const summary = daySummary(items);
@@ -82,7 +96,7 @@ export function DayRow({ day, isDropTarget = false, swapChoices = [], onToggle, 
         <ChevronDown size={20} strokeWidth={1.5} aria-hidden="true" className={styles.chevron} />
       </button>
 
-      {onSwapDay && (
+      {onSwapDay && !readOnly && (
         <SwapDayMenu
           day={day.day}
           dayLabel={day.label}
