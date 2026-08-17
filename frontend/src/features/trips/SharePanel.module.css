@@ -103,8 +103,9 @@
    2px leaf underline — so this only takes the side padding off, letting the
    underline stop where the words do instead of running past them. The height
    stays: these are verbs you reach for with a thumb, and a two-line-tall target
-   is not one. */
-.action {
+   is not one. Named down the row rather than on its own because the button's
+   own padding is set by two classes together, and one class here would lose. */
+.person .actions .action {
   padding-left: 0;
   padding-right: 0;
   white-space: nowrap;
