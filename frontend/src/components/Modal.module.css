@@ -11,6 +11,13 @@
   box-shadow: var(--shadow-none);
 }
 
+/* Room for two fields to a line. The same `min()` against the viewport, so on a
+   phone this is the default dialog and the two-column bodies inside it collapse
+   to one column on their own. */
+.wide {
+  width: min(760px, calc(100vw - 2 * var(--gutter-screen)));
+}
+
 .title {
   margin: 0 0 var(--space-4);
   font-weight: var(--weight-bold);

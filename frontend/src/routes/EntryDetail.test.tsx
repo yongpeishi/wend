@@ -19,8 +19,9 @@ const IDEA = { id: 5, title: 'Fushimi Inari at dawn' };
 
 /**
  * Seeded entry 2 — the one two people have actually rated (+2 from Demo
- * Traveler, -1 from Sarah). Entry 5 has no votes at all, so the rating section
- * needs a second fixture to have anything to say.
+ * Traveler, -1 from Sarah), and the one that sits inside a bundle. It is the
+ * fixture for what this panel no longer shows: neither the rating nor the
+ * bundles it appears in belong to a dialog about what the idea is.
  */
 const RATED = { id: 2, title: 'Nanzen-ji' };
 
@@ -95,45 +96,6 @@ describe('EntryDetail — a viewer reads it', () => {
     expect(within(panel).getAllByText('—')).toHaveLength(3);
   });
 
-  it('makes the source somewhere you can actually go', async () => {
-    const panel = await openPanel('viewer');
-
-    const link = within(panel).getByRole('link', { name: 'https://example.com/fushimi-inari' });
-    expect(link).toHaveAttribute('href', 'https://example.com/fushimi-inari');
-  });
-
-  /**
-   * The rating was the last locked-out form on the screen: five stops offered
-   * and then refused. A viewer is not being asked, so the question goes and the
-   * answer stays.
-   */
-  it('is told what everyone wants rather than asked what they want', async () => {
-    const panel = await openPanel('viewer', RATED);
-    const read = within(panel);
-
-    expect(read.getByRole('heading', { name: 'How much everyone wants this' })).toBeInTheDocument();
-    expect(read.queryByRole('heading', { name: 'How much do you want this?' })).not.toBeInTheDocument();
-    expect(read.queryAllByRole('radio')).toHaveLength(0);
-    expect(read.getByText('0.5 · 2 votes')).toBeInTheDocument();
-  });
-
-  it('says so plainly when nobody has rated it yet', async () => {
-    const panel = await openPanel('viewer');
-    expect(within(panel).getByText('No votes yet')).toBeInTheDocument();
-  });
-
-  /** The summary is the shape; this list is the substance of "votes others
-   * submitted", and it is the same list for everyone. */
-  it('still sees who said what, by name and score', async () => {
-    const panel = await openPanel('viewer', RATED);
-    const read = within(panel);
-
-    expect(read.getByText('Demo Traveler')).toBeInTheDocument();
-    expect(read.getByText('+2')).toBeInTheDocument();
-    expect(read.getByText('Sarah')).toBeInTheDocument();
-    expect(read.getByText('-1')).toBeInTheDocument();
-  });
-
   it('offers neither way to move the idea', async () => {
     const panel = await openPanel('viewer');
     const read = within(panel);
@@ -153,35 +115,77 @@ describe('EntryDetail — anyone who can edit', () => {
     expect(read.getByRole('combobox', { name: 'What kind of thing?' })).toHaveValue('place');
   });
 
-  it('is still asked the question, with the stops to answer it', async () => {
-    const panel = await openPanel('member', RATED);
-    const read = within(panel);
-
-    expect(read.getByRole('heading', { name: 'How much do you want this?' })).toBeInTheDocument();
-    expect(read.getAllByRole('radio')).toHaveLength(5);
-    for (const stop of read.getAllByRole('radio')) expect(stop).toBeEnabled();
-  });
-
   /**
-   * Both labels name where the idea ends up rather than the motion that gets it
-   * there, and this panel — unlike the board's ⋯ menu and its bulk bar — has
-   * the room to say what that costs.
+   * The two moves left for the board's ⋯ menu, where Edit already lives. This
+   * dialog is about what the idea IS; lifting it out or setting it aside is
+   * something you do to it, and doing it from inside the panel that edits it
+   * meant the panel had to explain itself twice.
    */
-  it('names both actions by what they leave you with, and says what each does', async () => {
+  it('offers neither way to move the idea either', async () => {
     const panel = await openPanel('member');
     const read = within(panel);
 
-    expect(read.getByRole('button', { name: 'Make it a trip of its own' })).toBeInTheDocument();
-    expect(
-      read.getByText('Takes it off this trip. It keeps everything it has and gets a board of its own.'),
-    ).toBeInTheDocument();
+    expect(read.queryByRole('button', { name: 'Make it a trip of its own' })).not.toBeInTheDocument();
+    expect(read.queryByRole('button', { name: 'Move to Set aside' })).not.toBeInTheDocument();
+  });
+});
 
-    expect(read.getByRole('button', { name: 'Move to Set aside' })).toBeInTheDocument();
-    expect(
-      read.getByText(
-        'Stays on this trip, out of the idea list. The Set aside list at the foot of the board brings it back.',
-      ),
-    ).toBeInTheDocument();
+/**
+ * The feedback: the panel asked for the same things more than once and carried
+ * a good deal that was not the idea. These are the four that went, and each is
+ * asserted against the fixture that used to make it appear.
+ */
+describe('EntryDetail — what it no longer asks for', () => {
+  /**
+   * The dialog opened with "place · Fushimi Inari Taisha" directly above the
+   * fields that say the kind, the place and how long it takes. A panel whose
+   * whole job is the facts should not preview them.
+   */
+  it('does not summarise the facts above the fields that hold them', async () => {
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    // The place is in exactly one place: its own field.
+    expect(read.getByRole('textbox', { name: 'Where is it?' })).toHaveValue('Fushimi Inari Taisha');
+    expect(read.queryByText('place · Fushimi Inari Taisha')).not.toBeInTheDocument();
+  });
+
+  /** One labelled box for one URL is a lot of panel for something most ideas
+   * do not have — and the notes box was already the right home for it. */
+  it('has no field for where you found it, and says in the notes that it goes there', async () => {
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    expect(read.queryByRole('textbox', { name: 'Where did you find it?' })).not.toBeInTheDocument();
+    expect(read.getByRole('textbox', { name: 'Notes' })).toHaveAttribute(
+      'placeholder',
+      expect.stringContaining('link to where you found it'),
+    );
+  });
+
+  /** Entry 2 sits in a bundle, so this list had something to show. Which
+   * bundles an idea is in is a board question, and the board answers it on the
+   * row itself. */
+  it('does not list the bundles the idea appears in', async () => {
+    const panel = await openPanel('member', RATED);
+    expect(within(panel).queryByRole('heading', { name: 'Appears in' })).not.toBeInTheDocument();
+  });
+
+  /** Entry 2 is the one two people rated, so the section had a tally, five
+   * stops and a per-person list. None of it is a fact about the idea. */
+  it('does not ask how much you want it, for either role', async () => {
+    const asMember = await openPanel('member', RATED);
+    expect(within(asMember).queryAllByRole('radio')).toHaveLength(0);
+    expect(within(asMember).queryByText('0.5 · 2 votes')).not.toBeInTheDocument();
+    expect(within(asMember).queryByText('Demo Traveler')).not.toBeInTheDocument();
+  });
+
+  it('does not show a viewer the tally either', async () => {
+    const panel = await openPanel('viewer', RATED);
+    const read = within(panel);
+
+    expect(read.queryByRole('heading', { name: 'How much everyone wants this' })).not.toBeInTheDocument();
+    expect(read.queryByText('0.5 · 2 votes')).not.toBeInTheDocument();
   });
 });
 
