@@ -42,4 +42,17 @@ describe('EntryRow', () => {
     render(<EntryRow title="Kiyamachi" kept={false} />);
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
+
+  // Not rendered rather than greyed: an unlabelled circle that refuses is worse
+  // than an absent one. Opening the entry is reading, so that button stays.
+  it('drops the keep toggle for someone who cannot edit, and keeps the row itself', () => {
+    render(
+      <EntryRow title="Kiyamachi" metadata={['Kyoto']} kept onToggleKeep={() => {}} onSelect={() => {}} canEdit={false} />,
+    );
+
+    expect(screen.queryByRole('button', { name: /Kept/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Kiyamachi')).toBeInTheDocument();
+    expect(screen.getByText('Kyoto')).toBeInTheDocument();
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+  });
 });

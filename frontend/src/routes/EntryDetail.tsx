@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { Select } from '../design/components/core/Select';
+import { useCanEdit } from '../auth/TripRoleContext';
 import { Drawer } from '../components/Drawer';
 import { Field } from '../components/Field';
 import { Spinner } from '../components/Spinner';
@@ -37,6 +38,10 @@ export interface EntryDetailDrawerProps {
  */
 export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawerProps) {
   const { show } = useToast();
+  // Raised over the board it belongs to, so the trip's role is already in the
+  // tree. Opened at /entries/:id for a library idea there is no provider and no
+  // trip, and the default is editable — which is right: nobody else is on it.
+  const canEdit = useCanEdit();
 
   const { data, isLoading, isError } = useEntry(entryId);
   const updateEntry = useUpdateEntry(entryId ?? 0);
@@ -117,23 +122,28 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
 
         {entry.archived_at && (
           <div className={styles.asideNote}>
+            {/* The sentence stays for everyone — that this was set aside is part
+                of what the entry says about itself. Only the way to undo it goes. */}
             <p className={styles.note}>Set aside. It&rsquo;s still here whenever you want it.</p>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                restoreEntry.mutate(entry.id, {
-                  onSuccess: () => show('Picked back up.', 'success'),
-                })
-              }
-            >
-              Pick it back up
-            </Button>
+            {canEdit && (
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  restoreEntry.mutate(entry.id, {
+                    onSuccess: () => show('Picked back up.', 'success'),
+                  })
+                }
+              >
+                Pick it back up
+              </Button>
+            )}
           </div>
         )}
 
         <Field label="What is it?">
           <input
             className={styles.input}
+            readOnly={!canEdit}
             value={draft.title ?? ''}
             onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
             onBlur={(e) => save('title', e.target.value)}
@@ -144,6 +154,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
           <textarea
             className={styles.textarea}
             rows={3}
+            readOnly={!canEdit}
             value={draft.description ?? ''}
             onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
             onBlur={(e) => save('description', e.target.value)}
@@ -156,6 +167,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
               something resets `appearance`. Field clones this child to inject
               id/aria-describedby, which Select spreads onto the real control. */}
           <Select
+            disabled={!canEdit}
             value={draft.category ?? ''}
             onChange={(e) => {
               setDraft((d) => ({ ...d, category: e.target.value }));
@@ -174,6 +186,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
         <Field label="Where is it?">
           <input
             className={styles.input}
+            readOnly={!canEdit}
             placeholder="Name of the place"
             value={draft.location_name ?? ''}
             onChange={(e) => setDraft((d) => ({ ...d, location_name: e.target.value }))}
@@ -184,6 +197,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
         <Field label="Address">
           <input
             className={styles.input}
+            readOnly={!canEdit}
             value={draft.address ?? ''}
             onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
             onBlur={(e) => save('address', e.target.value)}
@@ -194,6 +208,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
           <Field label="Latitude">
             <input
               className={styles.input}
+              readOnly={!canEdit}
               inputMode="decimal"
               value={draft.lat ?? ''}
               onChange={(e) => setDraft((d) => ({ ...d, lat: e.target.value }))}
@@ -203,6 +218,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
           <Field label="Longitude">
             <input
               className={styles.input}
+              readOnly={!canEdit}
               inputMode="decimal"
               value={draft.lng ?? ''}
               onChange={(e) => setDraft((d) => ({ ...d, lng: e.target.value }))}
@@ -214,6 +230,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
         <Field label="How long does it take?" hint="In minutes">
           <input
             className={styles.input}
+            readOnly={!canEdit}
             inputMode="numeric"
             value={draft.duration_minutes ?? ''}
             onChange={(e) => setDraft((d) => ({ ...d, duration_minutes: e.target.value }))}
@@ -224,6 +241,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
         <Field label="Where did you find it?">
           <input
             className={styles.input}
+            readOnly={!canEdit}
             placeholder="Paste a link"
             value={draft.source_url ?? ''}
             onChange={(e) => setDraft((d) => ({ ...d, source_url: e.target.value }))}
@@ -235,6 +253,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
           <textarea
             className={styles.textarea}
             rows={3}
+            readOnly={!canEdit}
             value={draft.notes ?? ''}
             onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
             onBlur={(e) => save('notes', e.target.value)}
@@ -243,7 +262,12 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
 
         <section className={styles.section}>
           <h3 className={styles.sectionLabel}>How much do you want this?</h3>
+          {/* Disabled, not hidden: the stops are also the picture of what
+              everyone else wanted, and a viewer reads that. Voting is a write on
+              the backend too (VotePolicy#create? is write?), so this is the
+              client saying the same thing the server would. */}
           <VoteControl
+            canEdit={canEdit}
             value={entry.my_vote}
             average={entry.vote_tally.average}
             count={entry.vote_tally.count}
@@ -315,7 +339,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
         )}
 
         <section className={styles.actions}>
-          {entry.kind === 'idea' && (
+          {canEdit && entry.kind === 'idea' && (
             <Button
               variant="secondary"
               onClick={() =>
@@ -329,7 +353,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
               Lift out of trip
             </Button>
           )}
-          {!entry.archived_at && (
+          {canEdit && !entry.archived_at && (
             <Button
               variant="quiet"
               onClick={() =>

@@ -19,8 +19,11 @@ module Api
 
     private
 
+    # A vote is a change to the trip, not a way of reading it, so this is write? and
+    # a viewer gets a 404. Without it set_entry accepted any entry id in the database.
     def set_entry
       @entry = Entry.find(params[:entry_id])
+      authorize @entry, :vote?
     end
 
     def tally_for(entry_id)

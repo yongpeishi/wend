@@ -8,7 +8,8 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent, SensorDescriptor, SensorOptions } from '@dnd-kit/core';
+import { useCanEdit } from '../auth/TripRoleContext';
 import { EntryRow } from '../components/EntryRow';
 import { Card } from '../components/layout/Card';
 import { EmptyState } from '../components/EmptyState';
@@ -33,6 +34,16 @@ import { entriesWithCoordinates, entryToPin } from '../features/map/pins';
 import type { Bounds, MapPin, PinTone } from '../features/map/types';
 import { EntryDetailDrawer } from './EntryDetail';
 import styles from './TripBoard.module.css';
+
+/**
+ * No sensors at all is the read-only kill switch for drag and drop. Styling a
+ * row as inert does not stop dnd-kit, and disabling each draggable would still
+ * leave the keyboard sensor listening; taking the sensors away closes both
+ * doors at the DndContext, above every draggable and droppable on the board.
+ * Module-level so the identity is stable and DndContext does not re-register on
+ * every render.
+ */
+const NO_SENSORS: SensorDescriptor<SensorOptions>[] = [];
 
 /**
  * /trips/:id — the planning board. Two columns: the ideas the trip is made of,
@@ -71,6 +82,11 @@ import styles from './TripBoard.module.css';
 export function TripBoard() {
   const { trip } = useOutletContext<{ trip: Entry }>();
   const { show } = useToast();
+  // The hook rather than the outlet context: the same answer reaches the rail,
+  // the rows and the bulk bar below without being threaded through four
+  // components, and outside a trip it defaults to editable. TripLayout mounts
+  // the provider.
+  const canEdit = useCanEdit();
 
   const [filters, setFilters] = useState<IdeaFilters>(EMPTY_FILTERS);
   // Ungrouped is the honest starting point, and what the design shows: the
@@ -197,10 +213,13 @@ export function TripBoard() {
     [spatiallyVisible, groupMode],
   );
 
-  const sensors = useSensors(
+  // Both sensors are always built — hooks cannot be called conditionally — and
+  // then either handed to DndContext or dropped on the floor. See NO_SENSORS.
+  const editSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
   );
+  const sensors = canEdit ? editSensors : NO_SENSORS;
 
   function onToggleSelect(id: number, shiftKey: boolean) {
     setSelectedIds((prev) => {
@@ -302,7 +321,10 @@ export function TripBoard() {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDrag(null)}>
       <div className={styles.grid}>
         <section className={styles.ideas} aria-label="Ideas">
-          <NewIdeaModal open={newIdeaOpen} onClose={closeNewIdea} parentId={trip.id} />
+          {/* FilterBar already takes the way in away, so this can never open for
+              a viewer — it is not mounted either, so there is no second path to
+              it and nothing listening for an Escape that will never come. */}
+          {canEdit && <NewIdeaModal open={newIdeaOpen} onClose={closeNewIdea} parentId={trip.id} />}
 
           <FilterBar
             filters={filters}
@@ -381,12 +403,14 @@ export function TripBoard() {
                   onToggleSelect={onToggleSelect}
                   onEdit={setEditingId}
                   onToast={(message) => show(message, 'success')}
+                  canEdit={canEdit}
                 />
               )}
 
               <SetAsideSection
                 entries={archivedIdeas}
                 onRestore={(id) => restoreEntry.mutate(id, { onSuccess: () => show('Picked back up.', 'success') })}
+                canEdit={canEdit}
               />
             </div>
           </div>

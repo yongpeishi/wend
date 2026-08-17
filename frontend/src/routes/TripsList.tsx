@@ -5,6 +5,7 @@ import { EntryRow } from '../components/EntryRow';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { useArchiveEntry, useEntries, useRestoreEntry } from '../api/entries';
+import { canDelete } from '../auth/tripRole';
 import { NewTripModal } from '../features/trips/NewTripModal';
 import { TripCard } from '../features/trips/TripCard';
 import styles from './TripsList.module.css';
@@ -85,13 +86,19 @@ export function TripsList() {
                   <span className={styles.savedTitle}>{trip.title}</span>
                   {trip.description && <span className={styles.savedNote}>{trip.description}</span>}
                 </div>
-                <button
-                  type="button"
-                  className={styles.bringBack}
-                  onClick={() => restoreTrip.mutate(trip.id)}
-                >
-                  Bring back
-                </button>
+                {/* Setting aside and bringing back are the same decision read
+                    from either end, so they answer to the same capability. A
+                    member on a trip somebody else set aside still sees it here
+                    — they simply have no button. */}
+                {canDelete(trip.my_role ?? null) && (
+                  <button
+                    type="button"
+                    className={styles.bringBack}
+                    onClick={() => restoreTrip.mutate(trip.id)}
+                  >
+                    Bring back
+                  </button>
+                )}
               </li>
             ))}
           </ul>

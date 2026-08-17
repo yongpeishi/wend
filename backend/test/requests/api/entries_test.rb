@@ -12,6 +12,17 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  test "requires access to the trip, not merely a session" do
+    theirs = create_trip(title: "Not yours", created_by: create_user)
+
+    get "/api/entries/#{theirs.id}"
+    assert_response :not_found
+
+    get "/api/entries"
+    assert_response :success
+    assert_not_includes JSON.parse(response.body)["entries"].map { |e| e["id"] }, theirs.id
+  end
+
   test "GET /api/entries returns list-form entries with computed fields" do
     idea = create_idea(created_by: @user)
     Vote.create!(entry: idea, user: @user, score: 2)
@@ -47,6 +58,23 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     # Bounded regardless of row count: base scope + kind/category filters +
     # descendant lookup + 4 bulk aggregate queries + a small constant, not
     # anything that scales with the 20 entries returned.
+    assert query_count < 15, "expected a bounded query count, got #{query_count}"
+  end
+
+  # The no-trip_id path is the one that gains the visibility CTE. It is an IN
+  # subquery rather than a pluck, so it rides along on the base scope's single
+  # SELECT and costs no extra round trip: same budget as the trip_id path above.
+  test "GET /api/entries with no trip_id stays inside the same query budget" do
+    trip = create_trip(created_by: @user)
+    20.times do |i|
+      idea = create_idea(title: "Idea #{i}", created_by: @user)
+      link!(parent: trip, child: idea)
+      Vote.create!(entry: idea, user: @user, score: 1)
+      Todo.create!(title: "todo #{i}", entry: idea)
+    end
+
+    query_count = count_queries { get "/api/entries" }
+    assert_response :success
     assert query_count < 15, "expected a bounded query count, got #{query_count}"
   end
 
@@ -242,6 +270,28 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     assert_equal [child_of_idea.id], idea.child_links.pluck(:child_id)
   end
 
+  test "POST /api/entries/:id/lift makes the lifter the new trip's owner" do
+    owner = create_user
+    trip = create_trip(created_by: owner)
+    idea = create_idea(created_by: owner)
+    link!(parent: trip, child: idea)
+    member!(trip: trip, user: @user, role: "member")
+
+    post "/api/entries/#{idea.id}/lift"
+    assert_response :success
+    assert_equal @user.id, idea.reload.created_by_id
+    assert_equal "owner", idea.role_for(@user)
+  end
+
+  test "POST /api/entries/:id/absorb needs owner on both trips" do
+    mine = create_trip(title: "Mine", created_by: @user)
+    theirs = create_trip(title: "Theirs", created_by: create_user)
+
+    post "/api/entries/#{mine.id}/absorb", params: { into_id: theirs.id }, as: :json
+    assert_response :not_found
+    assert_equal "trip", mine.reload.kind
+  end
+
   test "POST /api/entries/:id/absorb folds one trip into another" do
     trip_a = create_trip(title: "A", created_by: @user)
     trip_b = create_trip(title: "B", created_by: @user)
@@ -273,14 +323,5 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     assert_equal [option_a.id, option_b.id].sort, forked.child_links.pluck(:child_id).sort
     # original untouched
     assert_equal [option_a.id, option_b.id].sort, bundle.reload.child_links.pluck(:child_id).sort
-  end
-
-  private
-
-  def count_queries(&block)
-    count = 0
-    counter_fn = ->(*, payload) { count += 1 unless payload[:sql].match?(/\A(BEGIN|COMMIT|SAVEPOINT|RELEASE)/i) }
-    ActiveSupport::Notifications.subscribed(counter_fn, "sql.active_record", &block)
-    count
   end
 end

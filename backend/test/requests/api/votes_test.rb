@@ -6,6 +6,33 @@ class Api::VotesTest < ActionDispatch::IntegrationTest
     sign_in_as(@user)
   end
 
+  test "requires access to the entry" do
+    theirs = create_idea(created_by: create_user)
+
+    put "/api/entries/#{theirs.id}/vote", params: { score: 2 }, as: :json
+    assert_response :not_found
+    assert_not Vote.exists?(entry: theirs, user: @user)
+  end
+
+  # Voting is a change to the trip, not a way of reading it.
+  test "a viewer may read the trip but not vote on it" do
+    owner = create_user
+    trip = create_trip(created_by: owner)
+    idea = create_idea(created_by: owner)
+    link!(parent: trip, child: idea)
+    member!(trip: trip, user: @user, role: "viewer")
+
+    get "/api/entries/#{idea.id}"
+    assert_response :success
+
+    put "/api/entries/#{idea.id}/vote", params: { score: 2 }, as: :json
+    assert_response :not_found
+    assert_not Vote.exists?(entry: idea, user: @user)
+
+    delete "/api/entries/#{idea.id}/vote"
+    assert_response :not_found
+  end
+
   test "PUT sets a vote and returns tally with by_user breakdown" do
     idea = create_idea(created_by: @user)
     other = create_user

@@ -53,6 +53,7 @@ interface RowOptions {
   onToggleSelect?: (id: number, shiftKey: boolean) => void;
   onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
+  canEdit?: boolean;
 }
 
 function rowTree(options: RowOptions, queryClient: QueryClient) {
@@ -74,6 +75,7 @@ function rowTree(options: RowOptions, queryClient: QueryClient) {
                     onToggleSelect={options.onToggleSelect ?? (() => {})}
                     onEdit={options.onEdit}
                     onToast={options.onToast}
+                    canEdit={options.canEdit}
                   />
                 }
               />
@@ -399,5 +401,54 @@ describe('IdeaRow — select mode', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Select Fushimi Inari' }));
 
     expect(onEdit).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * `canEdit={false}` is what the board hands a viewer. The row must lose every
+ * verb and keep every word — the two are asserted together on purpose, because
+ * "no buttons" is equally true of a row that never rendered.
+ */
+describe('IdeaRow — reading along', () => {
+  it('takes the grip and the ⋯ menu away entirely, rather than greying them', () => {
+    renderRow({ canEdit: false, bundles: [BUNDLE] });
+
+    expect(
+      screen.queryByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Actions for Fushimi Inari' })).not.toBeInTheDocument();
+  });
+
+  it('still says everything it said before — title, category, meta, state and its bundles', () => {
+    renderRow({
+      canEdit: false,
+      bundles: [BUNDLE],
+      members: new Map([[90, [makeEntry({})]]]),
+    });
+
+    const row = screen.getByRole('button', { name: /^Fushimi Inari/ });
+    expect(row).toHaveTextContent('Fushimi Inari');
+    expect(row).toHaveTextContent('Place');
+    expect(row).toHaveTextContent('Kyoto south · 2 hr');
+    expect(row).toHaveTextContent('in Tuesday south');
+    expect(screen.getByRole('img', { name: 'Kept, not placed yet' })).toBeInTheDocument();
+  });
+
+  it('still opens the idea — reading it is not editing it', async () => {
+    const user = userEvent.setup();
+    renderRow({ canEdit: false });
+
+    await user.click(screen.getByRole('button', { name: /^Fushimi Inari/ }));
+
+    expect(await screen.findByText('Entry detail screen')).toBeInTheDocument();
+  });
+
+  it('keeps both affordances for anyone who can edit', () => {
+    renderRow({ canEdit: true });
+
+    expect(
+      screen.getByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Actions for Fushimi Inari' })).toBeInTheDocument();
   });
 });

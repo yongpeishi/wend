@@ -26,4 +26,8 @@ export const queryKeys = {
     all: ['feedback'] as const,
     list: () => ['feedback', 'list'] as const,
   },
+  collaborators: {
+    all: ['collaborators'] as const,
+    list: (tripId: number) => ['collaborators', 'list', tripId] as const,
+  },
 };

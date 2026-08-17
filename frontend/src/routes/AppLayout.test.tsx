@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { api } from '../api';
 import { server } from '../mocks/server';
-import { findEntry } from '../mocks/db';
+import { findEntry, setRole } from '../mocks/db';
 import { AppLayout } from './AppLayout';
 import { AuthProvider, useAuth } from '../auth/AuthContext';
 import { ToastProvider } from '../components/Toast';
@@ -27,6 +27,9 @@ function RouteContent() {
 
 /** The seeded trip in the MSW fixtures (src/mocks/db.ts): "Six days in Kyoto". */
 const SEEDED_TRIP_ID = 1;
+/** The demo user owns it; Sarah is deliberately not on it. */
+const DEMO_USER_ID = 1;
+const SARAH_USER_ID = 2;
 
 function renderShell(initialPath = '/') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -146,8 +149,9 @@ describe('AppLayout', () => {
     expect(screen.queryByText(/days ·/)).not.toBeInTheDocument();
   });
 
-  // "Planning with" is assembled client-side — there is no members endpoint —
-  // so it names the people the client actually knows about and no one else.
+  // "Planning with" is the trip's real collaborator list now, not whoever
+  // happened to have voted — so it names everyone who is on the trip and nobody
+  // who merely left a mark on it.
   it('names who is planning the trip, starting with you', async () => {
     await api.post('/session', { email: 'demo@wend.app', password: 'password' });
     renderShell(`/trips/${SEEDED_TRIP_ID}`);
@@ -155,6 +159,41 @@ describe('AppLayout', () => {
     expect(await screen.findByText('Planning with')).toBeInTheDocument();
     // The circle shows an initial; the name is what assistive tech hears.
     expect(screen.getByRole('listitem')).toHaveTextContent('DDemo Traveler');
+  });
+
+  // Sarah has voted on the seeded trip but is not on it. The old list was built
+  // from votes and would have named her; this one asks who is actually here.
+  it('names everyone the trip says is on it, and nobody it does not', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    setRole(SEEDED_TRIP_ID, SARAH_USER_ID, 'viewer');
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    await screen.findByText('Planning with');
+    await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(2));
+    expect(screen.getByText('Sarah')).toBeInTheDocument();
+
+    setRole(SEEDED_TRIP_ID, SARAH_USER_ID, null);
+  });
+
+  it('opens the panel that says who is on the trip from a face', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    const user = userEvent.setup();
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    await user.click(await screen.findByRole('button', { name: 'Demo Traveler' }));
+
+    expect(await screen.findByRole('dialog', { name: "Who's on this trip" })).toBeInTheDocument();
+  });
+
+  // A viewer sees who they are reading along with — they simply have no door.
+  it('leaves a viewer the faces without making them buttons', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    setRole(SEEDED_TRIP_ID, DEMO_USER_ID, 'viewer');
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+
+    await screen.findByText('Planning with');
+    expect(screen.getByRole('listitem')).toHaveTextContent('DDemo Traveler');
+    expect(screen.queryByRole('button', { name: 'Demo Traveler' })).not.toBeInTheDocument();
   });
 
   it('keeps "Planning with" out when nobody is known yet', async () => {

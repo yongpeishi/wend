@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../components/Toast';
+import { TripRoleProvider } from '../../auth/TripRoleContext';
 import { BulkBar } from './BulkBar';
 import { api } from '../../api';
 import type { Entry } from '../../api/types';
@@ -243,5 +244,58 @@ describe('BulkBar — starting a new bundle from the selection', () => {
     await user.click(screen.getByRole('button', { name: 'A new bundle' }));
 
     expect(screen.getByRole('button', { name: 'Start it' })).toBeDisabled();
+  });
+});
+
+describe('BulkBar — reading along', () => {
+  /**
+   * Every verb on this bar changes the trip, so there is no read-only half of
+   * it to leave behind. The list it acts on is elsewhere and untouched — this
+   * component contributes no content of its own, which is why "nothing at all"
+   * is the right answer here and nowhere else in the slice.
+   */
+  it('is not on screen at all for a viewer, even with ideas picked', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <TripRoleProvider role="viewer">
+            <BulkBar
+              selectedIds={[1, 2]}
+              bundles={[TUESDAY, TRAVEL_DAY]}
+              tripId={TRIP_ID}
+              onClear={() => {}}
+              onToast={() => {}}
+            />
+          </TripRoleProvider>
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.queryByText('2 ideas selected')).not.toBeInTheDocument();
+    for (const label of ['Add to a bundle', 'Lift out', 'Set aside', 'Clear']) {
+      expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
+    }
+  });
+
+  it('is on screen as usual for a member', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <TripRoleProvider role="member">
+            <BulkBar
+              selectedIds={[1, 2]}
+              bundles={[TUESDAY, TRAVEL_DAY]}
+              tripId={TRIP_ID}
+              onClear={() => {}}
+              onToast={() => {}}
+            />
+          </TripRoleProvider>
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Add to a bundle' })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
+import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
@@ -26,6 +27,7 @@ import styles from './TripMap.module.css';
 export function TripMap() {
   const { trip } = useOutletContext<{ trip: Entry }>();
   const { show } = useToast();
+  const canEdit = useCanEdit();
 
   const entriesQuery = useEntries({ trip_id: trip.id, kind: 'idea' });
   const createEntry = useCreateEntry();
@@ -81,7 +83,9 @@ export function TripMap() {
     <div className={styles.wrap}>
       <div className={styles.head}>
         <MapFilterBar filters={filters} onChange={setFilters} visibleCount={pins.length} totalCount={allLocated.length} />
-        {!adding && (
+        {/* The filter bar beside this stays whole: narrowing what is on the map
+            is reading, not editing. Only the way to put something new on it goes. */}
+        {canEdit && !adding && (
           <Button variant="secondary" onClick={() => openAddForm()}>
             Add a place
           </Button>
@@ -108,7 +112,10 @@ export function TripMap() {
             pins={pins}
             selectedId={selectedId}
             onSelectPin={setSelectedId}
-            onMapClick={(lat, lng) => openAddForm({ lat, lng })}
+            // The second way in, and it has to close with the button: a click on
+            // the map that silently did nothing would read as a broken map.
+            // Undefined rather than a no-op so MapView never binds the handler.
+            onMapClick={canEdit ? (lat, lng) => openAddForm({ lat, lng }) : undefined}
             pendingLocation={pendingLocation}
             fitToPins
             renderPopup={(id) => {

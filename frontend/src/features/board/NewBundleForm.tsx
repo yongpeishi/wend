@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent } from 'react';
 import { Button } from '../../design/components/core/Button';
 import { useToast } from '../../components/Toast';
+import { useCanEdit } from '../../auth/TripRoleContext';
 import { useCreateEntry } from '../../api';
 import styles from './NewBundleForm.module.css';
 
@@ -44,6 +45,7 @@ export interface NewBundleFormProps {
  * placeholder is an example, never the label.
  */
 export function NewBundleForm({ tripId, onToast, onClose }: NewBundleFormProps) {
+  const canEdit = useCanEdit();
   const { show } = useToast();
   const createEntry = useCreateEntry();
   const [name, setName] = useState('');
@@ -82,6 +84,11 @@ export function NewBundleForm({ tripId, onToast, onClose }: NewBundleFormProps) 
     setName('');
     onClose();
   }
+
+  // A viewer never opens this — BundlePanel's "+ New bundle" is gone — but the
+  // form is a create surface and nothing else, so it refuses to render rather
+  // than trusting its one caller. Same call as the two modals.
+  if (!canEdit) return null;
 
   return (
     <form className={styles.form} onSubmit={submit} onKeyDown={onKeyDown}>

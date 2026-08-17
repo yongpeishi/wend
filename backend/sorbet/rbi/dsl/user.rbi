@@ -426,6 +426,20 @@ class User
     def feedbacks=(value); end
 
     sig { returns(T::Array[T.untyped]) }
+    def trip_membership_ids; end
+
+    sig { params(ids: T::Array[T.untyped]).returns(T::Array[T.untyped]) }
+    def trip_membership_ids=(ids); end
+
+    # This method is created by ActiveRecord on the `User` class because it declared `has_many :trip_memberships`.
+    # 🔗 [Rails guide for `has_many` association](https://guides.rubyonrails.org/association_basics.html#the-has-many-association)
+    sig { returns(::TripMembership::PrivateCollectionProxy) }
+    def trip_memberships; end
+
+    sig { params(value: T::Enumerable[::TripMembership]).void }
+    def trip_memberships=(value); end
+
+    sig { returns(T::Array[T.untyped]) }
     def vote_ids; end
 
     sig { params(ids: T::Array[T.untyped]).returns(T::Array[T.untyped]) }

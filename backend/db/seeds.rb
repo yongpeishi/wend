@@ -43,6 +43,13 @@ def todo!(title:, entry: nil, trip: nil, **attrs)
   end
 end
 
+def member!(trip:, user:, role:)
+  membership = TripMembership.find_or_initialize_by(trip: trip, user: user)
+  membership.role = role
+  membership.save!
+  membership
+end
+
 # --- Japan trip ------------------------------------------------------------
 
 japan = entry!(
@@ -245,6 +252,20 @@ vote!(entry: bali, user: peter, score: -2)
 
 todo!(title: "Check Malaysia visa-free entry length", trip: malaysia)
 
+# --- Who is on each trip ---------------------------------------------------
+#
+# Without these rows the demo has no trips anyone can see. Peter created five of
+# the ideas inside Sarah's Japan trip and votes on eight of its entries, so he
+# has to be on it -- the two-voice vote tally is the stated reason the second
+# seeded account exists. Sarah reads Malaysia but does not touch it, which is
+# the one seeded read-only case. (The owner rows already exist: creating a trip
+# grants its creator one. Named here anyway so the picture is in one place.)
+
+member!(trip: japan,    user: sarah, role: "owner")
+member!(trip: japan,    user: peter, role: "member")
+member!(trip: malaysia, user: peter, role: "owner")
+member!(trip: malaysia, user: sarah, role: "viewer")
+
 # --- Library: saved inspiration not yet attached to any trip ---------------
 
 saigon_idea = entry!(
@@ -256,4 +277,5 @@ vote!(entry: saigon_idea, user: sarah, score: 2)
 
 puts "Seeded #{Entry.count} entries (#{Entry.trip.count} trips, #{Entry.bundle.count} bundles, " \
      "#{Entry.idea.count} ideas), #{EntryLink.count} links, #{Vote.count} votes, " \
-     "#{Todo.count} todos, #{ScheduleItem.count} schedule items, #{User.count} users."
+     "#{Todo.count} todos, #{ScheduleItem.count} schedule items, " \
+     "#{TripMembership.count} trip memberships, #{User.count} users."

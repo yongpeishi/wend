@@ -7,7 +7,11 @@ module Api
     # Fork: duplicate the day's last live version so two plans sit side by side.
     # The trip_day (and its "Version A") is created on demand.
     def create
-      trip = Entry.find(params[:trip_id])
+      trip = policy_scope(Entry).find(params[:trip_id])
+      # Same as TripDaysController#update: ask against the day the fork would
+      # land on, before ensure! brings the row into being.
+      authorize TripDay.new(trip_id: trip.id, day: params[:day]), :update?
+
       trip_day = TripDay.ensure!(trip_id: trip.id, day: params[:day])
       trip_day.fork!
       render json: { trip_day: TripDaySerializer.one(trip_day.reload) }, status: :created
@@ -41,8 +45,12 @@ module Api
 
     private
 
+    # These routes carry no trip_id, so the only authority available is the
+    # row's own day -- which is exactly what DayVersionPolicy::Scope and
+    # governing_entry_ids resolve. A version on a trip you cannot see 404s.
     def set_version
-      @version = DayVersion.find(params[:id])
+      @version = policy_scope(DayVersion).find(params[:id])
+      authorize @version
     end
   end
 end

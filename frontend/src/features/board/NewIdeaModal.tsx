@@ -5,6 +5,7 @@ import { Stack } from '../../components/layout/Stack';
 import { Button } from '../../design/components/core/Button';
 import { Select } from '../../design/components/core/Select';
 import { useToast } from '../../components/Toast';
+import { useCanEdit } from '../../auth/TripRoleContext';
 import { useCreateEntry } from '../../api';
 import type { Entry, EntryCategory, EntryWritePayload } from '../../api/types';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from './filters';
@@ -67,6 +68,7 @@ const EMPTY_DRAFT: Draft = {
  * source.
  */
 export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModalProps) {
+  const canEdit = useCanEdit();
   const { show } = useToast();
   const createEntry = useCreateEntry();
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
@@ -113,6 +115,14 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
       },
     );
   }
+
+  // The board stays mounted around this dialog whether it is open or not, so a
+  // viewer would otherwise be carrying a create form one state flag away from
+  // the screen. There is no read-only version of "add an idea" worth showing —
+  // an empty form nobody can submit is not content — so it is simply not here.
+  // The "+ New idea" button that opens it is gone from FilterBar too; this is
+  // the lock behind that door.
+  if (!canEdit) return null;
 
   return (
     <Modal

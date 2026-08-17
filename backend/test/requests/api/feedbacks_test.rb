@@ -6,6 +6,17 @@ class Api::FeedbacksTest < ActionDispatch::IntegrationTest
     sign_in_as(@user)
   end
 
+  # Feedback is not trip-scoped: it belongs to a user directly, and a session gives
+  # access to your own and nothing else.
+  test "requires access -- another user's feedback is never reachable" do
+    other = create_user(email: "someone-else@example.com")
+    Feedback.create!(user: other, message: "Theirs alone")
+
+    get "/api/feedbacks"
+    assert_response :success
+    assert_not_includes response.body, "Theirs alone"
+  end
+
   test "POST creates feedback attributed to the signed-in user" do
     assert_difference -> { Feedback.count }, 1 do
       post "/api/feedbacks", params: { feedback: { message: "The schedule scrolls oddly", url: "http://localhost:5173/trips/1/schedule" } }, as: :json

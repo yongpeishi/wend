@@ -2,6 +2,8 @@
 # side by side; the ones not chosen are archived, never destroyed, so a change
 # of mind costs nothing. A day always keeps at least one live version.
 class DayVersion < ApplicationRecord
+  include Governed
+
   belongs_to :trip_day, inverse_of: :day_versions
 
   # Schedule items are join-ish rows: the Entry they point at is what was kept,
@@ -13,6 +15,11 @@ class DayVersion < ApplicationRecord
 
   validates :name, presence: true
   validates :position, presence: true
+
+  # A version has no trip of its own -- it borrows the one its day hangs off.
+  def governing_entry_ids
+    [ trip_day&.trip_id ].compact
+  end
 
   scope :live, -> { where(archived_at: nil).order(:position, :id) }
   scope :archived_only, -> { where.not(archived_at: nil).order(archived_at: :desc, id: :desc) }

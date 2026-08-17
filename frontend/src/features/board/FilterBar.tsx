@@ -3,6 +3,7 @@ import { Chip } from '../../design/components/core/Chip';
 import { Button } from '../../design/components/core/Button';
 import { Switch } from '../../design/components/core/Switch';
 import { TabBar } from '../../components/TabBar';
+import { useCanEdit } from '../../auth/TripRoleContext';
 import { MIDDOT } from '../../lib/formatDates';
 import { CATEGORY_LABELS, CATEGORY_ORDER, EMPTY_FILTERS, GROUP_MODES, isNarrowed, toggleCategory } from './filters';
 import type { GroupMode, IdeaFilters } from './filters';
@@ -141,6 +142,11 @@ export function FilterBar({
   mapNarrowing = false,
   mapOffCount = 0,
 }: FilterBarProps) {
+  // The hook, not a prop: this bar reaches for its capability the way it reaches
+  // for the toast — from the tree — and outside a trip the context hands back
+  // the editable default, so `/library` and `/` need no ceremony. See
+  // `IdeaRow` for the components that take the prop instead, and why.
+  const canEdit = useCanEdit();
   const narrowed = isNarrowed(filters);
   const activeCount = activeFilterCount(filters);
 
@@ -347,7 +353,7 @@ export function FilterBar({
           {/* The one forward action of this screen, at the end of the row that
               controls the list it adds to. It used to sit beside the count line
               below, which put the primary button on the quietest line of the bar. */}
-          {onNewIdea && (
+          {onNewIdea && canEdit && (
             <Button variant="primary" size="small" onClick={onNewIdea}>
               + New idea
             </Button>
@@ -384,7 +390,12 @@ export function FilterBar({
             exactly as on the map button beside it. A control that says "Done
             selecting" AND reports itself as pressed announces the same fact
             twice, and the second telling is the one that reads backwards. */}
-        {onSelectModeChange && (
+        {/* Select mode exists to feed BulkBar, and every verb on that bar is an
+            edit — lift out, set aside, add to a bundle. For a viewer the mode
+            would lead to a bar with nothing on it, so the way in goes too. The
+            filters, the grouping and the map toggle all stay: they decide what
+            is on screen, which is the whole of what reading along is. */}
+        {onSelectModeChange && canEdit && (
           <button
             type="button"
             className={selectMode ? `${styles.toggleButton} ${styles.toggleButtonOn}` : styles.toggleButton}

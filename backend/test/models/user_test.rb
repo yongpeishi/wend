@@ -20,4 +20,22 @@ class UserTest < ActiveSupport::TestCase
     assert user.authenticate("correcthorse")
     assert_not user.authenticate("wrong")
   end
+
+  test "destroying a user who made something is refused, not raised" do
+    user = create_user
+    create_trip(created_by: user)
+
+    assert_nothing_raised { assert_not user.destroy }
+    assert_includes user.errors.attribute_names, :base
+    assert User.exists?(user.id)
+  end
+
+  test "a user who made nothing can still be destroyed" do
+    user = create_user
+    trip = create_trip
+    member!(trip: trip, user: user, role: "viewer")
+
+    assert user.destroy
+    assert_empty TripMembership.where(user_id: user.id)
+  end
 end

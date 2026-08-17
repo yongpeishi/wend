@@ -3,6 +3,7 @@ import { Modal } from '../../components/Modal';
 import { Field } from '../../components/Field';
 import { Button } from '../../design/components/core/Button';
 import { useToast } from '../../components/Toast';
+import { useCanEdit } from '../../auth/TripRoleContext';
 import { useCreateEntry } from '../../api';
 import type { Entry } from '../../api/types';
 
@@ -44,6 +45,7 @@ export interface NewBundleModalProps {
  * focus back from the field mid-word.
  */
 export function NewBundleModal({ open, onClose, tripId, onCreated }: NewBundleModalProps) {
+  const canEdit = useCanEdit();
   const { show } = useToast();
   const createEntry = useCreateEntry();
   const [name, setName] = useState('');
@@ -76,6 +78,10 @@ export function NewBundleModal({ open, onClose, tripId, onCreated }: NewBundleMo
       },
     );
   }
+
+  // Same reasoning as NewIdeaModal: a create dialog has no read-only form, and
+  // BulkBar — the only thing that opens this — is already gone for a viewer.
+  if (!canEdit) return null;
 
   return (
     <Modal

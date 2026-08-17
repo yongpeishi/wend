@@ -9,17 +9,31 @@ export interface ScheduleBlockProps {
   item: ScheduleItem;
   entry: Entry | undefined;
   style: CSSProperties;
+  /** May you change this block? Defaults to true, matching a null role. */
+  canEdit?: boolean;
 }
 
 /**
  * One placed item. Delegates to `<OptionsBlock>` when the item points at a
  * bundle (the "5 dinner options" case) rather than a single idea.
+ *
+ * The time, the title and the meta line are what the block is; a viewer keeps
+ * all three. "Move back to ideas" is the only thing here that changes the plan,
+ * so it is the only thing that goes.
  */
-export function ScheduleBlock({ item, entry, style }: ScheduleBlockProps) {
+export function ScheduleBlock({ item, entry, style, canEdit = true }: ScheduleBlockProps) {
   const deleteItem = useDeleteScheduleItem();
 
   if (entry?.kind === 'bundle') {
-    return <OptionsBlock item={item} bundleId={entry.id} bundleTitle={entry.title} style={style} />;
+    return (
+      <OptionsBlock
+        item={item}
+        bundleId={entry.id}
+        bundleTitle={entry.title}
+        style={style}
+        canEdit={canEdit}
+      />
+    );
   }
 
   const meta = joinMeta(
@@ -33,9 +47,11 @@ export function ScheduleBlock({ item, entry, style }: ScheduleBlockProps) {
       <span className={styles.time}>{formatTimeRange(item.starts_at_minutes, item.ends_at_minutes)}</span>
       <p className={styles.title}>{entry?.title ?? 'Untitled'}</p>
       {meta && <p className={styles.meta}>{meta}</p>}
-      <button type="button" className={styles.unschedule} onClick={() => deleteItem.mutate(item.id)}>
-        Move back to ideas
-      </button>
+      {canEdit && (
+        <button type="button" className={styles.unschedule} onClick={() => deleteItem.mutate(item.id)}>
+          Move back to ideas
+        </button>
+      )}
     </div>
   );
 }

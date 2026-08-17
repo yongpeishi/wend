@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
+import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
 import { Spinner } from '../components/Spinner';
 import { TabBar } from '../components/TabBar';
@@ -25,6 +26,7 @@ import styles from './TripSchedule.module.css';
  */
 export function TripSchedule() {
   const { trip } = useOutletContext<{ trip: Entry }>();
+  const canEdit = useCanEdit();
 
   const scheduleQuery = useSchedule(trip.id);
   const entriesQuery = useEntries({ trip_id: trip.id });
@@ -86,11 +88,15 @@ export function TripSchedule() {
         <Spinner label="Finding your plan" onDark />
       ) : dayItems.length === 0 ? (
         <EmptyState
-          message="Nothing placed yet. Drag something over from your ideas."
+          message={
+            canEdit
+              ? 'Nothing placed yet. Drag something over from your ideas.'
+              : 'Nothing placed on this day yet.'
+          }
           onDark
         />
       ) : (
-        <DayColumn items={dayItems} entries={entries} />
+        <DayColumn items={dayItems} entries={entries} canEdit={canEdit} />
       )}
 
       <div className={styles.nearby}>
@@ -143,9 +149,11 @@ export function TripSchedule() {
         )}
       </div>
 
-      <UnscheduledTray entries={unplaced} onPlaceAt={setPlacing} />
+      <UnscheduledTray entries={unplaced} onPlaceAt={setPlacing} canEdit={canEdit} />
 
-      {placing && (
+      {/* Only reachable from the tray's "Place at…", which a viewer does not
+          have — mounted conditionally so there is no second way in. */}
+      {canEdit && placing && (
         <PlaceAtModal
           tripId={trip.id}
           entry={placing}

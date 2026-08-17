@@ -6,6 +6,8 @@
 # Neither trip_days nor day_versions are ever hard-deleted; versions are
 # archived instead. See doc/architecture.md section 2.
 class TripDay < ApplicationRecord
+  include Governed
+
   belongs_to :trip, class_name: "Entry", inverse_of: :trip_days
   belongs_to :lodging_entry, class_name: "Entry", optional: true, inverse_of: :lodging_trip_days
 
@@ -19,6 +21,12 @@ class TripDay < ApplicationRecord
   validates :trip_id, uniqueness: { scope: :day }
 
   scope :for_trip, ->(trip_id) { where(trip_id: trip_id).order(:day) }
+
+  # The trip alone, like ScheduleItem: lodging_entry_id is a reference to what
+  # was placed on the day, not authority over the day.
+  def governing_entry_ids
+    [ trip_id ]
+  end
 
   # The row a write lands on: find it, or make it along with the "Version A"
   # every day is guaranteed to have. Retries once because two concurrent first

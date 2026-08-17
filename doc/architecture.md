@@ -15,6 +15,7 @@ better one that isn't.
 | Backend | Rails 8.1 (`--api`), Ruby 4.0.3 | `backend/` |
 | Database | SQLite (Rails 8 default) | No local Postgres. See ADR-1. |
 | Type check | Sorbet + Tapioca; fall back to RBS + Steep | See ADR-2. |
+| Authorization | Pundit policy objects | Trip roles. See ADR-5. |
 | Frontend | Vite + React 19 + TypeScript (strict) | `frontend/` |
 | Routing | React Router v7 (declarative mode) | |
 | Server state | TanStack Query v5 | |
@@ -91,6 +92,40 @@ entry sets `archived_at`. Unlinking removes an `EntryLink`, never the Entry.
 Unique index on `[parent_id, child_id]`. Index on `child_id`.
 A child may have **many** parents (Disneyland in three day-bundles). Cycles must be
 rejected at the model level (`validate :no_cycles` — walk ancestors before saving).
+
+### `trip_memberships` — who may see and change a trip
+| column | type | notes |
+| --- | --- | --- |
+| id | integer PK | |
+| trip_id | integer FK entries, not null | the `kind: "trip"` entry this grant is on |
+| user_id | integer FK users, not null | |
+| role | string, not null | `owner` \| `member` \| `viewer` |
+| created_at/updated_at | datetime | `created_at` is the `added_at` the API returns |
+
+`trip_id` is a FK to **`entries`, not to a `trips` table**, because there is no `trips`
+table: a trip is an Entry with `kind: "trip"` (§3 rule 1). This follows `todos.trip_id`
+and `schedule_items.trip_id`, which point at `entries` for the same reason.
+
+Three indexes:
+
+- Unique on `[trip_id, user_id]` — one role per person per trip. Its leading column also
+  answers "who is on this trip", so a plain `trip_id` index would be redundant.
+- `[user_id, role]` — the hot path runs the other way, "which trips can this user see",
+  once on nearly every request; a composite starting at `user_id` answers it from the
+  index alone.
+- Unique on `trip_id` where `role = 'owner'` — exactly one owner per trip, held by the
+  database rather than by a callback.
+
+Access is granted on a trip and inherited downward: you may see an entry if it is
+reachable from a trip you hold a grant on, or if it is yours and has no trip ancestor at
+all (the library). Since an idea can sit under two trips, your effective role on it is the
+**most permissive** grant across its trip ancestors. A trip with no owner would be
+invisible to everyone, so removing the last owner is refused.
+
+**The table is `trip_memberships`; the API resource is `collaborators`** (§4). They differ
+on purpose — "membership" already means the derived entry-belongs-to-trip relationship in
+this codebase (§3 rule 3), so the resource that names people had to be spelled
+differently.
 
 ### `votes` — desire rating, multi-user
 | column | type | notes |
@@ -377,6 +412,34 @@ GET /api/trips/:trip_id/nearby?lat=&lng=&radius_km=2&exclude_scheduled=true
 ```
 Haversine in SQL. This powers "I have free time here, what's nearby but unscheduled".
 
+### Collaborators (who is on a trip)
+```
+GET    /api/trips/:trip_id/collaborators                     -> 200 { collaborators: [Collaborator], my_role }
+POST   /api/trips/:trip_id/collaborators  { email, role }    -> 202 { "status": "accepted" }
+PATCH  /api/trips/:trip_id/collaborators/:user_id { role }   -> 200 { collaborator }
+DELETE /api/trips/:trip_id/collaborators/:user_id            -> 204
+POST   /api/trips/:trip_id/collaborators/:user_id/hand_over  -> 200
+```
+`Collaborator` = `{ user_id, name, email, role, is_you, added_at }`. Everyone sees names;
+`email` is `null` unless the caller is an owner or a member, so a shared trip does not
+become an address book. On write, `role` is `member` or `viewer` only — `owner` is
+rejected, because a second owner cannot be minted, only handed over. A member may remove
+themselves; only an owner may remove anyone else, and an owner must hand the trip on
+before leaving it.
+
+`POST` answers **`202 { "status": "accepted" }`, byte for byte, whether or not the email
+matched an account** — and equally when the person is already on the trip or is you. 202 is
+the honest status: 201 would claim something was created when often nothing was. No email
+is ever sent, and an address matching no account does nothing. The errors give nothing away
+either, because each is about the caller rather than about who exists: `401` not signed in,
+`404` the trip is not visible to you, `403` you are a viewer on a trip you can already see,
+`422` the email is blank or malformed or the role is not `member`/`viewer`. The `403` is the
+one place a refusal is named as such, and it is safe there precisely because it tells you
+only what you already know — everything outside what you can see is a `404` (ADR-5).
+
+The rows behind this resource are `trip_memberships` (§2); the resource is named
+`collaborators` because "membership" is already taken.
+
 ### Feedback
 ```
 GET    /api/feedbacks?limit=50            -> 200 { feedbacks: [Feedback] }
@@ -402,14 +465,22 @@ from the request and ignored if supplied in the body.
   "children_count": 0, "todos_open_count": 2,
   "vote_tally": { "total": 3, "count": 2, "average": 1.5 },
   "my_vote": 2,
-  "scheduled": false
+  "scheduled": false,
+  "my_role": null
 }
 ```
 
+`my_role` is your role on **this trip** — `owner` \| `member` \| `viewer` — and is `null`
+on ideas and bundles, which inherit their trip's role rather than carrying one. Access is
+uniform over a subtree by construction, so children need no field of their own. It is
+filled by one bulk lookup per list, never one query per row.
+
 `Entry` (detail form) adds `parents: [EntrySummary]`, `children: [Entry]`,
-`todos: [Todo]`, `votes: [Vote]`.
+`todos: [Todo]`, `votes: [Vote]`, and `collaborators_count: Int` — how many people are on
+the trip, so the header can say who is here without fetching the list.
 `EntrySummary` = `{ id, kind, title, category, duration_minutes, location_name }` — one
 shared shape, sent by entry `parents`, `Todo#entry` and the itinerary's `entry`/`members`.
+It carries no role.
 
 The itinerary sends three more:
 
@@ -461,8 +532,7 @@ The design bundle at `wend-design/project/` is **read-only reference**. Port it 
 - **Apricot `#E89A5E` is never text.** It is a ring, a 3px focus outline, an underline.
   It means exactly one thing: *this is where you are deciding now*.
 - Focus is **always** a 3px apricot outline at 3px offset. Every interactive element.
-- Radii: cards 6px, media 14px, buttons/chips full pill, stops/toggles circles,
-  phone surfaces 22px. Borders 1.5px, or 2px when the border carries an action.
+- Borders 1.5px, or 2px when the border carries an action.
 - Type: Atkinson Hyperlegible everywhere, DM Mono only for codes/coordinates/counters.
   Minimum 15px. Body measure 60–70ch. **No italics for emphasis — use bold.**
 - Spacing on a 4px base: 8 · 12 · 16 · 24 · 32 · 48 · 64. Screen gutter 20px,
@@ -475,21 +545,19 @@ The design bundle at `wend-design/project/` is **read-only reference**. Port it 
 - States: hover/press are **opacity only** — the palette never lightens or darkens.
   Nothing is ever struck through or greyed to mean "rejected", because nothing is
   rejected.
-- Icons: no icon set ships. Use Lucide at 1.5px stroke only where a true utility icon is
-  unavoidable (back, close, map pin), in `--text-strong` or `--text-muted`.
-  **No emoji, ever.** `↵` in inputs is the one permitted Unicode affordance.
+- Icons: no icon set ships. Use Lucide at 1.5px stroke when needed.
 
 ### Voice
 
 Second person, short sentences, plain words, sentence case. Buttons are verbs of
-movement — "Take the long way", "Widen again", "Keep both for now". Placeholders ask a
+movement — "Widen again", "Keep both for now". Placeholders ask a
 plain question: "Where are you going?" not "Destination". Never urgent, never scarce.
 No exclamation marks. 24-hour times (`09:40`), en-dash ranges (`10:15–11:40`), middot
 separators (`morning · east`).
 
 Copy to use for empty states:
 - Library, empty: "Nothing kept yet. Saving something is how a trip starts."
-- Trip with no ideas: "This one's still a daydream. Add the first thing you'd like to do."
+- Trip with no ideas: "This one's still a blank canvas. Add the first thing you'd like to do."
 - Schedule with nothing placed: "Nothing placed yet. Drag something over from your ideas."
 
 ### The trail is the only navigation metaphor
@@ -551,3 +619,32 @@ values. Plain CSS keeps the token file the single source of truth.
 **ADR-4 · Leaflet + OSM.** No API key, no billing, no signup — the app runs for anyone
 who clones it. Google Maps can be swapped in behind the same `<MapView>` component
 later if the user wants richer place data.
+
+**ADR-5 · Pundit for authorization, and 404 in place of 403.** Every endpoint has to ask
+the same question — what is this person's role on the entries this record hangs off — so
+the answer needed one home rather than a `current_user` check repeated through 31
+controller actions. Pundit gives that: plain Ruby policy objects, no DSL and no implicit
+callbacks, and a `verify_authorized` after-action that turns "somebody forgot to check" from
+a silent leak into a failing test. It was preferred to CanCanCan, whose single ability class
+grows into a conditional thicket as roles multiply, and to hand-written `before_action`
+filters, where nothing enforces that the filter was written at all. The role itself is
+resolved once from a record's governing entries, so no policy re-derives the rule.
+
+**Anything outside what you can see is 404, never 403.** A 403 confirms the trip exists,
+which makes trip ids enumerable and undoes the feature — "visible only to me and the people
+I shared it with" has to cover the fact of the trip, not just its contents. So an
+authorization failure renders the same not-found response as a missing record, and finds go
+through the visible scope rather than being checked after the fact. A 403 survives only
+where the caller can already see the resource and is merely too junior to act on it, such as
+a viewer trying to add someone (§4); there it reveals nothing new.
+
+**One limitation is known and accepted.** Adding someone by email answers the same 202
+whether or not the address matched an account, but `GET /collaborators` shows the added
+person a moment later, so a determined caller can still learn that an account exists by
+reloading. The POST response is ambiguous; the feature is not. This was ruled UX politeness
+rather than a security property, and pending-invisibility — hiding a fresh grant from the
+list until the other person appears — was deliberately not built: it adds a second, weaker
+state to the model in exchange for slowing an attack this product does not defend against.
+Timing parity on the POST is best-effort for the same reason: one code path, both branches
+doing the same round trips, and no artificial sleeps, which burn a thread and make timing
+analysis easier rather than harder.

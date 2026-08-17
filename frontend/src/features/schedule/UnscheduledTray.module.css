@@ -35,6 +35,12 @@
   opacity: 0.5;
 }
 
+/* Nothing to grab, so nothing that looks grabbable. The card is unchanged in
+   every other way — it is still an idea you can read. */
+.cardStill {
+  cursor: default;
+}
+
 .body {
   flex: 1;
   min-width: 0;

@@ -30,6 +30,15 @@ export interface VoteControlProps {
   /** Clicking the already-selected stop withdraws the vote (score becomes null). */
   onClear?: () => void;
   disabled?: boolean;
+  /**
+   * May you change this trip? A prop rather than `useCanEdit()` because this
+   * control already takes its verb as a callback — the capability arrives beside
+   * the action it governs. Separate from `disabled`, which is the caller's own
+   * "not right now" (a save in flight); a viewer is a permanent no, and a caller
+   * should never have to merge the two by hand. Defaults to true, matching a
+   * null role.
+   */
+  canEdit?: boolean;
   /** Optional aggregate, shown in DM Mono after the stops, e.g. "1.5 · 2". */
   average?: number | null;
   count?: number;
@@ -40,16 +49,25 @@ export interface VoteControlProps {
  * Five stops for a -2..2 desire rating. Designed to read without a legend:
  * size encodes how strongly you feel, fill marks your current vote. Never uses
  * apricot — that colour is reserved for "where you are now" navigation.
+ *
+ * Disabled rather than hidden for a viewer, which is the one place this product
+ * greys something out. The stops are not only a control: their fill is the
+ * picture of what has already been decided, and taking them away would take the
+ * answer with them. `readOnly` has no meaning on a radio group, so `disabled` is
+ * what is left.
  */
 export function VoteControl({
   value,
   onChange,
   onClear,
   disabled = false,
+  canEdit = true,
   average,
   count,
   'aria-label': ariaLabel = 'Desire rating',
 }: VoteControlProps) {
+  const inert = disabled || !canEdit;
+
   return (
     <div className={styles.group} role="radiogroup" aria-label={ariaLabel}>
       {SCORES.map((score) => {
@@ -62,7 +80,7 @@ export function VoteControl({
             aria-checked={selected}
             aria-label={LABELS[score]}
             className={styles.stop}
-            disabled={disabled}
+            disabled={inert}
             onClick={() => (selected && onClear ? onClear() : onChange(score))}
           >
             <span

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { UserEvent } from '@testing-library/user-event';
+import { TripRoleProvider } from '../../auth/TripRoleContext';
 import { FilterBar } from './FilterBar';
 import { EMPTY_FILTERS } from './filters';
 import type { GroupMode, IdeaFilters } from './filters';
@@ -464,5 +465,69 @@ describe('FilterBar — the new idea button', () => {
   it('is left out entirely when the board keeps that button itself', () => {
     renderBar();
     expect(screen.queryByRole('button', { name: '+ New idea' })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A viewer loses the two controls that lead somewhere they cannot go, and keeps
+ * every control that only decides what is on screen. Both halves are asserted
+ * together on purpose: "the buttons are gone" is also true of a blank bar.
+ */
+describe('FilterBar — reading along', () => {
+  function renderAsViewer() {
+    return render(
+      <TripRoleProvider role="viewer">
+        <FilterBar
+          filters={EMPTY_FILTERS}
+          onChange={() => {}}
+          visibleCount={8}
+          totalCount={12}
+          groupMode="none"
+          onGroupModeChange={() => {}}
+          onNewIdea={() => {}}
+          onSelectModeChange={() => {}}
+          onToggleMap={() => {}}
+        />
+      </TripRoleProvider>,
+    );
+  }
+
+  it('takes away "+ New idea" and the way into select mode', () => {
+    renderAsViewer();
+
+    expect(screen.queryByRole('button', { name: '+ New idea' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Select' })).not.toBeInTheDocument();
+  });
+
+  it('keeps everything that only narrows the list — filters, grouping, the map and the count', async () => {
+    const user = userEvent.setup();
+    renderAsViewer();
+
+    expect(screen.getByText('Showing 8 of 12')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show map' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'By location' })).toBeInTheDocument();
+
+    const panel = await openFilters(user);
+    expect(within(panel).getByRole('button', { name: 'Food' })).toBeEnabled();
+  });
+
+  it('leaves an owner both of them', () => {
+    render(
+      <TripRoleProvider role="owner">
+        <FilterBar
+          filters={EMPTY_FILTERS}
+          onChange={() => {}}
+          visibleCount={8}
+          totalCount={12}
+          groupMode="none"
+          onGroupModeChange={() => {}}
+          onNewIdea={() => {}}
+          onSelectModeChange={() => {}}
+        />
+      </TripRoleProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: '+ New idea' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Select' })).toBeInTheDocument();
   });
 });
