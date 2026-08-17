@@ -84,11 +84,17 @@
  * only way to lift a surface in a system with no shadows and one dark ground.
  * The radius is 8px rather than --radius-card (12px) because the design draws
  * this panel tighter than a content card; it is chrome, not a card of content.
+ *
+ * It does not clip. It used to (`overflow: hidden`), defensively — nothing
+ * inside it has ever painted out to a corner, since every child is inset by the
+ * panel's own padding. What that clip did do was swallow the planner reveal
+ * whole: the cluster is the last thing in the panel, so its names open just
+ * past the bottom edge and were cut off at it. A guard that only ever caught
+ * the one thing it was not meant to is not a guard.
  */
 .tripCard {
   border-radius: 8px;
   background: rgb(240 243 238 / 7%);
-  overflow: hidden;
 }
 
 .tripHead {
@@ -210,7 +216,10 @@
   background: var(--stop-open);
 }
 
+/* The anchor for the viewer's name panel: the whole cluster is the trigger, so
+   the whole cluster is what the panel is measured against. */
 .planners {
+  position: relative;
   padding-bottom: var(--space-3);
 }
 
@@ -309,6 +318,49 @@ button.avatar:focus-visible {
 .addPerson:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/*
+ * The viewer's roster, spelled out. Card tone on the dark sidebar with a drawn
+ * edge — the same way every other popup in this product is lifted, and no
+ * shadow. It hangs off the cluster rather than sitting after it: the cluster is
+ * the last thing in the PLAN panel, and a list that took up room would grow the
+ * panel, push sign out down and move the sidebar under the pointer that asked
+ * the question. Nothing on the page moves.
+ *
+ * Not a target. `pointer-events: none` keeps it from standing between the
+ * pointer and whatever it was actually going to click, and means it cannot
+ * cover its own trigger and flicker.
+ */
+.plannerNames {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: var(--space-3);
+  right: var(--space-3);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  font-size: var(--text-small-size);
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+  opacity: 0;
+  pointer-events: none;
+  /* --motion-fade-duration is already 0ms under prefers-reduced-motion (see
+     tokens/motion.css), so the reveal is instant there without a rule here. */
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* Anywhere in the cluster, by pointer or by keyboard — the question is "who is
+   on this trip", not "who is this one circle", so one face is not the trigger
+   and the group is. */
+.planners:hover .plannerNames,
+.planners:focus-within .plannerNames {
+  opacity: 1;
 }
 
 .srOnly {
@@ -450,6 +502,17 @@ button.avatar:focus-visible {
   .avatars {
     padding: 0;
     margin: 0;
+  }
+
+  /* Lying down, the cluster is only as wide as its own faces, so the panel
+     stops borrowing its measure from it and takes the width of the longest
+     name instead — up to half the screen, past which the names wrap rather
+     than run off the edge of a phone. */
+  .plannerNames {
+    left: 0;
+    right: auto;
+    width: max-content;
+    max-width: 50vw;
   }
 
   /* Lying down, sign out is up at the top of the page next to everything else

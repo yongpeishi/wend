@@ -192,7 +192,13 @@ export function AppLayout() {
                                 here and lets you change it. A viewer gets the
                                 same circles with nothing behind them: they can
                                 see who they are reading along with, and there is
-                                no door for them to find shut. */}
+                                no door for them to find shut.
+
+                                The owner's face keeps its native `title` — the
+                                circle is a door, and the browser's own tooltip
+                                is the label on it. The viewer's has none, so the
+                                browser's slow one-name-at-a-time tooltip cannot
+                                fight the cluster's own reveal below. */}
                             {shareable ? (
                               <button
                                 type="button"
@@ -203,9 +209,7 @@ export function AppLayout() {
                                 {face}
                               </button>
                             ) : (
-                              <span className={styles.avatar} title={planner.name}>
-                                {face}
-                              </span>
+                              <span className={styles.avatar}>{face}</span>
                             )}
                           </li>
                         );
@@ -226,6 +230,34 @@ export function AppLayout() {
                         </li>
                       )}
                     </ul>
+
+                    {/* Who these letters are, all at once, for the one person
+                        who cannot ask any other way. An owner presses a face
+                        and gets the whole roster on a screen of its own; a
+                        viewer's faces open nothing, so until now the only way
+                        to learn who they were planning alongside was to rest
+                        the pointer on one initial, wait for the browser, read
+                        one name, and move to the next. The cluster answers the
+                        question in one gesture instead — hover it, or focus
+                        anything in it, and every name is there.
+
+                        Only for a viewer: over a face that is already a door,
+                        a panel that appears under the pointer is something to
+                        get past on the way to the door, not help.
+
+                        Hidden from assistive tech on purpose. Every face
+                        already carries its planner's name in an .srOnly span,
+                        so a screen reader has had the full roster all along;
+                        announcing it a second time would be worse than never
+                        having drawn this at all. This is a picture for people
+                        who can only see initials. */}
+                    {!shareable && (
+                      <div className={styles.plannerNames} aria-hidden="true">
+                        {planners.map((planner) => (
+                          <span key={planner.user_id}>{planner.name}</span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
