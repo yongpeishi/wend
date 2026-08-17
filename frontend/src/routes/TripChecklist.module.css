@@ -1,37 +1,23 @@
+/* Wider than the reading measure on purpose: a row is not a paragraph. Each
+   line is a title with two short cells hung off its right edge, and at 66ch
+   they would sit on top of the words instead of beside them. */
 .wrap {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  max-width: var(--measure-body);
+  max-width: 900px;
 }
 
-.addRow {
+/* Holds the one control that opens the composer, and nothing else. A flex row
+   only so the button is sized to its own label instead of being stretched the
+   width of .wrap by the column above it — the same job BundlePanel's .cta does
+   for "+ New bundle". Once the composer is open this wrapper is gone and the
+   form is the column's own child, so it takes the full measure. Everything the
+   old always-open add row needed — the "For ___" line, its label, its select
+   wrapper — moved to NewTodoForm.module.css with the form itself. */
+.addCta {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.forLabel {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.forLabelText {
-  font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-label-size);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-/* The field itself — surface, border, radius, chevron and focus ring — is
-   <Select> (design/components/core/Select.tsx). All that is left locally is
-   telling it how much of the "For ___" row to occupy. */
-.selectWrapper {
-  flex: 1;
-  min-width: 0;
+  align-items: baseline;
 }
 
 .list {
@@ -45,7 +31,7 @@
 
 .row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-4);
   background: var(--surface-card);
   border-radius: var(--radius-card);
@@ -103,42 +89,94 @@
   border-radius: 50%;
 }
 
+/* The title takes the line and the meta cells hang off its right edge. The row
+   centres everything against the circle, so there is nothing left to fake with
+   padding here. */
 .body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding-top: var(--space-2);
+  flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
 }
 
+/* The floor is what keeps the title readable once the row runs out of room.
+   Shrink is shared out in proportion to how wide each cell wants to be, and a
+   long title wants to be very wide, so without a floor it absorbs nearly all of
+   the shortfall and collapses to nothing while the idea name keeps its cap.
+   16ch is about three words a line at body size — below that a wrapped title
+   reads as a column of single words, which is exactly the shape we were fixing. */
 .title {
+  flex: 1;
+  min-width: 16ch;
   font-family: var(--font-sans);
   font-size: var(--text-body-size);
   line-height: var(--text-body-line);
   color: var(--text-strong);
 }
 
+/* Which idea, and by when — quiet, and read as a pair, so they stay together
+   when the line runs out of room. The pair shrinks rather than holding its
+   intrinsic width: a flex item only lets its contents ellipsise if it is
+   allowed to go narrower than them, so an unshrinkable cell here left
+   .source's text-overflow dead and pushed the pair out past the card's right
+   edge. min-width: 0 is the other half of that — without it the cell floors at
+   the idea name's own width and shrinks no further. */
 .meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
   color: var(--text-muted);
 }
 
-.doneSection {
+/* The only cell that gives way. The cap is what stops a long idea name from
+   eating the line while there is still room for it: 24ch measures about 235px
+   of the ~830px a desktop row has for its body, so the title keeps roughly two
+   thirds of the line no matter how long the idea is called. Narrower than that
+   and the shrink above takes over and this cell keeps giving, down to nothing
+   if that is what it takes to keep the deadline on the row. */
+.source {
+  min-width: 0;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Never shrinks. "by 3 Oct" and "+ By when?" are short and are the whole point
+   of the cell — a truncated deadline says nothing — so all the giving happens
+   in .source. */
+.deadline {
+  flex: none;
+}
+
+.section {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
+/* One eyebrow label, worn by both counts. The open one is a heading and the
+   done one is a button, so only the type is shared — everything a button needs
+   stays on .doneToggle. */
+.openHeading,
 .doneToggle {
   align-self: flex-start;
-  min-height: var(--tap-min);
   font-family: var(--font-sans);
   font-weight: var(--weight-bold);
   font-size: var(--text-label-size);
   letter-spacing: var(--text-label-tracking);
   text-transform: uppercase;
   color: var(--text-muted);
+  margin: 0;
+}
+
+.doneToggle {
+  min-height: var(--tap-min);
   background: none;
   border: none;
   padding: 0;
@@ -153,6 +191,31 @@
 .doneToggle:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/* Narrow enough that the title and its two cells stop fitting on one line, so
+   the pair drops under the title. The circle stays centred against the whole
+   group either way, which is why it lives outside .body. */
+@media (max-width: 640px) {
+  .body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+
+  /* Stacked, the pair sits on its own line under the title, so the cap on the
+     idea name comes off — there is no title beside it left to crowd.
+     The cap on the pair itself has to go on, though: as the cross-axis child of
+     a column .body it is sized to its max-content width, which for a long idea
+     name hangs straight out of the card. Held to the line, .source ellipsises
+     inside it exactly as it does on a wide row. */
+  .meta {
+    max-width: 100%;
+  }
+
+  .source {
+    max-width: none;
+  }
 }
 
 .srOnly {
