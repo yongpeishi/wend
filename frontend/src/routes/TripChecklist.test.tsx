@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -61,6 +61,63 @@ describe('TripChecklist', () => {
     expect(screen.getByRole('textbox', { name: 'What needs doing?' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: `Check off ${TRIP_TODO}` })).toBeInTheDocument();
   });
+
+  it('says how many things are still to do', async () => {
+    renderChecklist();
+
+    expect(await screen.findByRole('heading', { name: 'Todo · 2' })).toBeInTheDocument();
+  });
+
+  it('offers a new item the whole trip rather than one idea, in plain words', async () => {
+    renderChecklist();
+    await screen.findByText(TRIP_TODO);
+
+    const forSelect = screen.getByRole('combobox', { name: 'For' });
+    expect(forSelect).toHaveValue('');
+    expect(screen.getByRole('option', { name: 'In general' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'the whole trip' })).not.toBeInTheDocument();
+  });
+
+  it('takes a deadline for a new item alongside what it is for', async () => {
+    renderChecklist();
+    await screen.findByText(TRIP_TODO);
+
+    expect(
+      screen.getByRole('button', { name: 'Deadline for the new item' }),
+    ).toHaveTextContent('+ Deadline');
+  });
+
+  it('puts a deadline on a line that had none, and keeps it', async () => {
+    const user = userEvent.setup();
+    renderChecklist();
+    await screen.findByText(ENTRY_TODO);
+
+    await user.click(screen.getByRole('button', { name: `Deadline for ${ENTRY_TODO}` }));
+    // A date input is filled in by the browser's own control, not by keystrokes.
+    fireEvent.change(screen.getByLabelText(`Deadline for ${ENTRY_TODO}`), {
+      target: { value: '2026-11-05' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: `Deadline for ${ENTRY_TODO}` })).toHaveTextContent(
+        'by 5 Nov',
+      ),
+    );
+  });
+
+  it('shows the deadline a line already has, and sorts that line to the top', async () => {
+    renderChecklist();
+    await screen.findByText(TRIP_TODO);
+
+    expect(screen.getByRole('button', { name: `Deadline for ${TRIP_TODO}` })).toHaveTextContent(
+      'by 1 Oct',
+    );
+    // Seeded dated (1 Oct) before seeded undated — sortOpenTodos' ordering,
+    // arriving on the page.
+    const titles = screen.getAllByRole('listitem').map((li) => li.textContent);
+    expect(titles[0]).toContain(TRIP_TODO);
+    expect(titles[1]).toContain(ENTRY_TODO);
+  });
 });
 
 /**
@@ -89,13 +146,26 @@ describe('TripChecklist — as a viewer', () => {
     expect(screen.queryByRole('button', { name: `Check off ${ENTRY_TODO}` })).not.toBeInTheDocument();
   });
 
+  it('leaves deadlines as something to read rather than something to set', async () => {
+    renderChecklist('viewer');
+    await screen.findByText(TRIP_TODO);
+
+    // The dated line still says when — as text.
+    expect(screen.getByText('by 1 Oct')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Deadline for ${TRIP_TODO}` })).not.toBeInTheDocument();
+    // And the undated line says nothing at all, rather than inviting one.
+    expect(screen.queryByRole('button', { name: `Deadline for ${ENTRY_TODO}` })).not.toBeInTheDocument();
+    expect(screen.queryByText('+ Deadline')).not.toBeInTheDocument();
+  });
+
   it('still shows every line, and still says where each one stands', async () => {
     renderChecklist('viewer');
 
     expect(await screen.findByText(TRIP_TODO)).toBeInTheDocument();
     expect(screen.getByText(ENTRY_TODO)).toBeInTheDocument();
-    // The meta line a checklist is read for: which idea, and by when.
+    // The meta a checklist is read for: which idea, and by when.
     expect(screen.getByText(/Nanzen-ji/)).toBeInTheDocument();
+    expect(screen.getByText('by 1 Oct')).toBeInTheDocument();
     // The circle stays and stops being a button, so the state is still drawn —
     // and still spelled out for a screen reader.
     expect(screen.getAllByText('Still to do')).toHaveLength(2);

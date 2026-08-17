@@ -1,8 +1,11 @@
+/* Wider than the reading measure on purpose: a row is not a paragraph. Each
+   line is a title with two short cells hung off its right edge, and at 66ch
+   they would sit on top of the words instead of beside them. */
 .wrap {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  max-width: var(--measure-body);
+  max-width: 900px;
 }
 
 .addRow {
@@ -11,10 +14,23 @@
   gap: var(--space-3);
 }
 
+/* What the new item is for and when it's due: one line while there is room. */
+.addMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .forLabel {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.addDeadline {
+  flex: none;
 }
 
 .forLabelText {
@@ -45,7 +61,7 @@
 
 .row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-4);
   background: var(--surface-card);
   border-radius: var(--radius-card);
@@ -103,42 +119,72 @@
   border-radius: 50%;
 }
 
+/* The title takes the line and the meta cells hang off its right edge. The row
+   centres everything against the circle, so there is nothing left to fake with
+   padding here. */
 .body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding-top: var(--space-2);
+  flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
 }
 
 .title {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-sans);
   font-size: var(--text-body-size);
   line-height: var(--text-body-line);
   color: var(--text-strong);
 }
 
+/* Which idea, and by when — quiet, and read as a pair, so they stay together
+   when the line runs out of room. */
 .meta {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
   color: var(--text-muted);
 }
 
-.doneSection {
+.source {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deadline {
+  flex: none;
+}
+
+.section {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
+/* One eyebrow label, worn by both counts. The open one is a heading and the
+   done one is a button, so only the type is shared — everything a button needs
+   stays on .doneToggle. */
+.openHeading,
 .doneToggle {
   align-self: flex-start;
-  min-height: var(--tap-min);
   font-family: var(--font-sans);
   font-weight: var(--weight-bold);
   font-size: var(--text-label-size);
   letter-spacing: var(--text-label-tracking);
   text-transform: uppercase;
   color: var(--text-muted);
+  margin: 0;
+}
+
+.doneToggle {
+  min-height: var(--tap-min);
   background: none;
   border: none;
   padding: 0;
@@ -153,6 +199,23 @@
 .doneToggle:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/* Narrow enough that the title and its two cells stop fitting on one line, so
+   the pair drops under the title. The circle stays centred against the whole
+   group either way, which is why it lives outside .body. */
+@media (max-width: 640px) {
+  .body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+
+  .addMeta {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
 }
 
 .srOnly {

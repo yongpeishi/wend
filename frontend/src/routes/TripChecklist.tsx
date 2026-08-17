@@ -10,7 +10,7 @@ import { useEntries } from '../api/entries';
 import { useCreateTodo, useTodos, useUpdateTodo } from '../api/todos';
 import type { Entry, Todo } from '../api/types';
 import { splitDoneOpen, sortOpenTodos } from '../features/checklist/checklistModel';
-import { formatDay, joinMeta } from '../lib/formatDates';
+import { DeadlineField } from '../features/checklist/DeadlineField';
 import styles from './TripChecklist.module.css';
 
 /**
@@ -30,6 +30,7 @@ export function TripChecklist() {
 
   const [newTitle, setNewTitle] = useState('');
   const [forEntryId, setForEntryId] = useState<number | ''>('');
+  const [dueOn, setDueOn] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
 
   const createTodo = useCreateTodo();
@@ -55,11 +56,13 @@ export function TripChecklist() {
       {
         title,
         ...(forEntryId === '' ? { trip_id: trip.id } : { entry_id: Number(forEntryId) }),
+        ...(dueOn === null ? {} : { due_on: dueOn }),
       },
       {
         onSuccess: () => {
           setNewTitle('');
           setForEntryId('');
+          setDueOn(null);
         },
         onError: () => show("That didn't save. It's still here — try again.", 'error'),
       },
@@ -87,24 +90,34 @@ export function TripChecklist() {
             }}
             aria-label="What needs doing?"
           />
-          <label className={styles.forLabel}>
-            <span className={styles.forLabelText}>For</span>
-            {/* wrapperClassName, not className: the wrapper is the flex child of
-                .forLabel, so `flex: 1` has to land there for the field to take
-                the rest of the row. */}
-            <Select
-              wrapperClassName={styles.selectWrapper}
-              value={forEntryId}
-              onChange={(e) => setForEntryId(e.target.value === '' ? '' : Number(e.target.value))}
-            >
-              <option value="">the whole trip</option>
-              {entries.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.title}
-                </option>
-              ))}
-            </Select>
-          </label>
+          {/* What it's for and when it's due read as one line of settings on the
+              new item, so they sit side by side while there is room for them. */}
+          <div className={styles.addMeta}>
+            <label className={styles.forLabel}>
+              <span className={styles.forLabelText}>For</span>
+              {/* wrapperClassName, not className: the wrapper is the flex child of
+                  .forLabel, so `flex: 1` has to land there for the field to take
+                  the rest of the row. */}
+              <Select
+                wrapperClassName={styles.selectWrapper}
+                value={forEntryId}
+                onChange={(e) => setForEntryId(e.target.value === '' ? '' : Number(e.target.value))}
+              >
+                <option value="">In general</option>
+                {entries.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.title}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <DeadlineField
+              className={styles.addDeadline}
+              value={dueOn}
+              onChange={setDueOn}
+              label="Deadline for the new item"
+            />
+          </div>
         </div>
       )}
 
@@ -112,14 +125,20 @@ export function TripChecklist() {
         <EmptyState message="Nothing to check off. That's either very good or very early." />
       ) : (
         <>
-          <ul className={styles.list}>
-            {openSorted.map((todo) => (
-              <TodoRow key={todo.id} todo={todo} canEdit={canEdit} />
-            ))}
-          </ul>
+          <div className={styles.section}>
+            {/* Counted like the Done toggle below and wearing the same label,
+                but a heading rather than a button: there is nothing here to
+                collapse, since the open list is what the page is for. */}
+            {openSorted.length > 0 && <h2 className={styles.openHeading}>Todo · {openSorted.length}</h2>}
+            <ul className={styles.list}>
+              {openSorted.map((todo) => (
+                <TodoRow key={todo.id} todo={todo} canEdit={canEdit} />
+              ))}
+            </ul>
+          </div>
 
           {done.length > 0 && (
-            <div className={styles.doneSection}>
+            <div className={styles.section}>
               <button
                 type="button"
                 className={styles.doneToggle}
@@ -144,8 +163,13 @@ export function TripChecklist() {
 }
 
 /**
- * One checklist line. The circle is the same keep-toggle idiom as the board:
- * filled when done, ringed when open. Nothing is ever struck through.
+ * One checklist line, read left to right: the circle, what has to be done, then
+ * what it belongs to and when it's due, both quiet and pushed to the right. The
+ * two on the right are separate cells rather than one middot-joined string —
+ * the deadline is a control, not text, and it has to keep its own edge.
+ *
+ * The circle is the same keep-toggle idiom as the board: filled when done,
+ * ringed when open. Nothing is ever struck through.
  *
  * For a viewer the circle stays and stops being a button. It is the only place
  * this row says whether the thing is done, so removing it would remove the
@@ -157,17 +181,22 @@ function TodoRow({ todo, canEdit }: { todo: Todo; canEdit: boolean }) {
   const updateTodo = useUpdateTodo(todo.id);
   const isDone = todo.done_at !== null;
 
-  function toggle() {
-    updateTodo.mutate(
-      { done_at: isDone ? null : new Date().toISOString() },
-      { onError: () => show("That didn't save. It's still here — try again.", 'error') },
-    );
+  function save(payload: Parameters<typeof updateTodo.mutate>[0]) {
+    updateTodo.mutate(payload, {
+      onError: () => show("That didn't save. It's still here — try again.", 'error'),
+    });
   }
 
-  const meta = joinMeta(
-    todo.entry && todo.entry.kind !== 'trip' ? todo.entry.title : undefined,
-    todo.due_on ? `by ${formatDay(todo.due_on)}` : undefined,
-  );
+  function toggle() {
+    save({ done_at: isDone ? null : new Date().toISOString() });
+  }
+
+  // A trip-level todo prints no source at all. Saying "In general" on what is
+  // usually most of the list would be noise, not information.
+  const source = todo.entry && todo.entry.kind !== 'trip' ? todo.entry.title : null;
+  // A viewer with neither a source nor a deadline has an empty right-hand pair,
+  // and an empty cell would still take the row's gap.
+  const hasMeta = source !== null || canEdit || todo.due_on !== null;
 
   return (
     <li className={isDone ? `${styles.row} ${styles.rowDone}` : styles.row}>
@@ -193,7 +222,18 @@ function TodoRow({ todo, canEdit }: { todo: Todo; canEdit: boolean }) {
       )}
       <span className={styles.body}>
         <span className={styles.title}>{todo.title}</span>
-        {meta && <span className={styles.meta}>{meta}</span>}
+        {hasMeta && (
+          <span className={styles.meta}>
+            {source && <span className={styles.source}>{source}</span>}
+            <DeadlineField
+              className={styles.deadline}
+              value={todo.due_on}
+              onChange={(next) => save({ due_on: next })}
+              readOnly={!canEdit}
+              label={`Deadline for ${todo.title}`}
+            />
+          </span>
+        )}
       </span>
     </li>
   );
