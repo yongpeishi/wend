@@ -1,12 +1,16 @@
-/* Shared by Modal and Drawer. The system defines no translucent value other than
-   --focus-ring-wash, so the overlay is a SOLID paper-tone fill (not a dimmed
-   scrim) — separation from the page underneath comes entirely from card tone
-   and the drawn edge, matching "no shadows, no blur/transparency". */
+/* Shared by Modal and Drawer. The overlay is paper tone at 0.92 alpha
+   (--overlay-scrim), not a dimmed grey scrim: it is the page's own colour, only
+   barely see-through. Opaque paper hid the page completely and an overlay then
+   read as a whole new screen you had navigated to; that last eight percent
+   leaves the page faintly present underneath, so a modal reads as something OVER
+   the trip you are still on. It is doing no more than that — separation from the
+   page is still carried by card tone and the drawn edge, and the rule against
+   shadows and blur is untouched. No box-shadow, no backdrop-filter here. */
 
 .overlay {
   position: fixed;
   inset: 0;
-  background: var(--surface-page);
+  background: var(--overlay-scrim);
   display: flex;
   z-index: 100;
   animation: fade var(--motion-fade-duration) var(--motion-fade-ease);

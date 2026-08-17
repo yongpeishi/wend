@@ -47,6 +47,15 @@
   --focus-ring: var(--wend-apricot);
   --focus-ring-wash: rgba(232, 154, 94, 0.28);
 
+  /* The one other translucent value, and the second deliberate exception to
+     "no blur/transparency": the paper tone (--wend-paper) at 0.92, laid over the
+     page by Modal and Drawer. Opaque paper made an overlay read as a whole new
+     page — the trip you were on simply gone. Eight percent is enough to leave it
+     faintly legible underneath, so the overlay reads as something ON the page,
+     and far too little for it to compete with the card for attention. Keep it
+     literal rgba: --wend-paper is a hex token, and var() cannot carry an alpha. */
+  --overlay-scrim: rgba(240, 243, 238, 0.92);
+
   /* Placeholder imagery: hatch, never a grey box */
   --placeholder-hatch: repeating-linear-gradient(135deg, var(--wend-hatch-a) 0 5px, var(--wend-hatch-b) 5px 10px);
 }
