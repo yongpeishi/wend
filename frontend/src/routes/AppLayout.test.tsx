@@ -103,8 +103,8 @@ describe('AppLayout', () => {
     // ground, then what to do before you go, then the finished plan.
     expect(within(tripNav).getAllByRole('link').map((link) => link.textContent)).toEqual([
       'Ideas',
-      'Itinerary',
       'Map',
+      'Itinerary',
       'Checklist',
       'Final schedule',
     ]);

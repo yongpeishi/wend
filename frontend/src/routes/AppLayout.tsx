@@ -28,8 +28,8 @@ import styles from './AppLayout.module.css';
  */
 const TRIP_TABS = [
   { key: 'board', label: 'Ideas' },
-  { key: 'itinerary', label: 'Itinerary' },
   { key: 'map', label: 'Map' },
+  { key: 'itinerary', label: 'Itinerary' },
   { key: 'checklist', label: 'Checklist' },
   { key: 'schedule', label: 'Final schedule' },
 ];
