@@ -6,12 +6,14 @@ import 'leaflet/dist/leaflet.css';
 import { boundsTupleForPoints } from './bounds';
 import { cellSizeForZoom, clusterPoints, isMultiPointCluster } from './clustering';
 import { clusterIcon, labelIcon, pendingIcon, pinIcon } from './markerIcon';
-import type { Bounds, Cluster, MapPin } from './types';
+import type { Bounds, Cluster, ClusterPoint, MapPin } from './types';
 import styles from './MapView.module.css';
 
 const WORLD_CENTER: [number, number] = [20, 0];
 const WORLD_ZOOM = 2;
 const FIT_PADDING: [number, number] = [32, 32];
+/** Not an entry id, and cannot be mistaken for one: only the fit ever sees it. */
+const YOU_ARE_HERE_ID = -1;
 
 /** How a pin draws. 'marker' is the trail stop-circle; 'label' is a name pill. */
 export type PinVariant = 'marker' | 'label';
@@ -26,6 +28,14 @@ export interface MapViewProps {
   onMapClick?: (lat: number, lng: number) => void;
   /** The not-yet-saved location while capturing a new idea — drawn as an apricot dashed ring. */
   pendingLocation?: { lat: number; lng: number } | null;
+  /**
+   * Where the reader is standing. The same apricot ring as `pendingLocation` —
+   * both mean "a point that is not a kept place" — but a separate prop, because
+   * it is a separate fact and it is counted in `fitToPins`: a map showing only
+   * you should open on your street, not on the whole world with the ring
+   * somewhere off the edge.
+   */
+  youAreHere?: { lat: number; lng: number } | null;
   /** Fit the view to `pins` the first time a non-empty set arrives — "bounds fit to the trip's entries on load". */
   fitToPins?: boolean;
   /**
@@ -44,7 +54,7 @@ export interface MapViewProps {
   'aria-label'?: string;
 }
 
-function FitToPins({ pins, enabled }: { pins: MapPin[]; enabled: boolean }) {
+function FitToPins({ pins, enabled }: { pins: ClusterPoint[]; enabled: boolean }) {
   const map = useMap();
   const fitted = useRef(false);
   const idsKey = pins
@@ -78,7 +88,7 @@ function FitToPins({ pins, enabled }: { pins: MapPin[]; enabled: boolean }) {
  * re-run of this effect (StrictMode, or a new `pins` array) sees no change and
  * does nothing. Only an actually different number moves the map.
  */
-function RefitOnRequest({ pins, fitRequest }: { pins: MapPin[]; fitRequest: number | undefined }) {
+function RefitOnRequest({ pins, fitRequest }: { pins: ClusterPoint[]; fitRequest: number | undefined }) {
   const map = useMap();
   const handled = useRef(fitRequest);
 
@@ -244,6 +254,7 @@ export function MapView({
   onSelectCluster,
   onMapClick,
   pendingLocation = null,
+  youAreHere = null,
   fitToPins = false,
   fitRequest,
   pinVariant = 'marker',
@@ -254,6 +265,14 @@ export function MapView({
 }: MapViewProps) {
   const [zoom, setZoom] = useState(WORLD_ZOOM);
   const clusters = useMemo(() => clusterPoints(pins, cellSizeForZoom(zoom)), [pins, zoom]);
+
+  // What the view fits to, which is not the same set as what clusters: "you"
+  // are a point on the map but never a pin, so you are counted here and only
+  // here. The id is negative so it can never collide with an entry's.
+  const fitPoints = useMemo(
+    () => (youAreHere ? [...pins, { id: YOU_ARE_HERE_ID, lat: youAreHere.lat, lng: youAreHere.lng }] : pins),
+    [pins, youAreHere],
+  );
 
   return (
     <div className={styles.wrap} style={{ height }} role="group" aria-label={ariaLabel}>
@@ -266,8 +285,8 @@ export function MapView({
             handles keyboard focus and disables itself at min/max zoom; a
             hand-rolled pair of buttons would have to re-earn both. */}
         <ZoomControl position="topright" />
-        <FitToPins pins={pins} enabled={fitToPins} />
-        <RefitOnRequest pins={pins} fitRequest={fitRequest} />
+        <FitToPins pins={fitPoints} enabled={fitToPins} />
+        <RefitOnRequest pins={fitPoints} fitRequest={fitRequest} />
         <ResizeBridge />
         <ViewportBridge onMapClick={onMapClick} onBoundsChange={onBoundsChange} onZoomChange={setZoom} />
 
@@ -296,6 +315,8 @@ export function MapView({
         {pendingLocation && (
           <Marker position={[pendingLocation.lat, pendingLocation.lng]} icon={pendingIcon()} interactive={false} />
         )}
+
+        {youAreHere && <Marker position={[youAreHere.lat, youAreHere.lng]} icon={pendingIcon()} interactive={false} />}
       </MapContainer>
     </div>
   );

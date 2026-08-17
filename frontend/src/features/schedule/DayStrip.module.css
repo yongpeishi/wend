@@ -1,0 +1,117 @@
+/*
+ * The day strip. One row that scrolls sideways and never wraps — a trip of any
+ * length lengthens the run instead of growing the page head, which is the whole
+ * reason the days are chips and not a wrapped grid of dates.
+ *
+ * Written phone-first; 861px is where this feature widens, matching the shell's
+ * own fold in AppLayout.module.css.
+ *
+ * The chips run from the start edge and must keep doing so. Because this row
+ * scrolls, `flex-end` or `center` here would push the overflow off the *start*
+ * side, and there is no scrolling back to that: scrollLeft has nowhere below
+ * zero to go, so the earliest days of a long trip become unreachable and paint
+ * over whatever sits to the left of the strip. Wherever the strip needs to sit
+ * on the page, move the strip — its parent aligns the box, this rule only ever
+ * fills it.
+ */
+.strip {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow-x: auto;
+  /* A scroll container clips both axes and a focus ring stands 6px proud of its
+     chip. The padding is the room it needs; the negative margin hands that room
+     straight back to the head's own rhythm. */
+  padding: var(--space-1);
+  margin: calc(var(--space-1) * -1);
+}
+
+.chip {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* 3px: tighter than --space-1 (4). The two lines read as one date. */
+  gap: 3px;
+  /* 52px: the design's own chip measure — wide enough for "WED" with air, and
+     no step of the spacing scale is a width. */
+  min-width: 52px;
+  padding: var(--space-2);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: transparent;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* Hover and press are opacity only — the palette never lightens or darkens. */
+.chip:hover {
+  opacity: 0.75;
+}
+
+.chip:active {
+  opacity: 0.6;
+}
+
+.chip:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The day you are reading: apricot edge and card tone lifted off the paper, the
+   same "you are here" the trip's nav uses. */
+.chipActive {
+  border-color: var(--wend-apricot);
+  background: var(--surface-card);
+}
+
+.dow {
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+/* The edge carries "you are here", the words do not. Apricot is a ring, an
+   outline, an underline — never text: at 12px bold on card tone it is about 2:1
+   against the paper, which is unreadable on a screen whose whole job is being
+   read outdoors. The border, the card tone and aria-current already say it. */
+.chipActive .dow {
+  color: var(--text-strong);
+}
+
+/* The date is a counter, which is what DM Mono is for. 16px: the type scale
+   steps 15 -> 17 and neither sits right under a 12px label. */
+.date {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  color: var(--text-strong);
+}
+
+@media (pointer: coarse) {
+  .chip {
+    min-height: var(--tap-min);
+  }
+}
+
+/* Wide: the strip sits on the title's own row, right-aligned, so the chips grow
+   a little and the date drops the mono — at 17px beside a 40px title it is
+   reading as a number in a sentence, not as a counter in a cell. */
+@media (min-width: 861px) {
+  .chip {
+    min-width: 64px;
+  }
+
+  .date {
+    font-family: var(--font-sans);
+    font-size: var(--text-body-size);
+  }
+}

@@ -42,7 +42,11 @@ function initial(name: string): string {
 /**
  * Shell for every authenticated route: a fixed 246px sidebar on deep leaf, then
  * the route's own content. The sidebar is sticky full-height on desktop and
- * folds into a horizontal bar on narrow viewports so it never crushes the page.
+ * becomes the phone's header below 860px — the mark and the people on one line,
+ * the trip's views as chips scrolling across the next. One set of markup serves
+ * both: the header is the same nav, the same links and the same roster, folded
+ * by CSS alone (see AppLayout.module.css), so there is never a second copy of a
+ * link for a screen reader to read out or for a test to have to choose between.
  *
  * When you are inside a trip the sidebar also carries that trip's sub-nav. It
  * lives here rather than in TripLayout because the sidebar is the one piece of
@@ -278,8 +282,17 @@ export function AppLayout() {
       </main>
 
       {/* Inside the authenticated shell so feedback always has an author, and
-          outside <Outlet> so it survives route changes. */}
-      <FeedbackButton />
+          outside <Outlet> so it survives route changes.
+
+          The slot around it is not decoration: on a phone the button is switched
+          off there, and it has to be switched off from outside because the
+          button is shared and knows nothing about who is showing it. Feedback is
+          something you send from a desk; on the road the screen belongs to the
+          plan, and the button's fixed bottom-left corner is exactly where the
+          now bar and the thumb already are. */}
+      <div className={styles.feedbackSlot}>
+        <FeedbackButton />
+      </div>
 
       {/* The same panel the trip header opens — one screen for "who is on this
           trip", reachable from the faces that name them. It fetches nothing

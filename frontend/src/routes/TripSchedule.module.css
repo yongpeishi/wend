@@ -1,71 +1,153 @@
-/* The finished day plan is the one dark surface in the product — it inverts
-   for outdoor reading. TripLayout paints the background; this sets the type
-   colours that sit on it. */
-.wrap {
+/*
+ * Final schedule. Paper, in both widths — it used to invert to the deep-leaf
+ * surface for outdoor reading, and both mockups since have put it back on paper
+ * (see §2 of the feature contract). TripLayout no longer paints anything under
+ * this screen, so there are no type colours to correct here either.
+ *
+ * Phone-first. 861px is this feature's one breakpoint, matching the shell's own
+ * fold in AppLayout.module.css.
+ */
+/*
+ * The one screen that takes the height the shell offers, and the reason is the
+ * now bar. It is `position: sticky; bottom: 0`, and sticky can only ride the
+ * bottom of the window while this box is still down there — sized to a short
+ * day's four rows, the box ends mid-page and the bar ends with it, sitting
+ * under the last row instead of on the floor of the phone. `flex: 1` takes it
+ * to the bottom of TripLayout's wrap, and the negative margin hands back the
+ * wrap's floor, which is the last band of paper between the two. Long days are
+ * unaffected: the box was already past the bottom of the window, and the bar
+ * was already riding it.
+ */
+.screen {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
-  color: var(--text-on-dark);
+  gap: var(--space-6);
+  flex: 1;
+  margin-bottom: calc(var(--floor-screen) * -1);
 }
 
-.days {
-  /* Day tabs scroll sideways rather than wrapping: on a phone a two-week trip
-     would otherwise push the plan itself below the fold. */
-  overflow-x: auto;
-  padding-bottom: var(--space-2);
-}
-
-.nearby {
+/* Title over the day strip on a phone: 26px of heading and a fortnight of
+   chips will not share a line at 360px. */
+.head {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-width) solid var(--border-subtle);
 }
 
-.nearbyPanel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.nearbyNote {
+.title {
   margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-small-size);
-  line-height: var(--text-small-line);
-  color: var(--text-on-dark-muted);
-  max-width: var(--measure-body);
-}
-
-.nearbyList {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-list-row);
-}
-
-.nearbyItem {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-4);
-  min-height: var(--tap-min);
-  padding: var(--space-2) 0;
-}
-
-.nearbyTitle {
   font-family: var(--font-sans);
   font-weight: var(--weight-bold);
-  font-size: var(--text-body-size);
-  color: var(--text-on-dark);
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  color: var(--text-strong);
 }
 
-/* Distances are data: tracked, never mono, sized to read in sun. */
-.nearbyMeta {
-  font-family: var(--font-sans);
-  font-size: var(--text-data-size);
-  letter-spacing: var(--text-data-tracking);
-  color: var(--text-on-dark-muted);
-  white-space: nowrap;
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.plan {
+  min-width: 0;
+}
+
+/* The rows carry their own dividing rules, including one under the last of
+   them: the list ends on a line, which is what stops the now bar from looking
+   like it is sitting on top of an unfinished day. */
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * The now bar's slot, and it is `display: contents` for a reason worth stating:
+ * the bar is `position: sticky; bottom: 0`, and a sticky element can never
+ * leave its own parent's box. Wrapped in a div its own height, it would have
+ * nowhere to travel and would simply sit at the end of the day. With the
+ * wrapper's box gone the bar becomes a child of .screen, whose box is the whole
+ * page — which is the range it needs to ride the bottom of the window over the
+ * rows and then settle after the last of them.
+ *
+ * The margin goes on the bar itself for the same reason: it is full-bleed, so
+ * it hands back the gutter TripLayout's .wrap puts on every screen and pads
+ * itself by the same amount instead. `display: none` on the wrapper still takes
+ * the whole subtree away, which is how the desk loses the bar.
+ */
+.nowBarSlot {
+  display: contents;
+}
+
+.nowBarSlot > * {
+  margin-inline: calc(var(--gutter-screen) * -1);
+}
+
+/*
+ * Wide. The title and the days share a line, the plan moves into a card, and
+ * the nearby panel becomes a rail that is simply always there — at this width
+ * there is room for it, so it does not have to be asked for, and the now bar
+ * has nothing left to say.
+ */
+@media (min-width: 861px) {
+  /* No bar here, so the floor comes back. The screen still fills the window —
+     harmless, since nothing inside it stretches — and that keeps the paper
+     under a short day continuous rather than ending in a seam. */
+  .screen {
+    margin-bottom: 0;
+  }
+
+  .head {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
+  }
+
+  .title {
+    font-size: var(--text-display-size);
+    line-height: var(--text-display-line);
+  }
+
+  /* The strip cannot grow past its own chips, so `space-between` above is what
+     hugs it to the right edge rather than stretching it across the head.
+     Right-aligning it is the head's job, and only the head's: the strip is a
+     scroll container, and a scroll container must lay its own children out from
+     its start edge. Ask a scroller for `flex-end` and its overflow spills off
+     the *start* side, where scrollLeft cannot follow — on a fortnight-long trip
+     the first days end up painted under the title with no way to reach them.
+     Laying out from the start costs nothing when the chips fit, because a box
+     that is exactly its content's width looks the same either way. */
+  .head > nav {
+    flex: 0 1 auto;
+    justify-content: flex-start;
+  }
+
+  .body {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-8);
+  }
+
+  .plan {
+    flex: 1;
+    background: var(--surface-card);
+    border: var(--border-width) solid var(--border-subtle);
+    border-radius: var(--radius-card);
+    padding: var(--space-2) var(--space-6) var(--space-6);
+  }
+
+  /* 308px: the design's own rail measure. Narrower than the itinerary's, and
+     deliberately — that rail holds draggable rows, this one holds a map and a
+     list you read. */
+  .rail {
+    flex: none;
+    width: 308px;
+  }
+
+  .nowBarSlot {
+    display: none;
+  }
 }

@@ -298,6 +298,33 @@ describe('AppLayout', () => {
     expect(within(tripNav).getByRole('link', { name: 'Ideas' })).not.toHaveAttribute('aria-current');
   });
 
+  // Below 860px the sidebar folds into the phone header, and the design has no
+  // room in it for feedback: the button's fixed bottom-left corner is where the
+  // plan and the thumb already are. jsdom does not evaluate media queries, so
+  // what is provable here is that the button sits in a slot the stylesheet can
+  // switch off from outside — the button itself is shared and stays untouched.
+  it('puts the feedback button in a slot the phone header can switch off', () => {
+    const { container } = renderShell();
+    const slot = container.querySelector(`.${styles.feedbackSlot}`);
+    expect(slot).toBeInTheDocument();
+    expect(within(slot as HTMLElement).getByRole('button', { name: 'Give feedback' })).toBeInTheDocument();
+  });
+
+  // The mockup's phone header drops sign out; we keep it, because it is the
+  // only way off this device and there is no other menu to hide it in. It lives
+  // in the Main nav, which is what becomes that header — not somewhere the fold
+  // would leave behind.
+  it('keeps sign out inside the nav that becomes the phone header', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    renderShell(`/trips/${SEEDED_TRIP_ID}`);
+    const shell = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(shell).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    // Alongside, not instead of: the header's other two subjects are in the
+    // same nav, so the fold has all three to lay out.
+    expect(within(shell).getByRole('navigation', { name: 'Trip views' })).toBeInTheDocument();
+    expect(await within(shell).findByRole('button', { name: 'Demo Traveler' })).toBeInTheDocument();
+  });
+
   it('signs out from the sidebar', async () => {
     // Sign in first: the MSW fixtures start with no session (src/mocks/db.ts).
     await api.post('/session', { email: 'demo@wend.app', password: 'password' });

@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useCollaborators, useEntry } from '../api';
 import { canDelete, canEdit, canShare } from '../auth/tripRole';
 import { TripRoleProvider } from '../auth/TripRoleContext';
@@ -6,8 +6,6 @@ import { PageHeader } from '../components/PageHeader';
 import { Spinner } from '../components/Spinner';
 import { formatTripDates } from '../lib/formatDates';
 import styles from './TripLayout.module.css';
-
-const TAB_KEYS = ['board', 'itinerary', 'checklist', 'schedule', 'map'];
 
 /**
  * The standing viewer line. Not a Toast: a Toast leaves after four seconds, and
@@ -22,19 +20,11 @@ function viewerLine(ownerName: string | null): string {
 }
 
 /**
- * Which tab the current URL is on. `/trips/:id` itself is the board. The tab
- * list itself now lives in the sidebar (AppLayout); this survives only because
- * the schedule decides the surface the whole shell is painted on.
- */
-function tabFromPath(pathname: string): string {
-  const tail = pathname.split('/')[3];
-  return TAB_KEYS.includes(tail as string) ? (tail as string) : 'board';
-}
-
-/**
- * Shared shell for every trip surface: the trip's title and dates, and the
- * surface they sit on. The schedule inverts to the dark outdoor-reading
- * surface; every other tab sits on paper.
+ * Shared shell for every trip surface: the trip's title and dates. Every tab
+ * sits on paper. The schedule used to invert the whole shell to the deep-leaf
+ * surface, and this component knew which URL it was on for that one reason —
+ * both mockups now put Final schedule on paper too, so the product has no dark
+ * surface and this has no reason to read the path.
  *
  * Navigation between the trip's views is deliberately not here — it is in the
  * sidebar, where it stays put while the page changes underneath it. So is the
@@ -52,11 +42,8 @@ export function TripLayout() {
   const { id } = useParams();
   const tripId = id ? Number(id) : undefined;
   const navigate = useNavigate();
-  const location = useLocation();
   const { data, isLoading, isError } = useEntry(tripId);
 
-  const tab = tabFromPath(location.pathname);
-  const onDark = tab === 'schedule';
   const trip = data?.entry;
 
   // `?? null` is not decoration: `my_role` is optional on Entry, and the
@@ -100,29 +87,27 @@ export function TripLayout() {
 
   return (
     <TripRoleProvider role={role}>
-      <div className={onDark ? styles.onDark : undefined}>
-        <div className={styles.wrap}>
-          <div className={styles.head}>
-            <h1 className={styles.title}>{trip.title}</h1>
-            {dates ? (
-              <p className={styles.dates}>{dates}</p>
-            ) : (
-              <p className={styles.noDates}>No dates yet</p>
-            )}
+      <div className={styles.wrap}>
+        <div className={styles.head}>
+          <h1 className={styles.title}>{trip.title}</h1>
+          {dates ? (
+            <p className={styles.dates}>{dates}</p>
+          ) : (
+            <p className={styles.noDates}>No dates yet</p>
+          )}
 
-            {role === 'viewer' && <p className={styles.viewerNote}>{viewerLine(ownerName)}</p>}
-          </div>
-
-          <Outlet
-            context={{
-              trip,
-              role,
-              canEdit: editable,
-              canDelete: deletable,
-              canShare: shareable,
-            }}
-          />
+          {role === 'viewer' && <p className={styles.viewerNote}>{viewerLine(ownerName)}</p>}
         </div>
+
+        <Outlet
+          context={{
+            trip,
+            role,
+            canEdit: editable,
+            canDelete: deletable,
+            canShare: shareable,
+          }}
+        />
       </div>
     </TripRoleProvider>
   );

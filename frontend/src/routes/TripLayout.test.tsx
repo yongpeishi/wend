@@ -54,6 +54,29 @@ describe('TripLayout — the header', () => {
 });
 
 /**
+ * Final schedule used to invert the whole shell to the deep-leaf surface, and
+ * this component knew which URL it was on for that one reason. Both mockups now
+ * put the schedule on paper, so there is no dark surface left in the product —
+ * and no tab whose shell differs from any other tab's.
+ */
+describe('TripLayout — one surface, every tab', () => {
+  it('paints the schedule on the same paper as the board', async () => {
+    const board = renderLayout(`/trips/${TRIP_ID}`);
+    await screen.findByText('The board');
+    // The inversion was an extra wrapper around the whole shell, so the shape
+    // of the outermost element is exactly what used to differ between tabs.
+    const paper = (board.container.firstElementChild as HTMLElement).className;
+    board.unmount();
+
+    const schedule = renderLayout(`/trips/${TRIP_ID}/schedule`);
+    await screen.findByText('The schedule');
+
+    expect((schedule.container.firstElementChild as HTMLElement).className).toBe(paper);
+    expect(schedule.container.querySelector('[class*="onDark"]')).toBeNull();
+  });
+});
+
+/**
  * There is one door to the roster now, and it is the sidebar's "Planning with"
  * cluster (AppLayout). The header used to hold a second one; these tests are
  * here so it cannot quietly grow back and give the same job two places to live.

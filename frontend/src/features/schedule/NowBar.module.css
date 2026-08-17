@@ -1,0 +1,60 @@
+/*
+ * The now bar. Sticky rather than fixed: fixed would take it out of the page
+ * and leave the last row of the day sitting underneath it forever, whereas
+ * sticky keeps it in flow, so the list ends above the bar and the day is
+ * readable all the way to its last item.
+ *
+ * Card tone with a rule along the top — elevation is tone, never shadow, and
+ * over paper that hairline is what separates the bar from the row behind it.
+ */
+.bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  /* 22px of floor: --space-6 (24) less the rule, so the bar clears a phone's
+     home indicator without reading as a bottom margin. */
+  padding: var(--space-3) var(--gutter-screen) 22px;
+  background: var(--surface-card);
+  border-top: var(--border-width) solid var(--border-subtle);
+}
+
+/* min-width: 0 is what lets the two lines truncate at all — a flex item's
+   default minimum is its content, so without it a long title pushes the button
+   off the right edge instead of clipping. */
+.lines {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title,
+.sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-bold);
+  line-height: 1.3;
+  color: var(--text-strong);
+}
+
+/* Same size as the title, one step back in ink: "Until 15:40 · then …" is a
+   sentence somebody reads, so it stays at the 15px floor and lets the weight
+   and the colour do the separating. */
+.sub {
+  font-size: var(--text-small-size);
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+
+.action {
+  flex: none;
+}

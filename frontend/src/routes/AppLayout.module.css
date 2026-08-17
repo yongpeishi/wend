@@ -21,9 +21,18 @@
   color: var(--text-on-dark);
 }
 
+/* A column, so that a screen which wants the height can ask for it. The shell
+   is already at least a viewport tall and stretches this to match; laying it
+   out as a column is what lets a page below say `flex: 1` and have its box
+   actually reach the bottom of the window. Nothing is given that height unless
+   it asks — every child still sizes to its content — but the schedule's now bar
+   is `position: sticky; bottom: 0`, and a sticky element can only ride the
+   bottom of the window while its own box is still down there. */
 .main {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .brandRow {
@@ -434,116 +443,170 @@ button.avatar:focus-visible {
   }
 }
 
-/* Desktop-first: below this the sidebar would eat the page, so it unsticks and
-   lies down as a bar across the top. */
+/* The Feedback button paints itself into the viewport's bottom-left corner, so
+   it needs no box of its own here — this wrapper exists only to be switched off
+   on a phone, where the corner belongs to the plan and not to us. */
+.feedbackSlot {
+  display: contents;
+}
+
+/*
+ * The phone header. Below 860px the sidebar is not a sidebar lying down: it is
+ * the design's own two-line header. Line one carries the mark on the left and
+ * the people on the right; line two is the trip's views as chips, scrolling
+ * sideways. It sticks to the top of the window because on a phone it is the
+ * only chrome there is — scrolled away, there would be no way between views.
+ *
+ * The two lines are made by flattening, not by a second set of markup: one DOM
+ * serves both widths, so there is one nav, one roster and one of every link.
+ * `display: contents` on the PLAN panel and its sections lifts the pieces that
+ * matter — the views, the faces — up to be children of the header itself, where
+ * `order` can put each on the line the design draws it on. The panel's ground,
+ * its rules and its trail go with it: a panel is something to sit inside a
+ * column, and here there is no column.
+ *
+ * The trip's name goes too, and is not lost — TripLayout heads every trip
+ * surface with it, so on a phone it is read once, in the page, rather than
+ * twice in 12 characters of chrome.
+ */
 @media (max-width: 860px) {
   .shell {
     flex-direction: column;
   }
 
   .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
     width: 100%;
     height: auto;
-    position: static;
     flex-direction: row;
-    align-items: center;
     flex-wrap: wrap;
-    gap: var(--space-4);
+    align-items: center;
+    gap: var(--space-3);
     padding: var(--space-3) var(--gutter-screen);
   }
 
-  .sections {
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-    overflow: visible;
-  }
-
-  .section {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .sectionLabel {
-    padding: 0;
-  }
-
-  /* Laid down with everything else: the panel becomes a run along the bar, its
-     rules and its trail drop out, and the trip's name is the label the views
-     follow. */
+  .sections,
+  .section,
   .tripCard {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: 0 var(--space-3);
+    display: contents;
   }
 
-  .tripHead {
-    padding: 0;
-  }
-
-  .tripTitle {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 12ch;
-  }
-
-  .tripMeta,
+  /* EXPLORE, PLAN and PLANNING WITH name groups that no longer stand apart from
+     one another here, the rules have nothing left to divide, and a chip says
+     "you are here" with its own edge rather than with a stop on a trail that is
+     not drawn. */
+  .sectionLabel,
+  .tripHead,
   .rule,
-  .tripNav::before {
+  .tripNav::before,
+  .navDot {
     display: none;
   }
 
-  .tripNav {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-2);
+  .brandRow {
+    order: 1;
     padding: 0;
   }
 
-  .planners {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding-bottom: 0;
+  /* Line one, in order: the mark, the way back out to every trip, then — pushed
+     to the far edge by sign out's auto margin — signing out and the faces. Only
+     the trip's own views become chips; the way out is a quiet text link, so the
+     line has one loud thing on it and it is the people. */
+  .section > .navItem {
+    order: 2;
+    padding: var(--space-2) var(--space-3);
   }
 
-  .planners .sectionLabel,
-  .avatars {
-    padding: 0;
-    margin: 0;
-  }
-
-  /* Lying down, the cluster is only as wide as its own faces, so the panel
-     stops borrowing its measure from it and takes the width of the longest
-     name instead — up to half the screen, past which the names wrap rather
-     than run off the edge of a phone.
-
-     It also goes back to opening downward. Upward is what standing up needs,
-     where the cluster is low in a tall column; laid out along the bar the
-     cluster is at the very top of the page instead, and there is nothing above
-     it to open into — the names would go straight out of the window, which is
-     the exact failure the upward reveal exists to avoid. Below the bar the page
-     has only just started, so the room is all there. */
-  .plannerNames {
-    top: calc(100% + var(--space-1));
-    bottom: auto;
-    left: 0;
-    right: auto;
-    width: max-content;
-    max-width: 50vw;
-  }
-
-  /* Lying down, sign out is up at the top of the page next to everything else
-     and nowhere near the Feedback button, so the reserved corner comes back
-     out — kept, it would hang an 80px gap under the bar. */
+  /* Up at the top of the page, sign out is nowhere near the Feedback button, so
+     the corner that button reserves comes back out — kept, it would hang an
+     80px gap under the header. */
   .signOut {
+    order: 3;
     margin-top: 0;
     margin-bottom: 0;
     margin-left: auto;
     align-self: center;
+  }
+
+  .planners {
+    order: 4;
+    display: flex;
+    align-items: center;
+    padding-bottom: 0;
+  }
+
+  /* Closer than they stand in the sidebar: at this size the faces read as one
+     cluster — one group of people — rather than as several separate circles. */
+  .avatars {
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Line two. `flex: 0 0 100%` is what breaks the line: nothing else fits
+     beside a full-width item, so the views always start a row of their own, and
+     when there is no trip open there is no second row at all rather than an
+     empty strip. The run scrolls sideways and never wraps, so a fifth view
+     lengthens it instead of growing the header. */
+  .tripNav {
+    order: 5;
+    flex: 0 0 100%;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+    overflow-x: auto;
+    /* A scroll container clips both axes, and a focus ring stands 6px proud of
+       its chip. The padding is the room it needs; the negative margin hands
+       that room straight back to the header's own rhythm. */
+    padding: var(--space-1);
+    margin: calc(var(--space-1) * -1);
+  }
+
+  /* The design's chips: outlined, bold, tall enough to hit, and never squeezed
+     — a long label runs off the side of the scroller rather than folding. */
+  .tripNavItem {
+    flex: none;
+    gap: 0;
+    padding: var(--space-2) var(--space-3);
+    min-height: var(--tap-min);
+    border: var(--border-width) solid rgb(240 243 238 / 28%);
+    font-weight: var(--weight-bold);
+    white-space: nowrap;
+  }
+
+  /* Filled and apricot-edged, as everywhere else "you are here" is apricot. */
+  .navItemActive.tripNavItem {
+    border-color: var(--wend-apricot);
+    background: rgb(240 243 238 / 10%);
+  }
+
+  /* The cluster is only as wide as its own faces, so the viewer's roster stops
+     borrowing its measure from it and takes the width of the longest name
+     instead — up to half the screen, past which the names wrap rather than run
+     off the edge of a phone. It hangs off the cluster's right edge because the
+     cluster is now at the screen's right edge; opening leftward is the only
+     direction with room.
+
+     It also goes back to opening downward. Upward is what a tall column needs,
+     where the cluster sits low in it; in the header the cluster is at the very
+     top of the page and there is nothing above it to open into — the names
+     would go straight out of the window, which is the exact failure the upward
+     reveal exists to avoid. Below the header the page has only just started. */
+  .plannerNames {
+    top: calc(100% + var(--space-1));
+    bottom: auto;
+    left: auto;
+    right: 0;
+    width: max-content;
+    max-width: 50vw;
+  }
+
+  /* Feedback is a desk-side errand. On the road the plan gets the screen. */
+  .feedbackSlot {
+    display: none;
   }
 }

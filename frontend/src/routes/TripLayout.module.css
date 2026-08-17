@@ -12,10 +12,23 @@
    in the middle of an ultrawide window with a full-bleed board starting at its
    left edge. Hanging everything off the left gutter is the only arrangement
    where the title lines up with the screen in both cases — and with a 246px
-   sidebar already anchoring the left, the page was never symmetrical anyway. */
+   sidebar already anchoring the left, the page was never symmetrical anyway.
+
+   The floor under the page comes from --floor-screen rather than from a literal,
+   so that a screen can hand it back the way a full-bleed screen hands back the
+   gutter. Only one does: the schedule's now bar rides the bottom of the window,
+   and a floor under it is a band of paper the bar can never reach.
+
+   `flex: 1` and the column take the height AppLayout offers. No child grows
+   unless it says so, so every other screen is laid out exactly as before — the
+   wrap simply reaches the bottom of the window instead of ending with its
+   content, and it paints nothing, so that is invisible until a screen asks. */
 .wrap {
   --screen-measure: 1360px;
-  padding: var(--space-8) var(--gutter-screen) var(--space-16);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-8) var(--gutter-screen) var(--floor-screen);
 }
 
 /* The title block, and whatever the Outlet rendered. A full-bleed screen sets
@@ -92,32 +105,12 @@
   text-wrap: pretty;
 }
 
-/* The schedule is the one dark surface in the product: it inverts for
-   outdoor reading. The shell follows it so the page does not sit in two tones. */
-.onDark {
-  background: var(--surface-inverse);
-  min-height: 100vh;
-}
-
-.onDark .title {
-  color: var(--text-on-dark);
-}
-
-.onDark .dates {
-  color: var(--text-on-dark-muted);
-}
-
-.onDark .noDates {
-  color: var(--text-on-dark-muted);
-}
-
-.onDark .viewerNote {
-  color: var(--text-on-dark-muted);
-}
-
 @media (max-width: 720px) {
+  /* A shallower floor on a phone. Set as the token rather than as a literal in
+     the padding, so a screen that cancels the floor cancels this one too. */
   .wrap {
-    padding: var(--space-6) var(--gutter-screen) var(--space-12);
+    --floor-screen: var(--space-12);
+    padding: var(--space-6) var(--gutter-screen) var(--floor-screen);
   }
 
   .title {
