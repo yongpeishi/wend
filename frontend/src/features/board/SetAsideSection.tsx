@@ -8,6 +8,12 @@ import styles from './SetAsideSection.module.css';
 export interface SetAsideSectionProps {
   entries: Entry[];
   onRestore: (id: number) => void;
+  /**
+   * May you change this trip? A prop rather than `useCanEdit()` because this
+   * section already takes its one verb as a callback — the capability arrives
+   * beside the action it governs. Defaults to true, matching a null role.
+   */
+  canEdit?: boolean;
 }
 
 /**
@@ -15,8 +21,13 @@ export interface SetAsideSectionProps {
  * a "Set aside · N" disclosure that reveals what was archived, each with a
  * one-tap "Pick it back up" — never struck through, never greyed to mean
  * rejected.
+ *
+ * A viewer keeps the disclosure and everything inside it. What was set aside is
+ * part of the trip's story — knowing the ramen place was considered and dropped
+ * is exactly the sort of thing you are reading along for — so the only thing
+ * that goes is the button that would put it back.
  */
-export function SetAsideSection({ entries, onRestore }: SetAsideSectionProps) {
+export function SetAsideSection({ entries, onRestore, canEdit = true }: SetAsideSectionProps) {
   const [open, setOpen] = useState(false);
   if (entries.length === 0) return null;
 
@@ -31,9 +42,11 @@ export function SetAsideSection({ entries, onRestore }: SetAsideSectionProps) {
           {entries.map((entry) => (
             <Row key={entry.id} justify="between" gap={2}>
               <span className={styles.title}>{entry.title}</span>
-              <Button variant="quiet" onClick={() => onRestore(entry.id)}>
-                Pick it back up
-              </Button>
+              {canEdit && (
+                <Button variant="quiet" onClick={() => onRestore(entry.id)}>
+                  Pick it back up
+                </Button>
+              )}
             </Row>
           ))}
         </div>

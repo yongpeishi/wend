@@ -24,6 +24,12 @@ export interface IdeaListProps {
   /** Passed straight through to each row — see IdeaRow's `onEdit`. */
   onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
+  /**
+   * May you change this trip? Forwarded to every row — the list draws no
+   * affordance of its own, so it has nothing to gate itself. Defaults to true
+   * for the same reason `IdeaRow`'s does.
+   */
+  canEdit?: boolean;
 }
 
 /**
@@ -51,6 +57,7 @@ export function IdeaList({
   onToggleSelect,
   onEdit,
   onToast,
+  canEdit = true,
 }: IdeaListProps) {
   const idBase = useId();
   const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(() => new Set());
@@ -78,6 +85,7 @@ export function IdeaList({
         onToggleSelect={onToggleSelect}
         onEdit={onEdit}
         onToast={onToast}
+        canEdit={canEdit}
       />
     ));
   }

@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../components/Toast';
+import { TripRoleProvider } from '../../auth/TripRoleContext';
 import { BundleCard } from './BundleCard';
 import { api } from '../../api';
 import type { Entry } from '../../api/types';
@@ -318,5 +319,103 @@ describe('BundleCard — the design anatomy, on real fields only', () => {
     const name = screen.getByRole('button', { name: `Rename ${BUNDLE.title}` });
     const remove = screen.getByRole('button', { name: `Remove bundle ${BUNDLE.title}` });
     expect(name.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+/**
+ * The card is the densest set of verbs on the board — rename, remove, reorder
+ * twice over, unlink — and a viewer keeps none of them and loses none of the
+ * card. Every test here asserts both halves.
+ */
+describe('BundleCard — reading along', () => {
+  function renderAsViewer() {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ToastProvider>
+            <TripRoleProvider role="viewer">
+              <DndContext>
+                <BundleCard bundle={BUNDLE} members={MEMBERS} onToast={() => {}} />
+              </DndContext>
+            </TripRoleProvider>
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('shows the bundle whole — its name, its count and every member in order', () => {
+    renderAsViewer();
+
+    expect(screen.getByText(BUNDLE.title)).toBeInTheDocument();
+    expect(screen.getByText('0 open to-dos')).toBeInTheDocument();
+    for (const member of MEMBERS) {
+      expect(screen.getByRole('button', { name: member.title })).toBeInTheDocument();
+    }
+  });
+
+  it('drops the name field, the remove control and every member verb', () => {
+    renderAsViewer();
+
+    expect(screen.queryByRole('button', { name: `Rename ${BUNDLE.title}` })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Remove bundle ${BUNDLE.title}` })).not.toBeInTheDocument();
+    for (const member of MEMBERS) {
+      expect(screen.queryByRole('button', { name: `Move ${member.title} up` })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: `Move ${member.title} down` })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: `Remove ${member.title} from ${BUNDLE.title}` }),
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  // Read-only styling does not stop a drag; the attribute has to go.
+  it('takes the native drag attribute off every member row', () => {
+    renderAsViewer();
+
+    for (const item of screen.getAllByRole('listitem')) {
+      expect(item).not.toHaveAttribute('draggable');
+    }
+  });
+
+  it('says an empty bundle is empty without naming two gestures a viewer has not got', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ToastProvider>
+            <TripRoleProvider role="viewer">
+              <DndContext>
+                <BundleCard bundle={BUNDLE} members={[]} onToast={() => {}} />
+              </DndContext>
+            </TripRoleProvider>
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByText('Nothing in here yet.')).toBeInTheDocument();
+    expect(screen.queryByText(/drag ideas here/i)).not.toBeInTheDocument();
+  });
+
+  it('leaves a member the whole card', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ToastProvider>
+            <TripRoleProvider role="member">
+              <DndContext>
+                <BundleCard bundle={BUNDLE} members={MEMBERS} onToast={() => {}} />
+              </DndContext>
+            </TripRoleProvider>
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: `Rename ${BUNDLE.title}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Remove bundle ${BUNDLE.title}` })).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('draggable', 'true');
   });
 });

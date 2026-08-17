@@ -604,6 +604,20 @@ class Entry
     def todos=(value); end
 
     sig { returns(T::Array[T.untyped]) }
+    def trip_membership_ids; end
+
+    sig { params(ids: T::Array[T.untyped]).returns(T::Array[T.untyped]) }
+    def trip_membership_ids=(ids); end
+
+    # This method is created by ActiveRecord on the `Entry` class because it declared `has_many :trip_memberships`.
+    # 🔗 [Rails guide for `has_many` association](https://guides.rubyonrails.org/association_basics.html#the-has-many-association)
+    sig { returns(::TripMembership::PrivateCollectionProxy) }
+    def trip_memberships; end
+
+    sig { params(value: T::Enumerable[::TripMembership]).void }
+    def trip_memberships=(value); end
+
+    sig { returns(T::Array[T.untyped]) }
     def trip_todo_ids; end
 
     sig { params(ids: T::Array[T.untyped]).returns(T::Array[T.untyped]) }
@@ -830,6 +844,9 @@ class Entry
     sig { type_parameters(:U).params(block: T.proc.returns(T.type_parameter(:U))).returns(T.type_parameter(:U)) }
     def unscoped(&block); end
 
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
+    def visible_to(*args, &blk); end
+
     sig { returns(PrivateAssociationRelationWhereChain) }
     sig { params(args: T.untyped).returns(PrivateAssociationRelation) }
     def where(*args); end
@@ -979,6 +996,51 @@ class Entry
 
     sig { void }
     def category_will_change!; end
+
+    sig { returns(T.untyped) }
+    def cons; end
+
+    sig { params(value: T.untyped).returns(T.untyped) }
+    def cons=(value); end
+
+    sig { returns(T::Boolean) }
+    def cons?; end
+
+    sig { returns(T.untyped) }
+    def cons_before_last_save; end
+
+    sig { returns(T.untyped) }
+    def cons_before_type_cast; end
+
+    sig { returns(T::Boolean) }
+    def cons_came_from_user?; end
+
+    sig { returns(T.nilable([T.untyped, T.untyped])) }
+    def cons_change; end
+
+    sig { returns(T.nilable([T.untyped, T.untyped])) }
+    def cons_change_to_be_saved; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def cons_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.untyped) }
+    def cons_in_database; end
+
+    sig { returns(T.nilable([T.untyped, T.untyped])) }
+    def cons_previous_change; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def cons_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.untyped) }
+    def cons_previously_was; end
+
+    sig { returns(T.untyped) }
+    def cons_was; end
+
+    sig { void }
+    def cons_will_change!; end
 
     sig { returns(::ActiveSupport::TimeWithZone) }
     def created_at; end
@@ -1565,6 +1627,51 @@ class Entry
     sig { void }
     def notes_will_change!; end
 
+    sig { returns(T.untyped) }
+    def pros; end
+
+    sig { params(value: T.untyped).returns(T.untyped) }
+    def pros=(value); end
+
+    sig { returns(T::Boolean) }
+    def pros?; end
+
+    sig { returns(T.untyped) }
+    def pros_before_last_save; end
+
+    sig { returns(T.untyped) }
+    def pros_before_type_cast; end
+
+    sig { returns(T::Boolean) }
+    def pros_came_from_user?; end
+
+    sig { returns(T.nilable([T.untyped, T.untyped])) }
+    def pros_change; end
+
+    sig { returns(T.nilable([T.untyped, T.untyped])) }
+    def pros_change_to_be_saved; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def pros_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.untyped) }
+    def pros_in_database; end
+
+    sig { returns(T.nilable([T.untyped, T.untyped])) }
+    def pros_previous_change; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def pros_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.untyped) }
+    def pros_previously_was; end
+
+    sig { returns(T.untyped) }
+    def pros_was; end
+
+    sig { void }
+    def pros_will_change!; end
+
     sig { void }
     def restore_address!; end
 
@@ -1573,6 +1680,9 @@ class Entry
 
     sig { void }
     def restore_category!; end
+
+    sig { void }
+    def restore_cons!; end
 
     sig { void }
     def restore_created_at!; end
@@ -1614,6 +1724,9 @@ class Entry
     def restore_notes!; end
 
     sig { void }
+    def restore_pros!; end
+
+    sig { void }
     def restore_source_url!; end
 
     sig { void }
@@ -1645,6 +1758,12 @@ class Entry
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def saved_change_to_category?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable([T.untyped, T.untyped])) }
+    def saved_change_to_cons; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def saved_change_to_cons?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable([::ActiveSupport::TimeWithZone, ::ActiveSupport::TimeWithZone])) }
     def saved_change_to_created_at; end
@@ -1723,6 +1842,12 @@ class Entry
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def saved_change_to_notes?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable([T.untyped, T.untyped])) }
+    def saved_change_to_pros; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def saved_change_to_pros?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
     def saved_change_to_source_url; end
@@ -1989,6 +2114,9 @@ class Entry
     def will_save_change_to_category?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def will_save_change_to_cons?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_created_at?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
@@ -2026,6 +2154,9 @@ class Entry
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_notes?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def will_save_change_to_pros?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_source_url?(from: T.unsafe(nil), to: T.unsafe(nil)); end
@@ -2240,6 +2371,9 @@ class Entry
     sig { returns(PrivateRelation) }
     sig { type_parameters(:U).params(block: T.proc.returns(T.type_parameter(:U))).returns(T.type_parameter(:U)) }
     def unscoped(&block); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
+    def visible_to(*args, &blk); end
 
     sig { returns(PrivateRelationWhereChain) }
     sig { params(args: T.untyped).returns(PrivateRelation) }

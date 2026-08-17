@@ -83,6 +83,11 @@
   box-sizing: border-box;
 }
 
+/* The same mark with nothing behind it — see TodoRow. */
+.toggleStill {
+  cursor: default;
+}
+
 .toggleDone::before {
   background: var(--stop-decided);
   border-color: var(--stop-decided);

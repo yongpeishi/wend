@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../components/Toast';
+import { TripRoleProvider } from '../../auth/TripRoleContext';
 import { BundlePanel } from './BundlePanel';
 import type { Entry } from '../../api/types';
 
@@ -161,5 +162,93 @@ describe('BundlePanel — the bundles-only rail', () => {
   it('invites a first bundle rather than showing an empty column', () => {
     renderPanel({ bundles: [], members: new Map() });
     expect(screen.getByText(/an empty bundle is a fine place to start/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * The rail is where a trip's thinking is grouped, so a viewer keeps all of it —
+ * including what was set aside, which is part of the story. What goes is the
+ * one action the header owns, and the way back out of the archive.
+ */
+describe('BundlePanel — reading along', () => {
+  function renderAsViewer(overrides: Partial<Parameters<typeof BundlePanel>[0]> = {}) {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ToastProvider>
+            <TripRoleProvider role="viewer">
+              <DndContext>
+                <BundlePanel
+                  tripId={7}
+                  bundles={[BUNDLE]}
+                  archivedBundles={[ARCHIVED]}
+                  members={new Map([[BUNDLE.id, MEMBERS]])}
+                  loading={false}
+                  onToast={() => {}}
+                  {...overrides}
+                />
+              </DndContext>
+            </TripRoleProvider>
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('keeps the rail whole — its heading, what a bundle is, and every bundle in it', () => {
+    renderAsViewer();
+
+    expect(screen.getByRole('heading', { name: 'Bundles' })).toBeInTheDocument();
+    expect(screen.getByText(/a bundle is a group of things that go well together/i)).toBeInTheDocument();
+    expect(screen.getByText(BUNDLE.title)).toBeInTheDocument();
+    for (const member of MEMBERS) {
+      expect(screen.getByRole('button', { name: member.title })).toBeInTheDocument();
+    }
+  });
+
+  it('takes away "+ New bundle"', () => {
+    renderAsViewer();
+    expect(screen.queryByRole('button', { name: '+ New bundle' })).not.toBeInTheDocument();
+  });
+
+  it('still discloses what was set aside, and still names it — only the way back goes', async () => {
+    const user = userEvent.setup();
+    renderAsViewer();
+
+    await user.click(screen.getByRole('button', { name: /Set aside · 1/ }));
+
+    expect(screen.getByText(ARCHIVED.title)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Pick it back up' })).not.toBeInTheDocument();
+  });
+
+  // The empty rail's copy used to send everyone to a header action a viewer
+  // never gets. An empty rail is simply what this trip looks like to them.
+  it('states an empty rail rather than pointing at an action that is not there', () => {
+    renderAsViewer({ bundles: [], members: new Map() });
+
+    expect(screen.getByText('No bundles on this trip yet.')).toBeInTheDocument();
+    expect(screen.queryByText(/start one/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/an empty bundle is a fine place to start/i)).not.toBeInTheDocument();
+  });
+
+  it('still invites an editor to start the first one', () => {
+    renderPanel({ bundles: [], members: new Map() });
+
+    expect(
+      screen.getByText(
+        'No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('No bundles on this trip yet.')).not.toBeInTheDocument();
+  });
+
+  it('leaves an owner the action and the way back', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    expect(screen.getByRole('button', { name: '+ New bundle' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Set aside · 1/ }));
+    expect(screen.getByRole('button', { name: 'Pick it back up' })).toBeInTheDocument();
   });
 });

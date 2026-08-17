@@ -1,4 +1,6 @@
 class Todo < ApplicationRecord
+  include Governed
+
   belongs_to :entry, class_name: "Entry", optional: true, inverse_of: :todos
   belongs_to :trip, class_name: "Entry", optional: true, inverse_of: :trip_todos
 
@@ -10,6 +12,11 @@ class Todo < ApplicationRecord
 
   def done?
     done_at.present?
+  end
+
+  # Conjunction: a todo hung off both a trip and an entry needs both permitted.
+  def governing_entry_ids
+    [ trip_id, entry_id ].compact
   end
 
   private

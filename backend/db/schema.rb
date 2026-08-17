@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_13_090002) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_14_100001) do
   create_table "day_versions", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
@@ -124,6 +124,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_090002) do
     t.index ["trip_id"], name: "index_trip_days_on_trip_id"
   end
 
+  create_table "trip_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "role", null: false
+    t.integer "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["trip_id", "user_id"], name: "index_trip_memberships_on_trip_id_and_user_id", unique: true
+    t.index ["trip_id"], name: "index_trip_memberships_one_owner_per_trip", unique: true, where: "role = 'owner'"
+    t.index ["user_id", "role"], name: "index_trip_memberships_on_user_id_and_role"
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email", null: false
@@ -159,6 +170,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_13_090002) do
   add_foreign_key "todos", "entries", column: "trip_id"
   add_foreign_key "trip_days", "entries", column: "lodging_entry_id"
   add_foreign_key "trip_days", "entries", column: "trip_id"
+  add_foreign_key "trip_memberships", "entries", column: "trip_id"
+  add_foreign_key "trip_memberships", "users"
   add_foreign_key "votes", "entries"
   add_foreign_key "votes", "users"
 end

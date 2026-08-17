@@ -46,4 +46,24 @@ describe('VoteControl', () => {
       expect(radio).toBeDisabled();
     }
   });
+
+  // Viewers cannot vote — a backend rule too, so this is the client saying the
+  // same thing the server would rather than a decoration.
+  it('disables every stop for someone who cannot edit, while still showing the tally', () => {
+    render(<VoteControl value={2} onChange={() => {}} canEdit={false} average={1.5} count={2} />);
+
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio).toBeDisabled();
+    }
+    // The stops are also the picture of what has been decided, so they stay.
+    expect(screen.getByRole('radio', { name: 'Really want this' })).toBeChecked();
+    expect(screen.getByText('1.5 · 2')).toBeInTheDocument();
+  });
+
+  it('is editable by default, so nothing outside a trip has to say so', () => {
+    render(<VoteControl value={null} onChange={() => {}} />);
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio).toBeEnabled();
+    }
+  });
 });

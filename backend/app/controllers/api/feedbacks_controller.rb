@@ -6,7 +6,7 @@ module Api
     # product question, and scoping to the author is the answer that cannot be
     # wrong. See `.claude/interaction/wend-mvp/decisions.md` §8.
     def index
-      feedbacks = current_user.feedbacks.newest_first.limit(limit)
+      feedbacks = policy_scope(Feedback).newest_first.limit(limit)
       render json: { feedbacks: FeedbackSerializer.list(feedbacks) }
     end
 
@@ -14,6 +14,9 @@ module Api
       feedback = current_user.feedbacks.new(feedback_params)
       # Authorship and environment come from the request, never from the body.
       feedback.user_agent = request.user_agent
+      # Feedback is not trip-scoped -- FeedbackPolicy asks only whose it is, and
+      # user_id is already set by the association above.
+      authorize feedback
 
       if feedback.save
         render json: { feedback: FeedbackSerializer.one(feedback) }, status: :created

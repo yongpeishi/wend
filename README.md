@@ -85,8 +85,9 @@ many-to-many join. That one decision is what makes the product's harder promises
 - **Lifting** an idea out into its own trip, or **absorbing** one trip into another, are
   link operations, not data migrations.
 
-Trip membership is therefore *derived* by walking ancestors, not stored in a column.
-Cycles are rejected at the model level — a cycle would hang the ancestor walk, so
+Which trip an entry belongs to is therefore *derived* by walking ancestors, not stored in
+a column — unlike **who** is on a trip, which is a real row in `trip_memberships`
+(`.claude/interaction/wend-mvp/decisions.md` §2). Cycles are rejected at the model level — a cycle would hang the ancestor walk, so
 `EntryLink` refuses any link where the parent is already a descendant of the child.
 
 **Nothing is ever hard-deleted.** `DELETE /api/entries/:id` sets `archived_at`. The UI

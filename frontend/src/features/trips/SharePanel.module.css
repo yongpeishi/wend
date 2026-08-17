@@ -1,0 +1,127 @@
+/* Who's on this trip. No mockup exists for this screen, so everything here is
+   built from the tokens and the rules in architecture.md §5: no shadows, no
+   greying to mean "no", apricot only as a focus ring, spacing on the 4px base,
+   and inside a group the gap is the divider — there is not a hairline in here. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.person {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.who {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.name {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-body-size);
+  color: var(--text-strong);
+}
+
+/* Not a chip: chips are choices you can make, and this is a fact about you. */
+.you {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.email {
+  margin: 0;
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}
+
+.roleSelect {
+  max-width: 260px;
+}
+
+.roleDescription {
+  margin: 0;
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-body);
+  max-width: var(--measure-body);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-1);
+}
+
+/* The second half of a two-step action. It replaces the row's buttons rather
+   than sitting beside them, so there is only ever one live verb per person. */
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.confirmText {
+  margin: 0;
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  max-width: var(--measure-body);
+}
+
+.confirmActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.alone {
+  margin: 0;
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-body);
+}
+
+.loadError {
+  margin: 0;
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.addForm {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+/* The live region around the email field. Stretches so the field it holds is
+   as wide as the dialog, exactly as it would be without the wrapper. */
+.emailLive {
+  align-self: stretch;
+}
+
+.addRoleSelect {
+  min-width: 240px;
+}

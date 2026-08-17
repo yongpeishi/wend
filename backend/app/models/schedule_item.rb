@@ -4,6 +4,8 @@
 # shrinking out from under it) while entries and day_versions may only ever be
 # archived. See doc/architecture.md section 2.
 class ScheduleItem < ApplicationRecord
+  include Governed
+
   belongs_to :trip, class_name: "Entry"
   belongs_to :entry, class_name: "Entry", optional: true
   belongs_to :chosen_entry, class_name: "Entry", optional: true
@@ -50,6 +52,12 @@ class ScheduleItem < ApplicationRecord
             allow_nil: true
   validate :ends_not_before_starts
   validate :day_version_exists
+
+  # The trip alone. entry_id and chosen_entry_id are references to what was placed,
+  # not authority over it.
+  def governing_entry_ids
+    [ trip_id ]
+  end
 
   private
 

@@ -6,6 +6,25 @@ class Api::EntryLinksTest < ActionDispatch::IntegrationTest
     sign_in_as(@user)
   end
 
+  # Write on the parent, read on the child -- deliberately asymmetric, so adding
+  # something from your own library to a trip you can edit still works.
+  test "requires write on the parent and read on the child" do
+    other = create_user
+    their_trip = create_trip(created_by: other)
+    their_idea = create_idea(title: "Theirs", created_by: other)
+    my_bundle = create_bundle(created_by: @user)
+    my_idea = create_idea(title: "Mine", created_by: @user)
+
+    post "/api/entries/#{their_trip.id}/links", params: { child_id: my_idea.id }, as: :json
+    assert_response :not_found
+
+    post "/api/entries/#{my_bundle.id}/links", params: { child_id: their_idea.id }, as: :json
+    assert_response :not_found
+
+    post "/api/entries/#{my_bundle.id}/links", params: { child_id: my_idea.id }, as: :json
+    assert_response :created
+  end
+
   test "POST creates a link" do
     parent = create_bundle(created_by: @user)
     child = create_idea(created_by: @user)

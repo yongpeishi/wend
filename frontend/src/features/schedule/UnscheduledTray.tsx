@@ -9,12 +9,18 @@ import styles from './UnscheduledTray.module.css';
 interface TrayCardProps {
   entry: Entry;
   onPlaceAt: (entry: Entry) => void;
+  canEdit: boolean;
 }
 
-function TrayCard({ entry, onPlaceAt }: TrayCardProps) {
+function TrayCard({ entry, onPlaceAt, canEdit }: TrayCardProps) {
+  // Disabled at the source rather than ignored at the drop: a card that lifts
+  // under the finger and then snaps back has already told the reader they can
+  // move it. `useDraggable` still has to be called — hooks are not optional —
+  // so the switch goes inside it.
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `tray-${entry.id}`,
     data: { entry },
+    disabled: !canEdit,
   });
   const meta = joinMeta(
     entry.kind === 'bundle' ? 'Options' : (entry.category ?? undefined),
@@ -26,10 +32,12 @@ function TrayCard({ entry, onPlaceAt }: TrayCardProps) {
   return (
     <div
       ref={setNodeRef}
-      className={[styles.card, isDragging ? styles.dragging : ''].filter(Boolean).join(' ')}
+      className={[styles.card, canEdit ? '' : styles.cardStill, isDragging ? styles.dragging : '']
+        .filter(Boolean)
+        .join(' ')}
       style={style}
-      {...attributes}
-      {...listeners}
+      {...(canEdit ? attributes : {})}
+      {...(canEdit ? listeners : {})}
     >
       <HatchPlaceholder size={40} />
       <span className={styles.body}>
@@ -39,16 +47,18 @@ function TrayCard({ entry, onPlaceAt }: TrayCardProps) {
       {/* The required non-drag path: drag on a phone is fragile, so every card
        * carries an explicit tap target too. stopPropagation keeps a tap from
        * being swallowed by the drag listeners above. */}
-      <Button
-        variant="onDark"
-        onClick={(event) => {
-          event.stopPropagation();
-          onPlaceAt(entry);
-        }}
-        onPointerDown={(event) => event.stopPropagation()}
-      >
-        Place at…
-      </Button>
+      {canEdit && (
+        <Button
+          variant="onDark"
+          onClick={(event) => {
+            event.stopPropagation();
+            onPlaceAt(entry);
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          Place at…
+        </Button>
+      )}
     </div>
   );
 }
@@ -56,14 +66,21 @@ function TrayCard({ entry, onPlaceAt }: TrayCardProps) {
 export interface UnscheduledTrayProps {
   entries: Entry[];
   onPlaceAt: (entry: Entry) => void;
+  /** May you place these? Defaults to true, matching a null role. */
+  canEdit?: boolean;
 }
 
 /**
  * The trip's unplaced ideas, at the bottom of the schedule. Drag a card up
  * into the day column as an accelerator; "Place at…" is the always-available
  * fallback, per the brief ("drag on a phone is fragile").
+ *
+ * The tray itself stays for a viewer, cards and all: what is still unplaced is
+ * as much a part of where a trip has got to as what is on the grid above. Both
+ * ways of moving one go — the drag and the button — because a card that lifts
+ * and then refuses is worse than one that simply sits still.
  */
-export function UnscheduledTray({ entries, onPlaceAt }: UnscheduledTrayProps) {
+export function UnscheduledTray({ entries, onPlaceAt, canEdit = true }: UnscheduledTrayProps) {
   return (
     <div className={styles.tray}>
       <p className={styles.heading}>Ideas not yet placed</p>
@@ -72,7 +89,7 @@ export function UnscheduledTray({ entries, onPlaceAt }: UnscheduledTrayProps) {
       ) : (
         <div className={styles.list}>
           {entries.map((entry) => (
-            <TrayCard key={entry.id} entry={entry} onPlaceAt={onPlaceAt} />
+            <TrayCard key={entry.id} entry={entry} onPlaceAt={onPlaceAt} canEdit={canEdit} />
           ))}
         </div>
       )}

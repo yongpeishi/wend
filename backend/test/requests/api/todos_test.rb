@@ -6,6 +6,35 @@ class Api::TodosTest < ActionDispatch::IntegrationTest
     sign_in_as(@user)
   end
 
+  test "requires access to the trip the todo hangs off" do
+    their_trip = create_trip(created_by: create_user)
+    their_todo = Todo.create!(title: "Theirs", trip: their_trip)
+
+    get "/api/todos", params: { trip_id: their_trip.id }
+    assert_response :success
+    assert_equal [], JSON.parse(response.body)["todos"]
+
+    post "/api/todos", params: { todo: { title: "Snuck in", trip_id: their_trip.id } }, as: :json
+    assert_response :not_found
+
+    patch "/api/todos/#{their_todo.id}", params: { todo: { title: "Renamed" } }, as: :json
+    assert_response :not_found
+
+    delete "/api/todos/#{their_todo.id}"
+    assert_response :not_found
+    assert Todo.exists?(their_todo.id)
+  end
+
+  test "a todo cannot be moved into a trip the caller cannot reach" do
+    mine = create_trip(created_by: @user)
+    theirs = create_trip(created_by: create_user)
+    todo = Todo.create!(title: "Apply for visa", trip: mine)
+
+    patch "/api/todos/#{todo.id}", params: { todo: { trip_id: theirs.id } }, as: :json
+    assert_response :not_found
+    assert_equal mine.id, todo.reload.trip_id
+  end
+
   test "GET /api/todos?trip_id=X returns trip-level todos and todos on entries inside the trip" do
     trip = create_trip(created_by: @user)
     idea = create_idea(created_by: @user)

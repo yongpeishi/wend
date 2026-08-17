@@ -14,6 +14,7 @@ import type {
   ScheduleItem,
   Todo,
   TripDay,
+  TripRole,
   User,
   Vote,
   VoteTally,
@@ -21,6 +22,14 @@ import type {
 
 interface StoredUser extends User {
   password: string;
+}
+
+/** One person on one trip. Trip-level only — a subtree inherits its trip's row. */
+export interface StoredMembership {
+  trip_id: number;
+  user_id: number;
+  role: TripRole;
+  added_at: string;
 }
 
 export interface StoredEntry {
@@ -85,6 +94,7 @@ export const db = {
   tripDays: [] as StoredTripDay[],
   dayVersions: [] as StoredDayVersion[],
   feedbacks: [] as Feedback[],
+  memberships: [] as StoredMembership[],
   currentUserId: null as number | null,
 };
 
@@ -120,6 +130,42 @@ export function tripAncestorId(id: number): number | null {
     queue.push(...parentIdsOf(parentId));
   }
   return null;
+}
+
+/**
+ * The trip whose membership governs `entryId`: the entry itself when it is a
+ * trip, otherwise the trip it hangs under. Null for a library idea, which
+ * belongs to no trip and so is governed by nobody.
+ */
+export function governingTripId(entryId: number): number | null {
+  const entry = findEntry(entryId);
+  if (entry?.kind === 'trip') return entry.id;
+  return tripAncestorId(entryId);
+}
+
+/**
+ * Your role on the trip governing `entryId` — pass a trip id and you get your
+ * role on that trip. Null when nothing governs it, or when you are not on it;
+ * the caller decides which of those two it cares about.
+ */
+export function roleFor(entryId: number, userId: number | null): TripRole | null {
+  if (userId === null) return null;
+  const tripId = governingTripId(entryId);
+  if (tripId === null) return null;
+  return db.memberships.find((m) => m.trip_id === tripId && m.user_id === userId)?.role ?? null;
+}
+
+export function collaboratorsFor(tripId: number): StoredMembership[] {
+  return db.memberships.filter((m) => m.trip_id === tripId);
+}
+
+/**
+ * Test helper: put someone on a trip, change what they can do there, or take
+ * them off with `null`. `resetDb()` in `afterEach` puts the seed back.
+ */
+export function setRole(tripId: number, userId: number, role: TripRole | null): void {
+  db.memberships = db.memberships.filter((m) => !(m.trip_id === tripId && m.user_id === userId));
+  if (role !== null) db.memberships.push({ trip_id: tripId, user_id: userId, role, added_at: now() });
 }
 
 export function voteTallyFor(entryId: number): VoteTally {
@@ -184,6 +230,9 @@ export function toEntry(entry: StoredEntry, currentUserId: number | null): Entry
     vote_tally: voteTallyFor(entry.id),
     my_vote: currentUserId !== null ? (db.votes.find((v) => v.entry_id === entry.id && v.user_id === currentUserId)?.score ?? null) : null,
     scheduled: isScheduled(entry.id),
+    // Trip-level only, matching the serializer: an idea or a bundle carries
+    // null and inherits its trip's role through the board it is rendered on.
+    my_role: entry.kind === 'trip' ? roleFor(entry.id, currentUserId) : null,
   };
 }
 
@@ -202,6 +251,12 @@ export function toEntryDetail(entry: StoredEntry, currentUserId: number | null):
       .map((e) => toEntry(e, currentUserId)),
     todos: db.todos.filter((t) => t.entry_id === entry.id),
     votes: db.votes.filter((v) => v.entry_id === entry.id),
+    // Of the governing trip, so an idea reports the trip it sits in. 0 in the
+    // library, where there is no trip and so nobody to be on it.
+    collaborators_count: (() => {
+      const tripId = governingTripId(entry.id);
+      return tripId === null ? 0 : collaboratorsFor(tripId).length;
+    })(),
   };
 }
 
@@ -530,7 +585,12 @@ function addLink(parentId: number, childId: number, position: number) {
 }
 
 export function seed() {
-  db.users = [{ id: 1, name: 'Demo Traveler', email: 'demo@wend.app', password: 'password' }];
+  db.users = [
+    { id: 1, name: 'Demo Traveler', email: 'demo@wend.app', password: 'password' },
+    // A second person, so the share panel has someone real to bring along and
+    // take off again — and so the vote below stops pointing at nobody.
+    { id: 2, name: 'Sarah', email: 'sarah@wend.app', password: 'password' },
+  ];
   db.currentUserId = null;
   // Links are rebuilt from scratch below. Without this the seeded links were
   // appended again on every resetDb(), so children_count crept up between
@@ -675,6 +735,12 @@ export function seed() {
 
   db.entries = [trip, nanzenji, kiyamachi, marketBundle, library1, coffee, nishiki, teramachi, nightBundle, kamogawa, yakitori];
 
+  // The demo user owns the demo trip. Owner is the default on purpose: signing
+  // in as the demo user is what every test and every design session does, and
+  // they all expect to be able to change things. Sarah is deliberately *not*
+  // on the trip — she is who you add. Use setRole() to become a viewer.
+  db.memberships = [{ trip_id: trip.id, user_id: 1, role: 'owner', added_at: now() }];
+
   addLink(trip.id, nanzenji.id, 0);
   addLink(trip.id, marketBundle.id, 1);
   addLink(trip.id, nightBundle.id, 2);
@@ -688,12 +754,14 @@ export function seed() {
   addLink(nightBundle.id, kamogawa.id, 1);
   addLink(nightBundle.id, yakitori.id, 2);
 
+  // Names track db.users: a vote is signed by whoever cast it, and the sidebar
+  // builds "Planning with" out of these names.
   db.votes = [
-    { id: allocateId(), entry_id: nanzenji.id, user_id: 1, user_name: 'Priya', score: 2 },
-    { id: allocateId(), entry_id: kiyamachi.id, user_id: 1, user_name: 'Priya', score: 1 },
+    { id: allocateId(), entry_id: nanzenji.id, user_id: 1, user_name: 'Demo Traveler', score: 2 },
+    { id: allocateId(), entry_id: kiyamachi.id, user_id: 1, user_name: 'Demo Traveler', score: 1 },
     // A second voice, so the per-user breakdown in the drawer has something
     // to show — multi-user voting is the point of the feature.
-    { id: allocateId(), entry_id: nanzenji.id, user_id: 2, user_name: 'Sam', score: -1 },
+    { id: allocateId(), entry_id: nanzenji.id, user_id: 2, user_name: 'Sarah', score: -1 },
   ];
 
   db.todos = [

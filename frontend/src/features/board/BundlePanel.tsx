@@ -1,6 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import { Spinner } from '../../components/Spinner';
 import { Button } from '../../design/components/core/Button';
+import { useCanEdit } from '../../auth/TripRoleContext';
 import { useRestoreEntry } from '../../api';
 import type { Entry } from '../../api/types';
 import { BundleCard } from './BundleCard';
@@ -73,6 +74,7 @@ export interface BundlePanelProps {
  */
 export function BundlePanel({ tripId, bundles, archivedBundles, members, loading, onToast }: BundlePanelProps) {
   const restoreEntry = useRestoreEntry();
+  const canEdit = useCanEdit();
   const [naming, setNaming] = useState(false);
   const headingId = useId();
 
@@ -92,11 +94,16 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, loading
         A bundle is a group of things that go well together. Bundles can be used to form your itinerary.
       </p>
 
-      <div className={styles.cta}>
-        <Button variant="secondary" size="small" onClick={() => setNaming(true)}>
-          + New bundle
-        </Button>
-      </div>
+      {/* The rail keeps its name, its intro and every bundle in it for a
+          viewer — this is where a trip's thinking is grouped, and reading it is
+          the point. Only the one action the header owns goes. */}
+      {canEdit && (
+        <div className={styles.cta}>
+          <Button variant="secondary" size="small" onClick={() => setNaming(true)}>
+            + New bundle
+          </Button>
+        </div>
+      )}
 
       <div className={styles.stack}>
         {naming && <NewBundleForm tripId={tripId} onToast={onToast} onClose={() => setNaming(false)} />}
@@ -104,8 +111,15 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, loading
         {loading ? (
           <Spinner label="Finding your bundles" />
         ) : newestFirst.length === 0 ? (
+          // An editor's empty rail is a prompt: the header's action is right
+          // there, so the copy points at it. A viewer has no such action, and
+          // pointing at one that was never rendered is a dead end — for them an
+          // empty rail is a normal, permanent state, so it is stated and left
+          // alone. Same treatment as the schedule's empty day.
           <p className={styles.empty}>
-            No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.
+            {canEdit
+              ? 'No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.'
+              : 'No bundles on this trip yet.'}
           </p>
         ) : (
           newestFirst.map((bundle) => (
@@ -122,6 +136,7 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, loading
       <SetAsideSection
         entries={archivedBundles}
         onRestore={(id) => restoreEntry.mutate(id, { onSuccess: () => onToast('Picked back up.') })}
+        canEdit={canEdit}
       />
     </aside>
   );

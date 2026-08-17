@@ -7,7 +7,7 @@ module Api
     # each other and never one the user rejected. `in_final_plan` is what draws
     # that line -- see ScheduleItem.
     def index
-      scope = ScheduleItem.where(trip_id: @trip.id).in_final_plan
+      scope = policy_scope(ScheduleItem).where(trip_id: @trip.id).in_final_plan
       scope = scope.where(day: params[:day]) if params[:day].present?
       items = scope.order(:day, :starts_at_minutes, :position).to_a
       render json: { schedule_items: ScheduleItemSerializer.list(items) }
@@ -15,6 +15,10 @@ module Api
 
     def create
       item = @trip.schedule_items_as_trip.new(schedule_item_params)
+      # trip_id is already set by the association, so the policy has a trip to
+      # resolve against. Ask before resolving the day version, which creates the
+      # trip_day as a side effect.
+      authorize item
       resolve_day_version!(item)
       if item.save
         render json: { schedule_item: ScheduleItemSerializer.one(item) }, status: :created
@@ -45,11 +49,15 @@ module Api
     private
 
     def set_trip
-      @trip = Entry.find(params[:trip_id])
+      @trip = policy_scope(Entry).find(params[:trip_id])
     end
 
+    # PATCH and DELETE /api/schedule_items/:id carry no trip_id in the route, so the
+    # only authority available is the row's own trip -- which is exactly what
+    # ScheduleItemPolicy::Scope and governing_entry_ids resolve.
     def set_item
-      @item = ScheduleItem.find(params[:id])
+      @item = policy_scope(ScheduleItem).find(params[:id])
+      authorize @item
     end
 
     # The itinerary screen posts a `day_version_id`; the older final-schedule

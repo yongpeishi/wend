@@ -1,8 +1,12 @@
+import { useCallback, useState } from 'react';
 import { Link, NavLink, Outlet, useMatch } from 'react-router-dom';
 import { Logo } from '../design/components/brand/Logo';
 import { useEntry } from '../api/entries';
+import { useCollaborators } from '../api/collaborators';
 import { useAuth } from '../auth/AuthContext';
+import { canShare } from '../auth/tripRole';
 import { FeedbackButton } from '../features/feedback/FeedbackButton';
+import { SharePanel } from '../features/trips/SharePanel';
 import { formatTripDates, formatTripLength, joinMeta } from '../lib/formatDates';
 import styles from './AppLayout.module.css';
 
@@ -26,12 +30,6 @@ const TRIP_TABS = [
   { key: 'map', label: 'Map' },
 ];
 
-/** One person shown under "Planning with", as a circle of initials. */
-interface Planner {
-  id: number;
-  name: string;
-}
-
 /** First letter of the name, for the avatar circle. Falls back to a middot. */
 function initial(name: string): string {
   return name.trim().charAt(0).toUpperCase() || '·';
@@ -53,7 +51,7 @@ function initial(name: string): string {
  * everything inside it belongs to the trip named at the top.
  */
 export function AppLayout() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
 
   // `/trips/:id/*` covers every child view; the bare pattern catches the index
   // route on routers that do not let the splat match zero segments. Both hooks
@@ -76,20 +74,16 @@ export function AppLayout() {
     ? joinMeta(formatTripLength(trip.starts_on, trip.ends_on), formatTripDates(trip.starts_on, trip.ends_on))
     : '';
 
-  /*
-   * Who is planning this trip. There is no members or collaborators endpoint —
-   * see the report accompanying this change — so this is assembled from what
-   * the client already knows: you, plus anyone who has voted on the trip
-   * itself. That under-reports a co-planner who has not voted yet, but it never
-   * invents a person, and it needs no request the sidebar was not already
-   * making. Swap the source for a real members list when one exists.
-   */
-  const planners: Planner[] = [];
-  if (trip && user) planners.push({ id: user.id, name: user.name });
-  for (const vote of data?.votes ?? []) {
-    if (!vote.user_name || planners.some((planner) => planner.id === vote.user_id)) continue;
-    planners.push({ id: vote.user_id, name: vote.user_name });
-  }
+  // Who is actually on this trip, from the endpoint that knows. This used to be
+  // assembled from whoever had voted, which under-reported everyone who had not
+  // yet — and only inside a trip, because there is nobody to list outside one.
+  const { data: people } = useCollaborators(tripId ? Number(tripId) : 0, { enabled: Boolean(tripId) });
+  const planners = people?.collaborators ?? [];
+  const shareable = canShare(trip?.my_role ?? null);
+
+  const [sharing, setSharing] = useState(false);
+  // Memoized for Modal's focus effect — see SharePanel's own note.
+  const closeSharing = useCallback(() => setSharing(false), []);
 
   return (
     <div className={styles.shell}>
@@ -160,14 +154,40 @@ export function AppLayout() {
                     <div className={styles.rule} />
                     <div className={styles.sectionLabel}>Planning with</div>
                     <ul className={styles.avatars}>
-                      {planners.map((planner) => (
-                        <li key={planner.id} className={styles.avatar} title={planner.name}>
-                          {/* The letter is a picture of the person; their name is
-                              what a screen reader should hear. */}
-                          <span aria-hidden="true">{initial(planner.name)}</span>
-                          <span className={styles.srOnly}>{planner.name}</span>
-                        </li>
-                      ))}
+                      {planners.map((planner) => {
+                        // The letter is a picture of the person; their name is
+                        // what a screen reader should hear — which is also the
+                        // button's accessible name when there is a button.
+                        const face = (
+                          <>
+                            <span aria-hidden="true">{initial(planner.name)}</span>
+                            <span className={styles.srOnly}>{planner.name}</span>
+                          </>
+                        );
+                        return (
+                          <li key={planner.user_id} className={styles.avatarItem}>
+                            {/* Pressing a face opens the panel that says who is
+                                here and lets you change it. A viewer gets the
+                                same circles with nothing behind them: they can
+                                see who they are reading along with, and there is
+                                no door for them to find shut. */}
+                            {shareable ? (
+                              <button
+                                type="button"
+                                className={styles.avatar}
+                                title={planner.name}
+                                onClick={() => setSharing(true)}
+                              >
+                                {face}
+                              </button>
+                            ) : (
+                              <span className={styles.avatar} title={planner.name}>
+                                {face}
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 )}
@@ -188,6 +208,11 @@ export function AppLayout() {
       {/* Inside the authenticated shell so feedback always has an author, and
           outside <Outlet> so it survives route changes. */}
       <FeedbackButton />
+
+      {/* The same panel the trip header opens — one screen for "who is on this
+          trip", reachable from the faces that name them. It fetches nothing
+          until it is open, so mounting it on every route costs nothing. */}
+      {tripId && <SharePanel open={sharing} onClose={closeSharing} tripId={Number(tripId)} />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useToast } from '../../components/Toast';
+import { useCanEdit } from '../../auth/TripRoleContext';
 import { useArchiveEntry, useLiftEntry } from '../../api';
 import type { Entry } from '../../api/types';
 import { useLinkMutations } from './useLinkMutations';
@@ -81,6 +82,7 @@ export function BulkBar({
 }: BulkBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [namingOpen, setNamingOpen] = useState(false);
+  const canEdit = useCanEdit();
   const { show } = useToast();
   const { addLink } = useLinkMutations();
   const lift = useLiftEntry();
@@ -109,6 +111,12 @@ export function BulkBar({
   const closeNaming = useCallback(() => setNamingOpen(false), []);
 
   if (selectedIds.length === 0) return null;
+
+  // Every verb on this bar changes the trip — there is no read-only half of it
+  // worth leaving behind, so a viewer gets no bar at all rather than a pill
+  // holding one greyed row. FilterBar hides the way into select mode too, so
+  // this is the second lock on a door that is already shut.
+  if (!canEdit) return null;
 
   const failed = () => show("That didn't save. It's still here — try again.", 'error');
 

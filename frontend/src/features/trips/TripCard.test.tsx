@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -140,5 +140,94 @@ describe('TripCard', () => {
 
     await user.click(screen.getByRole('button', { name: `Save ${TRIP_TITLE} for later` }));
     expect(archived).toBe(true);
+  });
+});
+
+/**
+ * `/` is outside every trip, so there is no role provider here — each card reads
+ * its own `my_role` off the trip it was handed. Which is the point: the grid can
+ * hold a trip you own next to one you are only reading.
+ */
+describe('TripCard — what each role may do to it', () => {
+  async function cardFor(role: Entry['my_role']) {
+    const trip = await loadTrip();
+    renderCard({ ...trip, my_role: role });
+  }
+
+  it('gives a viewer no rename and no way to set the trip aside', async () => {
+    await cardFor('viewer');
+
+    expect(screen.queryByRole('button', { name: `Rename ${TRIP_TITLE}` })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Save ${TRIP_TITLE} for later` })).not.toBeInTheDocument();
+  });
+
+  // Not rendered, not inert: the reasons are content and stay, the verbs around
+  // them go. A disabled fieldset would have left both buttons standing there
+  // greyed, which the house rule reads as "refused" rather than "not yours".
+  it('takes the pros and cons controls away and leaves every reason readable', async () => {
+    await cardFor('viewer');
+
+    expect(screen.queryByRole('button', { name: `Add a pro to ${TRIP_TITLE}` })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Add a con to ${TRIP_TITLE}` })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Remove pro: Flights are already booked' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Remove con: Nothing sorted yet' }),
+    ).not.toBeInTheDocument();
+
+    // Both columns are still there, headings and notes alike.
+    expect(screen.getByText('Pros')).toBeInTheDocument();
+    expect(screen.getByText('Cons')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('list', { name: `Pros for ${TRIP_TITLE}` })).getByText(
+        'Flights are already booked',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('list', { name: `Cons for ${TRIP_TITLE}` })).getByText('Nothing sorted yet'),
+    ).toBeInTheDocument();
+  });
+
+  // The half that matters: the card is still the trip, fully readable.
+  it('leaves a viewer the whole card to read', async () => {
+    await cardFor('viewer');
+
+    expect(screen.getByRole('link', { name: TRIP_TITLE })).toBeInTheDocument();
+    const description = screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` });
+    expect(description).toHaveValue(TRIP_DESCRIPTION);
+    // readOnly, not disabled — full contrast, still selectable and copyable.
+    expect(description).toHaveAttribute('readonly');
+    expect(description).toBeEnabled();
+    expect(screen.getByText('Flights are already booked')).toBeInTheDocument();
+    expect(screen.getByText('Nothing sorted yet')).toBeInTheDocument();
+  });
+
+  // A member may unmake their own work, not the trip everyone else is standing
+  // on — so they rename and they do not archive.
+  it('lets a member rename but not set the trip aside', async () => {
+    await cardFor('member');
+
+    expect(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Save ${TRIP_TITLE} for later` })).not.toBeInTheDocument();
+  });
+
+  it('gives the owner both', async () => {
+    await cardFor('owner');
+
+    expect(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Save ${TRIP_TITLE} for later` })).toBeInTheDocument();
+  });
+
+  // The other direction, so the test above can fail: an owner keeps every
+  // pros/cons control the viewer lost.
+  it('leaves an owner the whole pros and cons control', async () => {
+    await cardFor('owner');
+
+    expect(screen.getByRole('button', { name: `Add a pro to ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Add a con to ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Remove pro: Flights are already booked' }),
+    ).toBeInTheDocument();
   });
 });

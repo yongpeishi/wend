@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../components/Toast';
+import { TripRoleProvider } from '../auth/TripRoleContext';
 import { TripMap } from './TripMap';
+import type { TripRole } from '../api/types';
 import type { MapViewProps } from '../features/map/MapView';
 
 // jsdom cannot render a real Leaflet map (see features/map/MapView.tsx's own
@@ -15,9 +17,14 @@ import type { MapViewProps } from '../features/map/MapView';
 vi.mock('../features/map/MapView', () => ({
   MapView: (props: MapViewProps) => (
     <div data-testid="map-view">
-      <button type="button" onClick={() => props.onMapClick?.(35.02, 135.77)}>
-        Simulate map click
-      </button>
+      {/* Only when the route actually bound a handler — the real MapView binds
+          its click listener the same way, so "no handler" has to be visible here
+          rather than a button that quietly does nothing. */}
+      {props.onMapClick && (
+        <button type="button" onClick={() => props.onMapClick?.(35.02, 135.77)}>
+          Simulate map click
+        </button>
+      )}
       {props.pins.map((pin) => (
         <div key={pin.id} data-testid={`pin-${pin.id}`}>
           <button type="button" onClick={() => props.onSelectPin?.(pin.id)}>
@@ -37,19 +44,24 @@ function TestTripLayout() {
   return <Outlet context={{ trip: { id: 1, title: 'Six days in Kyoto' } }} />;
 }
 
-function renderWithLayout() {
+/** `role` mounts the provider TripLayout mounts in the app. Omitted, the context
+ * hands back its editable default — which is what every test below was written
+ * against. */
+function renderWithLayout(role?: TripRole) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const map = (
+    <MemoryRouter initialEntries={['/trips/1/map']}>
+      <Routes>
+        <Route path="/trips/:id" element={<TestTripLayout />}>
+          <Route path="map" element={<TripMap />} />
+        </Route>
+      </Routes>
+    </MemoryRouter>
+  );
+
   return render(
     <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <MemoryRouter initialEntries={['/trips/1/map']}>
-          <Routes>
-            <Route path="/trips/:id" element={<TestTripLayout />}>
-              <Route path="map" element={<TripMap />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </ToastProvider>
+      <ToastProvider>{role ? <TripRoleProvider role={role}>{map}</TripRoleProvider> : map}</ToastProvider>
     </QueryClientProvider>,
   );
 }
@@ -145,5 +157,27 @@ describe('TripMap', () => {
 
     await waitFor(() => expect(screen.getByText('A riverside bench (potential)')).toBeInTheDocument());
     expect(screen.getByText(/Showing 3 of 3/)).toBeInTheDocument();
+  });
+});
+
+describe('TripMap — as a viewer', () => {
+  it('keeps every pin and every filter, and takes both ways of adding one away', async () => {
+    const user = userEvent.setup();
+    renderWithLayout('viewer');
+
+    // The map is the content here, and it is untouched.
+    expect(await screen.findByText('Nanzen-ji (scheduled)')).toBeInTheDocument();
+    expect(screen.getByText('Kiyamachi (potential)')).toBeInTheDocument();
+    expect(screen.getByText(/Showing 2 of 2/)).toBeInTheDocument();
+
+    // Narrowing what is on the map is reading, not editing.
+    await user.click(screen.getByRole('button', { name: 'Scheduled' }));
+    expect(screen.getByText(/Showing 1 of 2/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'See all' }));
+
+    expect(screen.queryByRole('button', { name: 'Add a place' })).not.toBeInTheDocument();
+    // The second way in: with no handler bound, a map click cannot open the form
+    // either — the stub only offers the button when the prop is there.
+    expect(screen.queryByRole('button', { name: 'Simulate map click' })).not.toBeInTheDocument();
   });
 });

@@ -10,6 +10,14 @@ export interface EntryRowProps {
   onToggleKeep?: (nextKept: boolean) => void;
   /** Opens the entry detail. Omit to render a non-interactive row (e.g. inside a picker). */
   onSelect?: () => void;
+  /**
+   * May you change the thing this row stands for? A prop rather than
+   * `useCanEdit()` because the row already takes its verbs as callbacks — the
+   * capability arrives beside the action it governs. Defaults to true, matching
+   * a null role. Only the keep toggle answers to it: opening the entry is
+   * reading, and reading is what a viewer came for.
+   */
+  canEdit?: boolean;
   className?: string;
 }
 
@@ -18,7 +26,15 @@ export interface EntryRowProps {
  * real row: hatch thumbnail, title + middot metadata, and a keep toggle whose tap
  * target is 48x48 even though the visible dot is 28px.
  */
-export function EntryRow({ title, metadata = [], kept, onToggleKeep, onSelect, className }: EntryRowProps) {
+export function EntryRow({
+  title,
+  metadata = [],
+  kept,
+  onToggleKeep,
+  onSelect,
+  canEdit = true,
+  className,
+}: EntryRowProps) {
   const metaText = metadata.join(' · ');
   const main = (
     <>
@@ -41,7 +57,7 @@ export function EntryRow({ title, metadata = [], kept, onToggleKeep, onSelect, c
           {main}
         </div>
       )}
-      {onToggleKeep && (
+      {onToggleKeep && canEdit && (
         <button
           type="button"
           className={styles.keepToggle}
