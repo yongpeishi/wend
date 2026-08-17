@@ -5,6 +5,14 @@
  *
  * Written phone-first; 861px is where this feature widens, matching the shell's
  * own fold in AppLayout.module.css.
+ *
+ * The chips run from the start edge and must keep doing so. Because this row
+ * scrolls, `flex-end` or `center` here would push the overflow off the *start*
+ * side, and there is no scrolling back to that: scrollLeft has nowhere below
+ * zero to go, so the earliest days of a long trip become unreachable and paint
+ * over whatever sits to the left of the strip. Wherever the strip needs to sit
+ * on the page, move the strip — its parent aligns the box, this rule only ever
+ * fills it.
  */
 .strip {
   display: flex;

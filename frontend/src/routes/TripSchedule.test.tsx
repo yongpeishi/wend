@@ -32,6 +32,8 @@ vi.mock('../features/map/MapView', () => ({
 // Its three members are already in the seed, so nothing here has to plant one.
 const TRIP_ID = 1;
 const FIRST_DAY = '2026-11-02';
+/** The second day of the trip — 'TUE 3' on the strip, Teramachi at 11:00. */
+const SECOND_DAY = '2026-11-03';
 const BUNDLE_TITLE = 'Nishiki market crawl';
 const OPTION = 'Coffee at Weekenders';
 
@@ -112,7 +114,7 @@ describe('TripSchedule — the day as it stands', () => {
     renderSchedule();
 
     expect(await screen.findByText('Nanzen-ji')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Final schedule', level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Final schedule', level: 2 })).toBeInTheDocument();
     expect(screen.getByText('09:00–09:40')).toBeInTheDocument();
     expect(screen.getByText('40 min')).toBeInTheDocument();
     expect(screen.getByText('place · Nanzen-ji')).toBeInTheDocument();
@@ -143,6 +145,20 @@ describe('TripSchedule — the day as it stands', () => {
     expect(screen.queryByText('Ideas not yet placed')).not.toBeInTheDocument();
   });
 
+  /**
+   * TripLayout prints the trip's title above every trip screen as the page's
+   * one <h1> — the stand-in layout in this file deliberately does not, so what
+   * is asserted here is that this screen adds no second one. The itinerary
+   * makes the same promise in TripItinerary.test.tsx.
+   */
+  it('leaves the trip’s title as the page’s only <h1>, with the schedule a section under it', async () => {
+    renderSchedule();
+    await screen.findByText('Nanzen-ji');
+
+    expect(screen.queryAllByRole('heading', { level: 1 })).toHaveLength(0);
+    expect(screen.getByRole('heading', { level: 2, name: 'Final schedule' })).toBeInTheDocument();
+  });
+
   it('says so plainly when a day has nothing on it', async () => {
     renderSchedule();
     await screen.findByText('Nanzen-ji');
@@ -171,6 +187,80 @@ describe('TripSchedule — the day strip', () => {
 
     expect(await screen.findByText('Teramachi arcade')).toBeInTheDocument();
     expect(screen.queryByText(BUNDLE_TITLE)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Which day the screen opens on. The clock is frozen in every one of these:
+ * "today" is the whole question, so no test here may ask the real one.
+ */
+describe('TripSchedule — the day it opens on', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function freeze(iso: string) {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(iso));
+  }
+
+  it('opens on today while the trip is running, not on day one', async () => {
+    viewport('wide');
+    freeze(`${SECOND_DAY}T11:15:00`);
+    renderSchedule();
+
+    // The row's own time: "Teramachi arcade" is also what the now bar is
+    // saying, and it is the day underneath that is being asserted here.
+    expect(await screen.findByText('11:00–11:30')).toBeInTheDocument();
+    const strip = await screen.findByRole('navigation', { name: 'Days' });
+    expect(within(strip).getByRole('button', { name: 'TUE 3' })).toHaveAttribute('aria-current', 'true');
+    // The point of landing here: the clock has something to say the moment the
+    // page draws, instead of after the reader hunts for today's chip.
+    expect(screen.getByText('now')).toBeInTheDocument();
+  });
+
+  it('opens on the first day before the trip has started', async () => {
+    viewport('wide');
+    freeze('2026-08-17T09:00:00');
+    renderSchedule();
+
+    await screen.findByText('Nanzen-ji');
+    const strip = screen.getByRole('navigation', { name: 'Days' });
+    expect(within(strip).getByRole('button', { name: 'MON 2' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('opens on the first day again once the trip is over', async () => {
+    viewport('wide');
+    freeze('2027-01-04T09:00:00');
+    renderSchedule();
+
+    await screen.findByText('Nanzen-ji');
+    const strip = screen.getByRole('navigation', { name: 'Days' });
+    expect(within(strip).getByRole('button', { name: 'MON 2' })).toHaveAttribute('aria-current', 'true');
+  });
+
+  /**
+   * The other half of opening on today: it is an opening, not a leash. Reading
+   * ahead has to survive whatever redraws the page next — here, opening the
+   * nearby sheet, which is a state change with no opinion about the day.
+   */
+  it('keeps the day you picked when something else redraws the page', async () => {
+    viewport('narrow');
+    freeze(`${SECOND_DAY}T11:15:00`);
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderSchedule();
+    await screen.findByText('11:00–11:30');
+
+    await user.click(screen.getByRole('button', { name: 'MON 2' }));
+    expect(await screen.findByText(BUNDLE_TITLE)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: "What's nearby" }));
+    await screen.findByRole('dialog');
+
+    expect(screen.getByText(BUNDLE_TITLE)).toBeInTheDocument();
+    expect(screen.queryByText('11:00–11:30')).not.toBeInTheDocument();
+    const strip = screen.getByRole('navigation', { name: 'Days' });
+    expect(within(strip).getByRole('button', { name: 'MON 2' })).toHaveAttribute('aria-current', 'true');
   });
 });
 
@@ -220,17 +310,26 @@ describe('TripSchedule — nearby, at both widths', () => {
     expect(screen.getAllByText('AROUND YOU NOW')).toHaveLength(1);
   });
 
-  it('measures from the middle of the trip, and says so, when the browser will not say where you are', async () => {
+  /**
+   * The fallback used to be the mean of every located entry on the trip, which
+   * is a point in the countryside on any trip that visits two cities: the 2km
+   * search around it comes back empty and the panel loses its map along with
+   * its list. Where the plan says you are is a real place, so it names it.
+   */
+  it('measures from where the plan puts you, and says so, when the browser will not say where you are', async () => {
     viewport('wide');
     renderSchedule();
 
     expect(
       await screen.findByText(
-        "Your browser won't share your location, so this is measured from the middle of your trip instead.",
+        "Your browser won't share your location, so this is measured from Nanzen-ji, where the plan has you.",
       ),
     ).toBeInTheDocument();
-    // Kept, unplaced, and turned into minutes on foot rather than kilometres.
-    expect(await screen.findByText('activity · 4 min walk')).toBeInTheDocument();
+    // Kept, unplaced, and turned into minutes on foot rather than kilometres —
+    // measured from Nanzen-ji, not from the middle of anything.
+    expect(await screen.findByText('activity · 8 min walk')).toBeInTheDocument();
+    // And the panel is whole: a map with the pin on it, not just a sentence.
+    expect(await screen.findByText('pin: Kiyamachi')).toBeInTheDocument();
   });
 
   it('keeps the rail off a phone entirely until the bar is asked', async () => {

@@ -13,7 +13,9 @@ import type { NearbyPlace } from '../features/schedule/NearbyPanel';
 import { NowBar } from '../features/schedule/NowBar';
 import { RowOptions } from '../features/schedule/RowOptions';
 import { ScheduleRow } from '../features/schedule/ScheduleRow';
-import { buildPlanRows, dayChips, nowLine } from '../features/schedule/dayPlan';
+import type { PlanRow } from '../features/schedule/dayPlan';
+import { buildPlanRows, dayChips, nowLine, openingDay } from '../features/schedule/dayPlan';
+import type { Coords } from '../features/schedule/useGeolocation';
 import { useGeolocation } from '../features/schedule/useGeolocation';
 import { formatWalk } from '../features/schedule/walkTime';
 import { daysForTrip, entryFor, itemsForDay } from '../features/schedule/scheduleModel';
@@ -69,6 +71,36 @@ function placesBlurb(count: number): string {
   return `${word} kept ${count === 1 ? 'place' : 'places'} within a short walk.`;
 }
 
+function coordsOf(entries: Entry[], row: PlanRow | null): Coords | null {
+  const entry = entryFor(entries, row?.entryId ?? null);
+  if (!entry || entry.lat === null || entry.lng === null) return null;
+  return { lat: entry.lat, lng: entry.lng };
+}
+
+/**
+ * Where the plan says you are, for when the browser won't say: the row you are
+ * standing in, or — before the day starts, or in a gap, or on a day you are
+ * only reading ahead to — the next located row, and failing that the last one
+ * you passed.
+ *
+ * This used to be the mean latitude and longitude of every located entry on the
+ * trip, and a mean is not a place. On a trip that moves between two cities it
+ * lands in open country somewhere between them: the two-kilometre search around
+ * it comes back empty every time, and because the panel draws no map without
+ * pins the whole feature goes dark — no map, no ring, no legend, no list. There
+ * is no last-resort centroid here for that reason. A day with nothing located
+ * on it says so instead, which is at least true.
+ *
+ * It is also the fact the panel's heading already names, so the sentence, the
+ * heading and the map finally agree with each other.
+ */
+function planOriginRow(rows: PlanRow[], entries: Entry[]): PlanRow | null {
+  const located = rows.filter((row) => coordsOf(entries, row) !== null);
+  const here = located.find((row) => row.state === 'now');
+  const ahead = located.find((row) => row.state !== 'past');
+  return here ?? ahead ?? located[located.length - 1] ?? null;
+}
+
 /**
  * /trips/:id/schedule — "Final schedule". The plan you hold in one hand while
  * walking, and a read surface: nothing here rebuilds the plan. Placing an idea,
@@ -100,9 +132,6 @@ export function TripSchedule() {
     () => daysForTrip(trip, items.map((i) => i.day)),
     [trip, items],
   );
-  const [activeDay, setActiveDay] = useState<string | null>(null);
-  const day = activeDay ?? days[0]?.day ?? '';
-
   const [showNearby, setShowNearby] = useState(false);
   const geo = useGeolocation();
   // Pulled out of `geo` so the effect below can depend on the one stable
@@ -113,17 +142,18 @@ export function TripSchedule() {
   // screen agrees with every other one and a test can freeze the clock.
   const now = new Date();
 
-  // Fall back to the trip's own centre of gravity when the browser won't say
-  // where we are — a denied permission should not close the door on the feature.
-  const tripCentre = useMemo(() => {
-    const located = entries.filter((e) => e.lat != null && e.lng != null);
-    if (located.length === 0) return null;
-    const lat = located.reduce((sum, e) => sum + Number(e.lat), 0) / located.length;
-    const lng = located.reduce((sum, e) => sum + Number(e.lng), 0) / located.length;
-    return { lat, lng };
-  }, [entries]);
+  // Today, when the trip is running; its first day otherwise. `activeDay` is
+  // null until the reader picks a chip, and from then on it wins — the opening
+  // day is chosen once, not re-imposed on every render.
+  const [activeDay, setActiveDay] = useState<string | null>(null);
+  const day = activeDay ?? openingDay(days, now);
 
-  const origin = geo.coords ?? (geo.denied ? tripCentre : null);
+  const dayItems = useMemo(() => itemsForDay(items, day), [items, day]);
+  const rows = buildPlanRows(dayItems, entries, { day, now });
+  const line = nowLine(rows, { day, now });
+
+  const originRow = planOriginRow(rows, entries);
+  const origin = geo.coords ?? (geo.denied ? coordsOf(entries, originRow) : null);
 
   // The rail is always on screen, so the desk asks for a fix on arrival. The
   // phone waits to be asked: a permission prompt nobody invited is the fastest
@@ -138,10 +168,6 @@ export function TripSchedule() {
     wantNearby && origin ? trip.id : undefined,
     { lat: origin?.lat ?? 0, lng: origin?.lng ?? 0, radius_km: 2, exclude_scheduled: true },
   );
-
-  const dayItems = useMemo(() => itemsForDay(items, day), [items, day]);
-  const rows = buildPlanRows(dayItems, entries, { day, now });
-  const line = nowLine(rows, { day, now });
 
   const loading = scheduleQuery.isLoading || entriesQuery.isLoading;
 
@@ -168,11 +194,17 @@ export function TripSchedule() {
 
   const nearbyLoading = geo.loading || (origin !== null && nearbyQuery.isLoading);
 
+  // What the fallback measures from, named the way the reader would name it —
+  // so the sentence under the heading can say it out loud rather than claim a
+  // middle-of-the-trip the map is not centred on.
+  const originEntry = entryFor(entries, originRow?.entryId ?? null);
+  const originName = originEntry?.location_name ?? originEntry?.title ?? null;
+
   // A note replaces the list; a blurb sits under the heading and explains it.
-  // The denied-permission sentences are the ones that have to survive intact.
+  // Both have to stay true about where the distances are measured from.
   const note = (() => {
-    if (geo.denied && !tripCentre) {
-      return "Your browser won't share your location, and nothing in this trip has a place yet. Add a location to an idea and this will work.";
+    if (geo.denied && !origin) {
+      return "Your browser won't share your location, and nothing on this day has a place yet. Add a location to an idea and this will work.";
     }
     if (origin && nearbyQuery.data && places.length === 0) {
       return 'Nothing unplaced within a short walk. A good moment for a detour.';
@@ -181,8 +213,8 @@ export function TripSchedule() {
   })();
 
   const blurb = (() => {
-    if (geo.denied && tripCentre) {
-      return "Your browser won't share your location, so this is measured from the middle of your trip instead.";
+    if (geo.denied && originName) {
+      return `Your browser won't share your location, so this is measured from ${originName}, where the plan has you.`;
     }
     return places.length > 0 ? placesBlurb(places.length) : '';
   })();
@@ -203,7 +235,11 @@ export function TripSchedule() {
   return (
     <div className={styles.screen}>
       <div className={styles.head}>
-        <h1 className={styles.title}>Final schedule</h1>
+        {/* TripLayout above prints the trip's title as the page's one <h1>, so
+            this screen's own name is a section heading under it — the same
+            shape the itinerary uses. It keeps its size from .title; only the
+            level changes. */}
+        <h2 className={styles.title}>Final schedule</h2>
         {/* Shown even for a one-day trip: the head always carries the strip, and
             a page whose shape depends on how long the trip is is a page that
             moves under you when you add a day. */}

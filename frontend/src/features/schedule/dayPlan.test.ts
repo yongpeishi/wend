@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPlanRows, dayChips, nowLine } from './dayPlan';
+import { buildPlanRows, dayChips, nowLine, openingDay } from './dayPlan';
 import type { PlanRow } from './dayPlan';
 import type { Entry, ScheduleItem } from '../../api/types';
 
@@ -82,6 +82,37 @@ describe('dayChips', () => {
       { day: '2000-01-01', dow: 'DAY', date: '1' },
       { day: '2000-01-02', dow: 'DAY', date: '2' },
     ]);
+  });
+});
+
+describe('openingDay', () => {
+  const trip = [
+    { day: '2026-11-01', label: 'Sun 1' },
+    { day: '2026-11-02', label: 'Mon 2' },
+    { day: '2026-11-03', label: 'Tue 3' },
+  ];
+
+  it('opens on today when the clock is somewhere inside the trip', () => {
+    expect(openingDay(trip, AT_1330)).toBe('2026-11-02');
+    expect(openingDay(trip, new Date(2026, 10, 3, 0, 1))).toBe('2026-11-03');
+  });
+
+  it('opens on the first day before the trip starts and after it ends', () => {
+    expect(openingDay(trip, new Date(2026, 9, 30, 13, 30))).toBe('2026-11-01');
+    expect(openingDay(trip, new Date(2026, 11, 25, 13, 30))).toBe('2026-11-01');
+  });
+
+  it('compares local calendar dates, not a UTC ISO slice', () => {
+    // Late enough to be tomorrow in UTC east of Greenwich, early enough to be
+    // yesterday west of it. Locally it is still the 2nd either way.
+    expect(openingDay(trip, new Date(2026, 10, 2, 23, 45))).toBe('2026-11-02');
+    expect(openingDay(trip, new Date(2026, 10, 2, 0, 15))).toBe('2026-11-02');
+  });
+
+  it('falls back to the first day of a dateless trip, and to nothing at all', () => {
+    // A dateless trip's tabs hang off a fixed anchor year that is never today.
+    expect(openingDay([{ day: '2000-01-01', label: 'Day 1' }], AT_1330)).toBe('2000-01-01');
+    expect(openingDay([], AT_1330)).toBe('');
   });
 });
 
@@ -313,6 +344,40 @@ describe('nowLine', () => {
       title: 'Fushimi Inari',
       sub: 'Until 15:00',
     });
+  });
+
+  /* Overlapping items are legal here — an evening can be double-booked — but a
+     "then" that has already begun turns the sentence back on itself. */
+  it('will not call something that starts before this one ends the next thing', () => {
+    const rows = [
+      row({ id: 1, title: 'Kyoto walk', state: 'now', startsAtMinutes: 18 * 60, endsAtMinutes: 19 * 60 + 7 }),
+      row({ id: 2, title: 'Kyoto dinner options', startsAtMinutes: 18 * 60 + 30 }),
+    ];
+    expect(nowLine(rows, { day: DAY, now: AT_1330 })).toEqual({
+      title: 'Kyoto walk',
+      sub: 'Until 19:07',
+    });
+  });
+
+  it('takes the first row that starts once this one is done, overlaps skipped', () => {
+    const rows = [
+      row({ id: 1, title: 'Kyoto walk', state: 'now', startsAtMinutes: 18 * 60, endsAtMinutes: 19 * 60 + 7 }),
+      row({ id: 2, title: 'Kyoto dinner options', startsAtMinutes: 18 * 60 + 30 }),
+      row({ id: 3, title: 'Last train', startsAtMinutes: 23 * 60 }),
+    ];
+    expect(nowLine(rows, { day: DAY, now: AT_1330 }).sub).toBe('Until 19:07 · then Last train at 23:00');
+    // A row starting on the exact minute this one ends is still after it.
+    const onTheMinute = [rows[0] as PlanRow, row({ id: 4, title: 'Bus', startsAtMinutes: 19 * 60 + 7 })];
+    expect(nowLine(onTheMinute, { day: DAY, now: AT_1330 }).sub).toBe('Until 19:07 · then Bus at 19:07');
+  });
+
+  it('measures an endless now row from its own start instead', () => {
+    const rows = [
+      row({ id: 1, title: 'Kyoto walk', state: 'now', startsAtMinutes: 18 * 60 }),
+      row({ id: 2, title: 'Something earlier', startsAtMinutes: 17 * 60 }),
+      row({ id: 3, title: 'Dinner', startsAtMinutes: 20 * 60 }),
+    ];
+    expect(nowLine(rows, { day: DAY, now: AT_1330 }).sub).toBe('then Dinner at 20:00');
   });
 
   it('points at the next thing when nothing is running', () => {

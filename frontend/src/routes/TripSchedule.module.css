@@ -91,11 +91,18 @@
     line-height: var(--text-display-line);
   }
 
-  /* The strip cannot grow past its own chips, so it hugs the right edge under
-     `justify-content: space-between` rather than stretching across the head. */
+  /* The strip cannot grow past its own chips, so `space-between` above is what
+     hugs it to the right edge rather than stretching it across the head.
+     Right-aligning it is the head's job, and only the head's: the strip is a
+     scroll container, and a scroll container must lay its own children out from
+     its start edge. Ask a scroller for `flex-end` and its overflow spills off
+     the *start* side, where scrollLeft cannot follow — on a fortnight-long trip
+     the first days end up painted under the title with no way to reach them.
+     Laying out from the start costs nothing when the chips fit, because a box
+     that is exactly its content's width looks the same either way. */
   .head > nav {
     flex: 0 1 auto;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
 
   .body {

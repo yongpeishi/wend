@@ -94,6 +94,23 @@ function minutesOfDay(now: Date): number {
   return now.getHours() * 60 + now.getMinutes();
 }
 
+/**
+ * The day the screen should open on: today, when the clock is inside the trip,
+ * and the trip's first day otherwise — which is what you want both before you
+ * leave and after you get back.
+ *
+ * A fortnight-long trip that opens on day one opens on a day that is usually
+ * empty, and everything this screen exists to say — the now dot, the now bar,
+ * the panel naming the stop you are standing in — stays invisible until the
+ * reader hunts for today's chip. Opening on today is the plan you are holding.
+ *
+ * This is the *opening* day only. Once a reader picks a chip, that choice is
+ * theirs; nothing here is re-applied over it.
+ */
+export function openingDay(days: DayTab[], now: Date): string {
+  return days.find((tab) => isToday(tab.day, now))?.day ?? days[0]?.day ?? '';
+}
+
 function toneFor(entry: Entry | undefined): RowTone {
   if (entry?.category === 'transport') return 'waiting';
   if (entry?.category === 'lodging') return 'destination';
@@ -175,7 +192,15 @@ export function nowLine(rows: PlanRow[], opts: { day: string; now: Date }): NowL
 
   if (nowIndex >= 0) {
     const current = rows[nowIndex] as PlanRow;
-    const next = rows.slice(nowIndex + 1).find((row) => row.startsAtMinutes !== null);
+    // "then" has to mean *after this*. Overlapping items are a plan somebody
+    // made, not an error — but naming one of them as what follows produces
+    // "Until 19:07 · then dinner at 18:30", a sentence that runs backwards. So
+    // the next row is the first one that starts at or after this one ends, and
+    // when nothing qualifies the bar simply says how long you have.
+    const after = current.endsAtMinutes ?? current.startsAtMinutes ?? 0;
+    const next = rows
+      .slice(nowIndex + 1)
+      .find((row) => row.startsAtMinutes !== null && row.startsAtMinutes >= after);
     const until = current.endsAtMinutes === null ? null : `Until ${formatMinutes(current.endsAtMinutes)}`;
     const then = next ? `then ${next.title} at ${formatMinutes(next.startsAtMinutes as number)}` : null;
     return { title: current.title, sub: joinMeta(until, then) };
