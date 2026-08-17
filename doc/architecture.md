@@ -386,8 +386,7 @@ The design bundle at `wend-design/project/` is **read-only reference**. Port it 
 - **Apricot `#E89A5E` is never text.** It is a ring, a 3px focus outline, an underline.
   It means exactly one thing: *this is where you are deciding now*.
 - Focus is **always** a 3px apricot outline at 3px offset. Every interactive element.
-- Radii: cards 6px, media 14px, buttons/chips full pill, stops/toggles circles,
-  phone surfaces 22px. Borders 1.5px, or 2px when the border carries an action.
+- Borders 1.5px, or 2px when the border carries an action.
 - Type: Atkinson Hyperlegible everywhere, DM Mono only for codes/coordinates/counters.
   Minimum 15px. Body measure 60–70ch. **No italics for emphasis — use bold.**
 - Spacing on a 4px base: 8 · 12 · 16 · 24 · 32 · 48 · 64. Screen gutter 20px,
@@ -400,21 +399,19 @@ The design bundle at `wend-design/project/` is **read-only reference**. Port it 
 - States: hover/press are **opacity only** — the palette never lightens or darkens.
   Nothing is ever struck through or greyed to mean "rejected", because nothing is
   rejected.
-- Icons: no icon set ships. Use Lucide at 1.5px stroke only where a true utility icon is
-  unavoidable (back, close, map pin), in `--text-strong` or `--text-muted`.
-  **No emoji, ever.** `↵` in inputs is the one permitted Unicode affordance.
+- Icons: no icon set ships. Use Lucide at 1.5px stroke when needed.
 
 ### Voice
 
 Second person, short sentences, plain words, sentence case. Buttons are verbs of
-movement — "Take the long way", "Widen again", "Keep both for now". Placeholders ask a
+movement — "Widen again", "Keep both for now". Placeholders ask a
 plain question: "Where are you going?" not "Destination". Never urgent, never scarce.
 No exclamation marks. 24-hour times (`09:40`), en-dash ranges (`10:15–11:40`), middot
 separators (`morning · east`).
 
 Copy to use for empty states:
 - Library, empty: "Nothing kept yet. Saving something is how a trip starts."
-- Trip with no ideas: "This one's still a daydream. Add the first thing you'd like to do."
+- Trip with no ideas: "This one's still a blank canvas. Add the first thing you'd like to do."
 - Schedule with nothing placed: "Nothing placed yet. Drag something over from your ideas."
 
 ### The trail is the only navigation metaphor
