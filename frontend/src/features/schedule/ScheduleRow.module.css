@@ -1,0 +1,180 @@
+/*
+ * One row of the day. The two widths draw genuinely different rows — stacked on
+ * a phone, a fixed time column on a desk — but there is one piece of markup and
+ * a grid underneath it, not two subtrees with one hidden. Rendering both and
+ * hiding one duplicates every string in the accessibility tree and doubles what
+ * a find-in-page turns up.
+ *
+ * The grid places only the dot explicitly; `when` and `what` name their column
+ * and let auto-placement stack them. That is what lets a row with no time, no
+ * duration and no state word drop its `when` cell altogether and have the title
+ * ride up beside the dot rather than leave a hole where the clock would be.
+ *
+ * Phone-first. 861px is this feature's one breakpoint.
+ */
+.row {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  /* 14px: the design's own dot-to-text gap, between --space-3 (12) and
+     --space-4 (16). */
+  column-gap: 14px;
+  /* 3px: tighter than --space-1 (4) — time, title and meta are one block. */
+  row-gap: 3px;
+  padding: var(--space-4) 0;
+  border-bottom: var(--border-width) solid var(--border-subtle);
+}
+
+/* The clock's cell: time and duration on one baseline, pushed to opposite
+   edges, because the duration is the answer to "and then how long", not a
+   second label crowding the start. */
+.when {
+  grid-column: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.what {
+  grid-column: 2;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+}
+
+.time {
+  font-family: var(--font-mono);
+  font-size: var(--text-body-size);
+  font-weight: var(--weight-bold);
+  line-height: 1.3;
+  color: var(--text-strong);
+}
+
+/* Behind you. The row stays where it is and keeps its full title — the day is
+   not struck through as you walk it — but the hour steps back. */
+.timePast {
+  color: var(--text-muted);
+}
+
+/* "2 hr 40 min", "transport", "open". 13px with the data tracking: this is a
+   measurement riding at the end of a line, never running text. */
+.dur {
+  flex: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-muted);
+}
+
+.title {
+  font-size: var(--text-subtitle-size);
+  line-height: var(--text-subtitle-line);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  font-size: var(--text-small-size);
+  /* 1.6: between the body's 1.7 and the subtitle's 1.4 — one short line under a
+     20px title, so it sits closer than a paragraph would. */
+  line-height: 1.6;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The stop. 14px, and the 6px lift puts its centre on the cap-height of the
+ * 17px time beside it rather than on the line box's top edge.
+ *
+ * `box-sizing: border-box` is what keeps the open ring the same 14px circle as
+ * the filled ones: the 3px border grows inward, so a decided stop and an
+ * undecided one are the same mark in the column, differing only in whether
+ * anyone has filled it in.
+ */
+.dot {
+  grid-column: 1;
+  grid-row: 1;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  margin-top: 6px;
+}
+
+.dotDecided {
+  background: var(--stop-decided);
+}
+
+.dotWaiting {
+  background: var(--stop-waiting);
+}
+
+.dotDestination {
+  background: var(--stop-destination);
+}
+
+/* Nobody has answered this one yet: an outline with nothing in it. */
+.dotOpen {
+  background: transparent;
+  border: var(--trail-stroke) solid var(--stop-open);
+}
+
+/* Where you are now. Apricot, and a halo rather than a bigger dot, so the
+   column of stops stays a straight line of one size. An outline is drawn
+   outside the box and takes no room, which is why the halo cannot nudge the
+   row. 3px offset separates the ring from the fill without a gap token — this
+   is a drawn mark, not a spacing decision. */
+.dotNow {
+  background: var(--wend-apricot);
+  outline: var(--trail-stroke) solid var(--wend-apricot);
+  outline-offset: 3px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Wide: the MVP's own row. The clock moves out into a column of its own — a
+ * fixed 118px, so every start time in the day lines up down the left edge and
+ * the titles start at the same place whether the item runs to a range or a
+ * single hour — and time stacks over duration inside it. The dot sits between
+ * the two columns, on the trail it would draw if the trail were drawn here.
+ */
+@media (min-width: 861px) {
+  .row {
+    grid-template-columns: 118px 14px 1fr;
+    column-gap: 18px;
+    padding: 14px 0;
+  }
+
+  .when {
+    grid-column: 1;
+    grid-row: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 2px;
+  }
+
+  .dot {
+    grid-column: 2;
+  }
+
+  .what {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}
