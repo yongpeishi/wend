@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { Select } from '../design/components/core/Select';
 import { useCanEdit } from '../auth/TripRoleContext';
-import { Drawer } from '../components/Drawer';
+import { Modal } from '../components/Modal';
 import { Field } from '../components/Field';
 import { Spinner } from '../components/Spinner';
 import { VoteControl } from '../components/VoteControl';
@@ -51,7 +51,7 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-export interface EntryDetailDrawerProps {
+export interface EntryDetailModalProps {
   entryId: number | undefined;
   onClose: () => void;
 }
@@ -59,13 +59,29 @@ export interface EntryDetailDrawerProps {
 /**
  * The detail panel itself, decoupled from the route.
  *
- * It is a drawer over whatever you were looking at — which only holds if there
- * is something underneath. Reached as a route it covers an empty page, because
- * /entries/:id renders nothing else; the board therefore raises this component
- * directly, over the board, and keeps its own URL. The editing surface is the
- * same one either way.
+ * It is a centred modal over whatever you were looking at — the same dialog
+ * "Add an idea" opens in (see NewIdeaModal.tsx), because opening an idea and
+ * writing one down are the same act at two moments and they should not arrive
+ * from two different edges of the screen. It used to slide in from the right as
+ * a <Drawer>; that read as a second surface parallel to the board rather than
+ * the one thing you had just pointed at.
+ *
+ * Being an overlay only holds if there is something underneath. Reached as a
+ * route it covers an empty page, because /entries/:id renders nothing else; the
+ * board therefore raises this component directly, over the board, and keeps its
+ * own URL. Both ways in from the board — a row in the idea list and a member in
+ * the bundle rail — go through TripBoard's single `editingId`, so they land in
+ * this same dialog. The editing surface is the same one either way.
+ *
+ * One deliberate difference from "Add an idea": focus settles on the dialog
+ * itself rather than in the name field. Modal aims at the first control in its
+ * body once, on open, and on open this is still the spinner — but that is where
+ * it belongs anyway. A new idea opens for typing; an existing one opens for
+ * reading, and a cursor sitting in a title someone already wrote invites
+ * overwriting it (and raises a keyboard over the panel on a phone). Escape, Tab
+ * and the heading read the same either way.
  */
-export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawerProps) {
+export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalProps) {
   const { show } = useToast();
   // Raised over the board it belongs to, so the trip's role is already in the
   // tree. Opened at /entries/:id for a library idea there is no provider and no
@@ -121,20 +137,20 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
 
   if (isLoading) {
     return (
-      <Drawer open title="Opening" onClose={close}>
+      <Modal open title="Opening" onClose={close}>
         <Spinner label="Opening" />
-      </Drawer>
+      </Modal>
     );
   }
 
   if (isError || !entry || !data) {
     return (
-      <Drawer open title="Not here" onClose={close}>
+      <Modal open title="Not here" onClose={close}>
         <p className={styles.note}>
           That one isn&rsquo;t here. It may have been set aside — everything you kept is
           still safe.
         </p>
-      </Drawer>
+      </Modal>
     );
   }
 
@@ -145,7 +161,22 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
   );
 
   return (
-    <Drawer open title={entry.title} onClose={close}>
+    <Modal
+      open
+      title={entry.title}
+      onClose={close}
+      /* One button, and it does not say "Save". Every field here writes itself
+         on blur, so there is nothing held back to commit and nothing to cancel —
+         a Save/Cancel pair would promise an undo this panel cannot give. "Done"
+         says what it does, and it says it to a viewer too: they are finished
+         reading. Not "Close" — the dialog's own ✕ already carries that name, and
+         two buttons answering to it is one target too many to say out loud. */
+      actions={
+        <Button variant="quiet" onClick={close}>
+          Done
+        </Button>
+      }
+    >
       <div className={styles.body}>
         {meta && <p className={styles.meta}>{meta}</p>}
 
@@ -311,7 +342,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
               value={
                 entry.source_url && (
                   // A real link, since following it is the only thing anyone
-                  // ever wanted this field for. New tab: the drawer is an
+                  // ever wanted this field for. New tab: this dialog is an
                   // overlay on a board, and navigating away would close both.
                   <a className={styles.link} href={entry.source_url} target="_blank" rel="noreferrer">
                     {entry.source_url}
@@ -413,7 +444,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
 
         {/* Both labels name where the idea ends up, and both carry a line
             saying what that costs. The board's ⋯ menu and its bulk bar are
-            popups with room for a label and nothing else; the drawer has the
+            popups with room for a label and nothing else; this panel has the
             room, so this is where the whole sentence gets said. */}
         <section className={styles.actions}>
           {canEdit && entry.kind === 'idea' && (
@@ -456,18 +487,18 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
           )}
         </section>
       </div>
-    </Drawer>
+    </Modal>
   );
 }
 
 /**
- * /entries/:id — the same drawer, opened by URL. This is the deep-link and
+ * /entries/:id — the same modal, opened by URL. This is the deep-link and
  * back-button path (the library screen still navigates here); closing returns
- * you to wherever you came from. The board opens the drawer in place instead,
- * so editing an idea never leaves the ideas you were reading.
+ * you to wherever you came from. The board opens it in place instead, so
+ * editing an idea never leaves the ideas you were reading.
  */
 export function EntryDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <EntryDetailDrawer entryId={id ? Number(id) : undefined} onClose={() => navigate(-1)} />;
+  return <EntryDetailModal entryId={id ? Number(id) : undefined} onClose={() => navigate(-1)} />;
 }

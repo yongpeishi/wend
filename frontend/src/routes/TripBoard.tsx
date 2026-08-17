@@ -32,7 +32,7 @@ import type { GroupMode, IdeaFilters } from '../features/board/filters';
 import { isWithinBounds } from '../features/map/bounds';
 import { entriesWithCoordinates, entryToPin } from '../features/map/pins';
 import type { Bounds, MapPin, PinTone } from '../features/map/types';
-import { EntryDetailDrawer } from './EntryDetail';
+import { EntryDetailModal } from './EntryDetail';
 import styles from './TripBoard.module.css';
 
 /**
@@ -94,9 +94,11 @@ export function TripBoard() {
   const [groupMode, setGroupMode] = useState<GroupMode>('none');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [newIdeaOpen, setNewIdeaOpen] = useState(false);
-  // The idea whose edit drawer is up, if any. Held here rather than reached by
-  // navigating to /entries/:id, so the drawer lands over the board instead of
-  // over an empty page — see EntryDetailDrawer.
+  // The idea whose edit dialog is up, if any. One piece of state for both ways
+  // in — a row in the idea list and a member in the bundle rail — so the two
+  // cannot drift into two different panels. Held here rather than reached by
+  // navigating to /entries/:id, so it lands over the board instead of over an
+  // empty page — see EntryDetailModal.
   const [editingId, setEditingId] = useState<number | null>(null);
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
@@ -129,6 +131,9 @@ export function TripBoard() {
   // doc comment for the underlying Modal.tsx bug.
   const closeNewIdea = useCallback(() => setNewIdeaOpen(false), []);
   const openNewIdea = useCallback(() => setNewIdeaOpen(true), []);
+  // Same reason, now that editing is a <Modal> too: a fresh arrow every render
+  // would re-subscribe Modal's key handler on every keystroke the board causes.
+  const closeEditing = useCallback(() => setEditingId(null), []);
 
   const ideasQuery = useEntries({ trip_id: trip.id, kind: 'idea', include_archived: true });
   const bundlesQuery = useEntries({ trip_id: trip.id, kind: 'bundle', include_archived: true });
@@ -436,9 +441,7 @@ export function TripBoard() {
         />
       </div>
 
-      {editingId !== null && (
-        <EntryDetailDrawer entryId={editingId} onClose={() => setEditingId(null)} />
-      )}
+      {editingId !== null && <EntryDetailModal entryId={editingId} onClose={closeEditing} />}
 
       <DragOverlay>
         {activeDrag && <Card padding={2}><EntryRow title={activeDrag.title} kept={false} /></Card>}
