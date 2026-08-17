@@ -4,14 +4,6 @@
   gap: var(--space-6);
 }
 
-.meta {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-data-size);
-  letter-spacing: var(--text-data-tracking);
-  color: var(--text-body);
-}
-
 .note {
   margin: 0;
   font-family: var(--font-sans);
@@ -66,8 +58,8 @@
    card tone, no minimum height — nothing that would still suggest a box you
    could have typed in. `pre-wrap` is here for the two long fields, description
    and notes, which keep the line breaks they were typed with; the short facts
-   have none to keep, so one rule covers both. `overflow-wrap` is for the source
-   link: a pasted URL is one unbroken word, and the drawer is 480px wide. */
+   have none to keep, so one rule covers both. `overflow-wrap` is for a pasted
+   URL in the notes: one unbroken word, in a fixed-width dialog. */
 .fact {
   margin: 0;
   font-family: var(--font-sans);
@@ -85,10 +77,19 @@
   color: var(--text-muted);
 }
 
+/* Two short facts to a line — what the wider dialog is for. Below the point
+   where two columns would each be narrower than a phone field, they stack, and
+   the order they stack in is the order they are read in. */
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .pair {
+    grid-template-columns: 1fr;
+  }
 }
 
 .section {
@@ -107,9 +108,7 @@
   color: var(--text-muted);
 }
 
-.linkList,
-.todoList,
-.voteList {
+.linkList {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -136,50 +135,4 @@
   outline-offset: var(--focus-offset);
 }
 
-.todoList {
-  font-family: var(--font-sans);
-  font-size: var(--text-body-size);
-  color: var(--text-body);
-}
 
-/* Dimmed, never struck through. */
-.todoDone {
-  opacity: 0.55;
-}
-
-.voteItem {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-  font-family: var(--font-sans);
-  font-size: var(--text-small-size);
-  color: var(--text-body);
-}
-
-/* Scores are counters — the one place DM Mono is right. */
-.voteScore {
-  font-family: var(--font-mono);
-  font-size: var(--text-code-size);
-  color: var(--text-strong);
-}
-
-/* A column, not a row. Each action now carries a line saying what it does, so
-   the two of them read as two short paragraphs you choose between rather than a
-   toolbar — and side by side there is no width left for either sentence: the
-   drawer is 480px wide, less its padding. */
-.actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-6);
-  padding-top: var(--space-4);
-}
-
-/* The button and its hint, kept together. `align-items: flex-start` so the
-   button stays its own width instead of stretching to the hint's measure. */
-.action {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-}

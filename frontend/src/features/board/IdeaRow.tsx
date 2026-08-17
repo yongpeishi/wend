@@ -107,8 +107,10 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
  *
  * What is NOT here, and why:
  *   - No vote control. Rating is descoped from the board for now (see
- *     doc/backlog/trip-view.md). `VoteControl` and the votes on the entry detail
- *     screen are untouched, so this is one import away from coming back.
+ *     doc/backlog/trip-view.md), and it has since left the entry detail panel
+ *     too — that dialog edits what an idea IS, and how much everyone wants it
+ *     is not one of the idea's own facts. `VoteControl` still exists and the
+ *     library still uses it, so this is one import away from coming back.
  *   - No hatch thumbnail / `EntryRow`. This row is scanned in a long list; the
  *     design trades the thumbnail for density.
  *

@@ -242,14 +242,43 @@ describe('IdeaRow — the ⋯ actions menu', () => {
   // "Move to Set aside", not "Set aside": the menu is too tight for a line of
   // explanation, so the label names the list at the foot of the board that the
   // idea is going to — which is also the way back.
-  it('offers Edit, the way into Set aside, and the bundles together', async () => {
+  it('offers Edit, both ways of moving the idea, and the bundles together', async () => {
     renderRow({ bundles: [BUNDLE] });
     await openActions();
 
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Make it a trip of its own' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Move to Set aside' })).toBeInTheDocument();
     expect(screen.getByText('Add to bundle')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tuesday south' })).toBeInTheDocument();
+  });
+
+  /**
+   * Lifting an idea out used to sit at the foot of the edit panel. It is a move
+   * rather than a fact about the idea, so it joined the other moves here — and
+   * the panel it left is now only about what the idea is.
+   */
+  it('lifts an idea out into a trip of its own, and closes behind itself', async () => {
+    const post = vi
+      .spyOn(api, 'post')
+      .mockResolvedValue({ entry: makeEntry({ kind: 'trip' }) });
+    renderRow();
+    const user = await openActions();
+
+    await user.click(screen.getByRole('button', { name: 'Make it a trip of its own' }));
+
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/entries/42/lift'));
+    expect(screen.queryByRole('button', { name: 'Make it a trip of its own' })).not.toBeInTheDocument();
+    post.mockRestore();
+  });
+
+  /** A bundle already is a container; there is nothing to lift it out of. */
+  it('does not offer to make a trip out of a bundle', async () => {
+    renderRow({ entry: makeEntry({ kind: 'bundle' }) });
+    await openActions();
+
+    expect(screen.queryByRole('button', { name: 'Make it a trip of its own' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
 
   it('edits from the menu, and closes it behind itself', async () => {

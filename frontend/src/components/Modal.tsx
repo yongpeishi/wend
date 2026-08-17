@@ -11,6 +11,14 @@ export interface ModalProps {
   title: string;
   children: ReactNode;
   actions?: ReactNode;
+  /**
+   * How much room the dialog takes. `wide` is for a panel that lays its fields
+   * out two to a line — an idea has enough short facts (kind, how long, place,
+   * address, a pair of coordinates) that one column makes a column of scrolling
+   * out of what fits on a screen. Everything else asks a handful of questions in
+   * sequence and stays at the default measure.
+   */
+  size?: 'default' | 'wide';
 }
 
 const FOCUSABLE =
@@ -27,7 +35,7 @@ const FOCUSABLE =
  *
  * Tab and Shift+Tab cycle within the dialog, and Escape closes it.
  */
-export function Modal({ open, onClose, title, children, actions }: ModalProps) {
+export function Modal({ open, onClose, title, children, actions, size = 'default' }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -98,7 +106,7 @@ export function Modal({ open, onClose, title, children, actions }: ModalProps) {
     >
       <div
         ref={dialogRef}
-        className={styles.modal}
+        className={size === 'wide' ? [styles.modal, styles.wide].join(' ') : styles.modal}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

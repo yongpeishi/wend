@@ -20,6 +20,8 @@ export interface BundlePanelProps {
   members: Map<number, Entry[]>;
   /** The bundles query is still in flight. */
   loading: boolean;
+  /** Open a member idea in place. Omitted, the card falls back to navigating. */
+  onOpen?: (id: number) => void;
   onToast: (message: string) => void;
 }
 
@@ -71,8 +73,16 @@ export interface BundlePanelProps {
  * takes `onToast` for its wording, and every other bundle mutation on this
  * rail (rename, remove) already lives inside these components. Routing just
  * this one back through the board would be the odd one out.
+ *
+ * `onOpen` is the exception, and it is a pass-through rather than a decision:
+ * opening a bundle member is the board's business, because the drawer it opens
+ * belongs to the board. Handing it down means a member opens over the page
+ * instead of at a route of its own, which is what keeps the page beneath the
+ * drawer's scrim and keeps the idea inside the trip's role — a viewer opening a
+ * member gets it read-only. The rail adds nothing to it and takes nothing from
+ * it; where it is absent the cards navigate as they always did.
  */
-export function BundlePanel({ tripId, bundles, archivedBundles, members, loading, onToast }: BundlePanelProps) {
+export function BundlePanel({ tripId, bundles, archivedBundles, members, loading, onOpen, onToast }: BundlePanelProps) {
   const restoreEntry = useRestoreEntry();
   const canEdit = useCanEdit();
   const [naming, setNaming] = useState(false);
@@ -127,6 +137,7 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, loading
               key={bundle.id}
               bundle={bundle}
               members={members.get(bundle.id) ?? []}
+              onOpen={onOpen}
               onToast={onToast}
             />
           ))

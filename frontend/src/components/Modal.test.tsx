@@ -70,6 +70,29 @@ describe('Modal', () => {
     expect(document.activeElement).toBe(field);
   });
 
+  /**
+   * The width is a class, not a style, so this asserts the only thing a test
+   * can see: that `size` reaches the dialog and that the default does not carry
+   * it. What the class is worth is in Modal.module.css — 760px instead of 560,
+   * which is what lets a panel put two fields on a line.
+   */
+  it('takes the extra width only when asked for it', () => {
+    const { unmount } = render(
+      <Modal open onClose={() => {}} title="Fushimi Inari at dawn" size="wide">
+        content
+      </Modal>,
+    );
+    expect(screen.getByRole('dialog').className).toMatch(/wide/);
+    unmount();
+
+    render(
+      <Modal open onClose={() => {}} title="Fork this bundle?">
+        content
+      </Modal>,
+    );
+    expect(screen.getByRole('dialog').className).not.toMatch(/wide/);
+  });
+
   it('closes on Escape and via the close button, but not on a click inside the panel', async () => {
     const onClose = vi.fn();
     render(

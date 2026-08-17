@@ -30,7 +30,7 @@ describe('NewIdeaModal', () => {
       created = entry;
     });
 
-    const nameField = screen.getByLabelText("What's the idea?");
+    const nameField = screen.getByLabelText('Name');
     expect(nameField).toHaveFocus();
 
     await user.type(nameField, 'Ramen alley');
@@ -55,7 +55,7 @@ describe('NewIdeaModal', () => {
     const onClose = vi.fn();
     renderModal(onClose);
 
-    await user.type(screen.getByLabelText("What's the idea?"), 'Fushimi torii at sunrise{Enter}');
+    await user.type(screen.getByLabelText('Name'), 'Fushimi torii at sunrise{Enter}');
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const entries = await api.get<{ entries: { title: string }[] }>('/entries', {
@@ -69,10 +69,10 @@ describe('NewIdeaModal', () => {
     const onClose = vi.fn();
     renderModal(onClose);
 
-    await user.type(screen.getByLabelText("What's the idea?"), 'Kaiseki dinner');
-    await user.type(screen.getByLabelText('Where is it?'), 'Gion');
-    await user.type(screen.getByLabelText('How long does it take?'), '120');
-    await user.selectOptions(screen.getByLabelText('What kind of thing?'), 'food');
+    await user.type(screen.getByLabelText('Name'), 'Kaiseki dinner');
+    await user.type(screen.getByLabelText('Location'), 'Gion');
+    await user.type(screen.getByLabelText('Estimated duration'), '120');
+    await user.selectOptions(screen.getByLabelText('Category'), 'food');
     await user.click(screen.getByRole('button', { name: 'Keep it' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
@@ -82,6 +82,42 @@ describe('NewIdeaModal', () => {
     const idea = entries.entries.find((e) => e.title === 'Kaiseki dinner');
     if (!idea) console.log('ALL ENTRIES', JSON.stringify(entries.entries, null, 2));
     expect(idea).toMatchObject({ category: 'food', location_name: 'Gion', duration_minutes: 120 });
+  });
+
+  /**
+   * "Where did you find it?" was a labelled box for one URL, which most ideas
+   * never have — and once the edit panel stopped showing that box, a link typed
+   * at capture time could be written and never read again. Notes takes it, and
+   * says so before you type.
+   */
+  it('offers notes as the catch-all, and names the link as one of the things that go there', () => {
+    renderModal(vi.fn());
+
+    expect(screen.queryByLabelText('Where did you find it?')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Notes')).toHaveAttribute(
+      'placeholder',
+      expect.stringContaining('link to where you found it'),
+    );
+  });
+
+  it('keeps what was typed into notes', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderModal(onClose);
+
+    await user.type(screen.getByLabelText('Name'), 'Ramen alley, second time');
+    await user.type(
+      screen.getByLabelText('Notes'),
+      'https://example.com/ramen-alley — queue before 11',
+    );
+    await user.click(screen.getByRole('button', { name: 'Keep it' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    const entries = await api.get<{ entries: { title: string; notes: string | null }[] }>('/entries', {
+      params: { trip_id: TRIP_ID, kind: 'idea' },
+    });
+    const idea = entries.entries.find((e) => e.title === 'Ramen alley, second time');
+    expect(idea?.notes).toBe('https://example.com/ramen-alley — queue before 11');
   });
 
   it('does nothing on Cancel — no request is made and the field clears', async () => {
@@ -96,7 +132,7 @@ describe('NewIdeaModal', () => {
 
     try {
       renderModal(onClose);
-      await user.type(screen.getByLabelText("What's the idea?"), 'Something I will not keep');
+      await user.type(screen.getByLabelText('Name'), 'Something I will not keep');
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
     } finally {
       window.fetch = originalFetch;
@@ -114,6 +150,33 @@ describe('NewIdeaModal', () => {
   it('the Keep it button stays disabled with an empty name', () => {
     renderModal(vi.fn());
     expect(screen.getByRole('button', { name: 'Keep it' })).toBeDisabled();
+  });
+
+  /**
+   * The labels are plain nouns, and they are the same nouns the edit panel uses
+   * (EntryDetail.test.tsx asserts the other half). The two forms used to phrase
+   * the same question two different ways — "What's the idea?" here against
+   * "What is it?" there — which read as two different questions.
+   */
+  it('names its fields with nouns rather than asking questions', () => {
+    renderModal(vi.fn());
+
+    for (const label of ['Name', 'Short description', 'Category', 'Location', 'Address', 'Estimated duration', 'Notes']) {
+      expect(screen.getByLabelText(label)).toBeInTheDocument();
+    }
+    for (const asked of ["What's the idea?", 'What kind of thing?', 'How long does it take?', 'Where is it?', 'Anything worth remembering?']) {
+      expect(screen.queryByLabelText(asked)).not.toBeInTheDocument();
+    }
+  });
+
+  /** The description is the sentence you would say next if someone asked what
+   * the idea was, so it follows the name on both surfaces. */
+  it('puts the short description directly after the name', () => {
+    renderModal(vi.fn());
+    const dialog = screen.getByRole('dialog');
+    const order = Array.from(dialog.querySelectorAll('label')).map((l) => l.textContent?.trim());
+
+    expect(order.slice(0, 2)).toEqual(['Name', 'Short description']);
   });
 
   /**

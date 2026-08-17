@@ -4,21 +4,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { Select } from '../design/components/core/Select';
 import { useCanEdit } from '../auth/TripRoleContext';
-import { Drawer } from '../components/Drawer';
+import { Modal } from '../components/Modal';
 import { Field } from '../components/Field';
 import { Spinner } from '../components/Spinner';
-import { VoteControl } from '../components/VoteControl';
 import { useToast } from '../components/Toast';
-import {
-  useArchiveEntry,
-  useEntry,
-  useLiftEntry,
-  useRestoreEntry,
-  useUpdateEntry,
-} from '../api/entries';
-import { useVote } from '../api/votes';
+import { useEntry, useRestoreEntry, useUpdateEntry } from '../api/entries';
 import type { EntryCategory } from '../api/types';
-import { formatDuration, joinMeta } from '../lib/formatDates';
+import { formatDuration } from '../lib/formatDates';
 import styles from './EntryDetail.module.css';
 
 const CATEGORIES: EntryCategory[] = ['place', 'food', 'activity', 'lodging', 'transport', 'other'];
@@ -51,7 +43,7 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-export interface EntryDetailDrawerProps {
+export interface EntryDetailModalProps {
   entryId: number | undefined;
   onClose: () => void;
 }
@@ -59,13 +51,49 @@ export interface EntryDetailDrawerProps {
 /**
  * The detail panel itself, decoupled from the route.
  *
- * It is a drawer over whatever you were looking at — which only holds if there
- * is something underneath. Reached as a route it covers an empty page, because
- * /entries/:id renders nothing else; the board therefore raises this component
- * directly, over the board, and keeps its own URL. The editing surface is the
- * same one either way.
+ * It is a centred modal over whatever you were looking at — the same dialog
+ * "Add an idea" opens in (see NewIdeaModal.tsx), because opening an idea and
+ * writing one down are the same act at two moments and they should not arrive
+ * from two different edges of the screen. It used to slide in from the right as
+ * a <Drawer>; that read as a second surface parallel to the board rather than
+ * the one thing you had just pointed at.
+ *
+ * Being an overlay only holds if there is something underneath. Reached as a
+ * route it covers an empty page, because /entries/:id renders nothing else; the
+ * board therefore raises this component directly, over the board, and keeps its
+ * own URL. Both ways in from the board — a row in the idea list and a member in
+ * the bundle rail — go through TripBoard's single `editingId`, so they land in
+ * this same dialog. The editing surface is the same one either way.
+ *
+ * What it holds is the idea's own facts and nothing else. It used to open with
+ * a summary line — kind · place · how long — directly above the fields that say
+ * those same three things, and to close with the two ways of moving the idea
+ * somewhere else. Both are gone: the summary because a panel whose whole job is
+ * the facts should not preview them, and the two moves because lifting an idea
+ * out or setting it aside is something you do TO an idea, not something you
+ * write down ABOUT one. They live on the board, in the ⋯ menu on the idea's own
+ * row, beside Edit. Voting went the same way — deciding how much everyone wants
+ * this is not a thing you edit, and the board's rows are where it is read. So
+ * did the list of open todos, which is the checklist screen's subject and was
+ * only ever a read-only echo of it here.
+ *
+ * The heading says what the dialog is for rather than which idea it holds. It
+ * used to be the entry's own title, which meant the name was on the screen
+ * twice — once as the heading and again in the field you edit it in, the second
+ * one silently disagreeing with the first for as long as you were mid-word. The
+ * name now lives in exactly one place, the field, and the heading answers the
+ * question the panel actually raises: "Edit idea", or "Idea" for someone who
+ * cannot edit and is only reading it.
+ *
+ * One deliberate difference from "Add an idea": focus settles on the dialog
+ * itself rather than in the name field. Modal aims at the first control in its
+ * body once, on open, and on open this is still the spinner — but that is where
+ * it belongs anyway. A new idea opens for typing; an existing one opens for
+ * reading, and a cursor sitting in a title someone already wrote invites
+ * overwriting it (and raises a keyboard over the panel on a phone). Escape, Tab
+ * and the heading read the same either way.
  */
-export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawerProps) {
+export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalProps) {
   const { show } = useToast();
   // Raised over the board it belongs to, so the trip's role is already in the
   // tree. Opened at /entries/:id for a library idea there is no provider and no
@@ -74,10 +102,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
 
   const { data, isLoading, isError } = useEntry(entryId);
   const updateEntry = useUpdateEntry(entryId ?? 0);
-  const archiveEntry = useArchiveEntry();
   const restoreEntry = useRestoreEntry();
-  const liftEntry = useLiftEntry();
-  const vote = useVote(entryId ?? 0);
 
   const [draft, setDraft] = useState<Record<string, string>>({});
 
@@ -95,7 +120,6 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
       lat: entry.lat == null ? '' : String(entry.lat),
       lng: entry.lng == null ? '' : String(entry.lng),
       duration_minutes: entry.duration_minutes == null ? '' : String(entry.duration_minutes),
-      source_url: entry.source_url ?? '',
       notes: entry.notes ?? '',
     });
   }, [entry?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,34 +145,42 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
 
   if (isLoading) {
     return (
-      <Drawer open title="Opening" onClose={close}>
+      <Modal open title="Opening" onClose={close}>
         <Spinner label="Opening" />
-      </Drawer>
+      </Modal>
     );
   }
 
   if (isError || !entry || !data) {
     return (
-      <Drawer open title="Not here" onClose={close}>
+      <Modal open title="Not here" onClose={close}>
         <p className={styles.note}>
           That one isn&rsquo;t here. It may have been set aside — everything you kept is
           still safe.
         </p>
-      </Drawer>
+      </Modal>
     );
   }
 
-  const meta = joinMeta(
-    entry.category ?? undefined,
-    entry.location_name ?? undefined,
-    formatDuration(entry.duration_minutes) ?? undefined,
-  );
-
   return (
-    <Drawer open title={entry.title} onClose={close}>
+    <Modal
+      open
+      title={canEdit ? 'Edit idea' : 'Idea'}
+      onClose={close}
+      size="wide"
+      /* One button, and it does not say "Save". Every field here writes itself
+         on blur, so there is nothing held back to commit and nothing to cancel —
+         a Save/Cancel pair would promise an undo this panel cannot give. "Done"
+         says what it does, and it says it to a viewer too: they are finished
+         reading. Not "Close" — the dialog's own ✕ already carries that name, and
+         two buttons answering to it is one target too many to say out loud. */
+      actions={
+        <Button variant="quiet" onClick={close}>
+          Done
+        </Button>
+      }
+    >
       <div className={styles.body}>
-        {meta && <p className={styles.meta}>{meta}</p>}
-
         {entry.archived_at && (
           <div className={styles.asideNote}>
             {/* The sentence stays for everyone — that this was set aside is part
@@ -176,7 +208,7 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
             locked-out form is the thing being got rid of — see <Fact>. */}
         {canEdit ? (
           <>
-            <Field label="What is it?">
+            <Field label="Name">
               <input
                 className={styles.input}
                 value={draft.title ?? ''}
@@ -185,7 +217,11 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
               />
             </Field>
 
-            <Field label="Anything worth remembering?">
+            {/* Straight after the name, because it is the sentence you would
+                say next if someone asked what the idea was. It used to sit near
+                the bottom, under the coordinates, which put a latitude between
+                an idea and its own description. */}
+            <Field label="Short description">
               <textarea
                 className={styles.textarea}
                 rows={3}
@@ -195,45 +231,62 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
               />
             </Field>
 
-            <Field label="What kind of thing?">
-              {/* <Select>, not a bare <select> with .input: .input styles a text
-                  field, and a native select ignores that styling entirely unless
-                  something resets `appearance`. Field clones this child to inject
-                  id/aria-describedby, which Select spreads onto the real control. */}
-              <Select
-                value={draft.category ?? ''}
-                onChange={(e) => {
-                  setDraft((d) => ({ ...d, category: e.target.value }));
-                  save('category', e.target.value);
-                }}
-              >
-                <option value="">Not sure yet</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            {/* Two short facts to a line, which is what the extra width bought.
+                The grid collapses to one column under its own breakpoint, so a
+                phone still reads them in order. */}
+            <div className={styles.pair}>
+              <Field label="Category">
+                {/* <Select>, not a bare <select> with .input: .input styles a text
+                    field, and a native select ignores that styling entirely unless
+                    something resets `appearance`. Field clones this child to inject
+                    id/aria-describedby, which Select spreads onto the real control. */}
+                <Select
+                  value={draft.category ?? ''}
+                  onChange={(e) => {
+                    setDraft((d) => ({ ...d, category: e.target.value }));
+                    save('category', e.target.value);
+                  }}
+                >
+                  <option value="">Not sure yet</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
 
-            <Field label="Where is it?">
-              <input
-                className={styles.input}
-                placeholder="Name of the place"
-                value={draft.location_name ?? ''}
-                onChange={(e) => setDraft((d) => ({ ...d, location_name: e.target.value }))}
-                onBlur={(e) => save('location_name', e.target.value)}
-              />
-            </Field>
+              <Field label="Estimated duration" hint="In minutes">
+                <input
+                  className={styles.input}
+                  inputMode="numeric"
+                  value={draft.duration_minutes ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, duration_minutes: e.target.value }))}
+                  onBlur={(e) => save('duration_minutes', e.target.value)}
+                />
+              </Field>
+            </div>
 
-            <Field label="Address">
-              <input
-                className={styles.input}
-                value={draft.address ?? ''}
-                onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
-                onBlur={(e) => save('address', e.target.value)}
-              />
-            </Field>
+            <div className={styles.pair}>
+              <Field label="Location">
+                <input
+                  className={styles.input}
+                  placeholder="Name of the place"
+                  value={draft.location_name ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, location_name: e.target.value }))}
+                  onBlur={(e) => save('location_name', e.target.value)}
+                />
+              </Field>
+
+              <Field label="Address">
+                <input
+                  className={styles.input}
+                  value={draft.address ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
+                  onBlur={(e) => save('address', e.target.value)}
+                />
+              </Field>
+            </div>
 
             <div className={styles.pair}>
               <Field label="Latitude">
@@ -256,30 +309,16 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
               </Field>
             </div>
 
-            <Field label="How long does it take?" hint="In minutes">
-              <input
-                className={styles.input}
-                inputMode="numeric"
-                value={draft.duration_minutes ?? ''}
-                onChange={(e) => setDraft((d) => ({ ...d, duration_minutes: e.target.value }))}
-                onBlur={(e) => save('duration_minutes', e.target.value)}
-              />
-            </Field>
-
-            <Field label="Where did you find it?">
-              <input
-                className={styles.input}
-                placeholder="Paste a link"
-                value={draft.source_url ?? ''}
-                onChange={(e) => setDraft((d) => ({ ...d, source_url: e.target.value }))}
-                onBlur={(e) => save('source_url', e.target.value)}
-              />
-            </Field>
-
+            {/* The last box, and deliberately the only open one. "Where did you
+                find it?" used to be a field of its own — one labelled box for
+                one URL, which is a lot of panel for a thing most ideas do not
+                have. The placeholder says the link belongs here now, along with
+                whatever else did not deserve a field. */}
             <Field label="Notes">
               <textarea
                 className={styles.textarea}
-                rows={3}
+                rows={4}
+                placeholder="Anything else — a link to where you found it, opening hours, who to ask."
                 value={draft.notes ?? ''}
                 onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
                 onBlur={(e) => save('notes', e.target.value)}
@@ -289,98 +328,30 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
         ) : (
           <>
             {/* Read off the entry, not the draft: the draft is the edit buffer,
-                and there is no editing going on here. */}
-            <Fact label="What is it?" value={entry.title} />
-            <Fact label="Anything worth remembering?" value={entry.description} />
-            <Fact label="What kind of thing?" value={entry.category} />
-            <Fact label="Where is it?" value={entry.location_name} />
-            <Fact label="Address" value={entry.address} />
+                and there is no editing going on here. Same facts in the same
+                order and the same two-up grid as the fields above. */}
+            <Fact label="Name" value={entry.title} />
+            <Fact label="Short description" value={entry.description} />
+
+            <div className={styles.pair}>
+              <Fact label="Category" value={entry.category} />
+              {/* "2 hr", not "120". The minutes box exists because minutes are
+                  what you type; reading it, how long it takes is a duration. */}
+              <Fact label="Estimated duration" value={formatDuration(entry.duration_minutes)} />
+            </div>
+
+            <div className={styles.pair}>
+              <Fact label="Location" value={entry.location_name} />
+              <Fact label="Address" value={entry.address} />
+            </div>
 
             <div className={styles.pair}>
               <Fact label="Latitude" value={entry.lat == null ? null : String(entry.lat)} />
               <Fact label="Longitude" value={entry.lng == null ? null : String(entry.lng)} />
             </div>
 
-            {/* "2 hr", not "120". The minutes box exists because minutes are
-                what you type; reading it, the answer to how long it takes is
-                the same one the meta line at the top of the drawer gives. */}
-            <Fact label="How long does it take?" value={formatDuration(entry.duration_minutes)} />
-
-            <Fact
-              label="Where did you find it?"
-              value={
-                entry.source_url && (
-                  // A real link, since following it is the only thing anyone
-                  // ever wanted this field for. New tab: the drawer is an
-                  // overlay on a board, and navigating away would close both.
-                  <a className={styles.link} href={entry.source_url} target="_blank" rel="noreferrer">
-                    {entry.source_url}
-                  </a>
-                )
-              }
-            />
-
             <Fact label="Notes" value={entry.notes} />
           </>
-        )}
-
-        <section className={styles.section}>
-          {/* A viewer is not being asked, so the heading stops asking. The
-              question mark is the whole difference between a ballot and a
-              result. */}
-          <h3 className={styles.sectionLabel}>
-            {canEdit ? 'How much do you want this?' : 'How much everyone wants this'}
-          </h3>
-          {/* Not greyed-out stops: five refusing radios read as being locked
-              out of the vote rather than as its result. A viewer gets the
-              average and the headcount, and the per-person list below — which
-              everyone sees — is where the substance of "what others said"
-              actually lives. Voting is a write on the backend too
-              (VotePolicy#create? is write?), so nothing here is decoration. */}
-          <VoteControl
-            canEdit={canEdit}
-            value={entry.my_vote}
-            average={entry.vote_tally.average}
-            count={entry.vote_tally.count}
-            aria-label={
-              canEdit ? `Your rating for ${entry.title}` : `Everyone's rating for ${entry.title}`
-            }
-            onChange={(score) =>
-              vote.mutate(score, {
-                onError: () => show("That didn't save. It's still here — try again.", 'error'),
-              })
-            }
-          />
-          {data.votes.length > 0 && (
-            <ul className={styles.voteList}>
-              {data.votes.map((v) => (
-                <li key={v.id} className={styles.voteItem}>
-                  <span>{v.user_name ?? 'Someone'}</span>
-                  <span className={styles.voteScore}>
-                    {v.score > 0 ? `+${v.score}` : v.score}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        {data.parents.length > 0 && (
-          <section className={styles.section}>
-            <h3 className={styles.sectionLabel}>Appears in</h3>
-            <ul className={styles.linkList}>
-              {data.parents.map((parent) => (
-                <li key={parent.id}>
-                  <Link
-                    className={styles.link}
-                    to={parent.kind === 'trip' ? `/trips/${parent.id}` : `/entries/${parent.id}`}
-                  >
-                    {parent.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
         )}
 
         {data.children.length > 0 && (
@@ -398,76 +369,19 @@ export function EntryDetailDrawer({ entryId, onClose: close }: EntryDetailDrawer
           </section>
         )}
 
-        {data.todos.length > 0 && (
-          <section className={styles.section}>
-            <h3 className={styles.sectionLabel}>To do</h3>
-            <ul className={styles.todoList}>
-              {data.todos.map((todo) => (
-                <li key={todo.id} className={todo.done_at ? styles.todoDone : undefined}>
-                  {todo.title}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {/* Both labels name where the idea ends up, and both carry a line
-            saying what that costs. The board's ⋯ menu and its bulk bar are
-            popups with room for a label and nothing else; the drawer has the
-            room, so this is where the whole sentence gets said. */}
-        <section className={styles.actions}>
-          {canEdit && entry.kind === 'idea' && (
-            <div className={styles.action}>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  liftEntry.mutate(entry.id, {
-                    onSuccess: () =>
-                      show('Lifted out. It&rsquo;s a trip of its own now.', 'success'),
-                    onError: () => show("That didn't save. It's still here — try again.", 'error'),
-                  })
-                }
-              >
-                Make it a trip of its own
-              </Button>
-              <p className={styles.note}>
-                Takes it off this trip. It keeps everything it has and gets a board of its own.
-              </p>
-            </div>
-          )}
-          {canEdit && !entry.archived_at && (
-            <div className={styles.action}>
-              <Button
-                variant="quiet"
-                onClick={() =>
-                  archiveEntry.mutate(entry.id, {
-                    onSuccess: () => show("Set aside. It's still here.", 'success'),
-                    onError: () => show("That didn't save. It's still here — try again.", 'error'),
-                  })
-                }
-              >
-                Move to Set aside
-              </Button>
-              <p className={styles.note}>
-                Stays on this trip, out of the idea list. The Set aside list at the foot of the
-                board brings it back.
-              </p>
-            </div>
-          )}
-        </section>
       </div>
-    </Drawer>
+    </Modal>
   );
 }
 
 /**
- * /entries/:id — the same drawer, opened by URL. This is the deep-link and
+ * /entries/:id — the same modal, opened by URL. This is the deep-link and
  * back-button path (the library screen still navigates here); closing returns
- * you to wherever you came from. The board opens the drawer in place instead,
- * so editing an idea never leaves the ideas you were reading.
+ * you to wherever you came from. The board opens it in place instead, so
+ * editing an idea never leaves the ideas you were reading.
  */
 export function EntryDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <EntryDetailDrawer entryId={id ? Number(id) : undefined} onClose={() => navigate(-1)} />;
+  return <EntryDetailModal entryId={id ? Number(id) : undefined} onClose={() => navigate(-1)} />;
 }
