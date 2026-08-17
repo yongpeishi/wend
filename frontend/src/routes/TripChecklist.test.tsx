@@ -87,16 +87,19 @@ describe('TripChecklist', () => {
     ).toHaveTextContent('+ Deadline');
   });
 
-  it('puts a deadline on a line that had none, and keeps it', async () => {
+  it('puts a deadline on a line that had none once you leave the field, and keeps it', async () => {
     const user = userEvent.setup();
     renderChecklist();
     await screen.findByText(ENTRY_TODO);
 
     await user.click(screen.getByRole('button', { name: `Deadline for ${ENTRY_TODO}` }));
     // A date input is filled in by the browser's own control, not by keystrokes.
+    // Its `change` only drafts — a half-typed date fires one too — so it is
+    // leaving the field that saves.
     fireEvent.change(screen.getByLabelText(`Deadline for ${ENTRY_TODO}`), {
       target: { value: '2026-11-05' },
     });
+    fireEvent.blur(screen.getByLabelText(`Deadline for ${ENTRY_TODO}`));
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: `Deadline for ${ENTRY_TODO}` })).toHaveTextContent(
