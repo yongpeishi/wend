@@ -99,14 +99,14 @@ describe('AppLayout', () => {
     expect(screen.getByText('Plan')).toBeInTheDocument();
 
     const tripNav = screen.getByRole('navigation', { name: 'Trip views' });
-    // The order you plan in: ideas, then days, then what to do before you go,
-    // then the finished plan. Map keeps its place at the end.
+    // The order you plan in: ideas, then days, then where those days sit on the
+    // ground, then what to do before you go, then the finished plan.
     expect(within(tripNav).getAllByRole('link').map((link) => link.textContent)).toEqual([
       'Ideas',
       'Itinerary',
+      'Map',
       'Checklist',
       'Final schedule',
-      'Map',
     ]);
     expect(within(tripNav).getByRole('link', { name: 'Ideas' })).toHaveAttribute('href', '/trips/1');
     expect(within(tripNav).getByRole('link', { name: 'Itinerary' })).toHaveAttribute(
