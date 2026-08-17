@@ -1,0 +1,11 @@
+/* Three short paragraphs, one fact each. Modal.module.css already sets the
+   body's size and colour, so this only has to space the lines and hold them to
+   a readable measure. */
+.line {
+  margin: 0 0 var(--space-3);
+  max-width: var(--measure-body);
+}
+
+.line:last-child {
+  margin-bottom: 0;
+}

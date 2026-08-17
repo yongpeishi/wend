@@ -1,0 +1,79 @@
+/* The day list and the rail, side by side — the design's option 3b. The list
+   is the working surface and takes every pixel the rail does not; the rail is
+   the 300px it draws itself (UnplacedRail.module.css), never a proportion,
+   because its rows are one line of title and do not read better wider.
+
+   No gap between them: the rail carries its own border-left and card ground,
+   so a gap here would leave a strip of paper beside that rule and turn an edge
+   of the screen into a floating box.
+
+   Full body width, and none of the shell's gutter, for that same reason one
+   level up. TripLayout pads every screen by --gutter-screen and caps it at
+   1360px, and both of those were landing UNDER this screen: the rail's rule
+   stopped 20px short of the window (a floating box, exactly what the zero gap
+   exists to prevent) and the day rows sat ~52px in from the page edge, which
+   is what read as ".list's padding not working" — two paddings stacked, only
+   one of them this file's. --screen-measure is TripLayout's opt-out; the
+   negative margin cancels its gutter exactly, so this fills the shell's border
+   box and no more, and .list's padding is the only padding left. */
+.screen {
+  --screen-measure: none;
+  margin-inline: calc(var(--gutter-screen) * -1);
+  display: flex;
+  align-items: stretch;
+  min-height: 60vh;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The header brings its own card ground and rule, so the days start below it
+   on paper. The horizontal padding matches the header's so the day rows line
+   up with the title above them.
+
+   The top is --space-6, matching ItineraryHeader's own top padding, so the
+   block reads as one frame: 24px above the title, 24px below the rule. It used
+   to ask for --space-5, which the scale does not define — the 4px scale skips
+   5 on purpose — and one bad custom property invalidates the WHOLE shorthand
+   at computed-value time, so the browser dropped the declaration and the list
+   had no padding at all. Do not reintroduce a --space-5 token to fix this.
+
+   --space-4 was the other candidate and is the wrong one: at 16px the first
+   day row would sit only 4px further from the rule than the rows sit from each
+   other (gap: --space-3), so the list would never read as having started.
+   --space-6 is twice the row gap, and the --space-12 bottom is twice it again. */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-8) var(--space-12);
+}
+
+/* Narrow enough that 300px of rail would leave the days unreadable: the rail
+   goes under the list instead of beside it, full width, and its left rule
+   becomes a top one. Reaching into the rail's own element rather than a class
+   of ours is deliberate — it is the only <aside> here, and the alternative is
+   a width prop that exists only for this breakpoint. */
+@media (max-width: 900px) {
+  .screen {
+    flex-direction: column;
+  }
+
+  .screen > aside {
+    width: auto;
+    border-left: none;
+    border-top: var(--border-width) solid var(--border-subtle);
+  }
+
+  /* Only the bottom relaxes. The sides stay --space-8 so the day rows keep
+     lining up with ItineraryHeader's title at every width — dropping them to
+     the screen gutter used to be free, because TripLayout's own padding made
+     up the difference, and now it would just break the alignment. */
+  .list {
+    padding: var(--space-6) var(--space-8) var(--space-8);
+  }
+}

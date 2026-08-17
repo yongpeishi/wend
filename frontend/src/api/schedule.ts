@@ -14,11 +14,25 @@ export function useSchedule(tripId: number | undefined, day?: string) {
   });
 }
 
+/**
+ * Schedule items are the itinerary's rows too, read through a different
+ * endpoint — so writing one has to invalidate both screens' queries, or the
+ * itinerary keeps showing a day that no longer has that item on it.
+ */
 function useInvalidateSchedule() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: queryKeys.schedule.all });
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.schedule.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.itinerary.all });
+  };
 }
 
+/**
+ * `item` may carry `day_version_id` to place the item in a named version of
+ * the day. Left out, the server resolves it to that day's first live version,
+ * creating the day and its "Version A" if this is the first thing on it —
+ * which is what the pre-itinerary callers (TripSchedule.tsx) rely on.
+ */
 export function useCreateScheduleItem(tripId: number) {
   const invalidate = useInvalidateSchedule();
   return useMutation({
@@ -28,6 +42,10 @@ export function useCreateScheduleItem(tripId: number) {
   });
 }
 
+/**
+ * Also accepts `day_version_id`. Changing `day` without naming one moves the
+ * item to the new date's first live version.
+ */
 export function useUpdateScheduleItem(id: number) {
   const invalidate = useInvalidateSchedule();
   return useMutation({

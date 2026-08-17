@@ -11,6 +11,7 @@ class ScheduleItemSerializer
         "entry_id" => item.entry_id,
         "chosen_entry_id" => item.chosen_entry_id,
         "day" => item.day&.iso8601,
+        "day_version_id" => item.day_version_id,
         "starts_at_minutes" => item.starts_at_minutes,
         "ends_at_minutes" => item.ends_at_minutes,
         "note" => item.note,

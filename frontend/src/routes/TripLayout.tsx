@@ -10,7 +10,7 @@ import { SharePanel } from '../features/trips/SharePanel';
 import { formatTripDates } from '../lib/formatDates';
 import styles from './TripLayout.module.css';
 
-const TAB_KEYS = ['board', 'map', 'schedule', 'checklist'];
+const TAB_KEYS = ['board', 'itinerary', 'checklist', 'schedule', 'map'];
 
 const SHARE = 'Bring someone along';
 

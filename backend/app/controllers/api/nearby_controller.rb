@@ -45,7 +45,10 @@ module Api
       end
 
       if exclude_scheduled && distances.present?
-        scheduled_ids = ScheduleItem.where(trip_id: trip.id)
+        # `placed` for the same reason as Entry#scheduled: only a live version
+        # places anything, so an entry left in an archived one is still nearby
+        # and still on offer.
+        scheduled_ids = ScheduleItem.where(trip_id: trip.id).placed
                                      .where("entry_id IN (:ids) OR chosen_entry_id IN (:ids)", ids: distances.keys)
                                      .pluck(:entry_id, :chosen_entry_id).flatten.compact.to_set
         distances = distances.reject { |id, _| scheduled_ids.include?(id) }

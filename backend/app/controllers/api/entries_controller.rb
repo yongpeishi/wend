@@ -32,7 +32,10 @@ module Api
 
       if params[:scheduled].present? && trip_id
         want_scheduled = truthy?(params[:scheduled])
-        scheduled_ids = ScheduleItem.where(trip_id: trip_id)
+        # Only live placements count: an entry that survives nowhere but an
+        # archived version is unplaced, which is exactly how the itinerary
+        # screen treats it -- back on the rail.
+        scheduled_ids = ScheduleItem.where(trip_id: trip_id).placed
                                      .where("entry_id IN (:ids) OR chosen_entry_id IN (:ids)", ids: entries.map(&:id).presence || [0])
                                      .pluck(:entry_id, :chosen_entry_id).flatten.compact.to_set
         entries = entries.select { |e| scheduled_ids.include?(e.id) == want_scheduled }
@@ -75,8 +78,35 @@ module Api
       render json: { errors: e.record.errors.to_hash(true) }, status: :unprocessable_entity
     end
 
+    # Moving a trip's dates moves its plan with them: see TripDateShift. The
+    # attempt is its own preview -- a change that would push planned days off
+    # the end of the trip is refused with the list of them, and the client
+    # re-sends with `confirm_dropped_days: true` once the user has said yes.
     def update
-      if @entry.update(entry_params)
+      shift = TripDateShift.for(@entry, entry_params)
+
+      if shift.dropped_days? && !truthy?(params[:confirm_dropped_days])
+        render json: {
+          error: "dropped_days_need_confirmation",
+          dropped_days: shift.dropped_days.map(&:iso8601),
+          # Ideas coming back to the rail, not rows destroyed -- the warning
+          # counts what the user gets back. The wire name is the older one the
+          # client already reads; TripDateShift#dropped_entry_count says what
+          # it is.
+          dropped_item_count: shift.dropped_entry_count
+        }, status: :unprocessable_entity
+        return
+      end
+
+      saved = false
+      ActiveRecord::Base.transaction do
+        saved = @entry.update(entry_params)
+        raise ActiveRecord::Rollback unless saved
+
+        shift.apply!
+      end
+
+      if saved
         render json: { entry: EntrySerializer.one(@entry, current_user: current_user) }
       else
         render json: { errors: @entry.errors.to_hash(true) }, status: :unprocessable_entity

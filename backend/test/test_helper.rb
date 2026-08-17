@@ -27,8 +27,8 @@ module ActiveSupport
 
     attr_writer :default_creator
 
-    def create_trip(title: "Trip", created_by: nil)
-      Entry.create!(kind: "trip", title: title, created_by: created_by || default_creator)
+    def create_trip(title: "Trip", created_by: nil, **attrs)
+      Entry.create!(kind: "trip", title: title, created_by: created_by || default_creator, **attrs)
     end
 
     def create_idea(title: "Idea", category: "place", created_by: nil, **attrs)

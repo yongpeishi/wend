@@ -13,6 +13,7 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
     OwnerBundleDinner
     OwnerTodoVisa
     OwnerNoteAboutTheApp
+    OwnerLodgingRyokan
     owner-of-everything@example.com
   ].freeze
 
@@ -28,6 +29,13 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
     @todo = Todo.create!(title: "OwnerTodoVisa", trip: @trip)
     @item = ScheduleItem.create!(trip: @trip, entry: @idea, day: "2026-04-01", starts_at_minutes: 540)
     @feedback = Feedback.create!(user: @owner, message: "OwnerNoteAboutTheApp")
+
+    # The owner's itinerary for that date, so the day/version routes have a real
+    # row to be turned away from. The lodging label is a trace of its own: if a
+    # day ever leaks, it leaks with this attached.
+    @trip_day = TripDay.ensure!(trip_id: @trip.id, day: "2026-04-01")
+    @trip_day.update!(lodging_label: "OwnerLodgingRyokan")
+    @version = @trip_day.first_live_version
 
     sign_in_as(@stranger)
   end
@@ -127,6 +135,22 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
         patch "/api/schedule_items/#{@item.id}", params: { schedule_item: { starts_at_minutes: 600 } }, as: :json
       } ],
       "api/schedule_items#destroy" => [ :denied, -> { delete "/api/schedule_items/#{@item.id}" } ],
+
+      "api/itineraries#index" => [ :denied, -> { get "/api/trips/#{@trip.id}/itinerary" } ],
+      "api/itineraries#swap_days" => [ :denied, lambda {
+        post "/api/trips/#{@trip.id}/itinerary/swap_days",
+             params: { a: "2026-04-01", b: "2026-04-02" }, as: :json
+      } ],
+
+      "api/trip_days#update" => [ :denied, lambda {
+        patch "/api/trips/#{@trip.id}/days/2026-04-01",
+              params: { trip_day: { lodging_label: "Snuck in" } }, as: :json
+      } ],
+
+      "api/day_versions#create" => [ :denied, -> { post "/api/trips/#{@trip.id}/days/2026-04-01/versions" } ],
+      "api/day_versions#keep" => [ :denied, -> { post "/api/day_versions/#{@version.id}/keep" } ],
+      "api/day_versions#restore" => [ :denied, -> { post "/api/day_versions/#{@version.id}/restore" } ],
+      "api/day_versions#destroy" => [ :denied, -> { delete "/api/day_versions/#{@version.id}" } ],
 
       "api/nearby#index" => [ :denied, lambda {
         get "/api/trips/#{@trip.id}/nearby", params: { lat: 35.0, lng: 135.75, radius_km: 5 }

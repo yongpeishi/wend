@@ -12,6 +12,16 @@ import type { TripRole } from '../api/types';
 import type { MapViewProps } from '../features/map/MapView';
 
 /**
+ * The shared fixture grew with the itinerary work — seven ideas across two
+ * populated bundles, where the board used to see two ideas and an empty one —
+ * so every render in this file paints several times the DOM it did, and the map
+ * cases string half a dozen user events on top of that. The 5s default is no
+ * longer comfortable here on a loaded machine; nothing about these tests is
+ * meant to be a performance assertion.
+ */
+vi.setConfig({ testTimeout: 15_000 });
+
+/**
  * jsdom has no layout engine, so a real Leaflet map cannot be mounted here (see
  * MapView.tsx's own doc comment) — the seam is mocked to a stub that exposes
  * every prop this route wires up: the pins with the tone the board decided for
@@ -85,13 +95,25 @@ function renderBoard(role?: TripRole) {
   );
 }
 
-// Seeded trip 1 (src/mocks/db.ts): Nanzen-ji (place, 35.0116/135.7681) and
-// Kiyamachi (activity, 35.0086/135.7717), plus the empty bundle "Day one dinner
-// options". The simulated pan above is a box around Nanzen-ji alone — Kiyamachi
-// sits just south of it.
+/**
+ * Seeded trip 1 (src/mocks/db.ts) holds SEVEN ideas, and only two of them are
+ * located: Nanzen-ji (place, 35.0116/135.7681) and Kiyamachi (activity,
+ * 35.0086/135.7717). The other five are bundle members the itinerary fixture
+ * needs, and it gives them no coordinates on purpose — they are things to do,
+ * not places to pin. That asymmetry is why the counts below run "6 of 7": the
+ * viewport can only ever cut the located pair, so five ideas are permanently
+ * un-cuttable and the map's own count line is doing real arithmetic rather than
+ * splitting a two-item list in half.
+ *
+ * The simulated pan above is a box around Nanzen-ji alone — Kiyamachi sits just
+ * south of it. Kiyamachi is also a member of "A night out in Pontocho", so its
+ * pin reads `bundled` whatever the viewport is doing; a test that needs an
+ * unbundled located idea adds one of its own.
+ */
 const TRIP_ID = 1;
 const NANZENJI_ID = 2;
-const DINNER_BUNDLE_ID = 4;
+const MARKET_BUNDLE_ID = 4;
+const MARKET_BUNDLE_TITLE = 'Nishiki market crawl';
 
 /**
  * Pin buttons carry their tone in the label, so a pin is matched by prefix
@@ -107,6 +129,29 @@ function pin(title: string): RegExp {
 
 async function addIdea(entry: Record<string, unknown>) {
   await api.post('/entries', { entry: { kind: 'idea', ...entry }, parent_id: TRIP_ID });
+}
+
+/** Set aside every idea on the trip except the named one — read off the API
+ * rather than off a list of seeded ids, so it keeps telling the truth as the
+ * shared fixture grows. */
+async function setAsideEverythingBut(keptTitle: string) {
+  const { entries } = await api.get<{ entries: { id: number; title: string }[] }>('/entries', {
+    params: { trip_id: TRIP_ID, kind: 'idea' },
+  });
+  for (const entry of entries.filter((e) => e.title !== keptTitle)) {
+    await api.delete(`/entries/${entry.id}`);
+  }
+}
+
+/**
+ * The ideas column on its own. The bundle rail on the right lists each bundle's
+ * members by title, and six of this trip's seven ideas are in a bundle — so an
+ * unscoped `getByText('Kiyamachi')` matches twice, and only one of the two is
+ * the list the map is narrowing. Anything asking "is this idea still in the
+ * list?" has to ask it of this element.
+ */
+function ideas(): HTMLElement {
+  return screen.getByRole('region', { name: 'Ideas' });
 }
 
 /** Open the map and wait for it — every map assertion starts here. */
@@ -140,13 +185,13 @@ describe('TripBoard — showing and hiding the map', () => {
     await showMap(user);
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
-    expect(await screen.findByText(/1 of 2 ideas in view/)).toBeInTheDocument();
+    expect(await screen.findByText(/6 of 7 ideas in view/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Hide map' }));
 
     expect(screen.queryByTestId('map-view')).not.toBeInTheDocument();
-    expect(screen.getByText(/Showing 2 of 2/)).toBeInTheDocument();
-    expect(screen.getByText('Kiyamachi')).toBeInTheDocument();
+    expect(screen.getByText(/Showing 7 of 7/)).toBeInTheDocument();
+    expect(within(ideas()).getByText('Kiyamachi')).toBeInTheDocument();
     expect(screen.queryByRole('switch', { name: 'Follow the map' })).not.toBeInTheDocument();
   });
 
@@ -158,8 +203,8 @@ describe('TripBoard — showing and hiding the map', () => {
     await screen.findByText('Nanzen-ji');
     await showMap(user);
 
-    expect(screen.getByText(/Showing 2 of 2/)).toBeInTheDocument();
-    expect(screen.getByText('Kiyamachi')).toBeInTheDocument();
+    expect(screen.getByText(/Showing 7 of 7/)).toBeInTheDocument();
+    expect(within(ideas()).getByText('Kiyamachi')).toBeInTheDocument();
   });
 });
 
@@ -172,11 +217,11 @@ describe('TripBoard — the map narrows the list', () => {
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
 
-    expect(await screen.findByText(/1 of 2 ideas in view/)).toBeInTheDocument();
+    expect(await screen.findByText(/6 of 7 ideas in view/)).toBeInTheDocument();
     expect(screen.getByText(/1 just off-screen/)).toBeInTheDocument();
     // One line, not two: the old phrasing is gone rather than sitting under it.
-    expect(screen.queryByText(/Showing 2 of 2/)).not.toBeInTheDocument();
-    expect(screen.queryByText('Kiyamachi')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Showing 7 of 7/)).not.toBeInTheDocument();
+    expect(within(ideas()).queryByText('Kiyamachi')).not.toBeInTheDocument();
   });
 
   it('says on the map how much is outside the view, and pluralises it properly', async () => {
@@ -202,12 +247,12 @@ describe('TripBoard — the map narrows the list', () => {
     await screen.findByText('Nanzen-ji');
     await showMap(user);
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
-    await screen.findByText(/1 of 2 ideas in view/);
+    await screen.findByText(/6 of 7 ideas in view/);
 
     await user.click(screen.getByRole('switch', { name: 'Follow the map' }));
 
-    expect(await screen.findByText(/Showing 2 of 2/)).toBeInTheDocument();
-    expect(screen.getByText('Kiyamachi')).toBeInTheDocument();
+    expect(await screen.findByText(/Showing 7 of 7/)).toBeInTheDocument();
+    expect(within(ideas()).getByText('Kiyamachi')).toBeInTheDocument();
     expect(screen.getByText('The list is not following the map')).toBeInTheDocument();
   });
 
@@ -250,18 +295,26 @@ describe('TripBoard — the map narrows the list', () => {
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
 
-    expect(await screen.findByText(/2 of 3 ideas in view/)).toBeInTheDocument();
+    // Eight ideas now, and the pan puts exactly one of them — Kiyamachi, the
+    // only located idea outside the box — off-screen. The brand-new one has no
+    // coordinates at all, so it stays whatever the map is looking at.
+    expect(await screen.findByText(/7 of 8 ideas in view/)).toBeInTheDocument();
     expect(screen.getByText('Buy a rail pass')).toBeInTheDocument();
-    expect(screen.queryByText('Kiyamachi')).not.toBeInTheDocument();
+    expect(within(ideas()).queryByText('Kiyamachi')).not.toBeInTheDocument();
   });
 
   // Panning somewhere empty is a normal thing to do, and an empty column under a
   // count line reads as a page that failed to load.
   it('says something when the view holds nothing at all', async () => {
-    await api.delete(`/entries/${NANZENJI_ID}`); // set aside the only idea inside the simulated view
+    // The viewport only ever cuts LOCATED ideas, so emptying the list means
+    // setting aside everything a pan cannot touch: the five coordinate-free
+    // ideas, plus Nanzen-ji, the one located idea inside the simulated box.
+    // Kiyamachi is left standing and off-screen, so the list is empty because of
+    // where the map is looking and not because the trip is.
+    await setAsideEverythingBut('Kiyamachi');
     const user = userEvent.setup();
     renderBoard();
-    await screen.findByText('Kiyamachi');
+    await within(ideas()).findByText('Kiyamachi');
     await showMap(user);
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
@@ -274,25 +327,36 @@ describe('TripBoard — the map narrows the list', () => {
 
 describe('TripBoard — the pins', () => {
   it('draws a pin per located idea, toned by where it stands', async () => {
+    // Of the fixture's two located ideas one is already bundled (Kiyamachi), so
+    // a third, unbundled place west of the simulated box is what gives the
+    // view-dependent tones something to move between.
+    await addIdea({ title: 'Arashiyama bamboo grove', category: 'place', lat: 35.017, lng: 135.672 });
     const user = userEvent.setup();
     renderBoard();
-    await screen.findByText('Nanzen-ji');
+    await screen.findByText('Arashiyama bamboo grove');
     await showMap(user);
 
-    // No viewport reported yet: everything is in view, nothing is bundled.
+    // Three located ideas, three pins, and no more: the five coordinate-free
+    // ideas on this trip are on the list only.
+    expect(screen.getAllByRole('button', { name: /\((inView|offView|bundled)\)$/ })).toHaveLength(3);
+    // No viewport reported yet, so nothing can be off-view — but "bundled" is a
+    // fact about the idea, not about the map, and is already true.
     expect(screen.getByRole('button', { name: 'Nanzen-ji (inView)' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kiyamachi (inView)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Arashiyama bamboo grove (inView)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kiyamachi (bundled)' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
 
     // Cut from the list, still on the map — panning must not delete the pins
     // you are panning towards.
-    expect(await screen.findByRole('button', { name: 'Kiyamachi (offView)' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Arashiyama bamboo grove (offView)' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nanzen-ji (inView)' })).toBeInTheDocument();
+    // Kiyamachi is outside the box too, and bundled still wins the tone.
+    expect(screen.getByRole('button', { name: 'Kiyamachi (bundled)' })).toBeInTheDocument();
   });
 
   it('tones an already-bundled idea as bundled, whatever the view is doing', async () => {
-    await api.post(`/entries/${DINNER_BUNDLE_ID}/links`, { child_id: NANZENJI_ID });
+    await api.post(`/entries/${MARKET_BUNDLE_ID}/links`, { child_id: NANZENJI_ID });
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
@@ -369,14 +433,14 @@ describe('TripBoard — select mode', () => {
     await user.click(screen.getByRole('button', { name: 'Select' }));
     await user.click(screen.getByRole('checkbox', { name: 'Select Nanzen-ji' }));
     await user.click(screen.getByRole('button', { name: 'Add to a bundle' }));
-    await user.click(screen.getByRole('button', { name: 'Day one dinner options' }));
+    await user.click(screen.getByRole('button', { name: MARKET_BUNDLE_TITLE }));
 
-    expect(await screen.findByText('Added 1 idea to Day one dinner options.')).toBeInTheDocument();
+    expect(await screen.findByText(`Added 1 idea to ${MARKET_BUNDLE_TITLE}.`)).toBeInTheDocument();
     // The ideas have gone where they were going, so the mode ends with them.
     await waitFor(() => expect(screen.getByRole('button', { name: 'Select' })).toBeInTheDocument());
     expect(screen.queryByText('1 idea selected')).not.toBeInTheDocument();
 
-    const bundle = await api.get<{ children: { id: number }[] }>(`/entries/${DINNER_BUNDLE_ID}`);
+    const bundle = await api.get<{ children: { id: number }[] }>(`/entries/${MARKET_BUNDLE_ID}`);
     expect(bundle.children.map((child) => child.id)).toContain(NANZENJI_ID);
   });
 
@@ -406,15 +470,17 @@ describe('TripBoard — filters compose with the map', () => {
     await user.click(screen.getByRole('button', { name: /^Filter/ }));
     await user.click(screen.getByRole('button', { name: 'Place' }));
 
-    expect(await screen.findByText(/Showing 1 of 3/)).toBeInTheDocument();
+    // Eight ideas on the trip; Nanzen-ji is the only "place" among them.
+    expect(await screen.findByText(/Showing 1 of 8/)).toBeInTheDocument();
     // Off the list AND off the map: one narrowing, both halves of the screen.
     expect(screen.queryByText('Ramen alley')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: pin('Ramen alley') })).not.toBeInTheDocument();
 
     // A second chip adds to the first rather than replacing it — the 012
-    // behaviour, still intact with the map up.
+    // behaviour, still intact with the map up. Food adds Ramen alley and the
+    // three seeded eating ideas to the one place.
     await user.click(screen.getByRole('button', { name: 'Food' }));
-    expect(await screen.findByText(/Showing 2 of 3/)).toBeInTheDocument();
+    expect(await screen.findByText(/Showing 5 of 8/)).toBeInTheDocument();
     expect(screen.getByText('Ramen alley')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: pin('Ramen alley') })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: pin('Nanzen-ji') })).toBeInTheDocument();
@@ -430,7 +496,8 @@ describe('TripBoard — filters compose with the map', () => {
 
     await user.click(screen.getByRole('button', { name: /^Filter/ }));
     await user.click(screen.getByRole('button', { name: 'Place' }));
-    await screen.findByText(/Showing 2 of 3/);
+    // Two "place" ideas out of the trip's eight: Nanzen-ji and the new one.
+    await screen.findByText(/Showing 2 of 8/);
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
 
@@ -473,10 +540,13 @@ describe('TripBoard — as a viewer', () => {
   it('still shows every idea, every bundle and every count', async () => {
     renderBoard('viewer');
 
-    expect(await screen.findByText('Nanzen-ji')).toBeInTheDocument();
-    expect(screen.getByText('Kiyamachi')).toBeInTheDocument();
-    expect(screen.getByText('Day one dinner options')).toBeInTheDocument();
-    expect(screen.getByText(/Showing 2 of 2/)).toBeInTheDocument();
+    await screen.findByText('Nanzen-ji');
+    // Scoped to the ideas column: the bundle rail lists members by title too --
+    // see `ideas()`.
+    expect(within(ideas()).getByText('Nanzen-ji')).toBeInTheDocument();
+    expect(within(ideas()).getByText('Kiyamachi')).toBeInTheDocument();
+    expect(screen.getByText('A night out in Pontocho')).toBeInTheDocument();
+    expect(screen.getByText(/Showing 7 of 7/)).toBeInTheDocument();
   });
 
   // Filtering, grouping and the map decide what is on screen, which is the whole
@@ -492,7 +562,9 @@ describe('TripBoard — as a viewer', () => {
 
     await user.click(screen.getByRole('button', { name: /^Filter/ }));
     await user.click(screen.getByRole('button', { name: 'Place' }));
-    expect(await screen.findByText(/Showing 1 of 2/)).toBeInTheDocument();
+    // Of the seed's two "place" ideas only Nanzen-ji is located, so the open
+    // map's viewport cut stacks on the chip and leaves one of the seven.
+    expect(await screen.findByText(/Showing 1 of 7/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'See all' })).toBeInTheDocument();
   });
 

@@ -10,9 +10,11 @@ import { TripSchedule } from './TripSchedule';
 import type { TripRole } from '../api/types';
 
 // Seeded trip 1 (src/mocks/db.ts): Nanzen-ji placed 09:00–09:40 on the first
-// day, Kiyamachi unplaced, and the empty bundle "Day one dinner options".
+// day, Kiyamachi unplaced, and the bundle "Nishiki market crawl" already placed
+// 11:00–13:00 on that same day — which is the "choose one" block below.
 const TRIP_ID = 1;
 const BUNDLE_ID = 4;
+const BUNDLE_TITLE = 'Nishiki market crawl';
 const FIRST_DAY = '2026-11-02';
 const OPTION = 'Ramen at Ippudo';
 
@@ -53,25 +55,17 @@ function renderSchedule(role?: TripRole) {
 }
 
 /**
- * Puts the seeded bundle on the first day with one option in it, so the
- * "choose one" block is on the grid. Nothing seeds a scheduled bundle, and it
- * is the one block whose read-only treatment is its own code path.
+ * Adds a known option to the bundle the seed already has on the first day, so
+ * the "choose one" block on the grid has an option this file can name. That
+ * block is the one whose read-only treatment is its own code path.
  */
 async function scheduleTheBundle() {
   await api.post('/entries', { entry: { kind: 'idea', title: OPTION }, parent_id: BUNDLE_ID });
-  await api.post(`/trips/${TRIP_ID}/schedule`, {
-    schedule_item: {
-      entry_id: BUNDLE_ID,
-      day: FIRST_DAY,
-      starts_at_minutes: 19 * 60,
-      ends_at_minutes: 20 * 60,
-    },
-  });
 }
 
 /** The options block, by the one line only it renders. */
 function optionsBlock(): HTMLElement {
-  return screen.getByText('Day one dinner options — choose one').closest('div') as HTMLElement;
+  return screen.getByText(`${BUNDLE_TITLE} — choose one`).closest('div') as HTMLElement;
 }
 
 describe('TripSchedule', () => {

@@ -1,11 +1,49 @@
+/* The shell used to cap ITSELF at 1360px and centre the result, which made the
+   cap something no screen could refuse. It caps each thing it holds instead,
+   through a variable the screen turns off on itself. Two screens do: the board
+   wants the whole body so its map has somewhere to grow, and the itinerary
+   wants it so the right rail's border-left can be the edge of the window
+   rather than a rule floating 20px in from one. The text-heavy screens never
+   asked for that, so the same 1360px measure still lands on them.
+
+   Left-aligned rather than centred, which is the one visible change for those
+   screens. The trip title is a child of this same wrap and cannot know whether
+   the screen below it opted out of the cap, so centring would leave the title
+   in the middle of an ultrawide window with a full-bleed board starting at its
+   left edge. Hanging everything off the left gutter is the only arrangement
+   where the title lines up with the screen in both cases — and with a 246px
+   sidebar already anchoring the left, the page was never symmetrical anyway. */
 .wrap {
+  --screen-measure: 1360px;
   padding: var(--space-8) var(--gutter-screen) var(--space-16);
-  max-width: 1360px;
-  margin: 0 auto;
 }
 
-/* The tab bar moved to the sidebar and the progress trail was retired, so this
-   carries the full gap to the page body. */
+/* The title block, and whatever the Outlet rendered. A full-bleed screen sets
+   --screen-measure: none on itself and cancels the gutter above with a
+   negative inline margin; see TripBoard's .grid and TripItinerary's .screen. */
+.wrap > * {
+  max-width: var(--screen-measure);
+}
+
+/* The header is the title block, one trip-wide action and the viewer note: the
+   tab bar moved to the sidebar and the progress trail was retired, so this
+   carries the full gap to the page body.
+
+   It KEEPS the 1360px measure that .wrap > * hands it, even on the two screens
+   that decline it for themselves. Deliberate: the head is nothing but text — a
+   display-size <h1> and a date line — and text wants a reading measure whether
+   or not a map is spread out underneath it. A trip title allowed to run the
+   width of a 2500px window is one enormous line with no second line to relate
+   to, and the wrap point of a long title should not depend on which tab you
+   happen to be on.
+
+   The usual objection to a capped header over uncapped content is a bottom
+   hairline that stops short of what it is meant to divide. This header has no
+   hairline and should not gain one: it is separated from the body by
+   --gap-section alone, and left-aligned text simply ending before the content
+   below it is typography, not a rendering seam. If a rule is ever added here it
+   has to move out to the .wrap edge — a capped rule over a full-bleed board is
+   the case this note exists to prevent. */
 .head {
   margin-bottom: var(--gap-section);
 }

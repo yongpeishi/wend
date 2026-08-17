@@ -27,6 +27,9 @@ class Entry < ApplicationRecord
   has_many :trip_todos, class_name: "Todo", foreign_key: :trip_id, inverse_of: :trip, dependent: :destroy
   has_many :schedule_items_as_trip, class_name: "ScheduleItem", foreign_key: :trip_id, dependent: :destroy
   has_many :schedule_items_as_entry, class_name: "ScheduleItem", foreign_key: :entry_id, dependent: :nullify
+  has_many :trip_days, foreign_key: :trip_id, inverse_of: :trip, dependent: :destroy
+  has_many :lodging_trip_days, class_name: "TripDay", foreign_key: :lodging_entry_id,
+                               inverse_of: :lodging_entry, dependent: :nullify
 
   has_many :trip_memberships, class_name: "TripMembership", foreign_key: :trip_id, inverse_of: :trip, dependent: :delete_all
 

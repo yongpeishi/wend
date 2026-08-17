@@ -1,23 +1,37 @@
 import { http, HttpResponse } from 'msw';
 import {
+  addDayVersion,
   allocateId,
+  applyTripDateShift,
   childIdsOf,
   collaboratorsFor,
   db,
+  ensureTripDay,
+  findDayVersion,
   findEntry,
+  firstLiveVersionId,
   governingTripId,
+  inFinalPlan,
   isScheduled,
+  itemsOfVersion,
+  liveVersionsOf,
+  nextForkName,
+  nextFreeName,
   now,
   parentIdsOf,
   roleFor,
   seed,
   setRole,
+  swapTripDays,
   toEntry,
   toEntryDetail,
+  toEntrySummary,
+  toTripDay,
   tripAncestorId,
+  tripDateShiftFor,
   voteTallyFor,
 } from './db';
-import type { StoredMembership } from './db';
+import type { StoredDayVersion, StoredMembership } from './db';
 import type {
   Collaborator,
   Entry,
@@ -26,6 +40,7 @@ import type {
   Feedback,
   ScheduleItem,
   Todo,
+  TripDayWritePayload,
   TripRole,
   User,
 } from '../api/types';
@@ -87,6 +102,20 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** The owner is load-bearing: someone has to be able to hand the trip on. */
 const OWNER_IS_STUCK = 'You started this trip, so it needs you until someone else takes it on.';
+
+/** The `:day` routes take a YYYY-MM-DD segment; anything else is a 404, the
+ * same constraint the real routes put on the parameter. */
+function isIsoDate(value: unknown): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+/** Every itinerary mutation answers with the whole day, so the client can
+ * replace one entry in its cache instead of refetching. */
+function tripDayResponse(version: StoredDayVersion, status = 200) {
+  const tripDay = db.tripDays.find((d) => d.id === version.trip_day_id);
+  if (!tripDay) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+  return HttpResponse.json({ trip_day: toTripDay(tripDay) }, { status });
+}
 
 function isDescendantOfTrip(entryId: number, tripId: number): boolean {
   const visited = new Set<number>();
@@ -242,15 +271,35 @@ export const handlers = [
     return HttpResponse.json(toEntryDetail(entry, db.currentUserId));
   }),
 
+  // Moving a trip's dates moves its plan with them — see tripDateShiftFor. The
+  // attempt is its own preview: a change that would push planned days off the
+  // end is refused with the list of them, and nothing is written until the
+  // same call comes back with `confirm_dropped_days: true`.
   http.patch('/api/entries/:id', async ({ params, request }) => {
     const entry = findEntry(Number(params.id));
     if (!entry) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
-    const body = (await request.json()) as { entry?: Partial<Entry> };
+    const body = (await request.json()) as { entry?: Partial<Entry>; confirm_dropped_days?: boolean };
+
+    const shift = tripDateShiftFor(entry, body.entry ?? {});
+    if (shift.droppedDays.length > 0 && body.confirm_dropped_days !== true) {
+      return HttpResponse.json(
+        {
+          error: 'dropped_days_need_confirmation',
+          dropped_days: shift.droppedDays,
+          // Ideas coming back to the rail, not rows destroyed. The wire name
+          // is the older one the client already reads.
+          dropped_item_count: shift.droppedEntryCount,
+        },
+        { status: 422 },
+      );
+    }
+
     Object.assign(entry, body.entry, { updated_at: now() });
     // Pros and cons arrive whole (there is no per-note endpoint), so they are
     // replaced rather than merged — and stored detached from the request body.
     if (body.entry?.pros) entry.pros = body.entry.pros.map((n) => ({ ...n }));
     if (body.entry?.cons) entry.cons = body.entry.cons.map((n) => ({ ...n }));
+    applyTripDateShift(shift);
     return HttpResponse.json({ entry: toEntry(entry, db.currentUserId) });
   }),
 
@@ -416,9 +465,10 @@ export const handlers = [
     if (done !== null) results = results.filter((t) => (done === 'true' ? t.done_at !== null : t.done_at === null));
     const withEntry = results.map((t) => ({
       ...t,
+      // The shared summary shape — duration_minutes and location_name included.
       entry: t.entry_id !== null ? (() => {
         const e = findEntry(t.entry_id as number);
-        return e ? { id: e.id, kind: e.kind, title: e.title, category: e.category } : null;
+        return e ? toEntrySummary(e) : null;
       })() : null,
     }));
     return HttpResponse.json({ todos: withEntry });
@@ -456,11 +506,15 @@ export const handlers = [
   }),
 
   // ---- Schedule --------------------------------------------------------
+  // The Final schedule screen: ONE plan per day. `inFinalPlan` is what draws
+  // that line — a forked day sends its first live version only, and a version
+  // the user archived is never read. Mirrors the server's
+  // ScheduleItem.in_final_plan; the two must not drift.
   http.get('/api/trips/:tripId/schedule', ({ params, request }) => {
     const tripId = Number(params.tripId);
     const url = new URL(request.url);
     const day = url.searchParams.get('day');
-    let results = db.scheduleItems.filter((s) => s.trip_id === tripId);
+    let results = db.scheduleItems.filter((s) => s.trip_id === tripId && inFinalPlan(s));
     if (day) results = results.filter((s) => s.day === day);
     return HttpResponse.json({ schedule_items: results });
   }),
@@ -468,19 +522,31 @@ export const handlers = [
   http.post('/api/trips/:tripId/schedule', async ({ params, request }) => {
     const tripId = Number(params.tripId);
     const body = (await request.json()) as { schedule_item?: Partial<ScheduleItem> };
-    if (!body.schedule_item?.day) {
-      return HttpResponse.json({ errors: { day: ["can't be blank"] } }, { status: 422 });
+    const payload = body.schedule_item ?? {};
+
+    // Either key alone is enough: a version knows its date, and a date
+    // resolves to its first live version (creating the day if it has none).
+    let day = payload.day ?? null;
+    let dayVersionId = payload.day_version_id ?? null;
+    if (dayVersionId !== null) {
+      const version = findDayVersion(dayVersionId);
+      if (!version) return HttpResponse.json({ errors: { day_version_id: ['does not exist'] } }, { status: 422 });
+      day = day ?? db.tripDays.find((d) => d.id === version.trip_day_id)?.day ?? null;
     }
+    if (!day) return HttpResponse.json({ errors: { day: ["can't be blank"] } }, { status: 422 });
+    if (dayVersionId === null) dayVersionId = firstLiveVersionId(tripId, day);
+
     const item: ScheduleItem = {
       id: allocateId(),
       trip_id: tripId,
-      entry_id: body.schedule_item.entry_id ?? null,
-      chosen_entry_id: body.schedule_item.chosen_entry_id ?? null,
-      day: body.schedule_item.day,
-      starts_at_minutes: body.schedule_item.starts_at_minutes ?? null,
-      ends_at_minutes: body.schedule_item.ends_at_minutes ?? null,
-      note: body.schedule_item.note ?? null,
-      position: body.schedule_item.position ?? 0,
+      entry_id: payload.entry_id ?? null,
+      chosen_entry_id: payload.chosen_entry_id ?? null,
+      day,
+      day_version_id: dayVersionId,
+      starts_at_minutes: payload.starts_at_minutes ?? null,
+      ends_at_minutes: payload.ends_at_minutes ?? null,
+      note: payload.note ?? null,
+      position: payload.position ?? 0,
     };
     db.scheduleItems.push(item);
     return HttpResponse.json({ schedule_item: item }, { status: 201 });
@@ -490,13 +556,139 @@ export const handlers = [
     const item = db.scheduleItems.find((s) => s.id === Number(params.id));
     if (!item) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
     const body = (await request.json()) as { schedule_item?: Partial<ScheduleItem> };
-    Object.assign(item, body.schedule_item);
+    const payload = body.schedule_item ?? {};
+    if (payload.day_version_id != null && !findDayVersion(payload.day_version_id)) {
+      return HttpResponse.json({ errors: { day_version_id: ['does not exist'] } }, { status: 422 });
+    }
+    Object.assign(item, payload);
+    // Moving an item to another date without naming a version re-resolves it
+    // against the new day; naming one explicitly is honoured as given.
+    if (payload.day && payload.day_version_id == null) {
+      item.day_version_id = firstLiveVersionId(item.trip_id, payload.day);
+    }
     return HttpResponse.json({ schedule_item: item });
   }),
 
   http.delete('/api/schedule_items/:id', ({ params }) => {
     db.scheduleItems = db.scheduleItems.filter((s) => s.id !== Number(params.id));
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  // ---- Itinerary ---------------------------------------------------------
+  // CONTRACT §2. Nothing here hard-deletes a version: "archived" means kept
+  // aside, and every response is the whole affected day.
+  http.get('/api/trips/:tripId/itinerary', ({ params }) => {
+    const tripId = Number(params.tripId);
+    const days = db.tripDays
+      .filter((d) => d.trip_id === tripId)
+      .slice()
+      .sort((a, b) => a.day.localeCompare(b.day));
+    return HttpResponse.json({ trip_days: days.map(toTripDay) });
+  }),
+
+  // "Move Day 2 to be Day 3" — an exchange, not a reorder: Day 3 comes back to
+  // Day 2 rather than being pushed along. Either date may be empty. The whole
+  // trip answers, because a swap changes two of its days at once.
+  http.post('/api/trips/:tripId/itinerary/swap_days', async ({ params, request }) => {
+    const tripId = Number(params.tripId);
+    const trip = findEntry(tripId);
+    const body = (await request.json()) as { a?: string; b?: string };
+
+    if (!isIsoDate(body.a) || !isIsoDate(body.b)) {
+      return HttpResponse.json({ error: 'invalid_day' }, { status: 422 });
+    }
+    // A trip with no dates has no range for a day to be inside of.
+    const inTrip = (day: string) =>
+      Boolean(trip?.starts_on && trip.ends_on && day >= trip.starts_on && day <= trip.ends_on);
+    if (!inTrip(body.a) || !inTrip(body.b)) {
+      return HttpResponse.json({ error: 'day_outside_trip' }, { status: 422 });
+    }
+
+    swapTripDays(tripId, body.a, body.b);
+    const days = db.tripDays
+      .filter((d) => d.trip_id === tripId)
+      .slice()
+      .sort((a, b) => a.day.localeCompare(b.day));
+    return HttpResponse.json({ trip_days: days.map(toTripDay) });
+  }),
+
+  http.patch('/api/trips/:tripId/days/:day', async ({ params, request }) => {
+    if (!isIsoDate(params.day)) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    const tripDay = ensureTripDay(Number(params.tripId), String(params.day));
+    const body = (await request.json()) as { trip_day?: TripDayWritePayload };
+    const payload = body.trip_day ?? {};
+    // Presence, not truthiness: sending either key as null is how you clear it.
+    if ('lodging_entry_id' in payload) tripDay.lodging_entry_id = payload.lodging_entry_id ?? null;
+    if ('lodging_label' in payload) tripDay.lodging_label = payload.lodging_label ?? null;
+    tripDay.updated_at = now();
+    return HttpResponse.json({ trip_day: toTripDay(tripDay) });
+  }),
+
+  // Fork: copy the last live version's items into a new lettered version.
+  http.post('/api/trips/:tripId/days/:day/versions', ({ params }) => {
+    if (!isIsoDate(params.day)) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    const tripDay = ensureTripDay(Number(params.tripId), String(params.day));
+    const live = liveVersionsOf(tripDay.id);
+    const source = live[live.length - 1];
+    const forked = addDayVersion(tripDay.id, nextForkName(tripDay.id), live.length);
+    if (source) {
+      itemsOfVersion(source.id).forEach((item, position) => {
+        db.scheduleItems.push({ ...item, id: allocateId(), day_version_id: forked.id, position });
+      });
+    }
+    return HttpResponse.json({ trip_day: toTripDay(tripDay) }, { status: 201 });
+  }),
+
+  // Keep: settle the day on this version, archiving the alternatives. Keeping
+  // the only live version is a no-op, not a rename.
+  http.post('/api/day_versions/:id/keep', ({ params }) => {
+    const version = findDayVersion(Number(params.id));
+    if (!version) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    const siblings = liveVersionsOf(version.trip_day_id).filter((v) => v.id !== version.id);
+    if (siblings.length) {
+      const archivedAt = now();
+      for (const sibling of siblings) {
+        sibling.archived_at = archivedAt;
+        sibling.updated_at = archivedAt;
+      }
+      version.name = 'Version A';
+      version.position = 0;
+      version.updated_at = archivedAt;
+    }
+    return tripDayResponse(version);
+  }),
+
+  http.post('/api/day_versions/:id/restore', ({ params }) => {
+    const version = findDayVersion(Number(params.id));
+    if (!version) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    if (version.archived_at) {
+      // Both read while this version is still archived, so it is not counted
+      // among the live names it has to avoid.
+      const live = liveVersionsOf(version.trip_day_id);
+      const name = nextFreeName(version.trip_day_id);
+      version.archived_at = null;
+      version.name = name;
+      version.position = live.length;
+      version.updated_at = now();
+    }
+    return tripDayResponse(version);
+  }),
+
+  http.delete('/api/day_versions/:id', ({ params }) => {
+    const version = findDayVersion(Number(params.id));
+    if (!version) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    if (!version.archived_at) {
+      // A day always keeps at least one live version.
+      if (liveVersionsOf(version.trip_day_id).length <= 1) {
+        return HttpResponse.json({ errors: { base: ['A day needs at least one version'] } }, { status: 422 });
+      }
+      version.archived_at = now();
+      version.updated_at = version.archived_at;
+      liveVersionsOf(version.trip_day_id).forEach((v, position) => {
+        v.position = position;
+      });
+    }
+    return tripDayResponse(version);
   }),
 
   // ---- Nearby ------------------------------------------------------------

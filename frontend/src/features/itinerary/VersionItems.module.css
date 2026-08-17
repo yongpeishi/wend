@@ -1,0 +1,16 @@
+/* Inside a version the gap between rows is the divider — there is no rule
+   line. 6px is the design's own row rhythm here, tighter than --space-2, so
+   the day reads as one block rather than a stack of cards. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* The measuring stick for every row inside a version. A row's layout depends
+     on how wide the list is, not on how wide the window is — the same day is
+     drawn full width in an open day and half width in one of two side-by-side
+     versions — so ItemLine and BundleBand ask this container, not the
+     viewport. Named, so a row can never accidentally measure some other
+     ancestor. */
+  container-type: inline-size;
+  container-name: itinerary-rows;
+}

@@ -1,0 +1,35 @@
+/* An open stretch of the day. Paper tone inside a card, dashed at the design's
+   2px — the one border width that carries a meaning here: this row is an
+   invitation, not a thing. --radius-card, like every other row on the screen. */
+.gap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--surface-page);
+  border: var(--border-width-strong) dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  /* 14px 13px: the design's own row geometry, between --space-3 and --space-4. */
+  padding: 14px 13px;
+}
+
+/* Same fixed column as ItemLine, so the times line up down the day. The design
+   sets it at 12px; raised to --text-min-size, this product's readable floor. */
+.time {
+  flex: none;
+  width: 104px;
+  font-family: var(--font-mono);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+.headline {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.fill {
+  flex: none;
+}
