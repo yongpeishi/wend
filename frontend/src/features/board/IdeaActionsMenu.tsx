@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { Chip } from '../../design/components/core/Chip';
 import { useToast } from '../../components/Toast';
-import { useArchiveEntry } from '../../api';
+import { useArchiveEntry, useLiftEntry } from '../../api';
 import type { Entry } from '../../api/types';
 import { useLinkMutations } from './useLinkMutations';
 import styles from './IdeaActionsMenu.module.css';
@@ -40,6 +40,7 @@ export function IdeaActionsMenu({ entry, bundles, members, onEdit, onToast }: Id
   const [open, setOpen] = useState(false);
   const { show } = useToast();
   const archiveEntry = useArchiveEntry();
+  const liftEntry = useLiftEntry();
   const { addLink, removeLink } = useLinkMutations();
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -112,6 +113,30 @@ export function IdeaActionsMenu({ entry, bundles, members, onEdit, onToast }: Id
           >
             Edit
           </button>
+
+          {/* Lifting an idea out used to live at the foot of the edit panel,
+              under a sentence explaining itself. It is a move, not a fact about
+              the idea, so it belongs with the other moves — and the sentence it
+              lost ("takes it off this trip, it keeps everything and gets a
+              board of its own") is what the toast now says once it has
+              happened. Only an idea can become a trip; a bundle already is a
+              container. */}
+          {entry.kind === 'idea' && (
+            <button
+              type="button"
+              className={styles.item}
+              onClick={() => {
+                setOpen(false);
+                liftEntry.mutate(entry.id, {
+                  onSuccess: () =>
+                    show('Now a trip of its own, with everything it had.', 'success'),
+                  onError: () => show("That didn't save. It's still here — try again.", 'error'),
+                });
+              }}
+            >
+              Make it a trip of its own
+            </button>
+          )}
 
           {/* Set aside, never delete — SetAsideSection at the foot of the board
               is the way back, on the same screen as the way out. The label
