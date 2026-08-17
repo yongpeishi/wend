@@ -255,8 +255,15 @@
   border: 0;
 }
 
+/* The Feedback button is fixed to this same bottom-left corner — --space-6 up
+   from the viewport floor and --tap-min tall — so it is painted over whatever
+   the sidebar leaves at its own bottom edge. Left alone, sign out sits under it
+   and is neither visible nor clickable. The sidebar therefore reserves that
+   corner: the button's margin lifts sign out clear of the whole band, with a
+   step of air on top. This gap is load-bearing; it is not padding to tidy. */
 .signOut {
   margin-top: auto;
+  margin-bottom: calc(var(--space-6) + var(--tap-min) + var(--space-2));
   align-self: flex-start;
   background: none;
   border: none;
@@ -377,8 +384,12 @@
     margin: 0;
   }
 
+  /* Lying down, sign out is up at the top of the page next to everything else
+     and nowhere near the Feedback button, so the reserved corner comes back
+     out — kept, it would hang an 80px gap under the bar. */
   .signOut {
     margin-top: 0;
+    margin-bottom: 0;
     margin-left: auto;
     align-self: center;
   }
