@@ -130,9 +130,15 @@
   gap: var(--space-2) var(--space-4);
 }
 
+/* The floor is what keeps the title readable once the row runs out of room.
+   Shrink is shared out in proportion to how wide each cell wants to be, and a
+   long title wants to be very wide, so without a floor it absorbs nearly all of
+   the shortfall and collapses to nothing while the idea name keeps its cap.
+   16ch is about three words a line at body size — below that a wrapped title
+   reads as a column of single words, which is exactly the shape we were fixing. */
 .title {
   flex: 1;
-  min-width: 0;
+  min-width: 16ch;
   font-family: var(--font-sans);
   font-size: var(--text-body-size);
   line-height: var(--text-body-line);
@@ -140,9 +146,15 @@
 }
 
 /* Which idea, and by when — quiet, and read as a pair, so they stay together
-   when the line runs out of room. */
+   when the line runs out of room. The pair shrinks rather than holding its
+   intrinsic width: a flex item only lets its contents ellipsise if it is
+   allowed to go narrower than them, so an unshrinkable cell here left
+   .source's text-overflow dead and pushed the pair out past the card's right
+   edge. min-width: 0 is the other half of that — without it the cell floors at
+   the idea name's own width and shrinks no further. */
 .meta {
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -151,13 +163,23 @@
   color: var(--text-muted);
 }
 
+/* The only cell that gives way. The cap is what stops a long idea name from
+   eating the line while there is still room for it: 24ch measures about 235px
+   of the ~830px a desktop row has for its body, so the title keeps roughly two
+   thirds of the line no matter how long the idea is called. Narrower than that
+   and the shrink above takes over and this cell keeps giving, down to nothing
+   if that is what it takes to keep the deadline on the row. */
 .source {
   min-width: 0;
+  max-width: 24ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Never shrinks. "by 3 Oct" and "+ Deadline" are short and are the whole point
+   of the cell — a truncated deadline says nothing — so all the giving happens
+   in .source. */
 .deadline {
   flex: none;
 }
@@ -215,6 +237,20 @@
     flex-direction: column;
     align-items: stretch;
     gap: var(--space-3);
+  }
+
+  /* Stacked, the pair sits on its own line under the title, so the cap on the
+     idea name comes off — there is no title beside it left to crowd.
+     The cap on the pair itself has to go on, though: as the cross-axis child of
+     a column .body it is sized to its max-content width, which for a long idea
+     name hangs straight out of the card. Held to the line, .source ellipsises
+     inside it exactly as it does on a wide row. */
+  .meta {
+    max-width: 100%;
+  }
+
+  .source {
+    max-width: none;
   }
 }
 
