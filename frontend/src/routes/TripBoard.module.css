@@ -160,14 +160,26 @@
 /* The wider basis of the two: this is the column being read, so when there is
    not enough room for both preferences the list keeps more of what there is.
 
-   The ceiling is the other half of that bargain. An idea row is a title, a
-   couple of meta chips and a state dot — a line of text — so past a reading
-   measure the extra width lands on white space inside the card and the row gets
-   HARDER to scan, not easier. Without a ceiling the two cells share every
-   surplus pixel evenly, which is why widening the window used to widen the list
-   and the map in lockstep and the map never actually gained anything. Capped,
-   the list stops at its measure and the whole surplus goes to the map: at
-   1920px that is a ~566px map instead of ~380px, and at 2560px a ~1200px one.
+   The ceiling is the other half of that bargain, and it is conditional: it
+   applies only while the map is up, which is what [data-map='open'] on .body
+   asks. An idea row is a title, a couple of meta chips and a state dot — a line
+   of text — so past a reading measure the extra width lands on white space
+   inside the card and the row gets HARDER to scan, not easier. Without a
+   ceiling the two cells share every surplus pixel evenly, which is why widening
+   the window used to widen the list and the map in lockstep and the map never
+   actually gained anything. Capped, the list stops at its measure and the whole
+   surplus goes to the map: at 1920px that is a ~566px map instead of ~380px,
+   and at 2560px a ~1200px one.
+
+   With the map hidden there is no second cell, so there is nothing for the
+   surplus to go to and the cap stopped being a bargain: it just left a dead
+   strip of paper between the last idea card and the bundle rail's hairline,
+   wide enough on a large screen to read as a missing column. Uncapped, the list
+   grows into the room the map is not using — wider than its ideal measure, but
+   the alternative is a hole, and a hole is the more obvious mistake. This is
+   the same reasoning the @media block at the foot of this file already applies
+   for the same reason, and that rule is written at this selector's specificity
+   so it still wins there.
 
    560px, written out rather than taken from --measure-body. This used to read
    `max-width: var(--measure-body)` under a comment calling that "66ch, ~560px
@@ -187,10 +199,13 @@
 .listCell {
   flex: 1 1 440px;
   min-width: 320px;
-  max-width: 560px;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+[data-map='open'] .listCell {
+  max-width: 560px;
 }
 
 /* Nothing survived the narrowing. Same voice and same measure as /library's own
@@ -237,8 +252,13 @@
 
   /* One column means the map is stacked above the list rather than beside it,
      so the ceiling has nothing to hand its surplus to — it would just leave a
-     strip of empty paper down the right of the list, under a full-width map. */
-  .listCell {
+     strip of empty paper down the right of the list, under a full-width map.
+
+     Written with the same [data-map='open'] prefix as the rule it is overruling
+     rather than as a bare .listCell: that one is two selectors' worth of
+     specificity and would otherwise beat a plain class here however late it
+     came. Matching it and arriving later is what makes this win. */
+  [data-map='open'] .listCell {
     max-width: none;
   }
 }

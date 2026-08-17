@@ -154,23 +154,45 @@ function ideas(): HTMLElement {
   return screen.getByRole('region', { name: 'Ideas' });
 }
 
-/** Open the map and wait for it — every map assertion starts here. */
-async function showMap(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: 'Show map' }));
+/**
+ * Wait for the map — every map assertion starts here. It no longer opens
+ * anything: the board paints with the map already up, so what used to be a
+ * click is now only the wait for the pane to arrive alongside the ideas.
+ */
+async function mapUp() {
   return screen.findByTestId('map-view');
 }
 
 describe('TripBoard — showing and hiding the map', () => {
-  it('keeps the map out of the way until it is asked for', async () => {
+  // The default the board now opens on. Where a trip's ideas ARE is half of
+  // what the board has to say about them, and a map behind a button is a map
+  // nobody presses — so the pane, and the switch that binds the list to it, are
+  // both on screen before anyone asks.
+  it('paints with the map already up', async () => {
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+
+    expect(screen.getByTestId('map-view')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide map' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Follow the map' })).toBeInTheDocument();
+  });
+
+  // What the old default asserted from the other side, and still the rule: with
+  // no map on screen there is no viewport, so the follow switch has nothing on
+  // the far end of it and goes too. Asking for the map back brings both.
+  it('takes the follow switch away with the map, and gives both back', async () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
 
+    await user.click(screen.getByRole('button', { name: 'Hide map' }));
+
     expect(screen.queryByTestId('map-view')).not.toBeInTheDocument();
     expect(screen.queryByRole('switch', { name: 'Follow the map' })).not.toBeInTheDocument();
 
-    await showMap(user);
+    await user.click(screen.getByRole('button', { name: 'Show map' }));
 
+    expect(await mapUp()).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Hide map' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Follow the map' })).toBeInTheDocument();
   });
@@ -182,7 +204,7 @@ describe('TripBoard — showing and hiding the map', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
     expect(await screen.findByText(/6 of 7 ideas in view/)).toBeInTheDocument();
@@ -198,10 +220,9 @@ describe('TripBoard — showing and hiding the map', () => {
   // The frame between "the map mounted" and "the map said where it is": with no
   // bounds yet there is nothing to cut against, and the list must be untouched.
   it('does not cut the list before the map has reported a view', async () => {
-    const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
 
     expect(screen.getByText(/Showing 7 of 7/)).toBeInTheDocument();
     expect(within(ideas()).getByText('Kiyamachi')).toBeInTheDocument();
@@ -213,7 +234,7 @@ describe('TripBoard — the map narrows the list', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
 
@@ -228,7 +249,7 @@ describe('TripBoard — the map narrows the list', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
 
     const map = screen.getByTestId('map-view').parentElement as HTMLElement;
     expect(within(map).getByText('Everything kept is in view')).toBeInTheDocument();
@@ -245,7 +266,7 @@ describe('TripBoard — the map narrows the list', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
     await screen.findByText(/6 of 7 ideas in view/);
 
@@ -260,7 +281,7 @@ describe('TripBoard — the map narrows the list', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
 
     // Nothing is off-screen yet, so there is nothing to widen back to.
     expect(screen.queryByRole('button', { name: 'Widen' })).not.toBeInTheDocument();
@@ -277,7 +298,7 @@ describe('TripBoard — the map narrows the list', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
 
     expect(screen.getByTestId('fit-request')).toHaveTextContent('fit: 0');
@@ -291,7 +312,7 @@ describe('TripBoard — the map narrows the list', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Buy a rail pass');
-    await showMap(user);
+    await mapUp();
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
 
@@ -315,7 +336,7 @@ describe('TripBoard — the map narrows the list', () => {
     const user = userEvent.setup();
     renderBoard();
     await within(ideas()).findByText('Kiyamachi');
-    await showMap(user);
+    await mapUp();
 
     await user.click(screen.getByRole('button', { name: 'Simulate pan to Nanzen-ji only' }));
 
@@ -334,7 +355,7 @@ describe('TripBoard — the pins', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Arashiyama bamboo grove');
-    await showMap(user);
+    await mapUp();
 
     // Three located ideas, three pins, and no more: the five coordinate-free
     // ideas on this trip are on the list only.
@@ -357,10 +378,9 @@ describe('TripBoard — the pins', () => {
 
   it('tones an already-bundled idea as bundled, whatever the view is doing', async () => {
     await api.post(`/entries/${MARKET_BUNDLE_ID}/links`, { child_id: NANZENJI_ID });
-    const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
 
     expect(await screen.findByRole('button', { name: 'Nanzen-ji (bundled)' })).toBeInTheDocument();
   });
@@ -369,7 +389,7 @@ describe('TripBoard — the pins', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
 
     expect(screen.getByTestId('pin-selected')).toHaveTextContent('selected: null');
     await user.click(screen.getByRole('button', { name: pin('Nanzen-ji') }));
@@ -382,7 +402,7 @@ describe('TripBoard — the pins', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
     await user.click(screen.getByRole('button', { name: 'Select' }));
 
     await user.click(screen.getByRole('button', { name: pin('Nanzen-ji') }));
@@ -397,7 +417,7 @@ describe('TripBoard — the pins', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
-    await showMap(user);
+    await mapUp();
 
     await user.click(screen.getByRole('button', { name: 'Simulate cluster click' }));
 
@@ -444,9 +464,12 @@ describe('TripBoard — select mode', () => {
     expect(bundle.children.map((child) => child.id)).toContain(NANZENJI_ID);
   });
 
-  // Lift out and Set aside are not in the mockup's action bar. Taking two
-  // working verbs away to match a picture would be a regression, not a tidy-up.
-  it('keeps "Lift out" and "Set aside" beside the bundle action', async () => {
+  // Neither of these two is in the mockup's action bar. Taking two working
+  // verbs away to match a picture would be a regression, not a tidy-up. The
+  // labels have since been rewritten to name their consequence rather than the
+  // gesture — "Lift out" became "Make separate trips", "Set aside" became
+  // "Move to Set aside", the destination the board's own disclosure names.
+  it('keeps "Make separate trips" and "Move to Set aside" beside the bundle action', async () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
@@ -454,8 +477,8 @@ describe('TripBoard — select mode', () => {
     await user.click(screen.getByRole('button', { name: 'Select' }));
     await user.click(screen.getByRole('checkbox', { name: 'Select Nanzen-ji' }));
 
-    expect(screen.getByRole('button', { name: 'Lift out' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Set aside' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Make separate trips' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move to Set aside' })).toBeInTheDocument();
   });
 });
 
@@ -465,7 +488,7 @@ describe('TripBoard — filters compose with the map', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Ramen alley');
-    await showMap(user);
+    await mapUp();
 
     await user.click(screen.getByRole('button', { name: /^Filter/ }));
     await user.click(screen.getByRole('button', { name: 'Place' }));
@@ -492,7 +515,7 @@ describe('TripBoard — filters compose with the map', () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Somewhere far away');
-    await showMap(user);
+    await mapUp();
 
     await user.click(screen.getByRole('button', { name: /^Filter/ }));
     await user.click(screen.getByRole('button', { name: 'Place' }));
@@ -556,7 +579,7 @@ describe('TripBoard — as a viewer', () => {
     renderBoard('viewer');
     await screen.findByText('Nanzen-ji');
 
-    await showMap(user);
+    await mapUp();
     expect(screen.getByRole('switch', { name: 'Follow the map' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: pin('Nanzen-ji') })).toBeInTheDocument();
 
