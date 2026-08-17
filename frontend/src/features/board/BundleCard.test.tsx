@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../components/Toast';
@@ -50,14 +50,26 @@ function entry(
 const BUNDLE = entry(90, 'Kyoto dinner options', 'bundle');
 const MEMBERS = [entry(91, 'Ramen alley'), entry(92, 'Kaiseki counter'), entry(93, 'Standing sushi')];
 
-function renderCard(members = MEMBERS, bundle = BUNDLE, onToast: (message: string) => void = () => {}) {
+function renderCard(
+  members = MEMBERS,
+  bundle = BUNDLE,
+  onToast: (message: string) => void = () => {},
+  onOpen?: (id: number) => void,
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/board']}>
         <ToastProvider>
           <DndContext>
-            <BundleCard bundle={bundle} members={members} onToast={onToast} />
+            <Routes>
+              <Route
+                path="/board"
+                element={<BundleCard bundle={bundle} members={members} onOpen={onOpen} onToast={onToast} />}
+              />
+              {/* So a card that leaves the board can be seen leaving it. */}
+              <Route path="/entries/:id" element={<p>Entry detail screen</p>} />
+            </Routes>
           </DndContext>
         </ToastProvider>
       </MemoryRouter>
@@ -224,6 +236,37 @@ describe('BundleCard — reordering and unlinking members', () => {
     // ...and the entry itself is never touched.
     expect(paths.some((p) => p === '/entries/91')).toBe(false);
     del.mockRestore();
+  });
+});
+
+/**
+ * A member opens over the board when the board offers to take it. Leaving for
+ * /entries/:id put the drawer on a page of its own — nothing under its scrim to
+ * show through, and nothing above it holding the trip's role.
+ */
+describe('BundleCard — opening a member', () => {
+  it('hands the member to the board when it offers to take it, rather than navigating away', async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    renderCard(MEMBERS, BUNDLE, () => {}, onOpen);
+
+    await user.click(screen.getByRole('button', { name: 'Kaiseki counter' }));
+
+    expect(onOpen).toHaveBeenCalledWith(92);
+    expect(screen.queryByText('Entry detail screen')).not.toBeInTheDocument();
+    // And the card is still there to open the next one from.
+    expect(screen.getByRole('button', { name: 'Ramen alley' })).toBeInTheDocument();
+  });
+
+  // Outside a board — the design gallery — there is no drawer to open into, so
+  // the card still has somewhere to send the reader.
+  it('still navigates to the entry when no one offers to take it', async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(screen.getByRole('button', { name: 'Kaiseki counter' }));
+
+    expect(await screen.findByText('Entry detail screen')).toBeInTheDocument();
   });
 });
 
@@ -396,6 +439,41 @@ describe('BundleCard — reading along', () => {
 
     expect(screen.getByText('Nothing in here yet.')).toBeInTheDocument();
     expect(screen.queryByText(/drag ideas here/i)).not.toBeInTheDocument();
+  });
+
+  // A viewer's member opens over the board too — which is the whole point of
+  // opening it there: off the board it would be outside the trip's role, and
+  // the drawer would hand them the form.
+  it('opens a member in place rather than out of the trip a viewer is reading', async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/board']}>
+          <ToastProvider>
+            <TripRoleProvider role="viewer">
+              <DndContext>
+                <Routes>
+                  <Route
+                    path="/board"
+                    element={
+                      <BundleCard bundle={BUNDLE} members={MEMBERS} onOpen={onOpen} onToast={() => {}} />
+                    }
+                  />
+                  <Route path="/entries/:id" element={<p>Entry detail screen</p>} />
+                </Routes>
+              </DndContext>
+            </TripRoleProvider>
+          </ToastProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Ramen alley' }));
+
+    expect(onOpen).toHaveBeenCalledWith(91);
+    expect(screen.queryByText('Entry detail screen')).not.toBeInTheDocument();
   });
 
   it('leaves a member the whole card', () => {

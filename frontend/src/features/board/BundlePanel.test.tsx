@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -157,6 +157,18 @@ describe('BundlePanel — the bundles-only rail', () => {
     for (const label of [/^fork$/i, /^compare$/i, /^ungroup$/i, /^set aside$/i]) {
       expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
     }
+  });
+
+  // The rail carries the board's opener down to every card, so a member opens
+  // over the board rather than at a page of its own.
+  it('reaches a member with the board\'s way of opening one', async () => {
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    renderPanel({ onOpen });
+
+    await user.click(screen.getByRole('button', { name: 'Kaiseki counter' }));
+
+    expect(onOpen).toHaveBeenCalledWith(92);
   });
 
   it('invites a first bundle rather than showing an empty column', () => {

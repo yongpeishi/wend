@@ -431,6 +431,7 @@ export function TripBoard() {
           archivedBundles={archivedBundles}
           members={members}
           loading={bundlesQuery.isLoading}
+          onOpen={setEditingId}
           onToast={(message) => show(message, 'success')}
         />
       </div>

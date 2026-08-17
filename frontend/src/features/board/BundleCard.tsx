@@ -16,6 +16,8 @@ export interface BundleCardProps {
   bundle: Entry;
   /** Bundle members in entry_links.position order — see useBundleMembers.ts. */
   members: Entry[];
+  /** Open a member idea in place. Omitted, the card falls back to navigating. */
+  onOpen?: (id: number) => void;
   onToast: (message: string) => void;
 }
 
@@ -100,8 +102,21 @@ export interface BundleCardProps {
  *   scanning for which row to deal with, not tallying. It is the only coloured
  *   text in the row, which is what makes it read as an annotation on the idea
  *   rather than a status the idea is in.
+ *
+ * A member's name opens it, and when the board offers `onOpen` it opens in
+ * place rather than by navigating to /entries/:id — the same bargain IdeaRow
+ * strikes with the board. Two things depend on staying put: the drawer's scrim
+ * is nearly opaque paper, so on a route of its own it covers an empty page and
+ * reads as see-through with nothing behind it to show; and off the board the
+ * member is outside the trip's TripRoleProvider, where the editable default
+ * applies and a viewer would be handed the form. Opening over the board keeps
+ * the page under the scrim and keeps the member inside the trip's role. The
+ * prop is `onOpen` rather than `onEdit` because that is all it promises: a
+ * viewer opens a member and gets it read-only. Without the prop the card still
+ * navigates, which is what a card outside a board — the design gallery, its own
+ * tests — has to do, since there is no drawer there to open into.
  */
-export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
+export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps) {
   const navigate = useNavigate();
   // The hook rather than a prop: unlike IdeaRow this card takes none of its
   // verbs from its caller — it owns its own mutations — so the capability comes
@@ -216,6 +231,11 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
       { childId: other.id, position: index },
       { onError: () => show("That didn't save. It's still here — try again.", 'error') },
     );
+  }
+
+  function openMember(member: Entry) {
+    if (onOpen) onOpen(member.id);
+    else navigate(`/entries/${member.id}`);
   }
 
   function removeMember(member: Entry) {
@@ -353,7 +373,7 @@ export function BundleCard({ bundle, members, onToast }: BundleCardProps) {
               <span className={styles.srOnly}>
                 {member.scheduled ? 'On the schedule:' : 'Not on the schedule yet:'}
               </span>
-              <button type="button" className={styles.memberTitle} onClick={() => navigate(`/entries/${member.id}`)}>
+              <button type="button" className={styles.memberTitle} onClick={() => openMember(member)}>
                 {member.title}
               </button>
               {member.todos_open_count > 0 && (
