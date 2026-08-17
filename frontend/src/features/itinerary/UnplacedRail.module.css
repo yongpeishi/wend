@@ -1,7 +1,33 @@
-/* The 300px right rail. Card tone against the page, separated by a rule
-   rather than a shadow. */
+/* The right rail. Card tone against the page, separated by a rule rather than
+   a shadow.
+
+   Its width is not a number of its own: it is the board's bundle-rail
+   measurement, clamp(336px, 34%, 480px), taken from the grid track in
+   routes/TripBoard.module.css — read that file's opening comment for where 336
+   and 480 come from. The two rails hold the same thing at two moments of
+   planning: what the trip has kept and not yet spent. Drawing one at 300px and
+   the other at 336–480px made the board and the itinerary read as two unrelated
+   screens, and the wider of the two is the one someone has just come from.
+
+   The CEILING is where the old 300px argument survives, and it is the half of it
+   that was right: a rail row is one line of title over one line of meta, so past
+   480px the extra width lands on empty card rather than on anything readable,
+   and a rail that keeps growing stops being a rail and reads as a second page.
+   What the old width got wrong was the other end. At the 336px floor this rail's
+   item body — what is left of the width after the 20px gutters, the rule, the
+   row's 13px sides and a 32px grip and 32px ⋯ — is about 185px, against about
+   150px at 300px. The rows were not failing to read better wider; they were
+   reading worse narrower.
+
+   flex: none and border-box are load-bearing for the percentage. 34% resolves
+   against .screen (TripItinerary.module.css), not against this element's own
+   content, and border-box keeps the gutters and the rule inside the number
+   instead of adding them to it. Below 900px .screen > aside overrides all of
+   this to width: auto and the rail lies down under the day list; that selector
+   carries a class and a type against this one class, so it wins wherever it
+   applies and the clamp never has to be softened to let it. */
 .rail {
-  width: 300px;
+  width: clamp(336px, 34%, 480px);
   flex: none;
   box-sizing: border-box;
   border-left: var(--border-width) solid var(--border-subtle);
@@ -10,6 +36,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+
+/* The touch floor, 384px, matched to the board's. It is NOT this rail's own
+   arithmetic: the grip and the ⋯ below stay 32px on every pointer, on purpose
+   (see .grip), so nothing here grows when the pointer coarsens. It is the
+   agreement itself. A tablet that gave the bundle rail 384px and this one 336px
+   would show the two rails disagreeing by half a centimetre on the one class of
+   device where you see both by swiping between them, which is the discrepancy
+   this whole width exists to remove. If the rail's controls ever do take
+   --tap-min, this number is already the right one. */
+@media (pointer: coarse) {
+  .rail {
+    width: clamp(384px, 34%, 480px);
+  }
 }
 
 /* The uppercase eyebrow keeps its letter-spacing but takes --text-min-size

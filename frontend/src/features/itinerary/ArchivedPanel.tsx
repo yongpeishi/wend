@@ -15,14 +15,20 @@ export interface ArchivedPanelProps {
   open: boolean;
   onToggle: () => void;
   onRestore: (versionId: number) => void;
+  /**
+   * A viewer's panel: the count, the disclosure and every summary inside it all
+   * stay — what a trip set aside is part of reading the trip — and only the way
+   * back is gone, because bringing a version back is a change to the day.
+   */
+  readOnly?: boolean;
 }
 
 /**
  * Kept, but not the one you chose. Archiving is what "keep this day" does to
  * the versions you did not settle on — nothing in Wend is deleted, so the way
- * back has to be on screen somewhere. It is rarely reached, which is why it
- * sits collapsed behind a count rather than taking rail space from the ideas
- * still waiting to be placed.
+ * back has to be on screen somewhere for anyone who can take it (`readOnly`).
+ * It is rarely reached, which is why it sits collapsed behind a count rather
+ * than taking rail space from the ideas still waiting to be placed.
  *
  * An archived version is summarised, not replayed. The rail is 300px wide and
  * the day's own row language needs more than that — a 104px mono time column,
@@ -37,7 +43,7 @@ export interface ArchivedPanelProps {
  * cannot edit is just one more title in the list. Bring it back and it becomes
  * a live version again, drawn in full on its own day.
  */
-export function ArchivedPanel({ archived, open, onToggle, onRestore }: ArchivedPanelProps) {
+export function ArchivedPanel({ archived, open, onToggle, onRestore, readOnly = false }: ArchivedPanelProps) {
   if (archived.length === 0) return null;
 
   const Chevron = open ? ChevronUp : ChevronDown;
@@ -58,15 +64,17 @@ export function ArchivedPanel({ archived, open, onToggle, onRestore }: ArchivedP
                 <p className={styles.label}>{label}</p>
                 <p className={styles.held}>{held(version)}</p>
                 {titles && <p className={styles.titles}>{titles}</p>}
-                <Button
-                  size="small"
-                  variant="quiet"
-                  className={styles.restore}
-                  onClick={() => onRestore(version.id)}
-                  aria-label={`Bring back ${label}`}
-                >
-                  Bring back
-                </Button>
+                {!readOnly && (
+                  <Button
+                    size="small"
+                    variant="quiet"
+                    className={styles.restore}
+                    onClick={() => onRestore(version.id)}
+                    aria-label={`Bring back ${label}`}
+                  >
+                    Bring back
+                  </Button>
+                )}
               </div>
             );
           })}

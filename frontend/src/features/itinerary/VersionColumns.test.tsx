@@ -70,6 +70,7 @@ function renderColumns(props: Partial<Parameters<typeof VersionColumns>[0]> = {}
         onEditTime={props.onEditTime}
         onRemoveItem={props.onRemoveItem}
         onAdd={props.onAdd}
+        readOnly={props.readOnly}
       />
     </DndContext>,
   );
@@ -153,6 +154,26 @@ describe('VersionColumns', () => {
     await user.click(within(columnB).getByRole('button', { name: 'Take Kinkaku-ji off this day' }));
 
     expect(onRemoveItem).toHaveBeenCalledWith(201);
+  });
+
+  // Being able to see that a day is still two ways round is the whole of what
+  // this component says, so a viewer keeps both columns whole. What goes is
+  // the verdict: settling the day is not theirs to hand down.
+  it('keeps both columns whole for a viewer, and offers no way to settle between them', () => {
+    renderColumns({ readOnly: true, onAdd: vi.fn(), onFill: vi.fn(), onEditTime: vi.fn(), onRemoveItem: vi.fn() });
+
+    expect(screen.getByRole('heading', { name: 'Version A' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Version B' })).toBeInTheDocument();
+    expect(screen.getByText('Osaka Castle grounds')).toBeInTheDocument();
+    expect(screen.getByText('4 hr · 2 things')).toBeInTheDocument();
+    // The hole is still drawn — it is part of what the version looks like.
+    expect(screen.getByText('Nothing planned · 1 hr')).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: /^Keep Version/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^\+ add to Version/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Fill it' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /off this day$/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /the hours for/ })).not.toBeInTheDocument();
   });
 
   // Feedback 014#2: with one drop target per day, a split day could only ever

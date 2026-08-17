@@ -9,11 +9,18 @@ export interface ItineraryHeaderProps {
   onExpandAll: () => void;
   onCollapseAll: () => void;
   onChangeDates: () => void;
+  /**
+   * A viewer's header. Expand all and Collapse all stay — they decide what is
+   * on screen, not what the trip is — and only "Change dates" goes, which is
+   * the one action here that writes.
+   */
+  readOnly?: boolean;
 }
 
 /**
  * The screen's head: how long the trip runs, whether anything is still
- * unsettled, and the three things you do to the whole list.
+ * unsettled, and the things you do to the whole list — three of them for
+ * someone editing, and the two that only fold and unfold it for a viewer.
  *
  * It names a section, not the page — TripLayout above it holds the trip's
  * title as the one `<h1>` and prints the date range under it, so neither is
@@ -30,6 +37,7 @@ export function ItineraryHeader({
   onExpandAll,
   onCollapseAll,
   onChangeDates,
+  readOnly = false,
 }: ItineraryHeaderProps) {
   return (
     <header className={styles.header}>
@@ -48,9 +56,11 @@ export function ItineraryHeader({
         <Button size="small" variant="quiet" onClick={onCollapseAll}>
           Collapse all
         </Button>
-        <Button size="small" variant="secondary" onClick={onChangeDates}>
-          Change dates
-        </Button>
+        {!readOnly && (
+          <Button size="small" variant="secondary" onClick={onChangeDates}>
+            Change dates
+          </Button>
+        )}
       </div>
     </header>
   );

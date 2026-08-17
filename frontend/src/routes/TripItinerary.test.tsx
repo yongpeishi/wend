@@ -1,10 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../components/Toast';
-import { findEntry } from '../mocks/db';
+import { api } from '../api';
+import { findEntry, setRole } from '../mocks/db';
 import { TripItinerary } from './TripItinerary';
 import { TripLayout } from './TripLayout';
 
@@ -20,6 +21,17 @@ import { TripLayout } from './TripLayout';
 //   Days 4–7        untouched
 // Kiyamachi, Coffee at Weekenders and Nishiki market are in no live version,
 // so the rail starts with three things in it.
+
+/**
+ * The same raise TripBoard.test.tsx made, and for the same reason. Every render
+ * in this file paints seven days, three of them populated, and several cases
+ * expand the whole list and then string a dozen keyboard events over it; the
+ * viewer block below adds seven more full renders on top. The 5s default is no
+ * longer comfortable here on a loaded machine, and nothing in this file is
+ * meant to be a performance assertion — a timeout here says the laptop was
+ * busy, not that the itinerary is wrong.
+ */
+vi.setConfig({ testTimeout: 15_000 });
 
 const SEEDED_TRIP_ID = 1;
 
@@ -735,5 +747,176 @@ describe('TripItinerary — versions', () => {
     expect(await screen.findByRole('heading', { name: 'Day 3 · Wed 4' })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Version B' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Archived · / })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Requirement readonly §3. The backend already turns a viewer away, so this is
+ * the client side of a door that is already locked — and the point of closing
+ * it here is that a viewer stops finding out by pressing something and reading
+ * a save error.
+ *
+ * Written in two halves throughout, the way TripBoard's viewer tests are: one
+ * half asserts the ways in are gone, the other asserts the plan is still all
+ * there. A suite with only the first half passes on a blank screen, which is
+ * the one outcome read-only must never produce.
+ */
+describe('TripItinerary — as a viewer', () => {
+  beforeEach(async () => {
+    // Signed in and genuinely a viewer in the fixtures, not merely told to
+    // render as one: TripLayout reads `my_role` off the trip the API answers
+    // with and mounts the role provider from it, exactly as the app does.
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    setRole(SEEDED_TRIP_ID, 1, 'viewer');
+  });
+
+  it('still shows every day and everything on it', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+
+    expect(screen.getAllByRole('heading', { name: /^Day \d · / })).toHaveLength(7);
+
+    // Day 1 in full: what is on it, in the hours it is on it, with the hole
+    // between the two things drawn in and the night spoken for.
+    const day1 = dayBox('2026-11-02');
+    expect(within(day1).getByText('Bundle · Nishiki market crawl')).toBeInTheDocument();
+    expect(within(day1).getByText('09:00–09:40')).toBeInTheDocument();
+    expect(within(day1).getByText('Nothing planned · 1 hr 20')).toBeInTheDocument();
+    expect(within(day1).getByText('Machiya near Gion')).toBeInTheDocument();
+
+    // The undecided day is still visibly undecided, both ways round.
+    const day2 = dayBox('2026-11-03');
+    expect(within(day2).getByRole('heading', { name: 'Version A' })).toBeInTheDocument();
+    expect(within(day2).getByRole('heading', { name: 'Version B' })).toBeInTheDocument();
+    expect(within(day2).getByText('Yakitori under the tracks')).toBeInTheDocument();
+    expect(within(day2).getByText('2 versions · not settled')).toBeInTheDocument();
+
+    // And the screen's own head still states the trip's shape.
+    expect(screen.getByText('7 days')).toBeInTheDocument();
+    expect(screen.getByText('1 day split · not settled')).toBeInTheDocument();
+
+    // With everything still waiting on the rail. Scoped to the rail: a title
+    // here can also be a location on a day, and the seed has both.
+    const rail = screen.getByRole('complementary', { name: 'Kept and not placed yet' });
+    expect(within(rail).getByText('Not placed yet · 3')).toBeInTheDocument();
+    expect(within(rail).getByText('Kiyamachi')).toBeInTheDocument();
+    expect(within(rail).getByText('Nishiki market')).toBeInTheDocument();
+    expect(within(rail).getByText('Coffee at Weekenders')).toBeInTheDocument();
+  });
+
+  it('takes every way of changing the itinerary away', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    await screen.findByRole('heading', { name: 'Version B' });
+
+    // Everything done TO a day.
+    expect(screen.queryByRole('button', { name: 'Fork this day' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add another' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Keep Version/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Swap Day/ })).not.toBeInTheDocument();
+
+    // Everything that puts something on a day, or takes it off again.
+    expect(screen.queryByRole('button', { name: '+ add to this day' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^\+ add to Version/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Fill it' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /off this day$/ })).not.toBeInTheDocument();
+    // The time column stops being a button — ItemLine's own readOnly, threaded.
+    expect(screen.queryByRole('button', { name: /the hours for/ })).not.toBeInTheDocument();
+
+    // Where you sleep, in both its states.
+    expect(screen.queryByRole('button', { name: /^Where you sleep:/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Say where you sleep' })).not.toBeInTheDocument();
+
+    // The rail's two routes onto a day. dnd-kit does not care how a row is
+    // styled, so the sensors are the real kill switch (see NO_SENSORS) — but
+    // with the grip gone there is nothing left to lift either.
+    expect(screen.queryByRole('button', { name: /^Drag / })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Add .+ to a day$/ })).not.toBeInTheDocument();
+
+    // And the trip's dates.
+    expect(screen.queryByRole('button', { name: 'Change dates' })).not.toBeInTheDocument();
+  });
+
+  // Folding the list is reading, not writing. None of it may be taken away
+  // with the edits — a viewer on a fortnight's trip needs it most.
+  it('keeps every way of reading the days', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    expect(screen.getAllByRole('heading', { name: /^Day \d · / })).toHaveLength(7);
+
+    await user.click(screen.getByRole('button', { name: 'Collapse all' }));
+    expect(screen.queryByRole('heading', { name: /^Day \d · / })).not.toBeInTheDocument();
+
+    // And one day on its own, opened and closed from its own chevron.
+    await openDay(user, 'Day 1 · Mon 2');
+    expect(screen.getAllByRole('heading', { name: /^Day \d · / })).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Close Day 1 · Mon 2' }));
+    expect(screen.queryByRole('heading', { name: /^Day \d · / })).not.toBeInTheDocument();
+  });
+
+  it('still discloses what was set aside, and offers no way to bring it back', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 3 · Wed 4');
+
+    await user.click(screen.getByRole('button', { name: /Archived · 1/ }));
+
+    expect(screen.getByText('Day 3 · Wed 4 · Version B')).toBeInTheDocument();
+    expect(screen.getByText('09:00–09:30 · 1 thing')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Bring back/ })).not.toBeInTheDocument();
+  });
+
+  it('tells the rail what it is, rather than naming controls a viewer has not got', async () => {
+    renderItinerary();
+    await screen.findByText('Not placed yet · 3');
+
+    expect(screen.getByText('Kept for this trip, not on a day yet.')).toBeInTheDocument();
+    expect(screen.queryByText(/Drag one onto a day/)).not.toBeInTheDocument();
+    // The one thing about this rail people assume wrongly is said to everyone.
+    expect(screen.getByText(/Nothing here is used up/)).toBeInTheDocument();
+  });
+
+  // A viewer can never reach the gate by "Change dates" — it is not on their
+  // header — so the gate they see is always the trip with no dates at all.
+  it('says why there are no days, rather than handing over the date form', async () => {
+    const trip = findEntry(SEEDED_TRIP_ID);
+    if (trip) {
+      trip.starts_on = null;
+      trip.ends_on = null;
+    }
+    renderItinerary();
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'No days yet' })).toBeInTheDocument();
+    expect(
+      screen.getByText("The dates aren't set yet. Only someone editing this trip can open the days."),
+    ).toBeInTheDocument();
+
+    expect(screen.queryByLabelText('First day')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Last day')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open the days' })).not.toBeInTheDocument();
+    // The warning modal is only ever reached by answering that form, and is
+    // not mounted for a viewer either.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // The way out stays.
+    expect(screen.getByRole('button', { name: 'Back to ideas' })).toBeInTheDocument();
+  });
+
+  it('gives the whole screen back to a member', async () => {
+    setRole(SEEDED_TRIP_ID, 1, 'member');
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await openDay(user, 'Day 1 · Mon 2');
+
+    expect(screen.getByRole('button', { name: 'Change dates' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Fork this day' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Drag Kiyamachi onto a day' })).toBeInTheDocument();
   });
 });

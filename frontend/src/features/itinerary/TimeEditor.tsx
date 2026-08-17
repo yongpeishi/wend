@@ -25,16 +25,46 @@ export interface TimeEditorProps {
  * one thing this does.
  */
 
-/** `9:00`, `09:00` and `0900` all parse. Anything else is refused rather than guessed at. */
+/**
+ * `9:00`, `09:00` and `0900` all parse, and so does a bare hour: `12` is 12:00,
+ * `9` is 09:00, `0` is 00:00. That last one is a reading, not a guess — a time
+ * has exactly one hour in it, so an hour typed alone leaves nothing ambiguous,
+ * and "on the hour" is the only whole time it can name. Most hours on a day are
+ * on the hour, and typing two characters for them is the point.
+ *
+ * The minute half of the pattern is what is optional; everything else is as it
+ * was. Three digits keep their old reading through the same branch as before
+ * (`900` backtracks to 9 and 00, so 09:00), and four keep theirs (`0900`).
+ *
+ * Anything else is refused rather than guessed at: `12:3` and `1:2` are half a
+ * time, `ab` is not one at all, and `25`, `25:00` and `12:60` name an hour or a
+ * minute that does not exist. A bare `25` is refused for the same reason
+ * `25:00` is — reading the hour does not mean inventing a legal one.
+ */
 function parseTime(value: string): number | null {
   const text = value.trim();
   if (!text) return null;
-  const match = /^(\d{1,2}):?(\d{2})$/.exec(text);
+  const match = /^(\d{1,2})(?::?(\d{2}))?$/.exec(text);
   if (!match) return null;
   const hours = Number(match[1]);
-  const minutes = Number(match[2]);
+  const minutes = match[2] === undefined ? 0 : Number(match[2]);
   if (hours > 23 || minutes > 59) return null;
   return hours * 60 + minutes;
+}
+
+/**
+ * What the field shows once it is left, so the reader sees what was understood
+ * before anything is saved: a typed `12` settles to `12:00`. `formatMinutes` is
+ * the same formatter the fields open on, so a normalised field and an untouched
+ * one are written the same way.
+ *
+ * Text the editor is refusing is left exactly as it was typed. Rewriting it
+ * would either hide the mistake or invent a correction for it, and the message
+ * under the box is about the characters that are there.
+ */
+function normalise(text: string): string {
+  const minutes = parseTime(text);
+  return minutes === null ? text : formatMinutes(minutes);
 }
 
 interface Problem {
@@ -125,6 +155,10 @@ export function TimeEditor({ startsAtMinutes, endsAtMinutes, onSave, onCancel, t
             setStart(event.target.value);
             setTried(false);
           }}
+          // Leaving the box settles it to HH:MM. Only the text changes — `tried`
+          // is deliberately left alone, so a message already asked for by the
+          // button does not vanish just because focus moved to the other field.
+          onBlur={(event) => setStart(normalise(event.target.value))}
         />
         <Field
           label={`Ends${suffix}`}
@@ -137,6 +171,7 @@ export function TimeEditor({ startsAtMinutes, endsAtMinutes, onSave, onCancel, t
             setEnd(event.target.value);
             setTried(false);
           }}
+          onBlur={(event) => setEnd(normalise(event.target.value))}
         />
       </div>
       <div className={styles.actions}>

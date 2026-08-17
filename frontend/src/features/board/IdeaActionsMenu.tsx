@@ -114,7 +114,9 @@ export function IdeaActionsMenu({ entry, bundles, members, onEdit, onToast }: Id
           </button>
 
           {/* Set aside, never delete — SetAsideSection at the foot of the board
-              is the way back, on the same screen as the way out. */}
+              is the way back, on the same screen as the way out. The label
+              names that list rather than the motion, so the way back is already
+              in the words on the way out. */}
           <button
             type="button"
             className={styles.item}
@@ -126,7 +128,7 @@ export function IdeaActionsMenu({ entry, bundles, members, onEdit, onToast }: Id
               });
             }}
           >
-            Set aside
+            Move to Set aside
           </button>
 
           <div className={styles.section}>

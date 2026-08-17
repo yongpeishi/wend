@@ -22,6 +22,12 @@ export interface VersionColumnsProps {
   onDropItem?: ItineraryDropHandler;
   /** `Day 4 · Wed 15`, so a Keep button says which day it settles. */
   dayLabel?: string;
+  /**
+   * A viewer's split day: both columns still drawn in full, with nothing that
+   * settles or changes either. Handed straight down to VersionItems, which is
+   * where the same word already means the same thing.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -36,6 +42,12 @@ export interface VersionColumnsProps {
  * Every column is also a drop target of its own, which is what makes "drag it
  * into Version B" mean Version B rather than whichever version the day would
  * have picked. So this renders inside a `<DndContext>` — see `useDayDrop`.
+ *
+ * Read-only keeps the comparison and drops the verdict. Both columns, both
+ * running orders and both counts stay — being able to see that a day is still
+ * two ways round is the whole of what this component says — but settling it on
+ * one of them is not a viewer's call to make, so there is no Keep button to
+ * press rather than a greyed one.
  */
 export function VersionColumns({
   day,
@@ -47,6 +59,7 @@ export function VersionColumns({
   onAdd,
   onDropItem,
   dayLabel,
+  readOnly = false,
 }: VersionColumnsProps) {
   return (
     <div className={styles.columns}>
@@ -62,6 +75,7 @@ export function VersionColumns({
           onAdd={onAdd}
           onDropItem={onDropItem}
           dayLabel={dayLabel}
+          readOnly={readOnly}
         />
       ))}
     </div>
@@ -81,6 +95,7 @@ function VersionColumn({
   onAdd,
   onDropItem,
   dayLabel,
+  readOnly = false,
 }: VersionColumnProps) {
   const { setNodeRef, isOver, dropId } = useVersionDrop(day, version.id, onDropItem);
   const items = version.schedule_items;
@@ -106,27 +121,30 @@ function VersionColumn({
           onFill={onFill && ((slot) => onFill(version.id, slot))}
           onEditTime={onEditTime}
           onRemoveItem={onRemoveItem}
+          readOnly={readOnly}
         />
       )}
 
-      {onAdd && (
+      {onAdd && !readOnly && (
         <button type="button" className={styles.add} onClick={() => onAdd(version.id)}>
           + add to {version.name}
         </button>
       )}
 
-      <Button
-        variant="secondary"
-        className={styles.keep}
-        onClick={() => onKeep(version.id)}
-        aria-label={
-          dayLabel
-            ? `Keep ${version.name} for ${dayLabel}, and archive the rest`
-            : `Keep ${version.name}, and archive the rest`
-        }
-      >
-        Keep this one
-      </Button>
+      {!readOnly && (
+        <Button
+          variant="secondary"
+          className={styles.keep}
+          onClick={() => onKeep(version.id)}
+          aria-label={
+            dayLabel
+              ? `Keep ${version.name} for ${dayLabel}, and archive the rest`
+              : `Keep ${version.name}, and archive the rest`
+          }
+        >
+          Keep this one
+        </Button>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronUp } from 'lucide-react';
+import { Bed, ChevronUp } from 'lucide-react';
 import { Button } from '../../design/components/core/Button';
 import { Tag } from '../../design/components/core/Chip';
 import type { EntrySummary } from '../../api/types';
@@ -16,6 +16,10 @@ import type { ItineraryDropHandler } from './useDayDrop';
 import { VersionColumns } from './VersionColumns';
 import { VersionItems } from './VersionItems';
 import styles from './DayCard.module.css';
+// The pill's own measurements, borrowed for the read-only twin below. Lodging
+// is one shape in this header whether or not you can change it, and the shape
+// is stated once — in the pill's stylesheet — rather than copied into this one.
+import lodgingStyles from './LodgingPill.module.css';
 
 /** Which version the picker is filling, and over which hours if it came from a gap. */
 interface PickerTarget {
@@ -59,6 +63,14 @@ export interface DayCardProps {
    * when it landed on the day itself and the day is the one that decides.
    */
   onDropItem?: ItineraryDropHandler;
+  /**
+   * A viewer's day: everything on it still readable, nothing on it changeable.
+   * The callbacks above still arrive — the container has no reason to withhold
+   * them — and this decides which of the controls that would fire them exist.
+   * Same word and same default as ItemLine, GapRow and VersionItems, which is
+   * what lets it be handed straight down to them.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -70,6 +82,14 @@ export interface DayCardProps {
  * decides. The one piece of state it keeps is which panel is showing (the
  * lodging editor, the picker), because that is a property of this card on this
  * screen and nothing else needs to know.
+ *
+ * Read-only is the same card with the ways in taken out rather than a second
+ * card: the day's number, its state dot, its split tag, where you sleep and its
+ * whole running order are all still here, because a viewer who cannot see what
+ * the day holds has been given nothing. What goes is only what would write —
+ * and it goes by not being rendered at all, because a row of disabled controls
+ * reads as "you did something wrong" where an absent one reads as "this isn't
+ * yours to change".
  */
 export function DayCard({
   day,
@@ -86,6 +106,7 @@ export function DayCard({
   onSetLodging,
   onSwapDay,
   onDropItem,
+  readOnly = false,
 }: DayCardProps) {
   const { setNodeRef, isOver, dropId } = useDayDrop(day.day, onDropItem);
   const [lodgingOpen, setLodgingOpen] = useState(false);
@@ -111,15 +132,35 @@ export function DayCard({
           </Tag>
         )}
 
-        <LodgingPill title={day.lodgingTitle} onClick={() => setLodgingOpen((open) => !open)} />
+        {/* Where you sleep is a fact about the night, so a viewer keeps it —
+            as a Tag, the static twin of the Chip the pill draws itself with,
+            wearing the pill's own measurements. Bare text beside a hidden icon,
+            exactly as the collapsed row (DayRow) already draws the same fact:
+            an aria-label on a span with no role is not reliably read, and the
+            title is the whole of what there is to say once it is not a control.
+
+            The unset state has no read-only form at all. "+ where you sleep" is
+            an invitation, and there is nothing here to accept it with. */}
+        {readOnly ? (
+          day.lodgingTitle && (
+            <Tag tone="saved" className={lodgingStyles.pill}>
+              <Bed size={15} strokeWidth={1.5} aria-hidden="true" className={lodgingStyles.icon} />
+              <span className={lodgingStyles.title}>{day.lodgingTitle}</span>
+            </Tag>
+          )
+        ) : (
+          <LodgingPill title={day.lodgingTitle} onClick={() => setLodgingOpen((open) => !open)} />
+        )}
 
         <span className={styles.headActions}>
           {/* One live version: forking makes a second. Already split: the same
               action adds another way to spend the day, so the verb changes but
               the endpoint does not. */}
-          <Button size="small" variant="secondary" onClick={onFork}>
-            {split ? 'Add another' : 'Fork this day'}
-          </Button>
+          {!readOnly && (
+            <Button size="small" variant="secondary" onClick={onFork}>
+              {split ? 'Add another' : 'Fork this day'}
+            </Button>
+          )}
 
           {/* The chevron before the swap, which is the order the collapsed row
               (DayRow) puts them in and cannot change: there the chevron is a
@@ -140,13 +181,16 @@ export function DayCard({
           {/* Beside the day's other actions rather than in the body: swapping
               is something done TO the day, like forking it, not something done
               to what is on it. */}
-          {onSwapDay && (
+          {onSwapDay && !readOnly && (
             <SwapDayMenu day={day.day} dayLabel={day.label} choices={swapChoices} onSwap={onSwapDay} />
           )}
         </span>
       </div>
 
-      {lodgingOpen && (
+      {/* Not merely unopened for a viewer but unmounted: the pill that opens it
+          is the only way in and a viewer gets the inert twin, so this states
+          that there is no second path rather than trusting there is none. */}
+      {lodgingOpen && !readOnly && (
         <LodgingEditor
           choices={lodgingChoices}
           current={{ entryId: day.lodgingEntryId, label: day.lodgingLabel }}
@@ -177,6 +221,7 @@ export function DayCard({
           onAdd={(versionId) => setPicker({ versionId, slot: null })}
           onFill={(versionId, slot) => setPicker({ versionId, slot })}
           onDropItem={onDropItem}
+          readOnly={readOnly}
         />
       ) : (
         firstVersion && (
@@ -186,19 +231,25 @@ export function DayCard({
               onEditTime={onEditTime}
               onRemoveItem={onRemoveItem}
               onFill={(slot) => setPicker({ versionId: firstVersion.id, slot })}
+              readOnly={readOnly}
             />
-            <button
-              type="button"
-              className={styles.add}
-              onClick={() => setPicker({ versionId: firstVersion.id, slot: null })}
-            >
-              + add to this day
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                className={styles.add}
+                onClick={() => setPicker({ versionId: firstVersion.id, slot: null })}
+              >
+                + add to this day
+              </button>
+            )}
           </>
         )
       )}
 
-      {picker && (
+      {/* Unmounted for the same reason the lodging editor is: every way of
+          opening it — the add line, a column's own add, a gap's "Fill it" —
+          has already gone. */}
+      {picker && !readOnly && (
         <AddPicker
           choices={addChoices}
           slotLabel={picker.slot ? formatSpan(picker.slot.start, picker.slot.end) : undefined}

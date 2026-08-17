@@ -101,9 +101,12 @@ export function TripBoard() {
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
 
-  // The map starts closed: the board is a list first, and a reader who came to
-  // read it should not have to dismiss half the screen.
-  const [mapOpen, setMapOpen] = useState(false);
+  // The map starts open: where a trip's ideas ARE is half of what the board has
+  // to say about them, and a map behind a button is one nobody presses. Hiding
+  // it is a single click and the list comes back whole, so the reader who wants
+  // the list alone loses less by dismissing it than the reader who wants the map
+  // loses by never discovering it.
+  const [mapOpen, setMapOpen] = useState(true);
   // ...but once it IS open, it starts bound to the list, because a map that
   // narrows nothing looks broken until you find the switch that explains it.
   const [followMap, setFollowMap] = useState(true);
@@ -347,8 +350,14 @@ export function TripBoard() {
           {/* Map and list share one wrapping row: the map is on the left, where
               the design puts it, and the list keeps the wider basis because it
               is the thing being read. Nothing here is a breakpoint — see the
-              stylesheet. */}
-          <div className={styles.body}>
+              stylesheet.
+
+              data-map is the one thing the stylesheet cannot work out for
+              itself: the list's reading-measure cap only makes sense while
+              there is a map to hand the surplus width to, and CSS has no way
+              to ask whether a sibling exists. Present or absent rather than
+              open/closed, so the closed case needs no selector at all. */}
+          <div className={styles.body} data-map={mapOpen ? 'open' : undefined}>
             {/* Rendered only while open, never merely hidden. See toggleMap. */}
             {mapOpen && (
               <div className={styles.mapCell}>

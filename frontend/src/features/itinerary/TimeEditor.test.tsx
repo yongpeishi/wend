@@ -62,6 +62,79 @@ describe('TimeEditor', () => {
     expect(onSave).toHaveBeenCalledWith(9 * 60 + 5, 14 * 60);
   });
 
+  it('reads a bare hour as that hour, on the hour', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderEditor();
+
+    await retype(user, '12', '');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(onSave).toHaveBeenCalledWith(12 * 60, null);
+  });
+
+  it('reads a single digit as an hour too', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderEditor();
+
+    await retype(user, '9', '');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(onSave).toHaveBeenCalledWith(9 * 60, null);
+  });
+
+  it('reads a lone zero as midnight, not as nothing typed', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderEditor();
+
+    await retype(user, '0', '');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(onSave).toHaveBeenCalledWith(0, null);
+  });
+
+  it('still reads three digits and four the way it always has', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderEditor();
+
+    await retype(user, '900', '0900');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(onSave).toHaveBeenCalledWith(9 * 60, 9 * 60);
+  });
+
+  it('shows what it understood once the field is left', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.clear(screen.getByLabelText('Starts'));
+    await user.type(screen.getByLabelText('Starts'), '12');
+    await user.tab();
+
+    expect(screen.getByLabelText('Starts')).toHaveValue('12:00');
+  });
+
+  it('settles the ending the same way', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.clear(screen.getByLabelText('Ends'));
+    await user.type(screen.getByLabelText('Ends'), '900');
+    await user.tab();
+
+    expect(screen.getByLabelText('Ends')).toHaveValue('09:00');
+  });
+
+  it('leaves a refused field showing the characters that were typed into it', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+
+    await user.clear(screen.getByLabelText('Starts'));
+    await user.type(screen.getByLabelText('Starts'), '25:00');
+    await user.tab();
+
+    expect(screen.getByLabelText('Starts')).toHaveValue('25:00');
+  });
+
   it('saves on Enter, since the whole editor is two fields', async () => {
     const user = userEvent.setup();
     const { onSave } = renderEditor();
@@ -103,14 +176,29 @@ describe('TimeEditor', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Times read like 09:40.');
   });
 
-  it('refuses an hour that does not exist', async () => {
+  // An hour that does not exist, a minute that does not exist, letters, and half
+  // a time — reading a bare hour did not widen what counts as one.
+  it.each(['25:00', '25', '12:60', 'ab', '12:3', '1:2'])('refuses %s and says so on the box', async (typed) => {
     const user = userEvent.setup();
     const { onSave } = renderEditor();
 
-    await retype(user, '25:00', '');
+    await retype(user, typed, '');
     await user.click(screen.getByRole('button', { name: 'Set the hours' }));
 
     expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Starts')).toHaveAccessibleDescription('Times read like 09:40.');
+  });
+
+  it('names the ending when the ending is the unreadable one', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderEditor();
+
+    await retype(user, '09:00', '12:60');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Ends')).toHaveAccessibleDescription('Times read like 09:40.');
+    expect(screen.getByLabelText('Starts')).not.toHaveAttribute('aria-invalid');
   });
 
   it('refuses an ending that comes before its start', async () => {

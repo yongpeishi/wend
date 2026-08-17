@@ -16,7 +16,10 @@ const DRAGGABLE_PREFIX = 'itinerary-unplaced-';
 export interface UnplacedRailProps {
   /** `Not placed yet · 4`. */
   title: string;
-  /** The sentence under it, explaining both ways onto a day. */
+  /**
+   * The sentence under it. For someone editing, both ways onto a day; for a
+   * viewer, what the list is — see `readOnly`, and the container that picks.
+   */
   line: string;
   /** Kept ideas and bundles that sit in no live version of any day. */
   items: EntrySummary[];
@@ -27,6 +30,13 @@ export interface UnplacedRailProps {
   onDragStart?: (entryId: number) => void;
   /** The foot of the rail — where the archived panel goes. */
   children?: ReactNode;
+  /**
+   * A viewer's rail: the whole list, its count and its closing note, with the
+   * two ways onto a day taken off each row. `line` is the caller's to match —
+   * the sentence that names the grip and the ⋯ menu describes controls a
+   * viewer cannot see, and only the container knows which sentence to pass.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -37,7 +47,16 @@ export interface UnplacedRailProps {
  * fact about the days, not a stock level. The closing line says so, because it
  * is the one thing about this screen people assume wrongly.
  */
-export function UnplacedRail({ title, line, items, days, onAddToDay, onDragStart, children }: UnplacedRailProps) {
+export function UnplacedRail({
+  title,
+  line,
+  items,
+  days,
+  onAddToDay,
+  onDragStart,
+  children,
+  readOnly = false,
+}: UnplacedRailProps) {
   useDndMonitor({
     onDragStart({ active }) {
       if (!onDragStart || !String(active.id).startsWith(DRAGGABLE_PREFIX)) return;
@@ -54,7 +73,9 @@ export function UnplacedRail({ title, line, items, days, onAddToDay, onDragStart
       {items.length === 0 ? (
         <EmptyState message="Everything you've kept is on a day. Keep something new and it waits here." />
       ) : (
-        items.map((item) => <RailItem key={item.id} item={item} days={days} onAddToDay={onAddToDay} />)
+        items.map((item) => (
+          <RailItem key={item.id} item={item} days={days} onAddToDay={onAddToDay} readOnly={readOnly} />
+        ))
       )}
 
       {children}
@@ -68,6 +89,7 @@ interface RailItemProps {
   item: EntrySummary;
   days: ItineraryDay[];
   onAddToDay: (entryId: number, day: string) => void;
+  readOnly?: boolean;
 }
 
 /**
@@ -86,8 +108,15 @@ interface RailItemProps {
  * this list is long. So Up and Down walk it and wrap, Home and End jump to its
  * ends, and Tab and Escape do exactly what they did before. This is the
  * keyboard's whole equivalent of dragging something onto a day.
+ *
+ * Read-only leaves the card and takes both of those away, which is the whole
+ * difference: the title, what kind of thing it is and where it is are the
+ * reasons the row exists, and none of them is a control. `useDraggable` is
+ * still called — hooks cannot be skipped — but with nothing rendering its
+ * listeners there is no grip to lift, and the screen above has taken the
+ * sensors off the DndContext anyway.
  */
-function RailItem({ item, days, onAddToDay }: RailItemProps) {
+function RailItem({ item, days, onAddToDay, readOnly = false }: RailItemProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -168,64 +197,68 @@ function RailItem({ item, days, onAddToDay }: RailItemProps) {
       data-dragging={isDragging || undefined}
       ref={containerRef}
     >
-      <button
-        type="button"
-        ref={setNodeRef}
-        {...listeners}
-        {...attributes}
-        className={styles.grip}
-        aria-label={`Drag ${item.title} onto a day`}
-      >
-        <GripVertical size={18} strokeWidth={1.5} aria-hidden="true" />
-      </button>
+      {!readOnly && (
+        <button
+          type="button"
+          ref={setNodeRef}
+          {...listeners}
+          {...attributes}
+          className={styles.grip}
+          aria-label={`Drag ${item.title} onto a day`}
+        >
+          <GripVertical size={18} strokeWidth={1.5} aria-hidden="true" />
+        </button>
+      )}
 
       <span className={styles.body}>
         <span className={styles.name}>{item.title}</span>
         {meta && <span className={styles.meta}>{meta}</span>}
       </span>
 
-      <span className={styles.menuWrap}>
-        <button
-          type="button"
-          ref={triggerRef}
-          className={styles.trigger}
-          aria-haspopup="true"
-          aria-expanded={open}
-          aria-label={`Add ${item.title} to a day`}
-          onClick={() => setOpen((value) => !value)}
-        >
-          <MoreHorizontal size={18} strokeWidth={1.5} aria-hidden="true" />
-        </button>
-
-        {open && (
-          <div
-            ref={menuRef}
-            className={styles.menu}
-            role="group"
-            aria-label={`Days to add ${item.title} to`}
-            onKeyDown={moveFocus}
+      {!readOnly && (
+        <span className={styles.menuWrap}>
+          <button
+            type="button"
+            ref={triggerRef}
+            className={styles.trigger}
+            aria-haspopup="true"
+            aria-expanded={open}
+            aria-label={`Add ${item.title} to a day`}
+            onClick={() => setOpen((value) => !value)}
           >
-            {days.length === 0 ? (
-              <p className={styles.menuEmpty}>Set the trip's dates and the days appear here.</p>
-            ) : (
-              days.map((day, index) => (
-                <button
-                  key={day.day}
-                  type="button"
-                  ref={index === 0 ? firstItemRef : undefined}
-                  className={styles.menuItem}
-                  onClick={() => {
-                    setOpen(false);
-                    onAddToDay(item.id, day.day);
-                  }}
-                >
-                  Add to {day.label}
-                </button>
-              ))
-            )}
-          </div>
-        )}
-      </span>
+            <MoreHorizontal size={18} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+
+          {open && (
+            <div
+              ref={menuRef}
+              className={styles.menu}
+              role="group"
+              aria-label={`Days to add ${item.title} to`}
+              onKeyDown={moveFocus}
+            >
+              {days.length === 0 ? (
+                <p className={styles.menuEmpty}>Set the trip's dates and the days appear here.</p>
+              ) : (
+                days.map((day, index) => (
+                  <button
+                    key={day.day}
+                    type="button"
+                    ref={index === 0 ? firstItemRef : undefined}
+                    className={styles.menuItem}
+                    onClick={() => {
+                      setOpen(false);
+                      onAddToDay(item.id, day.day);
+                    }}
+                  >
+                    Add to {day.label}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </span>
+      )}
     </div>
   );
 }

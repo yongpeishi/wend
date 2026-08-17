@@ -16,6 +16,13 @@ export interface DatesGateProps {
   /** Prefilled when the gate is reopened by "Change dates". */
   initialStart?: string | null;
   initialEnd?: string | null;
+  /**
+   * A viewer at the gate. There is only one way to be here as one — the trip
+   * has no dates, and "Change dates" is not on a viewer's header to reopen it
+   * with — so this is the no-dates case said plainly rather than a form with
+   * its confirm button locked.
+   */
+  readOnly?: boolean;
 }
 
 /** 3, 5 and 7 nights-of-sleep apart — the lengths people actually name. */
@@ -60,6 +67,11 @@ function keptLine(keptCount: number, tripTitle: string): string {
  * A length chip is the third way in, for the trip that has a starting day and a
  * shape but no return flight yet — it fills the first day with today if you
  * have not picked one, because a length has to count from something.
+ *
+ * A viewer gets the same card carrying a different sentence. The days are not
+ * missing because nobody has got round to them; they are missing because the
+ * one person who can open them has not, and saying that is more use than a
+ * date form nobody at this keyboard can submit.
  */
 export function DatesGate({
   tripTitle,
@@ -69,6 +81,7 @@ export function DatesGate({
   saving = false,
   initialStart = null,
   initialEnd = null,
+  readOnly = false,
 }: DatesGateProps) {
   const [start, setStart] = useState(initialStart ?? '');
   const [end, setEnd] = useState(initialEnd ?? '');
@@ -87,6 +100,32 @@ export function DatesGate({
     const from = start || todayIso();
     setStart(from);
     setEnd(addDays(from, days - 1));
+  }
+
+  // The same card, minus everything that would write: no date fields, no length
+  // chips, and no confirm button to press. The way out stays, because a screen
+  // with nothing on it and nowhere to go is a dead end. The back button keeps
+  // the one rule the editable path uses — where "back" goes depends on whether
+  // there are days to go back to, not on who is reading.
+  if (readOnly) {
+    return (
+      <div className={styles.gate}>
+        <div className={styles.card}>
+          <div className={styles.intro}>
+            <h2 className={styles.title}>No days yet</h2>
+            <p className={styles.body}>
+              The dates aren't set yet. Only someone editing this trip can open the days.
+            </p>
+          </div>
+
+          <div className={styles.actions}>
+            <Button variant="secondary" onClick={onBack}>
+              {reopened ? 'Back to your days' : 'Back to ideas'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

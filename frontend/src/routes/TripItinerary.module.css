@@ -1,7 +1,16 @@
 /* The day list and the rail, side by side — the design's option 3b. The list
    is the working surface and takes every pixel the rail does not; the rail is
-   the 300px it draws itself (UnplacedRail.module.css), never a proportion,
-   because its rows are one line of title and do not read better wider.
+   the width it draws itself (UnplacedRail.module.css), and that width is now
+   the board's bundle-rail measurement — clamp(336px, 34%, 480px), a proportion
+   between two hard ends. The board and this screen hold the same object at two
+   moments of planning, and at 300px here against 336–480px there the two rails
+   were visibly different objects, which made the two screens feel unrelated.
+   The old argument for a fixed number — a rail row is one line of title and
+   does not read better wider — is still true, and it is what the 480px ceiling
+   is for; it was never an argument for the floor.
+
+   The percentage resolves against this element, which is why the rail keeps
+   flex: none and border-box over there.
 
    No gap between them: the rail carries its own border-left and card ground,
    so a gap here would leave a strip of paper beside that rule and turn an edge
@@ -53,11 +62,44 @@
   padding: var(--space-6) var(--space-8) var(--space-12);
 }
 
-/* Narrow enough that 300px of rail would leave the days unreadable: the rail
+/* Narrow enough that any rail beside the days leaves them unreadable: the rail
    goes under the list instead of beside it, full width, and its left rule
    becomes a top one. Reaching into the rail's own element rather than a class
    of ours is deliberate — it is the only <aside> here, and the alternative is
-   a width prop that exists only for this breakpoint. */
+   a width prop that exists only for this breakpoint.
+
+   `width: auto` here beats the rail's clamp on specificity, not on order: this
+   is a class and a type, the clamp is one class. It wins wherever it applies
+   however the two files land in the bundle, and it wins over the rail's
+   (pointer: coarse) floor too — which matters, because a tablet held upright is
+   exactly where both media queries are live at once. Nothing had to be softened
+   over there to make this work.
+
+   The floor cannot push the screen sideways on the way down to here. At 901px —
+   the last viewport width that still gets two columns; the sidebar lies down at
+   860px, so it is still 246px wide — the shell leaves 655px, and .screen takes
+   all of it because it cancels TripLayout's gutters. The rail takes its floor,
+   336px (384px on touch), and .main, flex: 1 with min-width: 0, absorbs the
+   remaining 319px (271px). Off that come .list's two --space-8 sides, DayCard's
+   18px inset and its rule, and an item row's own 13px sides and rule: 132px of
+   chrome, leaving a row 187px wide (139px). The only thing in that row which
+   refuses to shrink is ItemLine's 104px clock column and the 32px ✕; the title
+   carries min-width: 0. So the narrowest .main this screen can be asked for is
+   about 236px against the 319px it has, and no horizontal scrollbar appears.
+   The headroom is thinner than the board's: 655 less 236 puts the last safe floor
+   at about 419px, so the touch floor of 384px is inside it but not by much, and
+   raising either floor further — or giving .main a min-width — is what would
+   bring a scrollbar back.
+
+   Readable, with a caveat worth stating plainly: 187px is 36px less than the
+   223px a 300px rail left, and the day rows here spend it. But 216px of row
+   container is far below the 430px at which ItemLine's container query drops the
+   metadata to its own line — and so was the 252px the old width gave, so this
+   band was already the wrapped layout, not a comfortable one being spoiled. The
+   same 36px goes to the rail's rows, which have two 32px controls flanking them
+   and no second line to wrap onto. Between one screen-width band where an
+   already-wrapping row wraps a little sooner and every width where the two rails
+   disagree, this is the better trade. */
 @media (max-width: 900px) {
   .screen {
     flex-direction: column;

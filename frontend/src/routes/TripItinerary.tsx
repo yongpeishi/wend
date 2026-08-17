@@ -8,8 +8,17 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { Active, Announcements, DragStartEvent, Over, ScreenReaderInstructions } from '@dnd-kit/core';
+import type {
+  Active,
+  Announcements,
+  DragStartEvent,
+  Over,
+  ScreenReaderInstructions,
+  SensorDescriptor,
+  SensorOptions,
+} from '@dnd-kit/core';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCanEdit } from '../auth/TripRoleContext';
 import { Button } from '../design/components/core/Button';
 import { EntryRow } from '../components/EntryRow';
 import { Card } from '../components/layout/Card';
@@ -51,6 +60,28 @@ import styles from './TripItinerary.module.css';
 /** What a failed write says. Nothing is lost — the screen still holds it. */
 const SAVE_FAILED = "That didn't save. It's still here — try again.";
 
+/**
+ * No sensors at all is the read-only kill switch for drag and drop, the same
+ * one TripBoard.tsx uses on the sibling screen. Nothing softer works: a row
+ * styled inert is still a draggable as far as dnd-kit is concerned, and taking
+ * the grips away one by one would still leave the keyboard sensor listening for
+ * a space bar on anything that had kept its listeners. Removing the sensors
+ * closes both doors at the DndContext, above every draggable and every drop
+ * target on the screen.
+ *
+ * Declared here rather than imported from TripBoard: two screens agreeing on a
+ * technique is not a reason to couple two routes through a shared empty array.
+ * Module-level so the identity is stable and DndContext does not re-register
+ * its sensors on every render.
+ */
+const NO_SENSORS: SensorDescriptor<SensorOptions>[] = [];
+
+/** The rail's sentence, which depends on whether the reader has the two ways in. */
+const RAIL_LINE = {
+  edit: 'Drag one onto a day, or use its ⋯ menu to pick the day.',
+  read: 'Kept for this trip, not on a day yet.',
+};
+
 /** Dates the server refused, held until the warning modal is answered. */
 interface PendingDates {
   startsOn: string;
@@ -89,11 +120,25 @@ const DRAG_INSTRUCTIONS: ScreenReaderInstructions = {
  * - Nothing on the rail is consumed. "Unplaced" means "in no live version of
  *   any day" — a fact about the days, recomputed from them every render, never
  *   a stock level that placing something decrements.
+ *
+ * A viewer sees this whole screen and can change none of it. The role is asked
+ * once, here, and travels down as `readOnly` — the word ItemLine, GapRow and
+ * VersionItems already use — so no part below ever asks the question for
+ * itself. What a viewer loses is exactly the controls that write: the forks,
+ * the keeps, the adds and fills, the removes, the swaps, the lodging editor,
+ * the rail's grips and menus, the archived panel's way back, and "Change
+ * dates". What a viewer keeps is every day, every version, every placed thing
+ * and its hours, where they are sleeping, what is waiting on the rail and what
+ * was set aside — reading the plan is the point of being on the trip at all.
  */
 export function TripItinerary() {
   const { trip } = useOutletContext<{ trip: Entry }>();
   const navigate = useNavigate();
   const { show } = useToast();
+  // Asked once and only here. Everything below takes it as a prop, so no
+  // presentational part of this screen has to know a trip role exists.
+  const canEdit = useCanEdit();
+  const readOnly = !canEdit;
 
   const itineraryQuery = useItinerary(trip.id);
   const ideasQuery = useEntries({ trip_id: trip.id, kind: 'idea' });
@@ -190,7 +235,9 @@ export function TripItinerary() {
   // One object because those two have to agree — see itineraryDragStrategy.
   const drag = useMemo(() => itineraryDragStrategy(), []);
 
-  const sensors = useSensors(
+  // Built whatever the role — hooks cannot be called conditionally — and then
+  // either handed to the DndContext or dropped on the floor. See NO_SENSORS.
+  const editSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     // The keyboard walks the drop targets one press per target rather than
     // nudging the drag in pixels — see itineraryDragStrategy. It is the only
@@ -204,6 +251,7 @@ export function TripItinerary() {
     // overlay drifts away from the target the announcement has already named.
     useSensor(KeyboardSensor, { coordinateGetter: drag.coordinateGetter, scrollBehavior: 'auto' }),
   );
+  const sensors = canEdit ? editSensors : NO_SENSORS;
 
   /**
    * What each drop target is called out loud. Every version of a split day is
@@ -378,6 +426,10 @@ export function TripItinerary() {
     setDragging(null);
   };
 
+  // A viewer only ever arrives here by the second half of this test: `datesOpen`
+  // is set by "Change dates", which is not on a viewer's header at all. So the
+  // gate a viewer sees is always the no-dates one, and it says so rather than
+  // offering a form.
   if (datesOpen || !trip.starts_on || !trip.ends_on) {
     return (
       // The modal is a sibling of the gate, not a replacement for it: cancelling
@@ -395,18 +447,24 @@ export function TripItinerary() {
           // which is where the material for a day comes from.
           onBack={() => (datesOpen ? setDatesOpen(false) : navigate(`/trips/${trip.id}`))}
           onConfirm={(startsOn, endsOn) => submitDates(startsOn, endsOn)}
+          readOnly={readOnly}
         />
 
-        <DateShiftWarningModal
-          open={pendingDates !== null}
-          droppedDays={pendingDates?.droppedDays ?? []}
-          droppedItemCount={pendingDates?.droppedItemCount ?? 0}
-          saving={changeDates.isPending}
-          onCancel={() => setPendingDates(null)}
-          onConfirm={() => {
-            if (pendingDates) submitDates(pendingDates.startsOn, pendingDates.endsOn, true);
-          }}
-        />
+        {/* Only ever reached by answering the gate's own form, so a viewer has
+            no path to it — and it is not mounted either, so there is no second
+            path and nothing listening for an answer that cannot come. */}
+        {canEdit && (
+          <DateShiftWarningModal
+            open={pendingDates !== null}
+            droppedDays={pendingDates?.droppedDays ?? []}
+            droppedItemCount={pendingDates?.droppedItemCount ?? 0}
+            saving={changeDates.isPending}
+            onCancel={() => setPendingDates(null)}
+            onConfirm={() => {
+              if (pendingDates) submitDates(pendingDates.startsOn, pendingDates.endsOn, true);
+            }}
+          />
+        )}
       </>
     );
   }
@@ -449,6 +507,7 @@ export function TripItinerary() {
             onExpandAll={() => setOpenDays(days.map((day) => day.day))}
             onCollapseAll={() => setOpenDays([])}
             onChangeDates={() => setDatesOpen(true)}
+            readOnly={readOnly}
           />
 
           <div className={styles.list}>
@@ -493,6 +552,7 @@ export function TripItinerary() {
                     })
                   }
                   onSetLodging={(value) => updateTripDay.mutate({ day: day.day, ...value }, { onError })}
+                  readOnly={readOnly}
                 />
               ) : (
                 <DayRow
@@ -502,6 +562,7 @@ export function TripItinerary() {
                   onSwapDay={(otherDay) => swapWithDay(day.day, otherDay)}
                   onToggle={() => toggleDay(day.day)}
                   onDropItem={(entryId) => placeOnDay(entryId, day.day)}
+                  readOnly={readOnly}
                 />
               ),
             )}
@@ -510,10 +571,14 @@ export function TripItinerary() {
 
         <UnplacedRail
           title={`Not placed yet · ${unplaced.length}`}
-          line="Drag one onto a day, or use its ⋯ menu to pick the day."
+          // The editable sentence names a grip and a ⋯ menu, neither of which a
+          // viewer has; theirs says what the list IS instead, which is the part
+          // that was always worth knowing.
+          line={canEdit ? RAIL_LINE.edit : RAIL_LINE.read}
           items={unplaced}
           days={days}
           onAddToDay={placeOnDay}
+          readOnly={readOnly}
         >
           <ArchivedPanel
             archived={archived}
@@ -532,6 +597,7 @@ export function TripItinerary() {
                 },
               )
             }
+            readOnly={readOnly}
           />
         </UnplacedRail>
       </div>

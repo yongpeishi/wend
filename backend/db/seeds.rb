@@ -16,6 +16,11 @@ peter = User.find_or_create_by!(email: "peter@example.com") do |u|
   u.password = "password123"
 end
 
+anna = User.find_or_create_by!(email: "anna@example.com") do |u|
+  u.name = "Anna"
+  u.password = "password123"
+end
+
 # --- Helpers -------------------------------------------------------------
 
 def entry!(kind:, title:, created_by:, **attrs)
@@ -257,12 +262,28 @@ todo!(title: "Check Malaysia visa-free entry length", trip: malaysia)
 # Without these rows the demo has no trips anyone can see. Peter created five of
 # the ideas inside Sarah's Japan trip and votes on eight of its entries, so he
 # has to be on it -- the two-voice vote tally is the stated reason the second
-# seeded account exists. Sarah reads Malaysia but does not touch it, which is
-# the one seeded read-only case. (The owner rows already exist: creating a trip
-# grants its creator one. Named here anyway so the picture is in one place.)
+# seeded account exists.
+#
+# There are two read-only cases on purpose, because a viewer meets the read-only
+# treatment in two quite different places and one seed cannot show both. Sarah
+# reads Malaysia but never touches it, and Malaysia has no dates by design (it is
+# the lift/absorb exercise), so that account only ever lands on the "no days yet"
+# gate -- which is exactly the state worth being able to see as a viewer, and
+# exactly the state that hides everything behind it. Anna is a viewer on Japan
+# for the other half: Japan has dates, trip days, day versions, placed schedule
+# items, lodging, and a forked day, so signing in as her lands straight on a
+# fully populated itinerary with nothing editable. Without Anna the itinerary's
+# read-only treatment cannot be exercised at all -- the only seeded viewer would
+# be stopped at the dates gate before an itinerary ever renders. She reads Japan
+# and contributes nothing to it, which is the point: her presence must not change
+# any count the other two screens read out.
+#
+# (The owner rows already exist: creating a trip grants its creator one. Named
+# here anyway so the picture is in one place.)
 
 member!(trip: japan,    user: sarah, role: "owner")
 member!(trip: japan,    user: peter, role: "member")
+member!(trip: japan,    user: anna,  role: "viewer")
 member!(trip: malaysia, user: peter, role: "owner")
 member!(trip: malaysia, user: sarah, role: "viewer")
 
