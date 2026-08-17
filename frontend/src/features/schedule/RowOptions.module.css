@@ -1,0 +1,107 @@
+/*
+ * The choice, sitting under the row it belongs to. Deliberately flat — the old
+ * OptionsBlock was a positioned block on an hour grid and carried the geometry
+ * to prove it; here the row above already says when, so this is a short list and
+ * nothing else.
+ *
+ * `width: 100%` because ScheduleRow's text column aligns its children to the
+ * start, so without it every option would be only as wide as its own name and
+ * the trailing place would sit halfway across the row.
+ */
+.options {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+/* Apricot is the "you are here" and "nobody has decided" mark everywhere else on
+   this screen, and an open question is exactly what this is. It is a label, not
+   running text: at 12px bold it is short enough to stay legible in the one place
+   the palette otherwise keeps apricot away from words. */
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--wend-apricot);
+}
+
+/* Paper, as the design asks — but on a phone the page is already paper, so
+   without the edge these rows would dissolve into the background. The border is
+   what makes one option a thing you can point at in both widths: card ground on
+   the desktop panel, drawn edge on the phone. */
+.option {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  /* 9px: no spacing step lands there, and the line is meant to be shorter than
+     it is wide — a list you run your eye down, not a stack of cards. */
+  padding: 9px var(--space-3);
+  background: var(--wend-paper);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  text-align: left;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+button.option {
+  cursor: pointer;
+}
+
+button.option:hover {
+  opacity: 0.75;
+}
+
+button.option:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The one you picked. An apricot edge rather than a fill: the option is still an
+   option, and filling it would make it read as a different kind of thing from
+   the ones beside it. */
+.chosen {
+  border-color: var(--wend-apricot);
+}
+
+/* Not taken tonight. Opacity only — never a strike-through, which says "gone"
+   about something that is still there and still choosable with one tap. */
+.dimmed {
+  opacity: 0.55;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.where {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.mark {
+  flex: none;
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+@media (pointer: coarse) {
+  button.option {
+    min-height: var(--tap-min);
+  }
+}

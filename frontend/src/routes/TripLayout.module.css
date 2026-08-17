@@ -92,29 +92,6 @@
   text-wrap: pretty;
 }
 
-/* The schedule is the one dark surface in the product: it inverts for
-   outdoor reading. The shell follows it so the page does not sit in two tones. */
-.onDark {
-  background: var(--surface-inverse);
-  min-height: 100vh;
-}
-
-.onDark .title {
-  color: var(--text-on-dark);
-}
-
-.onDark .dates {
-  color: var(--text-on-dark-muted);
-}
-
-.onDark .noDates {
-  color: var(--text-on-dark-muted);
-}
-
-.onDark .viewerNote {
-  color: var(--text-on-dark-muted);
-}
-
 @media (max-width: 720px) {
   .wrap {
     padding: var(--space-6) var(--gutter-screen) var(--space-12);
