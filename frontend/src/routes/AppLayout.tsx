@@ -13,22 +13,25 @@ import styles from './AppLayout.module.css';
 
 /**
  * The trip's own views, in the order you plan in: keep the ideas, lay them onto
- * days, sort out what you have to do before you go, then read the finished plan
- * on the road. `board` is the index route, so it has no path segment.
+ * days, see where those days sit on the ground, sort out what you have to do
+ * before you go, then read the finished plan on the road. `board` is the index
+ * route, so it has no path segment.
  *
  * "Final schedule" rather than "Schedule": with an itinerary screen next door,
  * one word had to say which of the two is the finished one. Only the label
  * changed — /trips/:id/schedule is the same route it always was.
  *
  * Map is not in the itinerary design's sub-nav, and stays anyway: it shipped,
- * and taking a working view out of the nav is a regression rather than a tidy-up.
+ * and taking a working view out of the nav is a regression rather than a
+ * tidy-up. It sits next to the itinerary because it answers the same question
+ * about the same days, from above rather than down the page.
  */
 const TRIP_TABS = [
   { key: 'board', label: 'Ideas' },
   { key: 'itinerary', label: 'Itinerary' },
+  { key: 'map', label: 'Map' },
   { key: 'checklist', label: 'Checklist' },
   { key: 'schedule', label: 'Final schedule' },
-  { key: 'map', label: 'Map' },
 ];
 
 /** First letter of the name, for the avatar circle. Falls back to a middot. */
