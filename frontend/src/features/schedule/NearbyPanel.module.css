@@ -1,0 +1,219 @@
+/* Two skins for one panel. Everything above `.overlay` / `.rail` is what both
+   widths share; the two blocks below only say how the panel meets the screen —
+   a sheet laid over the whole phone, or a card parked beside the desktop list.
+   No media query decides between them: the route does, because only it knows
+   whether the sheet is currently over anything. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+}
+
+/* The phone: a full-screen paper surface over the schedule. z-index sits above
+   the now bar (20) and below Modal/Drawer's overlay (100) — a dialog opened
+   from in here should still land on top of it. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--wend-paper);
+}
+
+.rail {
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  gap: var(--space-4);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.overlay .head {
+  padding: var(--space-6) var(--gutter-screen) var(--space-4);
+}
+
+.headText {
+  flex: 1;
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.heading {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.rail .heading {
+  font-size: var(--text-subtitle-size);
+}
+
+.blurb {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small-size);
+  /* 1.6, between the title's 1.3 and body copy's 1.7: it is a sentence, but a
+     short one sitting tight under the heading it belongs to. */
+  line-height: 1.6;
+  color: var(--text-body);
+}
+
+/* 44px is the drawn circle; a coarse pointer gets the full --tap-min. The mark
+   inside does not move either way. */
+.close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.close:hover {
+  opacity: 0.7;
+}
+
+.close:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+@media (pointer: coarse) {
+  .close {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* The sheet scrolls in its own right — the page behind it is fixed under it,
+   so the list has to carry its own scroll or it simply runs off the bottom. */
+.overlay .body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--gutter-screen) var(--space-8);
+}
+
+/* MapView draws its own --radius-media corner and edge; this is only the box
+   it sits in, so the map never stretches past the panel's own padding. */
+.map {
+  flex: none;
+}
+
+/* The apricot ring on the map is the answer to "where am I", and an unexplained
+   ring answers nothing — so it is named, in the same mark, directly underneath. */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}
+
+.here {
+  flex: none;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: var(--trail-stroke) solid var(--wend-apricot);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.place {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* No spacing token lands on 10px, and the row is deliberately shorter than it
+     is wide — a list you scan, not a stack of cards. */
+  padding: 10px var(--space-3);
+  background: var(--wend-paper);
+  border-radius: var(--radius-card);
+}
+
+/* In the rail a paper row is inset in a card and reads as a row. The sheet is
+   itself paper, so the same rule would draw nothing at all — there, a place is
+   a card with a drawn edge, the way the design system's PlaceCard is. */
+.overlay .place {
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+}
+
+/* A ring, not a disc: the same "kept, not placed" mark the schedule row draws
+   for an undecided stop. */
+.dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: var(--trail-stroke) solid var(--stop-open);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-small-size);
+  color: var(--text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  flex: none;
+  font-size: var(--text-code-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-muted);
+}
+
+.note {
+  margin: 0;
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+.closing {
+  margin: 0;
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
