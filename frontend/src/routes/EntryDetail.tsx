@@ -73,7 +73,17 @@ export interface EntryDetailModalProps {
  * out or setting it aside is something you do TO an idea, not something you
  * write down ABOUT one. They live on the board, in the ⋯ menu on the idea's own
  * row, beside Edit. Voting went the same way — deciding how much everyone wants
- * this is not a thing you edit, and the board's rows are where it is read.
+ * this is not a thing you edit, and the board's rows are where it is read. So
+ * did the list of open todos, which is the checklist screen's subject and was
+ * only ever a read-only echo of it here.
+ *
+ * The heading says what the dialog is for rather than which idea it holds. It
+ * used to be the entry's own title, which meant the name was on the screen
+ * twice — once as the heading and again in the field you edit it in, the second
+ * one silently disagreeing with the first for as long as you were mid-word. The
+ * name now lives in exactly one place, the field, and the heading answers the
+ * question the panel actually raises: "Edit idea", or "Idea" for someone who
+ * cannot edit and is only reading it.
  *
  * One deliberate difference from "Add an idea": focus settles on the dialog
  * itself rather than in the name field. Modal aims at the first control in its
@@ -155,7 +165,7 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
   return (
     <Modal
       open
-      title={entry.title}
+      title={canEdit ? 'Edit idea' : 'Idea'}
       onClose={close}
       size="wide"
       /* One button, and it does not say "Save". Every field here writes itself
@@ -198,7 +208,7 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
             locked-out form is the thing being got rid of — see <Fact>. */}
         {canEdit ? (
           <>
-            <Field label="What is it?">
+            <Field label="Name">
               <input
                 className={styles.input}
                 value={draft.title ?? ''}
@@ -207,11 +217,25 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
               />
             </Field>
 
+            {/* Straight after the name, because it is the sentence you would
+                say next if someone asked what the idea was. It used to sit near
+                the bottom, under the coordinates, which put a latitude between
+                an idea and its own description. */}
+            <Field label="Short description">
+              <textarea
+                className={styles.textarea}
+                rows={3}
+                value={draft.description ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+                onBlur={(e) => save('description', e.target.value)}
+              />
+            </Field>
+
             {/* Two short facts to a line, which is what the extra width bought.
                 The grid collapses to one column under its own breakpoint, so a
                 phone still reads them in order. */}
             <div className={styles.pair}>
-              <Field label="What kind of thing?">
+              <Field label="Category">
                 {/* <Select>, not a bare <select> with .input: .input styles a text
                     field, and a native select ignores that styling entirely unless
                     something resets `appearance`. Field clones this child to inject
@@ -232,7 +256,7 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
                 </Select>
               </Field>
 
-              <Field label="How long does it take?" hint="In minutes">
+              <Field label="Estimated duration" hint="In minutes">
                 <input
                   className={styles.input}
                   inputMode="numeric"
@@ -244,7 +268,7 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
             </div>
 
             <div className={styles.pair}>
-              <Field label="Where is it?">
+              <Field label="Location">
                 <input
                   className={styles.input}
                   placeholder="Name of the place"
@@ -285,16 +309,6 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
               </Field>
             </div>
 
-            <Field label="Anything worth remembering?">
-              <textarea
-                className={styles.textarea}
-                rows={3}
-                value={draft.description ?? ''}
-                onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-                onBlur={(e) => save('description', e.target.value)}
-              />
-            </Field>
-
             {/* The last box, and deliberately the only open one. "Where did you
                 find it?" used to be a field of its own — one labelled box for
                 one URL, which is a lot of panel for a thing most ideas do not
@@ -316,17 +330,18 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
             {/* Read off the entry, not the draft: the draft is the edit buffer,
                 and there is no editing going on here. Same facts in the same
                 order and the same two-up grid as the fields above. */}
-            <Fact label="What is it?" value={entry.title} />
+            <Fact label="Name" value={entry.title} />
+            <Fact label="Short description" value={entry.description} />
 
             <div className={styles.pair}>
-              <Fact label="What kind of thing?" value={entry.category} />
+              <Fact label="Category" value={entry.category} />
               {/* "2 hr", not "120". The minutes box exists because minutes are
                   what you type; reading it, how long it takes is a duration. */}
-              <Fact label="How long does it take?" value={formatDuration(entry.duration_minutes)} />
+              <Fact label="Estimated duration" value={formatDuration(entry.duration_minutes)} />
             </div>
 
             <div className={styles.pair}>
-              <Fact label="Where is it?" value={entry.location_name} />
+              <Fact label="Location" value={entry.location_name} />
               <Fact label="Address" value={entry.address} />
             </div>
 
@@ -335,7 +350,6 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
               <Fact label="Longitude" value={entry.lng == null ? null : String(entry.lng)} />
             </div>
 
-            <Fact label="Anything worth remembering?" value={entry.description} />
             <Fact label="Notes" value={entry.notes} />
           </>
         )}
@@ -349,19 +363,6 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
                   <Link className={styles.link} to={`/entries/${child.id}`}>
                     {child.title}
                   </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {data.todos.length > 0 && (
-          <section className={styles.section}>
-            <h3 className={styles.sectionLabel}>To do</h3>
-            <ul className={styles.todoList}>
-              {data.todos.map((todo) => (
-                <li key={todo.id} className={todo.done_at ? styles.todoDone : undefined}>
-                  {todo.title}
                 </li>
               ))}
             </ul>

@@ -108,8 +108,7 @@
   color: var(--text-muted);
 }
 
-.linkList,
-.todoList {
+.linkList {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -136,14 +135,4 @@
   outline-offset: var(--focus-offset);
 }
 
-.todoList {
-  font-family: var(--font-sans);
-  font-size: var(--text-body-size);
-  color: var(--text-body);
-}
-
-/* Dimmed, never struck through. */
-.todoDone {
-  opacity: 0.55;
-}
 

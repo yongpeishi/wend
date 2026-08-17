@@ -46,12 +46,18 @@ const EMPTY_DRAFT: Draft = {
  * instant this opens and every other field is optional — type a name, hit
  * return, it exists.
  *
- * What it asks for is a subset of what an idea can hold: name, description,
- * kind, place, address, how long, notes. The coordinates are deliberately not
- * here — nobody types a latitude at capture speed, and the map fills them in
- * later — so the full set lives in the panel at /entries/:id
- * (EntryDetail.tsx), which opens as the same <Modal> this one does and which
- * anything left blank here can be finished in.
+ * What it asks for is a subset of what an idea can hold: name, short
+ * description, category, location, address, estimated duration, notes. The
+ * coordinates are deliberately not here — nobody types a latitude at capture
+ * speed, and the map fills them in later — so the full set lives in the panel
+ * at /entries/:id (EntryDetail.tsx), which opens as the same <Modal> this one
+ * does and which anything left blank here can be finished in.
+ *
+ * The labels are plain nouns on both surfaces — "Name", not "What's the
+ * idea?". The questions were friendlier to read once and slower to read every
+ * time after that, and two forms asking the same thing in two different
+ * phrasings ("What is it?" here, "What's the idea?" there) read as two
+ * different questions.
  *
  * Notes is the catch-all, and it is last on both surfaces: the link you found
  * it through, the opening hours, who to ask. It used to be a "Where did you
@@ -154,7 +160,7 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
     >
       <Stack gap={4}>
         <Field
-          label="What's the idea?"
+          label="Name"
           placeholder="Name it"
           hint="↵"
           value={draft.title}
@@ -167,7 +173,7 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor={descriptionId}>
-            Anything worth remembering?
+            Short description
           </label>
           <textarea
             id={descriptionId}
@@ -180,7 +186,7 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
 
         <div className={styles.field}>
           <label className={styles.label} htmlFor={categoryId}>
-            What kind of thing?
+            Category
           </label>
           <Select
             id={categoryId}
@@ -197,7 +203,7 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
         </div>
 
         <Field
-          label="Where is it?"
+          label="Location"
           placeholder="Name of the place"
           value={draft.location_name}
           onChange={(e) => setDraft((d) => ({ ...d, location_name: e.target.value }))}
@@ -210,7 +216,7 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
         />
 
         <Field
-          label="How long does it take?"
+          label="Estimated duration"
           hint="In minutes"
           inputMode="numeric"
           value={draft.duration_minutes}

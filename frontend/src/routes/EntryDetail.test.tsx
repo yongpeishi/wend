@@ -10,20 +10,30 @@ import type { TripRole } from '../api/types';
 
 /**
  * Seeded entry 5 (src/mocks/db.ts) — the library idea. It is the right fixture
- * for this screen because it is half filled in: a description, a category, a
- * place, coordinates and a source link, and nothing at all under address, how
- * long it takes, or notes. Both halves of "what does a viewer see?" are in one
- * entry.
+ * for this screen because it is half filled in: a short description, a
+ * category, a location and coordinates, and nothing at all under address,
+ * estimated duration or notes. Both halves of "what does a viewer see?" are in
+ * one entry.
  */
 const IDEA = { id: 5, title: 'Fushimi Inari at dawn' };
 
 /**
  * Seeded entry 2 — the one two people have actually rated (+2 from Demo
- * Traveler, -1 from Sarah), and the one that sits inside a bundle. It is the
- * fixture for what this panel no longer shows: neither the rating nor the
- * bundles it appears in belong to a dialog about what the idea is.
+ * Traveler, -1 from Sarah), the one that sits inside a bundle, and the one
+ * carrying an open todo ("Check opening hours"). It is the fixture for
+ * everything this panel no longer shows: none of the rating, the bundles it
+ * appears in, or the checklist belongs to a dialog about what the idea is.
  */
 const RATED = { id: 2, title: 'Nanzen-ji' };
+
+/**
+ * What the dialog is called, which now depends on what you can do with it. It
+ * is no longer the entry's own title — see the note in EntryDetail.tsx about
+ * the name having been on screen twice.
+ */
+function headingFor(role: TripRole | null) {
+  return role === 'viewer' ? 'Idea' : 'Edit idea';
+}
 
 /** `role` mounts the provider TripLayout mounts in the app; null is the
  * no-trip-here case, which is editable on purpose (see tripRole.ts). */
@@ -43,15 +53,15 @@ function renderPanel(role: TripRole | null, entry = IDEA, onClose: () => void = 
 }
 
 /**
- * The panel once its entry has arrived — the heading is the wait, because it
- * is the one thing that reads the same in both halves of the screen (while the
- * entry is in flight the dialog is titled "Opening"). Everything is then
+ * The panel once its entry has arrived. The heading is still the wait — while
+ * the entry is in flight the dialog is titled "Opening", so "Edit idea" or
+ * "Idea" appearing is exactly the moment the entry landed. Everything is then
  * asserted inside the dialog, which is portalled to the body and shares it with
  * the toasts.
  */
 async function openPanel(role: TripRole | null, entry = IDEA, onClose?: () => void) {
   renderPanel(role, entry, onClose);
-  await screen.findByRole('heading', { name: entry.title });
+  await screen.findByRole('heading', { name: headingFor(role) });
   return screen.getByRole('dialog');
 }
 
@@ -78,7 +88,7 @@ describe('EntryDetail — a viewer reads it', () => {
 
     // The label names the fact and the text under it answers, exactly as the
     // fields did.
-    expect(read.getByText('What is it?')).toBeInTheDocument();
+    expect(read.getByText('Name')).toBeInTheDocument();
     expect(read.getAllByText('Fushimi Inari at dawn').length).toBeGreaterThan(0);
     expect(read.getByText('Saved from a friend’s trip report.')).toBeInTheDocument();
     expect(read.getByText('place')).toBeInTheDocument();
@@ -90,7 +100,7 @@ describe('EntryDetail — a viewer reads it', () => {
   it('says so quietly where nothing has been filled in, rather than leaving a gap', async () => {
     const panel = await openPanel('viewer');
 
-    // Address, how long it takes, and notes — the three this idea never got.
+    // Address, estimated duration and notes — the three this idea never got.
     // A blank line under a label reads as something broken; a dash reads as a
     // fact nobody has filled in.
     expect(within(panel).getAllByText('—')).toHaveLength(3);
@@ -110,9 +120,9 @@ describe('EntryDetail — anyone who can edit', () => {
     const panel = await openPanel('member');
     const read = within(panel);
 
-    expect(read.getByRole('textbox', { name: 'What is it?' })).toHaveValue('Fushimi Inari at dawn');
+    expect(read.getByRole('textbox', { name: 'Name' })).toHaveValue('Fushimi Inari at dawn');
     expect(read.getByRole('textbox', { name: 'Address' })).toHaveValue('');
-    expect(read.getByRole('combobox', { name: 'What kind of thing?' })).toHaveValue('place');
+    expect(read.getByRole('combobox', { name: 'Category' })).toHaveValue('place');
   });
 
   /**
@@ -146,7 +156,7 @@ describe('EntryDetail — what it no longer asks for', () => {
     const read = within(panel);
 
     // The place is in exactly one place: its own field.
-    expect(read.getByRole('textbox', { name: 'Where is it?' })).toHaveValue('Fushimi Inari Taisha');
+    expect(read.getByRole('textbox', { name: 'Location' })).toHaveValue('Fushimi Inari Taisha');
     expect(read.queryByText('place · Fushimi Inari Taisha')).not.toBeInTheDocument();
   });
 
@@ -186,6 +196,94 @@ describe('EntryDetail — what it no longer asks for', () => {
 
     expect(read.queryByRole('heading', { name: 'How much everyone wants this' })).not.toBeInTheDocument();
     expect(read.queryByText('0.5 · 2 votes')).not.toBeInTheDocument();
+  });
+
+  /** Entry 2 carries an open todo, so this section had something to draw. The
+   * checklist screen owns todos; this was a read-only echo of it. */
+  it('does not list the idea’s todos', async () => {
+    const panel = await openPanel('member', RATED);
+    const read = within(panel);
+
+    expect(read.queryByRole('heading', { name: 'To do' })).not.toBeInTheDocument();
+    expect(read.queryByText('Check opening hours')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The feedback: the labels asked questions — "What is it?", "What kind of
+ * thing?" — which read as friendly once and as noise every time after that,
+ * and the two forms phrased the same question two different ways. They are
+ * plain nouns now, the same nouns on both surfaces (NewIdeaModal.test.tsx
+ * asserts the other half).
+ */
+describe('EntryDetail — the fields are named, not asked', () => {
+  const LABELS = ['Name', 'Short description', 'Category', 'Estimated duration', 'Location', 'Notes'];
+
+  it('labels every field with a noun, for someone editing', async () => {
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    for (const label of LABELS) expect(read.getByText(label)).toBeInTheDocument();
+    for (const asked of ['What is it?', 'What kind of thing?', 'How long does it take?', 'Where is it?', 'Anything worth remembering?']) {
+      expect(read.queryByText(asked)).not.toBeInTheDocument();
+    }
+  });
+
+  /** The read-only half must say the same words as the editable one — they are
+   * the same facts, and a viewer being given different labels would mean the
+   * two halves had drifted. */
+  it('gives a viewer the identical set of labels', async () => {
+    const panel = await openPanel('viewer');
+    const read = within(panel);
+
+    for (const label of LABELS) expect(read.getByText(label)).toBeInTheDocument();
+  });
+
+  /**
+   * The description used to sit below the coordinates, which put a latitude
+   * between an idea and the sentence describing it. It reads directly after
+   * the name now, in both halves.
+   */
+  it('puts the short description directly after the name', async () => {
+    const panel = await openPanel('member');
+    const order = Array.from(panel.querySelectorAll('label')).map((l) => l.textContent?.trim());
+
+    expect(order.slice(0, 2)).toEqual(['Name', 'Short description']);
+  });
+
+  it('puts it there for a viewer too', async () => {
+    const panel = await openPanel('viewer');
+    const order = Array.from(panel.querySelectorAll('label')).map((l) => l.textContent?.trim());
+
+    expect(order.slice(0, 2)).toEqual(['Name', 'Short description']);
+  });
+});
+
+/**
+ * The heading used to be the entry's own title, which put the name on screen
+ * twice — once above the dialog and again in the field you edit it in, the
+ * second disagreeing with the first for as long as you were mid-word. It now
+ * says what the dialog is for.
+ */
+describe('EntryDetail — what the dialog calls itself', () => {
+  it('is called "Edit idea" for someone who can edit, and does not repeat the name', async () => {
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    expect(read.getByRole('heading', { name: 'Edit idea' })).toBeInTheDocument();
+    expect(read.queryByRole('heading', { name: 'Fushimi Inari at dawn' })).not.toBeInTheDocument();
+    // The name is still there once, in the field that owns it.
+    expect(read.getByRole('textbox', { name: 'Name' })).toHaveValue('Fushimi Inari at dawn');
+  });
+
+  /** "Edit idea" would be a lie to someone who cannot edit — they are reading
+   * it, and the heading says so. */
+  it('is called "Idea" for a viewer, who is not editing anything', async () => {
+    const panel = await openPanel('viewer');
+    const read = within(panel);
+
+    expect(read.getByRole('heading', { name: 'Idea' })).toBeInTheDocument();
+    expect(read.queryByRole('heading', { name: 'Edit idea' })).not.toBeInTheDocument();
   });
 });
 
