@@ -68,6 +68,17 @@ describe('SharePanel', () => {
     ).toBeInTheDocument();
   });
 
+  it('heads each row with a circle that is seen and not heard', async () => {
+    setRole(TRIP, SARAH, 'member');
+    renderPanel();
+    await screen.findByText('Sarah');
+
+    // The initial is decoration standing next to the name it came from. If
+    // anyone ever labels the circle, Sarah gets read out twice and this fails.
+    expect(screen.getAllByText('Sarah')).toHaveLength(1);
+    expect(within(rowFor('Sarah')).getByText('S')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('shows an address when the server sends one', async () => {
     setRole(TRIP, SARAH, 'member');
     renderPanel();
