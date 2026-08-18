@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useCallback } from 'react';
 import { useQueries } from '@tanstack/react-query';
+import type { UseQueryResult } from '@tanstack/react-query';
 import { api, queryKeys } from '../../api';
 import type { Entry, EntryDetailResponse } from '../../api/types';
 
@@ -24,20 +25,33 @@ import type { Entry, EntryDetailResponse } from '../../api/types';
  * `['entries']`-prefix invalidation every create/update/link mutation
  * already does — introducing a new key here would fall outside that prefix
  * and silently stop refreshing.
+ *
+ * The map is built via `useQueries`' `combine` option rather than a
+ * `useMemo` over the results array: in TanStack Query v5, `useQueries`
+ * returns a fresh array each render, so a `useMemo` keyed on it recomputed
+ * (and re-created the Map) every render, cascading into every IdeaRow's
+ * `bundleNames` memo. `combine`'s output is memoized by the library, so the
+ * Map keeps its identity while `bundles` and the query results are stable —
+ * which is why `combine` is wrapped in `useCallback` on `bundles`: a fresh
+ * combine function would defeat that memoization.
  */
 export function useBundleMembers(bundles: Entry[]): Map<number, Entry[]> {
-  const results = useQueries({
+  const combine = useCallback(
+    (results: UseQueryResult<EntryDetailResponse>[]) => {
+      const map = new Map<number, Entry[]>();
+      bundles.forEach((bundle, index) => {
+        map.set(bundle.id, results[index]?.data?.children ?? []);
+      });
+      return map;
+    },
+    [bundles],
+  );
+
+  return useQueries({
     queries: bundles.map((bundle) => ({
       queryKey: queryKeys.entries.detail(bundle.id),
       queryFn: () => api.get<EntryDetailResponse>(`/entries/${bundle.id}`),
     })),
+    combine,
   });
-
-  return useMemo(() => {
-    const map = new Map<number, Entry[]>();
-    bundles.forEach((bundle, index) => {
-      map.set(bundle.id, results[index]?.data?.children ?? []);
-    });
-    return map;
-  }, [bundles, results]);
 }
