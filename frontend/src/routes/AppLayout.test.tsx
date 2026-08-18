@@ -78,6 +78,11 @@ describe('AppLayout', () => {
     expect(allTrips).toHaveAttribute('aria-current', 'page');
   });
 
+  it('links "Inspiration" to "/library"', () => {
+    renderShell();
+    expect(screen.getByRole('link', { name: 'Inspiration' })).toHaveAttribute('href', '/library');
+  });
+
   it('keeps the brand lock-up as a link home', () => {
     renderShell();
     // The lock-up is the mark's aria-label plus the wordmark text, so match loosely.
