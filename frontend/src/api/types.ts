@@ -289,7 +289,9 @@ export interface CreateEntryParams {
 }
 
 export interface UpdateEntryParams {
-  entry: EntryWritePayload;
+  // `kind` is create-only: the server ignores it on PATCH, and transitions
+  // happen only through the dedicated lift/absorb endpoints.
+  entry: Omit<EntryWritePayload, 'kind'>;
   /**
    * Only read when the write moves a trip's dates. Moving them moves the whole
    * plan by the same delta (Day 2 stays Day 2), and a shorter trip can push

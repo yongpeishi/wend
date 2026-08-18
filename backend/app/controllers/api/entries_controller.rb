@@ -218,9 +218,15 @@ module Api
 
     # pros/cons arrive as the whole array on every write -- there is no
     # add/remove endpoint. The array-of-hashes permits must trail the scalars.
+    #
+    # kind is create-only: transitions live exclusively in lift/absorb, which set
+    # it on the model directly with their own detachment and ownership checks. A
+    # kind smuggled into an update would bypass those, and worse -- demoting a
+    # trip fires sync_owner_membership's else-branch and wipes every membership.
     def entry_params
       params.require(:entry).permit(
-        :kind, :title, :description, :category, :starts_on, :ends_on,
+        *(action_name == "create" ? [ :kind ] : []),
+        :title, :description, :category, :starts_on, :ends_on,
         :location_name, :address, :lat, :lng, :duration_minutes, :source_url,
         :notes, :from_entry_id, :to_entry_id,
         pros: [:id, :text], cons: [:id, :text]

@@ -294,7 +294,11 @@ export const handlers = [
       );
     }
 
-    Object.assign(entry, body.entry, { updated_at: now() });
+    // `kind` is create-only (mirrors the backend, which ignores it on PATCH —
+    // transitions happen only via the lift/absorb endpoints), so it is
+    // stripped before the merge.
+    const { kind: _kind, ...patch } = body.entry ?? {};
+    Object.assign(entry, patch, { updated_at: now() });
     // Pros and cons arrive whole (there is no per-note endpoint), so they are
     // replaced rather than merged — and stored detached from the request body.
     if (body.entry?.pros) entry.pros = body.entry.pros.map((n) => ({ ...n }));
