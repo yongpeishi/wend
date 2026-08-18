@@ -629,6 +629,10 @@ describe('TripBoard — when the load fails', () => {
     // "Showing 0 of 0" over an error message would be the same lie in numbers.
     expect(screen.queryByText(/Showing \d+ of \d+/)).not.toBeInTheDocument();
     expect(screen.queryByText(/ideas in view/)).not.toBeInTheDocument();
+    // The map pane's pill would otherwise claim "Everything kept is in view"
+    // about ideas that never arrived — same countKnown gate, same silence.
+    expect(screen.queryByText('Everything kept is in view')).not.toBeInTheDocument();
+    expect(screen.queryByText(/outside this view/)).not.toBeInTheDocument();
   });
 
   it('the rail says the bundles failed instead of "No bundles yet", and leaves the ideas alone', async () => {

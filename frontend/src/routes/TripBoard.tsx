@@ -147,6 +147,11 @@ export function TripBoard() {
 
   const visibleIdeas = useMemo(() => applyFilters(allIdeas, filters), [allIdeas, filters]);
 
+  // Whether the counts are facts yet — see countKnown on FilterBar and
+  // BoardMapPane. One flag, because both would otherwise work it out from the
+  // same query and could disagree.
+  const countKnown = !ideasQuery.isPending && !ideasQuery.isError;
+
   // All three have to be true before the viewport touches the list: no map, no
   // cut; follow switched off, no cut; and no bounds reported yet, nothing to cut
   // against. The last one matters on the very first frame after the map opens.
@@ -350,7 +355,7 @@ export function TripBoard() {
             onSelectModeChange={setSelecting}
             mapNarrowing={narrowing}
             mapOffCount={offCount}
-            countKnown={!ideasQuery.isPending && !ideasQuery.isError}
+            countKnown={countKnown}
           />
 
           {/* Map and list share one wrapping row: the map is on the left, where
@@ -377,6 +382,7 @@ export function TripBoard() {
                   following={followMap}
                   offCount={offViewCount}
                   onWiden={() => setFitRequest((n) => n + 1)}
+                  countKnown={countKnown}
                 />
               </div>
             )}

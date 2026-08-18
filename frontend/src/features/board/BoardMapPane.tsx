@@ -16,6 +16,14 @@ export interface BoardMapPaneProps {
   /** How many of the trip's shown ideas sit outside the current view. */
   offCount: number;
   onWiden: () => void;
+  /**
+   * Whether the counts are facts yet — same contract as FilterBar's countKnown.
+   * While the ideas query is still pending or has failed, "Everything kept is
+   * in view" is an affirmative claim about data that never arrived, so the pill
+   * holds its tongue instead. Defaults to true: a caller with no query to wait
+   * on has counts the moment it has pins.
+   */
+  countKnown?: boolean;
 }
 
 /** "1 idea outside this view", never "1 ideas" — the mockup's own line has that bug. */
@@ -34,7 +42,9 @@ function outsideLine(count: number): string {
  * would nail it to this one screen and break the provider swap.
  *
  * The pill always says something, in all three states, because silence is the
- * one answer a reader cannot act on:
+ * one answer a reader cannot act on (the one exception: while the counts
+ * aren't known yet — see countKnown — the count sentences would be guesses,
+ * and silence beats a guess):
  *   - following, some cut     -> how many are out there
  *   - following, nothing cut  -> "Everything kept is in view", so a short list
  *                                reads as a short list rather than a hidden one
@@ -57,11 +67,17 @@ export function BoardMapPane({
   following,
   offCount,
   onWiden,
+  countKnown = true,
 }: BoardMapPaneProps) {
+  // No count sentence while the counts aren't known — see countKnown. The
+  // not-following line survives, because it is a fact about the switch, not
+  // about the data.
   const status = following
-    ? offCount > 0
-      ? outsideLine(offCount)
-      : 'Everything kept is in view'
+    ? countKnown
+      ? offCount > 0
+        ? outsideLine(offCount)
+        : 'Everything kept is in view'
+      : null
     : 'The list is not following the map';
 
   return (
