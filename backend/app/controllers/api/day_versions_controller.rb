@@ -15,8 +15,6 @@ module Api
       trip_day = TripDay.ensure!(trip_id: trip.id, day: params[:day])
       trip_day.fork!
       render json: { trip_day: TripDaySerializer.one(trip_day.reload) }, status: :created
-    rescue ActiveRecord::RecordInvalid => e
-      render json: { errors: e.record.errors.to_hash(true) }, status: :unprocessable_entity
     end
 
     # This is the one. Live siblings are archived rather than dropped -- see

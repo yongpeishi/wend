@@ -30,7 +30,7 @@ module Api
       lat = params[:lat].to_f
       lng = params[:lng].to_f
       radius_km = (params[:radius_km] || 2).to_f
-      exclude_scheduled = ActiveModel::Type::Boolean.new.cast(params[:exclude_scheduled])
+      exclude_scheduled = truthy?(params[:exclude_scheduled])
 
       entry_ids = Entry.descendant_ids_of(trip.id)
 
@@ -45,12 +45,10 @@ module Api
       end
 
       if exclude_scheduled && distances.present?
-        # `placed` for the same reason as Entry#scheduled: only a live version
-        # places anything, so an entry left in an archived one is still nearby
-        # and still on offer.
-        scheduled_ids = ScheduleItem.where(trip_id: trip.id).placed
-                                     .where("entry_id IN (:ids) OR chosen_entry_id IN (:ids)", ids: distances.keys)
-                                     .pluck(:entry_id, :chosen_entry_id).flatten.compact.to_set
+        # Only a live version places anything (same reason as Entry#scheduled),
+        # so an entry left in an archived one is still nearby and still on
+        # offer.
+        scheduled_ids = ScheduleItem.placed_entry_ids(trip_id: trip.id, among: distances.keys)
         distances = distances.reject { |id, _| scheduled_ids.include?(id) }
       end
 

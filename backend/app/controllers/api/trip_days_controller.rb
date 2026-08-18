@@ -13,11 +13,8 @@ module Api
 
       trip_day = TripDay.ensure!(trip_id: @trip.id, day: params[:day])
 
-      if trip_day.update(trip_day_params)
-        render json: { trip_day: TripDaySerializer.one(trip_day.reload) }
-      else
-        render json: { errors: trip_day.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      trip_day.update!(trip_day_params)
+      render json: { trip_day: TripDaySerializer.one(trip_day.reload) }
     end
 
     private

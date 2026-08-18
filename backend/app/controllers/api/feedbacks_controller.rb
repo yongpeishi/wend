@@ -18,11 +18,8 @@ module Api
       # user_id is already set by the association above.
       authorize feedback
 
-      if feedback.save
-        render json: { feedback: FeedbackSerializer.one(feedback) }, status: :created
-      else
-        render json: { errors: feedback.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      feedback.save!
+      render json: { feedback: FeedbackSerializer.one(feedback) }, status: :created
     end
 
     private

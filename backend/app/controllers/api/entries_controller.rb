@@ -35,9 +35,7 @@ module Api
         # Only live placements count: an entry that survives nowhere but an
         # archived version is unplaced, which is exactly how the itinerary
         # screen treats it -- back on the rail.
-        scheduled_ids = ScheduleItem.where(trip_id: trip_id).placed
-                                     .where("entry_id IN (:ids) OR chosen_entry_id IN (:ids)", ids: entries.map(&:id).presence || [0])
-                                     .pluck(:entry_id, :chosen_entry_id).flatten.compact.to_set
+        scheduled_ids = ScheduleItem.placed_entry_ids(trip_id: trip_id, among: entries.map(&:id))
         entries = entries.select { |e| scheduled_ids.include?(e.id) == want_scheduled }
       end
 
@@ -69,13 +67,11 @@ module Api
       ActiveRecord::Base.transaction do
         entry.save!
         if parent
-          EntryLink.create!(parent_id: parent.id, child: entry, position: next_position(parent.id))
+          EntryLink.create!(parent_id: parent.id, child: entry, position: EntryLink.next_position_for(parent.id))
         end
       end
 
       render json: { entry: EntrySerializer.one(entry, current_user: current_user) }, status: :created
-    rescue ActiveRecord::RecordInvalid => e
-      render json: { errors: e.record.errors.to_hash(true) }, status: :unprocessable_entity
     end
 
     # Moving a trip's dates moves its plan with them: see TripDateShift. The
@@ -98,19 +94,12 @@ module Api
         return
       end
 
-      saved = false
       ActiveRecord::Base.transaction do
-        saved = @entry.update(entry_params)
-        raise ActiveRecord::Rollback unless saved
-
+        @entry.update!(entry_params)
         shift.apply!
       end
 
-      if saved
-        render json: { entry: EntrySerializer.one(@entry, current_user: current_user) }
-      else
-        render json: { errors: @entry.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      render json: { entry: EntrySerializer.one(@entry, current_user: current_user) }
     end
 
     # Soft-hide only. Never destroys the row -- see doc/architecture.md "Never
@@ -145,8 +134,6 @@ module Api
         @entry.update!(kind: "trip", category: nil, created_by: current_user)
       end
       render json: { entry: EntrySerializer.one(@entry, current_user: current_user) }
-    rescue ActiveRecord::RecordInvalid => e
-      render json: { errors: e.record.errors.to_hash(true) }, status: :unprocessable_entity
     end
 
     # Fold this trip into another: it becomes an idea and gains the target as
@@ -159,11 +146,9 @@ module Api
       authorize into, :manage?
       ActiveRecord::Base.transaction do
         @entry.update!(kind: "idea")
-        EntryLink.create!(parent: into, child: @entry, position: next_position(into.id))
+        EntryLink.create!(parent: into, child: @entry, position: EntryLink.next_position_for(into.id))
       end
       render json: { entry: EntrySerializer.one(@entry, current_user: current_user) }
-    rescue ActiveRecord::RecordInvalid => e
-      render json: { errors: e.record.errors.to_hash(true) }, status: :unprocessable_entity
     end
 
     # Shallow-duplicate: a new entry with the same attributes and the same
@@ -193,8 +178,6 @@ module Api
         end
       end
       render json: { entry: EntrySerializer.one(new_entry, current_user: current_user) }, status: :created
-    rescue ActiveRecord::RecordInvalid => e
-      render json: { errors: e.record.errors.to_hash(true) }, status: :unprocessable_entity
     end
 
     private
@@ -206,14 +189,6 @@ module Api
     def set_entry
       @entry = policy_scope(Entry).find(params[:id])
       authorize @entry
-    end
-
-    def next_position(parent_id)
-      (EntryLink.where(parent_id: parent_id).maximum(:position) || -1) + 1
-    end
-
-    def truthy?(value)
-      ActiveModel::Type::Boolean.new.cast(value)
     end
 
     # pros/cons arrive as the whole array on every write -- there is no
