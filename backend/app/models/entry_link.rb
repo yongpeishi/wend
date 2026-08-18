@@ -14,6 +14,13 @@ class EntryLink < ApplicationRecord
   validate :not_self_referential
   validate :no_cycles
 
+  # Appends after the parent's current last child. `|| -1` makes the first
+  # child land at 0, so positions stay a dense 0-based run that the ordered
+  # child walks assume.
+  def self.next_position_for(parent_id)
+    (where(parent_id: parent_id).maximum(:position) || -1) + 1
+  end
+
   private
 
   def not_self_referential
