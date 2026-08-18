@@ -28,11 +28,8 @@ module Api
       # Built with its foreign keys already set, so governing_entry_ids resolves to
       # the trip and entry it will hang off rather than to nothing.
       authorize todo
-      if todo.save
-        render json: { todo: TodoSerializer.one(todo) }, status: :created
-      else
-        render json: { errors: todo.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      todo.save!
+      render json: { todo: TodoSerializer.one(todo) }, status: :created
     end
 
     def update
@@ -44,11 +41,8 @@ module Api
       @todo.assign_attributes(todo_params)
       authorize @todo, :update?, policy_class: TodoPolicy
 
-      if @todo.save
-        render json: { todo: TodoSerializer.one(@todo) }
-      else
-        render json: { errors: @todo.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      @todo.save!
+      render json: { todo: TodoSerializer.one(@todo) }
     end
 
     def destroy
@@ -68,7 +62,7 @@ module Api
     def apply_done_filter(scope)
       return scope unless params[:done].present?
 
-      ActiveModel::Type::Boolean.new.cast(params[:done]) ? scope.done : scope.open
+      truthy?(params[:done]) ? scope.done : scope.open
     end
 
     def todo_params

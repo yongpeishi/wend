@@ -9,23 +9,17 @@ module Api
       # which is the point of the feature.
       authorize Entry.find(params[:child_id]), :show?
 
-      link = @parent.child_links.new(child_id: params[:child_id], position: params[:position] || next_position)
-      if link.save
-        render json: { link: EntryLinkSerializer.one(link) }, status: :created
-      else
-        render json: { errors: link.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      link = @parent.child_links.create!(child_id: params[:child_id],
+                                         position: params[:position] || EntryLink.next_position_for(@parent.id))
+      render json: { link: EntryLinkSerializer.one(link) }, status: :created
     end
 
     def update
       link = @parent.child_links.find_by(child_id: params[:child_id])
       return render json: { error: "Not found" }, status: :not_found unless link
 
-      if link.update(position: params[:position])
-        render json: { link: EntryLinkSerializer.one(link) }
-      else
-        render json: { errors: link.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      link.update!(position: params[:position])
+      render json: { link: EntryLinkSerializer.one(link) }
     end
 
     def destroy
@@ -52,10 +46,6 @@ module Api
     def set_parent
       @parent = Entry.find(params[:entry_id])
       authorize @parent, :write?
-    end
-
-    def next_position
-      (@parent.child_links.maximum(:position) || -1) + 1
     end
   end
 end

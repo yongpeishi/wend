@@ -126,4 +126,70 @@ class ScheduleItemTest < ActiveSupport::TestCase
     item = ScheduleItem.new(trip: trip, day: Date.current, entry_id: nil, chosen_entry_id: nil, day_version_id: nil)
     assert item.valid?
   end
+
+  # --- placed_entry_ids -------------------------------------------------------
+  # The shared answer to "which of these are placed?" behind ?scheduled= and
+  # nearby's exclude_scheduled. Both screens must agree, so the semantics under
+  # test here are the contract.
+
+  test "placed_entry_ids returns an empty Set without querying when among is blank" do
+    trip = create_trip
+
+    queries = count_queries do
+      assert_equal Set.new, ScheduleItem.placed_entry_ids(trip_id: trip.id, among: [])
+      assert_equal Set.new, ScheduleItem.placed_entry_ids(trip_id: trip.id, among: nil)
+    end
+    # IN () is invalid SQL; the guard must short-circuit, not send it.
+    assert_equal 0, queries
+  end
+
+  test "placed_entry_ids matches on entry_id and only within the given trip" do
+    trip = create_trip
+    placed = create_idea(title: "placed")
+    free = create_idea(title: "free")
+    link!(parent: trip, child: placed)
+    link!(parent: trip, child: free)
+    ScheduleItem.create!(trip: trip, entry: placed, day: Date.current)
+
+    # The same entry placed in a different trip must not count here.
+    other_trip = create_trip(title: "Other")
+    elsewhere = create_idea(title: "elsewhere")
+    link!(parent: other_trip, child: elsewhere)
+    ScheduleItem.create!(trip: other_trip, entry: elsewhere, day: Date.current)
+
+    result = ScheduleItem.placed_entry_ids(trip_id: trip.id, among: [ placed.id, free.id, elsewhere.id ])
+    assert_equal Set[placed.id], result
+  end
+
+  test "placed_entry_ids matches on chosen_entry_id and returns both ids of the row (superset of among)" do
+    trip = create_trip
+    bundle = create_bundle
+    link!(parent: trip, child: bundle)
+    nested = create_idea(title: "Nested")
+    link!(parent: bundle, child: nested)
+    ScheduleItem.create!(trip: trip, entry: bundle, chosen_entry: nested, day: Date.current)
+
+    # Asking about only the bundle still surfaces the chosen entry: the row's
+    # other column rides along, and callers rely on that superset.
+    assert_equal Set[bundle.id, nested.id],
+                 ScheduleItem.placed_entry_ids(trip_id: trip.id, among: [ bundle.id ])
+
+    # And the row is reachable from either column.
+    assert_equal Set[bundle.id, nested.id],
+                 ScheduleItem.placed_entry_ids(trip_id: trip.id, among: [ nested.id ])
+  end
+
+  test "placed_entry_ids ignores placements that survive only in an archived version" do
+    trip = create_trip
+    idea = create_idea
+    link!(parent: trip, child: idea)
+    version = TripDay.ensure!(trip_id: trip.id, day: Date.current).first_live_version
+    ScheduleItem.create!(trip: trip, entry: idea, day: Date.current, day_version: version)
+
+    version.update!(archived_at: Time.current)
+
+    # An archived version is a plan the user rejected; nothing placed only
+    # there counts as placed -- same rule as the `placed` scope it rides on.
+    assert_equal Set.new, ScheduleItem.placed_entry_ids(trip_id: trip.id, among: [ idea.id ])
+  end
 end

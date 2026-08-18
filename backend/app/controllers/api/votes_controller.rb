@@ -5,11 +5,8 @@ module Api
     def update
       vote = Vote.find_or_initialize_by(entry: @entry, user: current_user)
       vote.score = params[:score]
-      if vote.save
-        render json: { vote: VoteSerializer.one(vote), tally: tally_for(@entry.id) }
-      else
-        render json: { errors: vote.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      vote.save!
+      render json: { vote: VoteSerializer.one(vote), tally: tally_for(@entry.id) }
     end
 
     def destroy

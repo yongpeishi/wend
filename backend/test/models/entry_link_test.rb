@@ -65,4 +65,28 @@ class EntryLinkTest < ActiveSupport::TestCase
     dup = EntryLink.new(parent: parent_a, child: child, position: 1)
     assert_not dup.valid?
   end
+
+  # --- next_position_for -----------------------------------------------------
+
+  test "next_position_for starts a childless parent at 0" do
+    parent = create_bundle
+    assert_equal 0, EntryLink.next_position_for(parent.id)
+  end
+
+  test "next_position_for appends after the current maximum, gaps included" do
+    parent = create_bundle
+    link!(parent: parent, child: create_idea(title: "first"), position: 0)
+    # A gap can exist after deletes; appending goes after the max, not into it.
+    link!(parent: parent, child: create_idea(title: "later"), position: 5)
+
+    assert_equal 6, EntryLink.next_position_for(parent.id)
+  end
+
+  test "next_position_for only counts the given parent's children" do
+    parent = create_bundle(title: "mine")
+    other = create_bundle(title: "other")
+    link!(parent: other, child: create_idea, position: 9)
+
+    assert_equal 0, EntryLink.next_position_for(parent.id)
+  end
 end

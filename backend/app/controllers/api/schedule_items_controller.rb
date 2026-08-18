@@ -20,11 +20,8 @@ module Api
       # trip_day as a side effect.
       authorize item
       resolve_day_version!(item)
-      if item.save
-        render json: { schedule_item: ScheduleItemSerializer.one(item) }, status: :created
-      else
-        render json: { errors: item.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      item.save!
+      render json: { schedule_item: ScheduleItemSerializer.one(item) }, status: :created
     end
 
     def update
@@ -34,11 +31,8 @@ module Api
       @item.day_version_id = nil if @item.day_changed? && !schedule_item_params.key?("day_version_id")
       resolve_day_version!(@item)
 
-      if @item.save
-        render json: { schedule_item: ScheduleItemSerializer.one(@item) }
-      else
-        render json: { errors: @item.errors.to_hash(true) }, status: :unprocessable_entity
-      end
+      @item.save!
+      render json: { schedule_item: ScheduleItemSerializer.one(@item) }
     end
 
     def destroy

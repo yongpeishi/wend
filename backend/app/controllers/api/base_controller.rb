@@ -36,5 +36,10 @@ module Api
     def action_key = "#{self.class.name}##{action_name}"
 
     def listing? = action_name == "index"
+
+    # Query-string flags arrive as strings ("true", "1", "false"...), so a bare
+    # present? check would read ?flag=false as on. One shared cast keeps every
+    # controller's idea of "the flag is set" identical.
+    def truthy?(value) = ActiveModel::Type::Boolean.new.cast(value)
   end
 end

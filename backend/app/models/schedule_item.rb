@@ -43,6 +43,24 @@ class ScheduleItem < ApplicationRecord
     where(day_version_id: nil).or(where(day_version_id: DayVersion.where(archived_at: nil).select(:id)))
   }
 
+  # "Which of these entries are placed in this trip?" -- the set both the
+  # ?scheduled= filter and nearby's exclude_scheduled partition against. Matches
+  # on entry_id OR chosen_entry_id, and returns *both* columns of every matching
+  # row: a row can match on entry_id while its chosen_entry_id is some other
+  # entry, so the result may contain ids outside `among`. Callers rely on that
+  # superset (a chosen alternative counts as placed even when only its bundle
+  # was asked about) -- do not narrow it to `among`.
+  #
+  # A blank `among` short-circuits to an empty Set: `IN ()` is invalid SQL, and
+  # nothing can be placed out of nothing.
+  def self.placed_entry_ids(trip_id:, among:)
+    return Set.new if among.blank?
+
+    where(trip_id: trip_id).placed
+      .where("entry_id IN (:ids) OR chosen_entry_id IN (:ids)", ids: among)
+      .pluck(:entry_id, :chosen_entry_id).flatten.compact.to_set
+  end
+
   validates :day, presence: true
   validates :starts_at_minutes,
             numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 1439 },
