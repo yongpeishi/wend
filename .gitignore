@@ -3,3 +3,6 @@ node_modules/
 .claude/worktrees/
 doc/backlog/
 temp-design-files/
+
+# a place to put wip notes (TASK_STATUS, TASK_END_SUMMARY, screenshots)
+doc/worktree-notes/
