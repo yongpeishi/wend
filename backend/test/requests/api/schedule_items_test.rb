@@ -71,6 +71,48 @@ class Api::ScheduleItemsTest < ActionDispatch::IntegrationTest
     assert_not ScheduleItem.exists?(item.id)
   end
 
+  # --- Foreign ids in writable params (tech review H2/H3) ---------------------
+  # The routes above prove strangers can't reach someone else's trip. These
+  # prove the subtler case: an authenticated member writing someone else's ids
+  # into their OWN trip's rows.
+
+  test "POST with another user's entry_id is a 422 and leaks nothing about the entry" do
+    stranger = create_user
+    their_trip = create_trip(created_by: stranger)
+    their_idea = create_idea(title: "Victim secret cabin", created_by: stranger)
+    link!(parent: their_trip, child: their_idea)
+
+    post "/api/trips/#{@trip.id}/schedule",
+         params: { schedule_item: { entry_id: their_idea.id, day: "2026-04-01" } },
+         as: :json
+    assert_response :unprocessable_entity
+    assert JSON.parse(response.body).dig("errors", "entry_id").present?
+    assert_not_includes response.body, "Victim secret cabin"
+  end
+
+  test "POST with a nonexistent entry_id is a 422 with the same message, not a 500" do
+    post "/api/trips/#{@trip.id}/schedule",
+         params: { schedule_item: { entry_id: 999_999_999, day: "2026-04-01" } },
+         as: :json
+    assert_response :unprocessable_entity
+    messages = JSON.parse(response.body).dig("errors", "entry_id")
+    assert messages.present?
+    assert messages.first.include?("must belong to this trip")
+  end
+
+  test "PATCH with another trip's day_version_id is a 422" do
+    item = ScheduleItem.create!(trip: @trip, entry: @idea, day: "2026-04-01", starts_at_minutes: 540)
+    their_trip = create_trip(created_by: create_user)
+    their_version = TripDay.ensure!(trip_id: their_trip.id, day: "2026-04-01").first_live_version
+
+    patch "/api/schedule_items/#{item.id}",
+          params: { schedule_item: { day_version_id: their_version.id } },
+          as: :json
+    assert_response :unprocessable_entity
+    assert JSON.parse(response.body).dig("errors", "day_version_id").present?
+    assert_not their_version.schedule_items.exists?(item.id)
+  end
+
   # --- day_version resolution -------------------------------------------------
   # The final-schedule screen posts a bare `day` and knows nothing about
   # versions. It must keep working unchanged.

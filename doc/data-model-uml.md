@@ -184,6 +184,9 @@ optional or `dependent: :nullify` as labelled. `$` marks class-level methods. `[
 - A day can never lose its last live version (`DayVersion#archive!` returns false instead).
 - Permissions are a **conjunction** over `governing_entry_ids` (the `Governed` concern on Entry, Todo,
   Vote, ScheduleItem, TripDay, DayVersion): weakest role wins, any unreadable entry denies.
+- Every writable itinerary foreign key (`schedule_items.entry_id`/`chosen_entry_id`/`day_version_id`,
+  `trip_days.lodging_entry_id`) must resolve inside its own trip's descendant graph — validated at the
+  model, so foreign ids can't be smuggled through writable params.
 - No STI, no counter caches, no state-machine or soft-delete gems — all by hand, on purpose.
 
 ## Notable non-ActiveRecord objects

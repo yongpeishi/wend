@@ -48,7 +48,7 @@ class Api::FinalScheduleVersionsTest < ActionDispatch::IntegrationTest
   test "a forked day's Final schedule is the first live version, not the fork" do
     place("Nanzen-ji", at: 540)
     forked = trip_day.fork!
-    ScheduleItem.create!(trip: @trip, entry: create_idea(title: "Only in B", created_by: @user),
+    ScheduleItem.create!(trip: @trip, entry: linked_idea("Only in B"),
                          day: @day, day_version: forked, starts_at_minutes: 600)
 
     titles = final_schedule_titles
@@ -61,7 +61,7 @@ class Api::FinalScheduleVersionsTest < ActionDispatch::IntegrationTest
   test "an archived version's items never appear on the Final schedule" do
     place("Nanzen-ji", at: 540)
     forked = trip_day.fork!
-    rejected = create_idea(title: "Rejected plan", created_by: @user)
+    rejected = linked_idea("Rejected plan")
     ScheduleItem.create!(trip: @trip, entry: rejected, day: @day, day_version: forked, starts_at_minutes: 660)
 
     forked.archive!
@@ -75,9 +75,9 @@ class Api::FinalScheduleVersionsTest < ActionDispatch::IntegrationTest
   test "archiving the FIRST live version hands the Final schedule the next one" do
     first = trip_day.first_live_version
     second = trip_day.fork!
-    ScheduleItem.create!(trip: @trip, entry: create_idea(title: "In A", created_by: @user),
+    ScheduleItem.create!(trip: @trip, entry: linked_idea("In A"),
                          day: @day, day_version: first, starts_at_minutes: 540)
-    ScheduleItem.create!(trip: @trip, entry: create_idea(title: "In B", created_by: @user),
+    ScheduleItem.create!(trip: @trip, entry: linked_idea("In B"),
                          day: @day, day_version: second, starts_at_minutes: 600)
 
     assert_equal ["In A"], final_schedule_titles
@@ -92,9 +92,9 @@ class Api::FinalScheduleVersionsTest < ActionDispatch::IntegrationTest
   test "keeping a version drops the loser from the Final schedule" do
     first = trip_day.first_live_version
     winner = trip_day.fork!
-    ScheduleItem.create!(trip: @trip, entry: create_idea(title: "Loser", created_by: @user),
+    ScheduleItem.create!(trip: @trip, entry: linked_idea("Loser"),
                          day: @day, day_version: first, starts_at_minutes: 540)
-    ScheduleItem.create!(trip: @trip, entry: create_idea(title: "Winner", created_by: @user),
+    ScheduleItem.create!(trip: @trip, entry: linked_idea("Winner"),
                          day: @day, day_version: winner, starts_at_minutes: 600)
 
     assert_equal ["Loser"], final_schedule_titles
@@ -108,7 +108,7 @@ class Api::FinalScheduleVersionsTest < ActionDispatch::IntegrationTest
   test "restoring an archived version does not put its items back on the Final schedule" do
     place("Nanzen-ji", at: 540)
     forked = trip_day.fork!
-    ScheduleItem.create!(trip: @trip, entry: create_idea(title: "Second thoughts", created_by: @user),
+    ScheduleItem.create!(trip: @trip, entry: linked_idea("Second thoughts"),
                          day: @day, day_version: forked, starts_at_minutes: 660)
     forked.archive!
 
@@ -124,7 +124,7 @@ class Api::FinalScheduleVersionsTest < ActionDispatch::IntegrationTest
   # --- Legacy rows: no version at all ----------------------------------------
 
   test "items with a null day_version_id still appear" do
-    legacy = ScheduleItem.create!(trip: @trip, entry: create_idea(title: "Legacy row", created_by: @user),
+    legacy = ScheduleItem.create!(trip: @trip, entry: linked_idea("Legacy row"),
                                   day: @day, starts_at_minutes: 480)
     assert_nil legacy.day_version_id
 
@@ -132,7 +132,7 @@ class Api::FinalScheduleVersionsTest < ActionDispatch::IntegrationTest
   end
 
   test "a null day_version_id survives a fork and an archive on the same day" do
-    ScheduleItem.create!(trip: @trip, entry: create_idea(title: "Legacy row", created_by: @user),
+    ScheduleItem.create!(trip: @trip, entry: linked_idea("Legacy row"),
                          day: @day, starts_at_minutes: 480)
     place("Nanzen-ji", at: 540)
     trip_day.fork!.archive!
@@ -155,7 +155,7 @@ class Api::FinalScheduleVersionsTest < ActionDispatch::IntegrationTest
 
   test "a day with no versions at all is unaffected by another day's fork" do
     place("Nanzen-ji", at: 540)
-    other = ScheduleItem.create!(trip: @trip, entry: create_idea(title: "Next day", created_by: @user),
+    other = ScheduleItem.create!(trip: @trip, entry: linked_idea("Next day"),
                                  day: "2026-04-02", starts_at_minutes: 540)
     trip_day.fork!
 
@@ -226,6 +226,15 @@ class Api::FinalScheduleVersionsTest < ActionDispatch::IntegrationTest
          params: { schedule_item: { entry_id: idea.id, day: @day, starts_at_minutes: at } },
          as: :json
     assert_response :created
+    idea
+  end
+
+  # An idea linked under the trip, like `place` builds -- ScheduleItem rejects
+  # an entry_id outside the trip's descendant graph, so even rows created
+  # directly (bypassing the POST) need their entry properly linked.
+  def linked_idea(title)
+    idea = create_idea(title: title, created_by: @user)
+    link!(parent: @trip, child: idea)
     idea
   end
 

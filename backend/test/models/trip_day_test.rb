@@ -68,6 +68,7 @@ class TripDayTest < ActiveSupport::TestCase
 
   test "lodging_title prefers the kept entry over the free text" do
     place = create_idea(title: "Hotel Granvia", category: "lodging", created_by: @user)
+    link!(parent: @trip, child: place)
     trip_day = TripDay.create!(trip: @trip, day: "2026-10-12", lodging_label: "Sleeping on the plane")
 
     assert_equal "Sleeping on the plane", trip_day.lodging_title
@@ -77,5 +78,53 @@ class TripDayTest < ActiveSupport::TestCase
 
     trip_day.update!(lodging_entry: nil, lodging_label: nil)
     assert_nil trip_day.lodging_title
+  end
+
+  # --- lodging_entry must belong to the trip ---------------------------------
+
+  test "lodging accepts an entry linked under the trip, however deep" do
+    bundle = create_bundle(created_by: @user)
+    link!(parent: @trip, child: bundle)
+    hotel = create_idea(title: "Hotel Granvia", category: "lodging", created_by: @user)
+    link!(parent: bundle, child: hotel)
+
+    trip_day = TripDay.create!(trip: @trip, day: "2026-10-12", lodging_entry: hotel)
+    assert_equal hotel.id, trip_day.reload.lodging_entry_id
+  end
+
+  test "lodging refuses an entry from someone else's trip" do
+    stranger = create_user
+    other_trip = create_trip(created_by: stranger)
+    foreign = create_idea(title: "Secret Ryokan", created_by: stranger)
+    link!(parent: other_trip, child: foreign)
+
+    trip_day = TripDay.new(trip: @trip, day: "2026-10-12", lodging_entry_id: foreign.id)
+
+    assert_not trip_day.valid?
+    assert_equal ["must belong to this trip"], trip_day.errors[:lodging_entry_id]
+  end
+
+  test "lodging refuses a nonexistent id with the same message as a foreign one" do
+    trip_day = TripDay.new(trip: @trip, day: "2026-10-12", lodging_entry_id: Entry.maximum(:id).to_i + 1)
+
+    assert_not trip_day.valid?
+    assert_equal ["must belong to this trip"], trip_day.errors[:lodging_entry_id]
+  end
+
+  test "clearing lodging back to nil is always allowed" do
+    trip_day = TripDay.create!(trip: @trip, day: "2026-10-12", lodging_entry: @idea)
+
+    trip_day.update!(lodging_entry_id: nil)
+    assert_nil trip_day.reload.lodging_entry_id
+  end
+
+  test "an unchanged lodging_entry_id is not re-checked when other columns change" do
+    trip_day = TripDay.create!(trip: @trip, day: "2026-10-12", lodging_entry: @idea)
+    # The entry leaving the trip afterwards must not wedge the row: the check
+    # guards the moment the reference is written, not every later save.
+    EntryLink.where(parent_id: @trip.id, child_id: @idea.id).delete_all
+
+    trip_day.update!(lodging_label: "fallback text")
+    assert_equal "fallback text", trip_day.reload.lodging_label
   end
 end

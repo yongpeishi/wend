@@ -20,6 +20,14 @@ class TripDay < ApplicationRecord
   validates :day, presence: true
   validates :trip_id, uniqueness: { scope: :day }
 
+  # lodging_entry_id is a reference, not authority (see governing_entry_ids) --
+  # but TripDaySerializer reads the referenced entry's title through it, so an
+  # unvalidated reference is a read primitive: ids are sequential, and any
+  # member could enumerate them to read strangers' titles. Checked only when
+  # the id is about to change, so a row whose entry later leaves the trip can
+  # still update its other columns.
+  validate :lodging_entry_belongs_to_trip, if: :will_save_change_to_lodging_entry_id?
+
   scope :for_trip, ->(trip_id) { where(trip_id: trip_id).order(:day) }
 
   # The trip alone, like ScheduleItem: lodging_entry_id is a reference to what
@@ -124,5 +132,22 @@ class TripDay < ApplicationRecord
 
   def lodging_title
     lodging_entry&.title.presence || lodging_label.presence
+  end
+
+  private
+
+  def lodging_entry_belongs_to_trip
+    return if lodging_entry_id.blank?
+
+    # The cap matches Entry.visible_to, so "in this trip" means the same thing
+    # here as it does for visibility. descendant_ids_of returns raw
+    # select_values, which are not guaranteed Integer -- the same .map(&:to_i)
+    # Entry#role_for does.
+    descendant_ids = Entry.descendant_ids_of(trip_id, depth_cap: Entry::VISIBILITY_DEPTH_CAP).map(&:to_i)
+    return if descendant_ids.include?(lodging_entry_id)
+
+    # One message for both a nonexistent id and someone else's entry: a
+    # distinct "not found" would be an existence oracle over sequential ids.
+    errors.add(:lodging_entry_id, "must belong to this trip")
   end
 end
