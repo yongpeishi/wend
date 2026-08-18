@@ -10,6 +10,12 @@ module ActiveSupport
     # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
     fixtures :all
 
+    # The auth rate-limit store is per-process and every test shares remote_ip
+    # 127.0.0.1, so counts would accumulate across unrelated tests in a worker
+    # until ordinary signups started 429ing. A clean store per test keeps the
+    # limit observable only where a test deliberately exceeds it.
+    setup { ApplicationController::AUTH_RATE_LIMIT_STORE.clear }
+
     # Add more helper methods to be used by all tests here...
     def create_user(name: "Test User", email: "user#{SecureRandom.hex(4)}@example.com", password: "password123")
       User.create!(name: name, email: email, password: password)
@@ -67,6 +73,12 @@ module ActionDispatch
     DEFAULT_PASSWORD = "password123"
 
     def sign_in_as(user)
+      # Some tests (the authorization route sweep) sign the same email in dozens
+      # of times within one test, which would trip the per-email sign-in rate
+      # limit. This helper is scaffolding, not the behavior under test, so its
+      # sign-ins never count against the limit; tests that probe the limit post
+      # to /api/session directly.
+      ApplicationController::AUTH_RATE_LIMIT_STORE.clear
       post "/api/session", params: { email: user.email, password: DEFAULT_PASSWORD }, as: :json
       assert_response :created
       # Whoever is signed in is the natural author of anything the test goes on to

@@ -15,6 +15,23 @@ class UserTest < ActiveSupport::TestCase
     assert_includes dup.errors.attribute_names, :email
   end
 
+  test "rejects passwords shorter than 8 characters" do
+    user = User.new(name: "Someone", email: "short@example.com", password: "seven77")
+    assert_not user.valid?
+    assert_includes user.errors.attribute_names, :password
+  end
+
+  test "accepts an 8-character password" do
+    user = User.new(name: "Someone", email: "eight@example.com", password: "eight888")
+    assert user.valid?
+  end
+
+  test "updating without supplying a password stays valid" do
+    user = create_user
+    user.name = "Renamed"
+    assert user.valid?
+  end
+
   test "authenticates with has_secure_password" do
     user = create_user(password: "correcthorse")
     assert user.authenticate("correcthorse")

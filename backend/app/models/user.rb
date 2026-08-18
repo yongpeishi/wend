@@ -12,10 +12,16 @@ class User < ApplicationRecord
   # losing its owner one row at a time, and it would abort mid-cascade here. The trip
   # itself is already protected -- its creator cannot be destroyed at all (above).
   has_many :trip_memberships, dependent: :delete_all
+  # Session tokens are just credentials -- nothing worth preserving or auditing on
+  # the way out, so delete rather than destroy.
+  has_many :sessions, dependent: :delete_all
 
   validates :name, presence: true
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                      format: { with: URI::MailTo::EMAIL_REGEXP }
+  # allow_nil: updates that don't touch the password (has_secure_password leaves it
+  # nil) must stay valid; presence on create is already enforced by has_secure_password.
+  validates :password, length: { minimum: 8 }, allow_nil: true
 
   before_save { self.email = email.downcase.strip if email.present? }
 end
