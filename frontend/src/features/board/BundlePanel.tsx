@@ -1,5 +1,6 @@
 import { useId, useMemo, useState } from 'react';
-import { Spinner } from '../../components/Spinner';
+import { QueryGate } from '../../components/QueryGate';
+import type { QueryGateSource } from '../../components/QueryGate';
 import { Button } from '../../design/components/core/Button';
 import { useCanEdit } from '../../auth/TripRoleContext';
 import { useRestoreEntry } from '../../api';
@@ -18,8 +19,13 @@ export interface BundlePanelProps {
   archivedBundles: Entry[];
   /** bundleId -> members in entry_links.position order (useBundleMembers). */
   members: Map<number, Entry[]>;
-  /** The bundles query is still in flight. */
-  loading: boolean;
+  /**
+   * The bundles query itself, not a `loading` boolean: the rail gates its own
+   * list on it, so a failed load says so and offers a way back instead of
+   * falling through to "No bundles yet" — a claim about the trip the rail has
+   * no right to make about a request that never answered.
+   */
+  query: QueryGateSource;
   /** Open a member idea in place. Omitted, the card falls back to navigating. */
   onOpen?: (id: number) => void;
   onToast: (message: string) => void;
@@ -82,7 +88,7 @@ export interface BundlePanelProps {
  * member gets it read-only. The rail adds nothing to it and takes nothing from
  * it; where it is absent the cards navigate as they always did.
  */
-export function BundlePanel({ tripId, bundles, archivedBundles, members, loading, onOpen, onToast }: BundlePanelProps) {
+export function BundlePanel({ tripId, bundles, archivedBundles, members, query, onOpen, onToast }: BundlePanelProps) {
   const restoreEntry = useRestoreEntry();
   const canEdit = useCanEdit();
   const [naming, setNaming] = useState(false);
@@ -116,32 +122,39 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, loading
       )}
 
       <div className={styles.stack}>
+        {/* The form stays outside the gate: naming a new bundle needs nothing
+            from the list below it, and taking the way forward away because a
+            read failed would turn one problem into two. */}
         {naming && <NewBundleForm tripId={tripId} onToast={onToast} onClose={() => setNaming(false)} />}
 
-        {loading ? (
-          <Spinner label="Finding your bundles" />
-        ) : newestFirst.length === 0 ? (
-          // An editor's empty rail is a prompt: the header's action is right
-          // there, so the copy points at it. A viewer has no such action, and
-          // pointing at one that was never rendered is a dead end — for them an
-          // empty rail is a normal, permanent state, so it is stated and left
-          // alone. Same treatment as the schedule's empty day.
-          <p className={styles.empty}>
-            {canEdit
-              ? 'No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.'
-              : 'No bundles on this trip yet.'}
-          </p>
-        ) : (
-          newestFirst.map((bundle) => (
-            <BundleCard
-              key={bundle.id}
-              bundle={bundle}
-              members={members.get(bundle.id) ?? []}
-              onOpen={onOpen}
-              onToast={onToast}
-            />
-          ))
-        )}
+        <QueryGate
+          query={query}
+          loadingLabel="Finding your bundles"
+          errorMessage="Your bundles didn't load. Nothing is lost — every group you've made is still here."
+        >
+          {newestFirst.length === 0 ? (
+            // An editor's empty rail is a prompt: the header's action is right
+            // there, so the copy points at it. A viewer has no such action, and
+            // pointing at one that was never rendered is a dead end — for them an
+            // empty rail is a normal, permanent state, so it is stated and left
+            // alone. Same treatment as the schedule's empty day.
+            <p className={styles.empty}>
+              {canEdit
+                ? 'No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.'
+                : 'No bundles on this trip yet.'}
+            </p>
+          ) : (
+            newestFirst.map((bundle) => (
+              <BundleCard
+                key={bundle.id}
+                bundle={bundle}
+                members={members.get(bundle.id) ?? []}
+                onOpen={onOpen}
+                onToast={onToast}
+              />
+            ))
+          )}
+        </QueryGate>
       </div>
 
       <SetAsideSection

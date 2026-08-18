@@ -40,6 +40,9 @@ function entry(id: number, title: string, kind: Entry['kind'] = 'idea', schedule
   };
 }
 
+/** A settled, healthy bundles query — the rail's gate lets everything through. */
+const SETTLED_QUERY = { isPending: false, isError: false, refetch: () => Promise.resolve() };
+
 const BUNDLE = entry(90, 'Kyoto dinner options', 'bundle');
 const ARCHIVED = { ...entry(95, 'Rainy day plan', 'bundle'), archived_at: '2026-02-02T00:00:00Z' };
 const MEMBERS = [entry(91, 'Ramen alley', 'idea', true), entry(92, 'Kaiseki counter')];
@@ -56,7 +59,7 @@ function renderPanel(overrides: Partial<Parameters<typeof BundlePanel>[0]> = {})
               bundles={[BUNDLE]}
               archivedBundles={[ARCHIVED]}
               members={new Map([[BUNDLE.id, MEMBERS]])}
-              loading={false}
+              query={SETTLED_QUERY}
               onToast={() => {}}
               {...overrides}
             />
@@ -196,7 +199,7 @@ describe('BundlePanel — reading along', () => {
                   bundles={[BUNDLE]}
                   archivedBundles={[ARCHIVED]}
                   members={new Map([[BUNDLE.id, MEMBERS]])}
-                  loading={false}
+                  query={SETTLED_QUERY}
                   onToast={() => {}}
                   {...overrides}
                 />

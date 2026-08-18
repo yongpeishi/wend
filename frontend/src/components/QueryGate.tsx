@@ -7,9 +7,17 @@ import { Spinner } from './Spinner';
  * The slice of a TanStack Query result the gate actually reads. Structural on
  * purpose — any `UseQueryResult` satisfies it as-is, and a test can hand in a
  * three-field object instead of standing up a whole query client.
+ *
+ * `isPending`, not `isLoading`: they differ exactly when a query is PAUSED —
+ * offline, or a hidden tab — before its first data. There `isLoading` is
+ * false, and a gate reading it would fall through to children with no data,
+ * which is the empty-state lie this component exists to prevent. `isPending`
+ * stays true until data (or an error) actually arrives, so pending-and-paused
+ * holds the spinner; and because it goes false once data exists, a paused
+ * background refetch on a screen that already has data still renders children.
  */
 export interface QueryGateSource {
-  isLoading: boolean;
+  isPending: boolean;
   isError: boolean;
   refetch: () => Promise<unknown>;
 }
@@ -46,7 +54,7 @@ export interface QueryGateProps {
 export function QueryGate({ query, loadingLabel, errorMessage, children }: QueryGateProps) {
   const queries = Array.isArray(query) ? query : [query];
 
-  if (queries.some((q) => q.isLoading)) {
+  if (queries.some((q) => q.isPending)) {
     return <Spinner label={loadingLabel} />;
   }
 

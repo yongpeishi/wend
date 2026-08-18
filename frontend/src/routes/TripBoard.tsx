@@ -350,6 +350,7 @@ export function TripBoard() {
             onSelectModeChange={setSelecting}
             mapNarrowing={narrowing}
             mapOffCount={offCount}
+            countKnown={!ideasQuery.isPending && !ideasQuery.isError}
           />
 
           {/* Map and list share one wrapping row: the map is on the left, where
@@ -439,7 +440,7 @@ export function TripBoard() {
           bundles={bundles}
           archivedBundles={archivedBundles}
           members={members}
-          loading={bundlesQuery.isLoading}
+          query={bundlesQuery}
           onOpen={setEditingId}
           onToast={(message) => show(message, 'success')}
         />

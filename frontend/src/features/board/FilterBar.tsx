@@ -45,6 +45,14 @@ export interface FilterBarProps {
    * count would be a fact this bar could be told twice and get wrong once.
    */
   mapOffCount?: number;
+  /**
+   * Whether the counts are facts yet. While the ideas query is still pending or
+   * has failed, "Showing 0 of 0" is not a report, it is a guess dressed as one —
+   * the region below the bar is already saying "loading" or "didn't load", so
+   * the count line steps aside rather than contradicting it. Defaults to true:
+   * a caller with no query to wait on has counts the moment it has ideas.
+   */
+  countKnown?: boolean;
 }
 
 /**
@@ -141,6 +149,7 @@ export function FilterBar({
   onSelectModeChange,
   mapNarrowing = false,
   mapOffCount = 0,
+  countKnown = true,
 }: FilterBarProps) {
   // The hook, not a prop: this bar reaches for its capability the way it reaches
   // for the toast — from the tree — and outside a trip the context hands back
@@ -365,26 +374,34 @@ export function FilterBar({
           looking at it in. "Select" belongs here rather than up on the control
           row because it acts on the rows below it, not on which rows there are. */}
       <div className={styles.summaryRow}>
-        <p className={styles.summary}>
-          {mapNarrowing ? (
-            <>
-              {visibleCount} of {visibleCount + mapOffCount} ideas in view
-              {mapOffCount > 0 && `${MIDDOT}${mapOffCount} just off-screen`}
-            </>
-          ) : (
-            <>
-              Showing {visibleCount} of {totalCount}
-            </>
-          )}
-          {narrowed && (
-            <>
-              {MIDDOT}
-              <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_FILTERS)}>
-                See all
-              </button>
-            </>
-          )}
-        </p>
+        {/* No count line while the counts aren't known — see countKnown. An
+            empty spacer keeps the row's shape (space-between would otherwise
+            slide the Select toggle across), so nothing jumps when the numbers
+            arrive. */}
+        {countKnown ? (
+          <p className={styles.summary}>
+            {mapNarrowing ? (
+              <>
+                {visibleCount} of {visibleCount + mapOffCount} ideas in view
+                {mapOffCount > 0 && `${MIDDOT}${mapOffCount} just off-screen`}
+              </>
+            ) : (
+              <>
+                Showing {visibleCount} of {totalCount}
+              </>
+            )}
+            {narrowed && (
+              <>
+                {MIDDOT}
+                <button type="button" className={styles.widen} onClick={() => onChange(EMPTY_FILTERS)}>
+                  See all
+                </button>
+              </>
+            )}
+          </p>
+        ) : (
+          <p className={styles.summary} aria-hidden="true" />
+        )}
 
         {/* No aria-pressed on the button below: the label itself is the state,
             exactly as on the map button beside it. A control that says "Done

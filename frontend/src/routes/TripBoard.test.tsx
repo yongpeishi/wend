@@ -623,7 +623,34 @@ describe('TripBoard — when the load fails', () => {
     expect(
       await screen.findByText("Your ideas didn't load. Nothing is lost — everything on the board is still there."),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Try again' }).length).toBeGreaterThan(0);
     expect(screen.queryByText(/still a daydream/)).not.toBeInTheDocument();
+    // The count line sits above the gate, so it has to step aside on its own:
+    // "Showing 0 of 0" over an error message would be the same lie in numbers.
+    expect(screen.queryByText(/Showing \d+ of \d+/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ideas in view/)).not.toBeInTheDocument();
+  });
+
+  it('the rail says the bundles failed instead of "No bundles yet", and leaves the ideas alone', async () => {
+    // Only the bundles request fails; returning nothing falls through to the
+    // seeded handler, so the ideas half of the board loads as normal.
+    server.use(
+      http.get('/api/entries', ({ request }) => {
+        const url = new URL(request.url);
+        if (url.searchParams.get('kind') === 'bundle') {
+          return HttpResponse.json({ error: 'boom' }, { status: 500 });
+        }
+        return undefined;
+      }),
+    );
+    renderBoard();
+
+    expect(
+      await screen.findByText("Your bundles didn't load. Nothing is lost — every group you've made is still here."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No bundles yet/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    // The ideas column is untouched by the rail's failure.
+    expect(await screen.findByText('Nanzen-ji')).toBeInTheDocument();
   });
 });

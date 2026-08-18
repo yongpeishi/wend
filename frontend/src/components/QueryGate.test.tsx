@@ -6,7 +6,7 @@ import type { QueryGateSource } from './QueryGate';
 
 /** A settled, healthy query — override the flag a test is about. */
 function settled(overrides: Partial<QueryGateSource> = {}): QueryGateSource {
-  return { isLoading: false, isError: false, refetch: vi.fn().mockResolvedValue(undefined), ...overrides };
+  return { isPending: false, isError: false, refetch: vi.fn().mockResolvedValue(undefined), ...overrides };
 }
 
 const COPY = "It didn't load. Nothing is lost.";
@@ -21,7 +21,18 @@ function renderGate(query: QueryGateSource | QueryGateSource[]) {
 
 describe('QueryGate', () => {
   it('shows the spinner with its label while loading, and none of the children', () => {
-    renderGate(settled({ isLoading: true }));
+    renderGate(settled({ isPending: true }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('Finding it');
+    expect(screen.queryByText('the goods')).not.toBeInTheDocument();
+  });
+
+  // Offline (or a hidden tab), TanStack Query pauses the first fetch: status
+  // stays 'pending' but nothing is in flight, so isLoading is false while
+  // isPending is true. The gate must hold the spinner there — falling through
+  // would render children with no data, the empty-state lie of F1.
+  it('holds the spinner for a paused first load — pending, but not fetching', () => {
+    renderGate(settled({ isPending: true, isError: false }));
 
     expect(screen.getByRole('status')).toHaveTextContent('Finding it');
     expect(screen.queryByText('the goods')).not.toBeInTheDocument();
@@ -53,7 +64,7 @@ describe('QueryGate', () => {
   });
 
   it('waits for every query it is given before showing the children', () => {
-    renderGate([settled(), settled({ isLoading: true })]);
+    renderGate([settled(), settled({ isPending: true })]);
 
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.queryByText('the goods')).not.toBeInTheDocument();

@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
+import { server } from '../mocks/server';
 import { setRole } from '../mocks/db';
 import { TripLayout } from './TripLayout';
 
@@ -134,5 +137,40 @@ describe('TripLayout — the standing viewer line', () => {
     // Toasts announce themselves; this is prose under the title.
     expect(line.closest('[role="status"]')).toBeNull();
     expect(line.closest('[role="alert"]')).toBeNull();
+  });
+});
+
+/**
+ * "That trip isn't here" is a claim about the world — the trip is gone — and
+ * only a 404 has earned it. A 500 or a dead network is a claim about the wire,
+ * and because every trip tab renders under this layout, getting the two mixed
+ * up here would tell someone with a flaky connection that their trip was
+ * deleted, on every tab at once.
+ */
+describe('TripLayout — when the trip fails to load', () => {
+  it('a server failure says the trip did not load and offers a way back — never that it is gone', async () => {
+    server.use(http.get('/api/entries/:id', () => HttpResponse.json({ error: 'boom' }, { status: 500 })));
+    const user = userEvent.setup();
+    renderLayout();
+
+    expect(
+      await screen.findByText("This trip didn't load. Nothing is lost — it's all still here."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("That trip isn't here")).not.toBeInTheDocument();
+
+    // The server comes back, and "Try again" brings the trip with it.
+    server.resetHandlers();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('heading', { name: 'Six days in Kyoto' })).toBeInTheDocument();
+  });
+
+  it('a 404 still says the trip is not here — the one failure that means exactly that', async () => {
+    server.use(
+      http.get('/api/entries/:id', () => HttpResponse.json({ error: 'Not found' }, { status: 404 })),
+    );
+    renderLayout();
+
+    expect(await screen.findByText("That trip isn't here")).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
   });
 });
