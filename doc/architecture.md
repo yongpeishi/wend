@@ -304,7 +304,7 @@ GET    /api/entries
 
 POST   /api/entries       { entry: {...}, parent_id? }  -> 201 { entry }
 GET    /api/entries/:id                                 -> 200 { entry, parents, children, votes, todos }
-PATCH  /api/entries/:id   { entry: {...} }              -> 200 { entry }
+PATCH  /api/entries/:id   { entry: {...} }              -> 200 { entry }  (kind is create-only: ignored here; use lift/absorb)
 DELETE /api/entries/:id                                 -> 200 { entry }  (sets archived_at)
 POST   /api/entries/:id/restore                         -> 200 { entry }
 

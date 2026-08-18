@@ -121,6 +121,8 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     body = JSON.parse(response.body)
     entry_id = body.dig("entry", "id")
     assert_equal "Nanzen-ji", body.dig("entry", "title")
+    # kind is create-only in entry_params, so create is the one place it must land.
+    assert_equal "idea", body.dig("entry", "kind")
     assert EntryLink.exists?(parent_id: trip.id, child_id: entry_id)
   end
 
@@ -146,6 +148,46 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     patch "/api/entries/#{idea.id}", params: { entry: { title: "New title" } }, as: :json
     assert_response :success
     assert_equal "New title", JSON.parse(response.body).dig("entry", "title")
+  end
+
+  # The hostile insider: someone who already holds write access smuggling a kind
+  # change into an otherwise ordinary update. kind is create-only because the
+  # transitions belong to lift/absorb -- a PATCH that demoted a trip would fire
+  # sync_owner_membership and silently wipe every membership, the owner's included.
+  test "PATCH /api/entries/:id ignores kind from a non-owner member and keeps memberships" do
+    owner = create_user
+    trip = create_trip(created_by: owner)
+    member!(trip: trip, user: @user, role: "member")
+    memberships_before = TripMembership.where(trip_id: trip.id).order(:id).pluck(:user_id, :role)
+
+    patch "/api/entries/#{trip.id}", params: { entry: { kind: "idea", title: "Still a trip" } }, as: :json
+    assert_response :success
+    assert_equal "trip", trip.reload.kind
+    assert_equal "Still a trip", trip.title
+    assert_equal memberships_before, TripMembership.where(trip_id: trip.id).order(:id).pluck(:user_id, :role)
+  end
+
+  test "PATCH /api/entries/:id ignores kind even from the owner" do
+    trip = create_trip(created_by: @user)
+    memberships_before = TripMembership.where(trip_id: trip.id).order(:id).pluck(:user_id, :role)
+
+    patch "/api/entries/#{trip.id}", params: { entry: { kind: "idea", title: "Renamed" } }, as: :json
+    assert_response :success
+    assert_equal "trip", trip.reload.kind
+    assert_equal "Renamed", trip.title
+    assert_equal memberships_before, TripMembership.where(trip_id: trip.id).order(:id).pluck(:user_id, :role)
+  end
+
+  # The reverse smuggle: promoting an idea to a trip via PATCH would be a lift
+  # that skipped the parent-detachment and ownership handover lift performs.
+  test "PATCH /api/entries/:id cannot promote an idea to a trip" do
+    idea = create_idea(created_by: @user)
+
+    patch "/api/entries/#{idea.id}", params: { entry: { kind: "trip", title: "Not a lift" } }, as: :json
+    assert_response :success
+    assert_equal "idea", idea.reload.kind
+    assert_equal "Not a lift", idea.title
+    assert_equal 0, TripMembership.where(trip_id: idea.id).count
   end
 
   test "PATCH /api/entries/:id replaces the whole pros and cons arrays" do

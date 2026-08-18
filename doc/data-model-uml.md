@@ -163,7 +163,8 @@ optional or `dependent: :nullify` as labelled. `$` marks class-level methods. `[
 2. **The Entry graph** — everything the user keeps. `kind: idea` rows with no trip ancestor form
    "the library" (collection mode). Lifting an idea into its own trip or absorbing one trip into another
    is just a `kind` flip plus link rewiring — an `after_save` callback syncs the owner membership on the
-   kind transition.
+   kind transition. Over the API, `kind` is create-only: PATCH ignores it, so the flip happens only
+   through the dedicated lift/absorb endpoints.
 3. **Group opinion** — `Vote` (−2..2, 0 is a valid "meh"; withdrawing = deleting the row) and the
    `pros`/`cons` JSON arrays on `Entry` (normalized on write, never 422s).
 4. **Checklists** — `Todo`, attachable at trip level, idea level, or both (both governing entries must
