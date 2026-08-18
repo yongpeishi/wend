@@ -129,6 +129,14 @@ export function AppLayout() {
             >
               All trips
             </NavLink>
+            <NavLink
+              to="/library"
+              className={({ isActive }) =>
+                [styles.navItem, isActive ? styles.navItemActive : ''].filter(Boolean).join(' ')
+              }
+            >
+              Inspiration
+            </NavLink>
           </div>
 
           {/* The design's PLAN block: the trip you are in, and its views. Absent
