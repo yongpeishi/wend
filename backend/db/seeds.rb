@@ -2,6 +2,11 @@
 # produces the petere records (everything is found-or-created by a natural key,
 # never blindly appended).
 
+if Rails.env.production?
+  puts "Skipping seeds: demo data is not for production."
+  return
+end
+
 puts "Seeding..."
 
 # --- Users -------------------------------------------------------------
