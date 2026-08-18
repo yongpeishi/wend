@@ -229,7 +229,7 @@ writable params — which is exactly where all of these live.
 
 ### High
 
-- **H1 — Any member can demote a trip to an idea and wipe all memberships.**
+- [DONE] **H1 — Any member can demote a trip to an idea and wipe all memberships.**
   `entry_params` permits `:kind` on update (`entries_controller.rb:498`), and
   `EntryPolicy#update? = write?` (member level). PATCHing a trip with
   `kind: "idea"` fires `sync_owner_membership`, whose else-branch is
@@ -249,7 +249,7 @@ writable params — which is exactly where all of these live.
   end
   ```
 
-- **H2 — Reading any entry's details by smuggling its id into a schedule item.**
+- [DONE] **H2 — Reading any entry's details by smuggling its id into a schedule item.**
   `entry_id`/`chosen_entry_id` on a schedule item are never validated to be visible
   to the caller or inside the trip (`schedule_items_controller.rb:826-830`,
   `schedule_item.rb` — `optional: true` associations, no ownership check), and
@@ -262,7 +262,7 @@ writable params — which is exactly where all of these live.
   (`entry_id` must be a descendant of `trip_id` or visible to the placer), or scope
   the serializer lookup through `Entry.visible_to`.
 
-- **H3 — Cross-trip itinerary injection via unvalidated `day_version_id`.**
+- [DONE] **H3 — Cross-trip itinerary injection via unvalidated `day_version_id`.**
   Same family: `POST /trips/:trip_id/schedule` and `PATCH /schedule_items/:id`
   permit `day_version_id`, authorization checks only the item's own `trip_id`
   (`ScheduleItemPolicy` → `governing_entry_ids == [trip_id]`,
@@ -289,7 +289,7 @@ writable params — which is exactly where all of these live.
 
 ### Medium
 
-- **M0a — `lodging_entry_id` is the small sibling of H2.**
+- [DONE] **M0a — `lodging_entry_id` is the small sibling of H2.**
   `PATCH /trips/:trip_id/days/:day` accepts any entry id as lodging
   (`trip_days_controller.rb:970-972`) with no visibility check, and
   `TripDay#lodging_title` (`trip_day.rb:857-859`) exposes the entry's title through
