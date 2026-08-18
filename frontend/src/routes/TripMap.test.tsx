@@ -3,7 +3,9 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
+import { server } from '../mocks/server';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { TripMap } from './TripMap';
 import type { TripRole } from '../api/types';
@@ -179,5 +181,20 @@ describe('TripMap — as a viewer', () => {
     // The second way in: with no handler bound, a map click cannot open the form
     // either — the stub only offers the button when the prop is there.
     expect(screen.queryByRole('button', { name: 'Simulate map click' })).not.toBeInTheDocument();
+  });
+});
+
+/** A failed load is not an unpinned map — the screen must never claim nothing
+ * is on it about places it simply could not fetch. */
+describe('TripMap — when the load fails', () => {
+  it('says the places failed to load instead of claiming the map is empty, and offers a way back', async () => {
+    server.use(http.get('/api/entries', () => HttpResponse.json({ error: 'boom' }, { status: 500 })));
+    renderWithLayout();
+
+    expect(
+      await screen.findByText("Your places didn't load. Nothing is lost — every pin is still where you put it."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing on the map yet/)).not.toBeInTheDocument();
   });
 });

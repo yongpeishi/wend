@@ -13,7 +13,7 @@ import { useCanEdit } from '../auth/TripRoleContext';
 import { EntryRow } from '../components/EntryRow';
 import { Card } from '../components/layout/Card';
 import { EmptyState } from '../components/EmptyState';
-import { Spinner } from '../components/Spinner';
+import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import { useEntries, useRestoreEntry } from '../api';
 import type { Entry } from '../api/types';
@@ -146,6 +146,11 @@ export function TripBoard() {
   const members = useBundleMembers(bundles);
 
   const visibleIdeas = useMemo(() => applyFilters(allIdeas, filters), [allIdeas, filters]);
+
+  // Whether the counts are facts yet — see countKnown on FilterBar and
+  // BoardMapPane. One flag, because both would otherwise work it out from the
+  // same query and could disagree.
+  const countKnown = !ideasQuery.isPending && !ideasQuery.isError;
 
   // All three have to be true before the viewport touches the list: no map, no
   // cut; follow switched off, no cut; and no bounds reported yet, nothing to cut
@@ -350,6 +355,7 @@ export function TripBoard() {
             onSelectModeChange={setSelecting}
             mapNarrowing={narrowing}
             mapOffCount={offCount}
+            countKnown={countKnown}
           />
 
           {/* Map and list share one wrapping row: the map is on the left, where
@@ -376,6 +382,7 @@ export function TripBoard() {
                   following={followMap}
                   offCount={offViewCount}
                   onWiden={() => setFitRequest((n) => n + 1)}
+                  countKnown={countKnown}
                 />
               </div>
             )}
@@ -391,35 +398,39 @@ export function TripBoard() {
                 onToast={(message) => show(message, 'success')}
               />
 
-              {ideasQuery.isLoading ? (
-                <Spinner label="Finding your ideas" />
-              ) : allIdeas.length === 0 ? (
-                <EmptyState message="This one's still a daydream. Add the first thing you'd like to do." />
-              ) : spatiallyVisible.length === 0 ? (
-                // Missing from the design, and the state a map makes easy to
-                // reach: pan somewhere empty and the list is legitimately
-                // nothing. An empty column with a count line above it reads as a
-                // failure to load, so the list says which narrowing did it and
-                // where the way back is.
-                <p className={styles.noneInView}>
-                  {narrowing
-                    ? 'Nothing kept is in this part of the map. Pan somewhere else, or widen the view.'
-                    : 'Nothing matches those filters. Nothing is gone — widen them and it comes back.'}
-                </p>
-              ) : (
-                <IdeaList
-                  entries={spatiallyVisible}
-                  groupMode={groupMode}
-                  bundles={bundles}
-                  members={members}
-                  selectMode={selectMode}
-                  selectedIds={selectedIds}
-                  onToggleSelect={onToggleSelect}
-                  onEdit={setEditingId}
-                  onToast={(message) => show(message, 'success')}
-                  canEdit={canEdit}
-                />
-              )}
+              <QueryGate
+                query={ideasQuery}
+                loadingLabel="Finding your ideas"
+                errorMessage="Your ideas didn't load. Nothing is lost — everything on the board is still there."
+              >
+                {allIdeas.length === 0 ? (
+                  <EmptyState message="This one's still a daydream. Add the first thing you'd like to do." />
+                ) : spatiallyVisible.length === 0 ? (
+                  // Missing from the design, and the state a map makes easy to
+                  // reach: pan somewhere empty and the list is legitimately
+                  // nothing. An empty column with a count line above it reads as a
+                  // failure to load, so the list says which narrowing did it and
+                  // where the way back is.
+                  <p className={styles.noneInView}>
+                    {narrowing
+                      ? 'Nothing kept is in this part of the map. Pan somewhere else, or widen the view.'
+                      : 'Nothing matches those filters. Nothing is gone — widen them and it comes back.'}
+                  </p>
+                ) : (
+                  <IdeaList
+                    entries={spatiallyVisible}
+                    groupMode={groupMode}
+                    bundles={bundles}
+                    members={members}
+                    selectMode={selectMode}
+                    selectedIds={selectedIds}
+                    onToggleSelect={onToggleSelect}
+                    onEdit={setEditingId}
+                    onToast={(message) => show(message, 'success')}
+                    canEdit={canEdit}
+                  />
+                  )}
+              </QueryGate>
 
               <SetAsideSection
                 entries={archivedIdeas}
@@ -435,7 +446,7 @@ export function TripBoard() {
           bundles={bundles}
           archivedBundles={archivedBundles}
           members={members}
-          loading={bundlesQuery.isLoading}
+          query={bundlesQuery}
           onOpen={setEditingId}
           onToast={(message) => show(message, 'success')}
         />

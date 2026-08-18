@@ -3,8 +3,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
+import { server } from '../mocks/server';
 import { Library } from './Library';
 import type { MapViewProps } from '../features/map/MapView';
 
@@ -209,5 +211,20 @@ describe('Library', () => {
       params: { unassigned: true, kind: 'idea' },
     });
     expect(after.entries.map((e) => e.id)).not.toContain(SEEDED_LIBRARY_ID);
+  });
+});
+
+/** A failed load is not an empty library — the screen must never claim
+ * "Nothing kept yet" about ideas it simply could not fetch. */
+describe('Library — when the load fails', () => {
+  it('says the load failed instead of claiming nothing is kept, and offers a way back', async () => {
+    server.use(http.get('/api/entries', () => HttpResponse.json({ error: 'boom' }, { status: 500 })));
+    renderLibrary();
+
+    expect(
+      await screen.findByText("Your library didn't load. Nothing is lost — everything you've kept is still saved."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByText('Nothing kept yet. Saving something is how a trip starts.')).not.toBeInTheDocument();
   });
 });

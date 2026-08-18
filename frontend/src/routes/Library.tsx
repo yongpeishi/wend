@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { EmptyState } from '../components/EmptyState';
-import { Spinner } from '../components/Spinner';
+import { QueryGate } from '../components/QueryGate';
 import { Row, Stack } from '../components/layout/Stack';
 import { useToast } from '../components/Toast';
 import { useEntries } from '../api';
@@ -90,7 +90,6 @@ export function Library() {
     show(ids.length === 1 ? 'Selected 1 idea near here.' : `Selected ${ids.length} ideas near here.`, 'success');
   }
 
-  const loading = ideasQuery.isLoading;
   const selectedCount = selectedIds.length;
 
   return (
@@ -102,73 +101,77 @@ export function Library() {
 
       <QuickAdd />
 
-      {loading ? (
-        <Spinner label="Finding what you've kept" />
-      ) : allIdeas.length === 0 ? (
-        <EmptyState message="Nothing kept yet. Saving something is how a trip starts." />
-      ) : (
-        <>
-          <LibraryFilterBar
-            filters={filters}
-            onChange={setFilters}
-            visibleCount={spatiallyVisible.length}
-            totalCount={allIdeas.length}
-          />
+      <QueryGate
+        query={ideasQuery}
+        loadingLabel="Finding what you've kept"
+        errorMessage="Your library didn't load. Nothing is lost — everything you've kept is still saved."
+      >
+        {allIdeas.length === 0 ? (
+          <EmptyState message="Nothing kept yet. Saving something is how a trip starts." />
+        ) : (
+          <>
+            <LibraryFilterBar
+              filters={filters}
+              onChange={setFilters}
+              visibleCount={spatiallyVisible.length}
+              totalCount={allIdeas.length}
+            />
 
-          <div className={styles.selectionBar}>
-            <p className={styles.selectionCount}>
-              {selectedCount === 0 ? 'Nothing selected yet.' : `${selectedCount} selected`}
-            </p>
-            <Row gap={2} wrap>
-              {orderedIds.length > 0 && (
-                <Button variant="quiet" onClick={selectAllShown}>
-                  Select all shown
+            <div className={styles.selectionBar}>
+              <p className={styles.selectionCount}>
+                {selectedCount === 0 ? 'Nothing selected yet.' : `${selectedCount} selected`}
+              </p>
+              <Row gap={2} wrap>
+                {orderedIds.length > 0 && (
+                  <Button variant="quiet" onClick={selectAllShown}>
+                    Select all shown
+                  </Button>
+                )}
+                {selectedCount > 0 && (
+                  <Button variant="quiet" onClick={() => setSelectedIds([])}>
+                    Clear selection
+                  </Button>
+                )}
+                <Button disabled={selectedCount === 0} onClick={() => setTakingSomewhere(true)}>
+                  Take these somewhere
                 </Button>
-              )}
-              {selectedCount > 0 && (
-                <Button variant="quiet" onClick={() => setSelectedIds([])}>
-                  Clear selection
-                </Button>
-              )}
-              <Button disabled={selectedCount === 0} onClick={() => setTakingSomewhere(true)}>
-                Take these somewhere
-              </Button>
-            </Row>
-          </div>
-
-          <div className={styles.split}>
-            <div className={styles.list}>
-              {spatiallyVisible.length === 0 ? (
-                <p className={styles.noneInView}>Nothing here. Pan the map, or widen your filters.</p>
-              ) : (
-                <Stack gap={3}>
-                  {spatiallyVisible.map((entry) => (
-                    <LibraryRow
-                      key={entry.id}
-                      entry={entry}
-                      selected={selectedIds.includes(entry.id)}
-                      onToggleSelect={onToggleSelect}
-                      onHoverChange={setHoveredId}
-                    />
-                  ))}
-                </Stack>
-              )}
+              </Row>
             </div>
 
-            <div className={styles.mapCell}>
-              <MapView
-                pins={pins}
-                selectedId={hoveredId ?? pinClickedId}
-                onSelectPin={setPinClickedId}
-                onSelectCluster={handleClusterSelect}
-                onBoundsChange={setMapBounds}
-                fitToPins
-                aria-label="Map of everything you've kept"
-              />
+            <div className={styles.split}>
+              <div className={styles.list}>
+                {spatiallyVisible.length === 0 ? (
+                  <p className={styles.noneInView}>Nothing here. Pan the map, or widen your filters.</p>
+                ) : (
+                  <Stack gap={3}>
+                    {spatiallyVisible.map((entry) => (
+                      <LibraryRow
+                        key={entry.id}
+                        entry={entry}
+                        selected={selectedIds.includes(entry.id)}
+                        onToggleSelect={onToggleSelect}
+                        onHoverChange={setHoveredId}
+                      />
+                    ))}
+                  </Stack>
+                )}
+              </div>
+
+              <div className={styles.mapCell}>
+                <MapView
+                  pins={pins}
+                  selectedId={hoveredId ?? pinClickedId}
+                  onSelectPin={setPinClickedId}
+                  onSelectCluster={handleClusterSelect}
+                  onBoundsChange={setMapBounds}
+                  fitToPins
+                  aria-label="Map of everything you've kept"
+                />
+              </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </QueryGate>
 
       <TakeSomewhereModal
         open={takingSomewhere}

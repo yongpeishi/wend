@@ -3,8 +3,10 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
+import { server } from '../mocks/server';
 import { setRole } from '../mocks/db';
 import { TripsList } from './TripsList';
 import type { Entry, EntryNote } from '../api/types';
@@ -217,5 +219,32 @@ describe('TripsList — a trip you are only reading', () => {
     expect(await screen.findByText('Saved for later')).toBeInTheDocument();
     expect(screen.getByText(TRIP_TITLE)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Bring back' })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A failed load is not an empty account. Both regions on this page read the
+ * same endpoint, so one refusal fails both — and each says so in its own
+ * words instead of falling through to "No trips yet".
+ */
+describe('TripsList — when the load fails', () => {
+  it('says the load failed instead of claiming nothing exists, and "Try again" recovers', async () => {
+    server.use(http.get('/api/entries', () => HttpResponse.json({ error: 'boom' }, { status: 500 })));
+    const user = userEvent.setup();
+    renderTrips();
+
+    expect(
+      await screen.findByText("Your trips didn't load. Nothing is lost — they're all still here."),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("What you've kept didn't load. Nothing is lost — it's all still saved."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No trips yet/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nothing kept yet/)).not.toBeInTheDocument();
+
+    // The server comes back; the first "Try again" is the trips region's own.
+    server.resetHandlers();
+    await user.click(screen.getAllByRole('button', { name: 'Try again' })[0]!);
+    expect(await screen.findByRole('link', { name: TRIP_TITLE })).toBeInTheDocument();
   });
 });

@@ -1,9 +1,12 @@
 import { Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useCollaborators, useEntry } from '../api';
+import { ApiError } from '../api/client';
 import { canDelete, canEdit, canShare } from '../auth/tripRole';
 import { TripRoleProvider } from '../auth/TripRoleContext';
+import { EmptyState } from '../components/EmptyState';
 import { PageHeader } from '../components/PageHeader';
 import { Spinner } from '../components/Spinner';
+import { Button } from '../design/components/core/Button';
 import { formatTripDates } from '../lib/formatDates';
 import styles from './TripLayout.module.css';
 
@@ -42,7 +45,7 @@ export function TripLayout() {
   const { id } = useParams();
   const tripId = id ? Number(id) : undefined;
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useEntry(tripId);
+  const { data, isPending, isError, error, refetch } = useEntry(tripId);
 
   const trip = data?.entry;
 
@@ -63,10 +66,40 @@ export function TripLayout() {
   });
   const ownerName = people?.collaborators.find((person) => person.role === 'owner')?.name ?? null;
 
-  if (isLoading) {
+  // isPending rather than isLoading for the same reason as QueryGate: offline
+  // (or in a hidden tab) the first fetch is PAUSED — isLoading false, no error,
+  // no data — and reading isLoading would drop that state straight into "That
+  // trip isn't here" below, asserting deletion to someone who merely lost
+  // signal. isPending holds the spinner until data or an error actually lands.
+  if (isPending) {
     return (
       <div className={styles.wrap}>
         <Spinner label="Finding your trip" />
+      </div>
+    );
+  }
+
+  // Two very different failures, two very different sentences. "That trip
+  // isn't here" is a claim about the WORLD — the trip is gone — and only a 404
+  // (or a success that came back empty) has earned it. Every other failure is
+  // a claim about the WIRE: a 500 or a dead network says nothing about the
+  // trip, so it gets the same honest treatment as QueryGate — what didn't
+  // load, that nothing is lost, and a way to try again. This is hand-rolled
+  // rather than QueryGate itself because of the 404 fork; the markup mirrors
+  // the gate's error arm so the two read as one pattern. Every trip tab lives
+  // under this layout, so getting this wrong here would shadow all of their
+  // own gates at once.
+  if (isError && !(error instanceof ApiError && error.status === 404)) {
+    return (
+      <div className={styles.wrap}>
+        <EmptyState
+          message="This trip didn't load. Nothing is lost — it's all still here."
+          action={
+            <Button variant="secondary" onClick={() => void refetch()}>
+              Try again
+            </Button>
+          }
+        />
       </div>
     );
   }

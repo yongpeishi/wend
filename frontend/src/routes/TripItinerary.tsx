@@ -19,11 +19,9 @@ import type {
 } from '@dnd-kit/core';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCanEdit } from '../auth/TripRoleContext';
-import { Button } from '../design/components/core/Button';
 import { EntryRow } from '../components/EntryRow';
 import { Card } from '../components/layout/Card';
-import { EmptyState } from '../components/EmptyState';
-import { Spinner } from '../components/Spinner';
+import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import { api } from '../api/client';
 import { useChangeTripDates, useEntries } from '../api/entries';
@@ -469,147 +467,136 @@ export function TripItinerary() {
     );
   }
 
-  if (itineraryQuery.isLoading) {
-    return <Spinner label="Finding your days" />;
-  }
-
-  if (itineraryQuery.isError) {
-    return (
-      <EmptyState
-        message="Your days didn't load. Nothing is lost — everything you've placed is still on them."
-        action={
-          <Button variant="secondary" onClick={() => void itineraryQuery.refetch()}>
-            Try again
-          </Button>
-        }
-      />
-    );
-  }
-
   return (
-    <DndContext
-      sensors={sensors}
-      // A keyboard drag is over the stop the arrow keys walked it to, and a
-      // pointer drag is over the innermost thing under the cursor — so a split
-      // day's columns are aimable instead of being swallowed by the day around
-      // them, and what is announced is what receives the drop.
-      collisionDetection={drag.collisionDetection}
-      accessibility={{ announcements, screenReaderInstructions: DRAG_INSTRUCTIONS }}
-      onDragStart={handleDragStart}
-      onDragEnd={endDrag}
-      onDragCancel={endDrag}
+    <QueryGate
+      query={itineraryQuery}
+      loadingLabel="Finding your days"
+      errorMessage="Your days didn't load. Nothing is lost — everything you've placed is still on them."
     >
-      <div className={styles.screen}>
-        <div className={styles.main}>
-          <ItineraryHeader
-            meta={meta}
-            splitLine={splitLine}
-            onExpandAll={() => setOpenDays(days.map((day) => day.day))}
-            onCollapseAll={() => setOpenDays([])}
-            onChangeDates={() => setDatesOpen(true)}
-            readOnly={readOnly}
-          />
+      <DndContext
+        sensors={sensors}
+        // A keyboard drag is over the stop the arrow keys walked it to, and a
+        // pointer drag is over the innermost thing under the cursor — so a split
+        // day's columns are aimable instead of being swallowed by the day around
+        // them, and what is announced is what receives the drop.
+        collisionDetection={drag.collisionDetection}
+        accessibility={{ announcements, screenReaderInstructions: DRAG_INSTRUCTIONS }}
+        onDragStart={handleDragStart}
+        onDragEnd={endDrag}
+        onDragCancel={endDrag}
+      >
+        <div className={styles.screen}>
+          <div className={styles.main}>
+            <ItineraryHeader
+              meta={meta}
+              splitLine={splitLine}
+              onExpandAll={() => setOpenDays(days.map((day) => day.day))}
+              onCollapseAll={() => setOpenDays([])}
+              onChangeDates={() => setDatesOpen(true)}
+              readOnly={readOnly}
+            />
 
-          <div className={styles.list}>
-            {days.map((day) =>
-              openDays.includes(day.day) ? (
-                <DayCard
-                  key={day.day}
-                  day={day}
-                  lodgingChoices={lodgingChoices}
-                  addChoices={unplaced}
-                  swapChoices={swapChoices}
-                  onSwapDay={(otherDay) => swapWithDay(day.day, otherDay)}
-                  onToggle={() => toggleDay(day.day)}
-                  onDropItem={(entryId, versionId) => placeOnDay(entryId, day.day, versionId)}
-                  onAddItem={(versionId, entryId, slot) => placeEntry(day, versionId, entryId, slot)}
-                  onFork={() =>
-                    forkDay.mutate(
-                      { day: day.day },
-                      {
-                        onSuccess: () => show(`${day.label} has a second version now.`, 'success'),
+            <div className={styles.list}>
+              {days.map((day) =>
+                openDays.includes(day.day) ? (
+                  <DayCard
+                    key={day.day}
+                    day={day}
+                    lodgingChoices={lodgingChoices}
+                    addChoices={unplaced}
+                    swapChoices={swapChoices}
+                    onSwapDay={(otherDay) => swapWithDay(day.day, otherDay)}
+                    onToggle={() => toggleDay(day.day)}
+                    onDropItem={(entryId, versionId) => placeOnDay(entryId, day.day, versionId)}
+                    onAddItem={(versionId, entryId, slot) => placeEntry(day, versionId, entryId, slot)}
+                    onFork={() =>
+                      forkDay.mutate(
+                        { day: day.day },
+                        {
+                          onSuccess: () => show(`${day.label} has a second version now.`, 'success'),
+                          onError,
+                        },
+                      )
+                    }
+                    onKeepVersion={(versionId) =>
+                      keepVersion.mutate(
+                        { versionId },
+                        {
+                          onSuccess: () => show(`${day.label} is settled. The rest is in Archived.`, 'success'),
+                          onError,
+                        },
+                      )
+                    }
+                    onEditTime={(itemId, startsAtMinutes, endsAtMinutes) =>
+                      editItemHours.mutate({ itemId, starts_at_minutes: startsAtMinutes, ends_at_minutes: endsAtMinutes }, { onError })
+                    }
+                    onRemoveItem={(itemId) =>
+                      deleteItem.mutate(itemId, {
+                        // Off the day, not out of the trip: it lands back on the rail.
+                        onSuccess: () => show("Taken off the day. It's waiting on the right.", 'success'),
                         onError,
-                      },
-                    )
-                  }
-                  onKeepVersion={(versionId) =>
-                    keepVersion.mutate(
-                      { versionId },
-                      {
-                        onSuccess: () => show(`${day.label} is settled. The rest is in Archived.`, 'success'),
-                        onError,
-                      },
-                    )
-                  }
-                  onEditTime={(itemId, startsAtMinutes, endsAtMinutes) =>
-                    editItemHours.mutate({ itemId, starts_at_minutes: startsAtMinutes, ends_at_minutes: endsAtMinutes }, { onError })
-                  }
-                  onRemoveItem={(itemId) =>
-                    deleteItem.mutate(itemId, {
-                      // Off the day, not out of the trip: it lands back on the rail.
-                      onSuccess: () => show("Taken off the day. It's waiting on the right.", 'success'),
-                      onError,
-                    })
-                  }
-                  onSetLodging={(value) => updateTripDay.mutate({ day: day.day, ...value }, { onError })}
-                  readOnly={readOnly}
-                />
-              ) : (
-                <DayRow
-                  key={day.day}
-                  day={day}
-                  swapChoices={swapChoices}
-                  onSwapDay={(otherDay) => swapWithDay(day.day, otherDay)}
-                  onToggle={() => toggleDay(day.day)}
-                  onDropItem={(entryId) => placeOnDay(entryId, day.day)}
-                  readOnly={readOnly}
-                />
-              ),
-            )}
+                      })
+                    }
+                    onSetLodging={(value) => updateTripDay.mutate({ day: day.day, ...value }, { onError })}
+                    readOnly={readOnly}
+                  />
+                ) : (
+                  <DayRow
+                    key={day.day}
+                    day={day}
+                    swapChoices={swapChoices}
+                    onSwapDay={(otherDay) => swapWithDay(day.day, otherDay)}
+                    onToggle={() => toggleDay(day.day)}
+                    onDropItem={(entryId) => placeOnDay(entryId, day.day)}
+                    readOnly={readOnly}
+                  />
+                ),
+              )}
+            </div>
           </div>
+
+          <UnplacedRail
+            title={`Not placed yet · ${unplaced.length}`}
+            // The editable sentence names a grip and a ⋯ menu, neither of which a
+            // viewer has; theirs says what the list IS instead, which is the part
+            // that was always worth knowing.
+            line={canEdit ? RAIL_LINE.edit : RAIL_LINE.read}
+            items={unplaced}
+            days={days}
+            onAddToDay={placeOnDay}
+            readOnly={readOnly}
+          >
+            <ArchivedPanel
+              archived={archived}
+              open={archivedOpen}
+              onToggle={() => setArchivedOpen((open) => !open)}
+              onRestore={(versionId) =>
+                restoreVersion.mutate(
+                  { versionId },
+                  {
+                    onSuccess: () => {
+                      const day = dayOfVersion.get(versionId);
+                      if (day) openDay(day);
+                      show("It's back on its day, beside the one you kept.", 'success');
+                    },
+                    onError,
+                  },
+                )
+              }
+              readOnly={readOnly}
+            />
+          </UnplacedRail>
         </div>
 
-        <UnplacedRail
-          title={`Not placed yet · ${unplaced.length}`}
-          // The editable sentence names a grip and a ⋯ menu, neither of which a
-          // viewer has; theirs says what the list IS instead, which is the part
-          // that was always worth knowing.
-          line={canEdit ? RAIL_LINE.edit : RAIL_LINE.read}
-          items={unplaced}
-          days={days}
-          onAddToDay={placeOnDay}
-          readOnly={readOnly}
-        >
-          <ArchivedPanel
-            archived={archived}
-            open={archivedOpen}
-            onToggle={() => setArchivedOpen((open) => !open)}
-            onRestore={(versionId) =>
-              restoreVersion.mutate(
-                { versionId },
-                {
-                  onSuccess: () => {
-                    const day = dayOfVersion.get(versionId);
-                    if (day) openDay(day);
-                    show("It's back on its day, beside the one you kept.", 'success');
-                  },
-                  onError,
-                },
-              )
-            }
-            readOnly={readOnly}
-          />
-        </UnplacedRail>
-      </div>
-
-      <DragOverlay>
-        {dragging && (
-          <Card padding={2}>
-            <EntryRow title={dragging.title} kept />
-          </Card>
-        )}
-      </DragOverlay>
-    </DndContext>
+        <DragOverlay>
+          {dragging && (
+            <Card padding={2}>
+              <EntryRow title={dragging.title} kept />
+            </Card>
+          )}
+        </DragOverlay>
+      </DndContext>
+    </QueryGate>
   );
 }
 
