@@ -72,6 +72,93 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
                  "every API route needs a probe here -- add one for the route you just added"
   end
 
+  # --- The hostile insider ----------------------------------------------------
+  #
+  # The sweep above probes a stranger addressed at someone else's routes. This is
+  # the other half of the class of bug: foreign keys inside writable params must
+  # be validated against the caller's trip. The policy layer only ever checks the
+  # trip being addressed, so an authenticated member calling a route they
+  # legitimately may call -- on their OWN trip -- could otherwise smuggle someone
+  # else's ids (entry_id, chosen_entry_id, day_version_id, lodging_entry_id) into
+  # the params and read the foreign row back through the serializers, or plant a
+  # row inside the foreign trip's itinerary. Each must 422 with no trace of the
+  # owner's world in the body.
+
+  test "a member cannot read a foreign entry by scheduling its id into their own trip" do
+    mine = create_trip(title: "StrangerTripKyoto")
+
+    post "/api/trips/#{mine.id}/schedule",
+         params: { schedule_item: { entry_id: @idea.id, day: "2026-04-01" } }, as: :json
+
+    assert_equal 422, response.status
+    assert_not ScheduleItem.exists?(trip_id: mine.id, entry_id: @idea.id)
+    OWNER_TRACES.each do |trace|
+      assert_not_includes response.body, trace, "schedule create leaked #{trace} to an insider"
+    end
+  end
+
+  test "a member cannot read a foreign entry through chosen_entry_id either" do
+    mine = create_trip(title: "StrangerTripKyoto")
+    my_bundle = create_bundle(title: "StrangerBundleDinner")
+    link!(parent: mine, child: my_bundle)
+
+    post "/api/trips/#{mine.id}/schedule",
+         params: { schedule_item: { entry_id: my_bundle.id, chosen_entry_id: @idea.id, day: "2026-04-01" } },
+         as: :json
+
+    assert_equal 422, response.status
+    assert_not ScheduleItem.exists?(trip_id: mine.id, chosen_entry_id: @idea.id)
+    OWNER_TRACES.each do |trace|
+      assert_not_includes response.body, trace, "schedule create leaked #{trace} to an insider"
+    end
+  end
+
+  test "a member cannot plant a row in another trip's itinerary via day_version_id on create" do
+    mine = create_trip(title: "StrangerTripKyoto")
+    my_idea = create_idea(title: "StrangerIdeaGion")
+    link!(parent: mine, child: my_idea)
+
+    assert_no_difference -> { ScheduleItem.where(day_version_id: @version.id).count } do
+      post "/api/trips/#{mine.id}/schedule",
+           params: { schedule_item: { entry_id: my_idea.id, day: "2026-04-01", day_version_id: @version.id } },
+           as: :json
+    end
+
+    assert_equal 422, response.status
+    OWNER_TRACES.each do |trace|
+      assert_not_includes response.body, trace, "schedule create leaked #{trace} to an insider"
+    end
+  end
+
+  test "a member cannot repoint their own item at another trip's day version" do
+    mine = create_trip(title: "StrangerTripKyoto")
+    my_idea = create_idea(title: "StrangerIdeaGion")
+    link!(parent: mine, child: my_idea)
+    item = ScheduleItem.create!(trip: mine, entry: my_idea, day: "2026-04-01", starts_at_minutes: 540)
+
+    patch "/api/schedule_items/#{item.id}",
+          params: { schedule_item: { day_version_id: @version.id } }, as: :json
+
+    assert_equal 422, response.status
+    assert_not_equal @version.id, item.reload.day_version_id
+    OWNER_TRACES.each do |trace|
+      assert_not_includes response.body, trace, "schedule update leaked #{trace} to an insider"
+    end
+  end
+
+  test "a member cannot read a foreign entry by setting it as their own day's lodging" do
+    mine = create_trip(title: "StrangerTripKyoto")
+
+    patch "/api/trips/#{mine.id}/days/2026-04-01",
+          params: { trip_day: { lodging_entry_id: @idea.id } }, as: :json
+
+    assert_equal 422, response.status
+    assert_nil TripDay.find_by(trip_id: mine.id, day: "2026-04-01")&.lodging_entry_id
+    OWNER_TRACES.each do |trace|
+      assert_not_includes response.body, trace, "trip_day update leaked #{trace} to an insider"
+    end
+  end
+
   private
 
   # Every route under /api, and what a signed-in stranger is entitled to get back.

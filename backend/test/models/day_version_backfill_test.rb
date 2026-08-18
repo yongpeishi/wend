@@ -11,6 +11,9 @@ class DayVersionBackfillTest < ActiveSupport::TestCase
     @other_trip = create_trip(title: "Other", created_by: @user)
     @idea = create_idea(created_by: @user)
     link!(parent: @trip, child: @idea)
+    # legacy_item! places @idea on either trip, and ScheduleItem now insists the
+    # entry lives inside the trip it is placed on -- so link it under both.
+    link!(parent: @other_trip, child: @idea)
   end
 
   def legacy_item!(trip: @trip, day:, starts: nil)

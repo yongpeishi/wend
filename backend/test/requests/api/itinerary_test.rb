@@ -78,6 +78,7 @@ class Api::ItineraryTest < ActionDispatch::IntegrationTest
 
   test "PATCH day sets lodging from a kept entry and creates the row on demand" do
     hotel = create_idea(title: "Hotel Granvia", category: "lodging", created_by: @user)
+    link!(parent: @trip, child: hotel)
 
     patch "/api/trips/#{@trip.id}/days/2026-10-12",
           params: { trip_day: { lodging_entry_id: hotel.id } }, as: :json
@@ -99,6 +100,30 @@ class Api::ItineraryTest < ActionDispatch::IntegrationTest
           params: { trip_day: { lodging_entry_id: nil, lodging_label: nil } }, as: :json
     assert_response :success
     assert_nil JSON.parse(response.body).dig("trip_day", "lodging_title")
+  end
+
+  test "PATCH day refuses an entry from someone else's trip without leaking its title" do
+    stranger = create_user
+    other_trip = create_trip(created_by: stranger)
+    secret = create_idea(title: "Secret Ryokan", created_by: stranger)
+    link!(parent: other_trip, child: secret)
+
+    patch "/api/trips/#{@trip.id}/days/2026-10-12",
+          params: { trip_day: { lodging_entry_id: secret.id } }, as: :json
+
+    assert_response :unprocessable_entity
+    # The whole point of the validation: a rejected id must not read back the
+    # victim's title through lodging_title.
+    assert_no_match(/Secret Ryokan/, response.body)
+    assert_match(/must belong to this trip/, JSON.parse(response.body).dig("errors", "lodging_entry_id").sole)
+  end
+
+  test "PATCH day with a nonexistent lodging id is a 422, indistinguishable from a foreign one" do
+    patch "/api/trips/#{@trip.id}/days/2026-10-12",
+          params: { trip_day: { lodging_entry_id: Entry.maximum(:id).to_i + 1 } }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_match(/must belong to this trip/, JSON.parse(response.body).dig("errors", "lodging_entry_id").sole)
   end
 
   test "PATCH day requires a signed-in user" do

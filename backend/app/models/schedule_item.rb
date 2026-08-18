@@ -53,6 +53,20 @@ class ScheduleItem < ApplicationRecord
   validate :ends_not_before_starts
   validate :day_version_exists
 
+  # entry_id, chosen_entry_id and day_version_id all arrive verbatim inside
+  # writable params, and the policy layer only ever checks trip_id -- so these
+  # validations are the sole thing stopping an authenticated member from
+  # smuggling a foreign id into their own trip: reading a stranger's entry back
+  # through the serializers, or planting a row inside another trip's itinerary
+  # via its day version. The invariant: every foreign key on a schedule_item
+  # points inside the trip the row belongs to.
+  #
+  # Gated on will_save_change_to_* so the recursive descendant walk only runs
+  # when a foreign key is actually being (re)pointed, not on every unrelated
+  # save of an existing row.
+  validate :entry_fks_belong_to_trip, if: :entry_fk_changing?
+  validate :day_version_belongs_to_trip, if: :will_save_change_to_day_version_id?
+
   # The trip alone. entry_id and chosen_entry_id are references to what was placed,
   # not authority over it.
   def governing_entry_ids
@@ -68,6 +82,43 @@ class ScheduleItem < ApplicationRecord
     return if day_version_id.blank? || day_version.present?
 
     errors.add(:day_version_id, "must exist")
+  end
+
+  def entry_fk_changing?
+    (entry_id.present? && will_save_change_to_entry_id?) ||
+      (chosen_entry_id.present? && will_save_change_to_chosen_entry_id?)
+  end
+
+  # One descendant walk covers both entry foreign keys. Depth cap matches
+  # Entry.visible_to's, so anything a member can see under the trip is also
+  # placeable -- a tighter cap here would reject deep-but-visible entries.
+  #
+  # Deliberately ONE message for both a nonexistent id and someone else's id:
+  # entry ids are sequential, and a distinct "does not exist" answer would let a
+  # caller probe which ids are real. (This also turns the nonexistent-id case
+  # from a foreign-key 500 into a 422 like every other bad field.)
+  def entry_fks_belong_to_trip
+    # descendant_ids_of returns raw select_values, which are not guaranteed
+    # Integer -- the same .map(&:to_i) Entry#role_for does.
+    descendant_ids = Entry.descendant_ids_of(trip_id, depth_cap: Entry::VISIBILITY_DEPTH_CAP).map(&:to_i)
+
+    if entry_id.present? && will_save_change_to_entry_id? && !descendant_ids.include?(entry_id)
+      errors.add(:entry_id, "must belong to this trip")
+    end
+    if chosen_entry_id.present? && will_save_change_to_chosen_entry_id? && !descendant_ids.include?(chosen_entry_id)
+      errors.add(:chosen_entry_id, "must belong to this trip")
+    end
+  end
+
+  # A day_version that exists but hangs off another trip's day is how a member
+  # of trip A plants a row inside trip B's itinerary (the itinerary read walks
+  # trip -> days -> versions -> items and trusts every hop). Dangling ids are
+  # day_version_exists's job -- day_version.nil? defers to its "must exist".
+  def day_version_belongs_to_trip
+    return if day_version_id.blank? || day_version.nil?
+    return if day_version.trip_day&.trip_id == trip_id
+
+    errors.add(:day_version_id, "must belong to this trip")
   end
 
   def ends_not_before_starts
