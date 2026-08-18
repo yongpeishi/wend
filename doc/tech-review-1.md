@@ -411,7 +411,7 @@ and nothing tests the `kind`-via-PATCH transition. When fixing H1–H3, add that
 
 ### Error handling & resilience (the frontend's one systemic weakness)
 
-- **F1 (High) — Query errors render as "empty" states that affirmatively claim
+- [DONE] **F1 (High) — Query errors render as "empty" states that affirmatively claim
   nothing exists.** `src/routes/TripsList.tsx:63-75`, `TripBoard.tsx:394-397`,
   `Library.tsx:105-108`, `TripChecklist.tsx:47,73`, `TripMap.tsx:105-108`,
   `TripSchedule.tsx:267-276` all branch only on `isLoading`; on `isError` the data
@@ -426,7 +426,7 @@ and nothing tests the `kind`-via-PATCH transition. When fixing H1–H3, add that
   "signed out" and redirects to `/signin`. Distinguish `me.isError` (retry UI) from
   `me.data === null` (redirect), and retry non-401 errors:
   `retry: (count, err) => !(err instanceof ApiError && err.status === 401) && count < 2`.
-- **F3 (Medium) — No mid-session 401 handling.** Only `useMe` interprets 401; the
+- [DONE] **F3 (Medium) — No mid-session 401 handling.** Only `useMe` interprets 401; the
   session query is cached with `staleTime: Infinity`, so when a session expires
   mid-use every query fails and — combined with F1 — screens quietly go "empty"
   while the user stays visually signed in. One `QueryCache`/`MutationCache`
@@ -447,7 +447,7 @@ and nothing tests the `kind`-via-PATCH transition. When fixing H1–H3, add that
 
 ### Data-editing correctness
 
-- **F7 (Medium) — `EntryDetail` blur-save PATCHes unchanged fields, and a numeric
+- [DONE] **F7 (Medium) — `EntryDetail` blur-save PATCHes unchanged fields, and a numeric
   typo silently wipes data.** `src/routes/EntryDetail.tsx:127-144`: (a) only
   `title` is diffed, so tabbing through the dialog can fire ~8 needless
   PATCH+invalidate cycles; (b) `Number("12.5.6")` is `NaN` and
@@ -569,7 +569,7 @@ parsing used consistently. The findings below are the exceptions.
   `itineraryModel.ts:120-127` duplicates `scheduleModel.ts:73-80` — share a generic
   `sortByStartThenPosition`. `dayPlan.ts:63-77` regex-parses the human "Day N"
   label to recover the index — pass the index as data instead.
-- **F22 (High, lives in `src/components`) — `Modal`'s focus effect depends on
+- [DONE] **F22 (High, lives in `src/components`) — `Modal`'s focus effect depends on
   `onClose` identity** and steals focus mid-keystroke unless every caller memoizes
   its close callback — four features currently carry the workaround
   (`NewIdeaModal.tsx:76-86`, `NewBundleModal.tsx:44-46`, `SharePanel.tsx:130-134`,
@@ -580,7 +580,7 @@ parsing used consistently. The findings below are the exceptions.
 
 ### Performance & UX
 
-- **F23 (Medium) — `useBundleMembers` re-render cascade.**
+- [DONE] **F23 (Medium) — `useBundleMembers` re-render cascade.**
   `src/features/board/useBundleMembers.ts:36-42`: in TanStack v5, `useQueries`
   without `combine` returns a fresh array each render, so the `useMemo` recomputes
   and the returned `Map` changes identity every render — cascading into every
