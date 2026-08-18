@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Modal } from '../../components/Modal';
 import { Field } from '../../components/Field';
 import { Stack } from '../../components/layout/Stack';
@@ -64,25 +64,6 @@ const EMPTY_DRAFT: Draft = {
  * find it?" box of its own, which is a lot of form for one URL that most
  * ideas never have — and once the edit panel stopped showing that box, a link
  * typed here could be written and never read again.
- *
- * Unlike EntryDetail's <Field label="…"><input/></Field> usage, every Field
- * here is given its value/onChange directly as props — Field renders its own
- * <Input> from props and does not forward children, so passing an <input> as
- * a child silently produces an uncontrolled, empty field (verified: it
- * actually throws, since the children prop ends up spread onto the native
- * void <input> element). That mismatch lives in a file this task does not
- * own; flagged in the report rather than fixed here.
- *
- * `close` is wrapped in useCallback rather than declared as a plain function.
- * Modal's own focus effect depends on `[open, onClose]` and calls
- * `dialogRef.current?.focus()` whenever it re-runs — with an unmemoized
- * onClose (a fresh function every render), that effect re-fires on every
- * keystroke here and steals focus back to the dialog chrome mid-word
- * (verified: typing more than one character into a Field inside <Modal>
- * loses everything after the first). Keeping `close`'s identity stable is
- * the workaround available from outside Modal.tsx, which this task doesn't
- * own; flagged in the report as a real, verified bug worth fixing at the
- * source.
  */
 export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModalProps) {
   const canEdit = useCanEdit();
@@ -100,11 +81,11 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
     if (open) setDraft(EMPTY_DRAFT);
   }, [open]);
 
-  const close = useCallback(() => {
+  function close() {
     if (createEntry.isPending) return;
     setDraft(EMPTY_DRAFT);
     onClose();
-  }, [createEntry.isPending, onClose]);
+  }
 
   function submit() {
     const title = draft.title.trim();

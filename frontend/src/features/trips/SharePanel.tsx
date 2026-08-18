@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Modal } from '../../components/Modal';
 import { Field } from '../../components/Field';
 import { Spinner } from '../../components/Spinner';
@@ -127,16 +127,12 @@ export function SharePanel({ open, onClose, tripId }: SharePanelProps) {
   const working =
     addCollaborator.isPending || changeRole.isPending || removeCollaborator.isPending || handOver.isPending;
 
-  // Modal's Escape/Tab effect depends on [open, onClose], and re-runs whenever
-  // this identity changes — an unmemoized handler re-fires it and pulls focus
-  // out of the email box after the first character typed. See NewTripModal,
-  // which learned this the hard way.
-  const close = useCallback(() => {
+  function close() {
     setEmail('');
     setNote(null);
     setPending(null);
     onClose();
-  }, [onClose]);
+  }
 
   const collaborators = data?.collaborators ?? [];
   const myRole = data?.my_role ?? null;

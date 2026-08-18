@@ -40,6 +40,15 @@ export function Modal({ open, onClose, title, children, actions, size = 'default
   const bodyRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
+  // The keydown effect reads `onClose` through this ref so its lifetime is tied
+  // to `open` alone. Keying it on the handler's identity meant a caller passing
+  // a fresh function each render tore the listener down and back up on every
+  // keystroke — and obliged every caller to memoize its close handler in
+  // self-defence. The ref is updated each render, so Escape still calls the
+  // latest handler.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   // Move focus in once per opening. Deliberately keyed on `open` alone: keying
   // it on `onClose` too meant an unmemoized handler re-ran this on every
   // render, yanking focus back mid-word while someone was typing.
@@ -65,7 +74,7 @@ export function Modal({ open, onClose, title, children, actions, size = 'default
     if (!open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -93,7 +102,7 @@ export function Modal({ open, onClose, title, children, actions, size = 'default
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
