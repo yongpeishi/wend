@@ -3,8 +3,10 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
+import { server } from '../mocks/server';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { setRole } from '../mocks/db';
 import { TripBoard } from './TripBoard';
@@ -608,5 +610,20 @@ describe('TripBoard — as a viewer', () => {
 
     expect(screen.getByRole('button', { name: '+ New idea' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Actions for Nanzen-ji' })).toBeInTheDocument();
+  });
+});
+
+/** A failed load is not a daydream — the board must never claim the trip is
+ * empty about ideas it simply could not fetch. */
+describe('TripBoard — when the load fails', () => {
+  it('says the ideas failed to load instead of calling the trip empty, and offers a way back', async () => {
+    server.use(http.get('/api/entries', () => HttpResponse.json({ error: 'boom' }, { status: 500 })));
+    renderBoard();
+
+    expect(
+      await screen.findByText("Your ideas didn't load. Nothing is lost — everything on the board is still there."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByText(/still a daydream/)).not.toBeInTheDocument();
   });
 });

@@ -33,6 +33,9 @@ export type { ToastProps, ToastTone } from './Toast';
 export { Spinner } from './Spinner';
 export type { SpinnerProps } from './Spinner';
 
+export { QueryGate } from './QueryGate';
+export type { QueryGateProps, QueryGateSource } from './QueryGate';
+
 export { PageHeader } from './PageHeader';
 export type { PageHeaderProps } from './PageHeader';
 

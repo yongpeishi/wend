@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
-import { Spinner } from '../components/Spinner';
+import { QueryGate } from '../components/QueryGate';
 import { useEntries } from '../api/entries';
 import { useNearby } from '../api/nearby';
 import { useSchedule } from '../api/schedule';
@@ -178,8 +178,6 @@ export function TripSchedule() {
     { lat: origin?.lat ?? 0, lng: origin?.lng ?? 0, radius_km: 2, exclude_scheduled: true },
   );
 
-  const loading = scheduleQuery.isLoading || entriesQuery.isLoading;
-
   function askWhatsAround() {
     setShowNearby(true);
     requestLocation();
@@ -264,36 +262,42 @@ export function TripSchedule() {
 
       <div className={styles.body}>
         <div className={styles.plan}>
-          {loading ? (
-            <Spinner label="Finding your plan" />
-          ) : rows.length === 0 ? (
-            <EmptyState
-              message={
-                canEdit
-                  ? 'Nothing placed yet. Drag something over from your ideas.'
-                  : 'Nothing placed on this day yet.'
-              }
-            />
-          ) : (
-            <div className={styles.rows}>
-              {rows.map((row) => (
-                <ScheduleRow
-                  key={row.id}
-                  row={row}
-                  options={
-                    row.bundleId === null ? undefined : (
-                      <RowOptions
-                        itemId={row.id}
-                        bundleId={row.bundleId}
-                        chosenEntryId={row.chosenEntryId}
-                        canEdit={canEdit}
-                      />
-                    )
-                  }
-                />
-              ))}
-            </div>
-          )}
+          {/* Both queries, one gate: the plan is rows joined to entries, so a
+              day drawn from half the pair would be wrong, not merely partial. */}
+          <QueryGate
+            query={[scheduleQuery, entriesQuery]}
+            loadingLabel="Finding your plan"
+            errorMessage="Your plan didn't load. Nothing is lost — everything you've placed is still in it."
+          >
+            {rows.length === 0 ? (
+              <EmptyState
+                message={
+                  canEdit
+                    ? 'Nothing placed yet. Drag something over from your ideas.'
+                    : 'Nothing placed on this day yet.'
+                }
+              />
+            ) : (
+              <div className={styles.rows}>
+                {rows.map((row) => (
+                  <ScheduleRow
+                    key={row.id}
+                    row={row}
+                    options={
+                      row.bundleId === null ? undefined : (
+                        <RowOptions
+                          itemId={row.id}
+                          bundleId={row.bundleId}
+                          chosenEntryId={row.chosenEntryId}
+                          canEdit={canEdit}
+                        />
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </QueryGate>
         </div>
 
         {!isNarrow && <aside className={styles.rail}>{nearbyPanel('rail')}</aside>}

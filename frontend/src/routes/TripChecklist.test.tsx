@@ -3,8 +3,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
+import { server } from '../mocks/server';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { setRole } from '../mocks/db';
 import { TripChecklist } from './TripChecklist';
@@ -266,5 +268,22 @@ describe('TripChecklist — as a viewer', () => {
     expect(screen.getByRole('button', { name: `Check off ${TRIP_TODO}` })).toBeInTheDocument();
     await openComposer(user);
     expect(screen.getByRole('combobox', { name: 'For' })).toBeInTheDocument();
+  });
+});
+
+/** A failed load is not a finished checklist — "Nothing to check off" must
+ * never stand in for todos the screen simply could not fetch. */
+describe('TripChecklist — when the load fails', () => {
+  it('says the load failed instead of claiming the list is clear, and offers a way back', async () => {
+    server.use(http.get('/api/todos', () => HttpResponse.json({ error: 'boom' }, { status: 500 })));
+    renderChecklist();
+
+    expect(
+      await screen.findByText("Your checklist didn't load. Nothing is lost — everything on it is still there."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing to check off/)).not.toBeInTheDocument();
+    // The composer waits with the rest of the screen, same as while loading.
+    expect(screen.queryByRole('button', { name: ADD_TRIGGER })).not.toBeInTheDocument();
   });
 });

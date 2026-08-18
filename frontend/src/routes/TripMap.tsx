@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
-import { Spinner } from '../components/Spinner';
+import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import { useCreateEntry, useEntries } from '../api';
 import type { Entry } from '../api/types';
@@ -77,8 +77,6 @@ export function TripMap() {
     );
   }
 
-  const loading = entriesQuery.isLoading;
-
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
@@ -102,30 +100,34 @@ export function TripMap() {
         />
       )}
 
-      {loading ? (
-        <Spinner label="Finding your places" />
-      ) : allLocated.length === 0 ? (
-        <EmptyState message="Nothing on the map yet. Give an idea a place and it will show up here." />
-      ) : (
-        <div className={styles.mapWrap}>
-          <MapView
-            pins={pins}
-            selectedId={selectedId}
-            onSelectPin={setSelectedId}
-            // The second way in, and it has to close with the button: a click on
-            // the map that silently did nothing would read as a broken map.
-            // Undefined rather than a no-op so MapView never binds the handler.
-            onMapClick={canEdit ? (lat, lng) => openAddForm({ lat, lng }) : undefined}
-            pendingLocation={pendingLocation}
-            fitToPins
-            renderPopup={(id) => {
-              const entry = visibleById.get(id);
-              return entry ? <PinPopover entry={entry} /> : null;
-            }}
-            aria-label={`Map of ${trip.title}`}
-          />
-        </div>
-      )}
+      <QueryGate
+        query={entriesQuery}
+        loadingLabel="Finding your places"
+        errorMessage="Your places didn't load. Nothing is lost — every pin is still where you put it."
+      >
+        {allLocated.length === 0 ? (
+          <EmptyState message="Nothing on the map yet. Give an idea a place and it will show up here." />
+        ) : (
+          <div className={styles.mapWrap}>
+            <MapView
+              pins={pins}
+              selectedId={selectedId}
+              onSelectPin={setSelectedId}
+              // The second way in, and it has to close with the button: a click on
+              // the map that silently did nothing would read as a broken map.
+              // Undefined rather than a no-op so MapView never binds the handler.
+              onMapClick={canEdit ? (lat, lng) => openAddForm({ lat, lng }) : undefined}
+              pendingLocation={pendingLocation}
+              fitToPins
+              renderPopup={(id) => {
+                const entry = visibleById.get(id);
+                return entry ? <PinPopover entry={entry} /> : null;
+              }}
+              aria-label={`Map of ${trip.title}`}
+            />
+          </div>
+        )}
+      </QueryGate>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
-import { Spinner } from '../components/Spinner';
+import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import { useEntries } from '../api/entries';
 import { useTodos, useUpdateTodo } from '../api/todos';
@@ -44,70 +44,74 @@ export function TripChecklist() {
   const { open, done } = useMemo(() => splitDoneOpen(todos), [todos]);
   const openSorted = useMemo(() => sortOpenTodos(open, scheduledIds), [open, scheduledIds]);
 
-  if (todosQuery.isLoading) return <Spinner label="Finding your checklist" />;
-
   return (
-    <div className={styles.wrap}>
-      {/* Nothing rendered rather than anything made readOnly. The rule that a
-          text field goes readOnly is about fields holding something to read;
-          a composer holds nothing by definition — it is a button with a place to
-          type in it, and an inert one would be chrome standing where a control
-          used to be. The share panel's own add form is hidden the same way for
-          the same reason. The form refuses for a viewer on its own account too;
-          this check is about not offering the door, not about locking it.
+    <QueryGate
+      query={todosQuery}
+      loadingLabel="Finding your checklist"
+      errorMessage="Your checklist didn't load. Nothing is lost — everything on it is still there."
+    >
+      <div className={styles.wrap}>
+        {/* Nothing rendered rather than anything made readOnly. The rule that a
+            text field goes readOnly is about fields holding something to read;
+            a composer holds nothing by definition — it is a button with a place to
+            type in it, and an inert one would be chrome standing where a control
+            used to be. The share panel's own add form is hidden the same way for
+            the same reason. The form refuses for a viewer on its own account too;
+            this check is about not offering the door, not about locking it.
 
-          The trigger stays here and the form does not: the route owns whether
-          the composer is wanted, the composer owns everything about the todo
-          being written. Same split as BundlePanel and NewBundleForm. */}
-      {canEdit &&
-        (adding ? (
-          <NewTodoForm tripId={trip.id} entries={entries} onClose={() => setAdding(false)} />
-        ) : (
-          <div className={styles.addCta}>
-            <Button variant="secondary" size="small" onClick={() => setAdding(true)}>
-              + Add a todo
-            </Button>
-          </div>
-        ))}
-
-      {todos.length === 0 ? (
-        <EmptyState message="Nothing to check off. That's either very good or very early." />
-      ) : (
-        <>
-          <div className={styles.section}>
-            {/* Counted like the Done toggle below and wearing the same label,
-                but a heading rather than a button: there is nothing here to
-                collapse, since the open list is what the page is for. */}
-            {openSorted.length > 0 && <h2 className={styles.openHeading}>Todo · {openSorted.length}</h2>}
-            <ul className={styles.list}>
-              {openSorted.map((todo) => (
-                <TodoRow key={todo.id} todo={todo} canEdit={canEdit} />
-              ))}
-            </ul>
-          </div>
-
-          {done.length > 0 && (
-            <div className={styles.section}>
-              <button
-                type="button"
-                className={styles.doneToggle}
-                onClick={() => setShowDone((v) => !v)}
-                aria-expanded={showDone}
-              >
-                Done · {done.length}
-              </button>
-              {showDone && (
-                <ul className={`${styles.list} ${styles.doneList}`}>
-                  {done.map((todo) => (
-                    <TodoRow key={todo.id} todo={todo} canEdit={canEdit} />
-                  ))}
-                </ul>
-              )}
+            The trigger stays here and the form does not: the route owns whether
+            the composer is wanted, the composer owns everything about the todo
+            being written. Same split as BundlePanel and NewBundleForm. */}
+        {canEdit &&
+          (adding ? (
+            <NewTodoForm tripId={trip.id} entries={entries} onClose={() => setAdding(false)} />
+          ) : (
+            <div className={styles.addCta}>
+              <Button variant="secondary" size="small" onClick={() => setAdding(true)}>
+                + Add a todo
+              </Button>
             </div>
-          )}
-        </>
-      )}
-    </div>
+          ))}
+
+        {todos.length === 0 ? (
+          <EmptyState message="Nothing to check off. That's either very good or very early." />
+        ) : (
+          <>
+            <div className={styles.section}>
+              {/* Counted like the Done toggle below and wearing the same label,
+                  but a heading rather than a button: there is nothing here to
+                  collapse, since the open list is what the page is for. */}
+              {openSorted.length > 0 && <h2 className={styles.openHeading}>Todo · {openSorted.length}</h2>}
+              <ul className={styles.list}>
+                {openSorted.map((todo) => (
+                  <TodoRow key={todo.id} todo={todo} canEdit={canEdit} />
+                ))}
+              </ul>
+            </div>
+
+            {done.length > 0 && (
+              <div className={styles.section}>
+                <button
+                  type="button"
+                  className={styles.doneToggle}
+                  onClick={() => setShowDone((v) => !v)}
+                  aria-expanded={showDone}
+                >
+                  Done · {done.length}
+                </button>
+                {showDone && (
+                  <ul className={`${styles.list} ${styles.doneList}`}>
+                    {done.map((todo) => (
+                      <TodoRow key={todo.id} todo={todo} canEdit={canEdit} />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </QueryGate>
   );
 }
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { EntryRow } from '../components/EntryRow';
 import { EmptyState } from '../components/EmptyState';
-import { Spinner } from '../components/Spinner';
+import { QueryGate } from '../components/QueryGate';
 import { useArchiveEntry, useEntries, useRestoreEntry } from '../api/entries';
 import { canDelete } from '../auth/tripRole';
 import { NewTripModal } from '../features/trips/NewTripModal';
@@ -60,19 +60,23 @@ export function TripsList() {
         }}
       />
 
-      {tripsQuery.isLoading ? (
-        <Spinner label="Finding your trips" />
-      ) : trips.length === 0 ? (
-        <EmptyState message="No trips yet. A trip can start as one word — a country, a season, a craving." />
-      ) : (
-        <ul className={styles.grid}>
-          {trips.map((trip) => (
-            <li key={trip.id} className={styles.gridItem}>
-              <TripCard trip={trip} onArchive={() => archiveTrip.mutate(trip.id)} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <QueryGate
+        query={tripsQuery}
+        loadingLabel="Finding your trips"
+        errorMessage="Your trips didn't load. Nothing is lost — they're all still here."
+      >
+        {trips.length === 0 ? (
+          <EmptyState message="No trips yet. A trip can start as one word — a country, a season, a craving." />
+        ) : (
+          <ul className={styles.grid}>
+            {trips.map((trip) => (
+              <li key={trip.id} className={styles.gridItem}>
+                <TripCard trip={trip} onArchive={() => archiveTrip.mutate(trip.id)} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </QueryGate>
 
       {saved.length > 0 && (
         <section className={styles.section} aria-labelledby="saved-heading">
@@ -115,26 +119,30 @@ export function TripsList() {
           </Link>
         </div>
 
-        {libraryQuery.isLoading ? (
-          <Spinner label="Finding what you've kept" />
-        ) : library.length === 0 ? (
-          <p className={styles.libraryEmpty}>
-            Nothing kept yet. Saving something is how a trip starts.
-          </p>
-        ) : (
-          <ul className={styles.libraryList}>
-            {library.map((entry) => (
-              <li key={entry.id}>
-                <EntryRow
-                  title={entry.title}
-                  metadata={[entry.category, entry.location_name].filter(Boolean) as string[]}
-                  kept
-                  onSelect={() => navigate(`/entries/${entry.id}`)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
+        <QueryGate
+          query={libraryQuery}
+          loadingLabel="Finding what you've kept"
+          errorMessage="What you've kept didn't load. Nothing is lost — it's all still saved."
+        >
+          {library.length === 0 ? (
+            <p className={styles.libraryEmpty}>
+              Nothing kept yet. Saving something is how a trip starts.
+            </p>
+          ) : (
+            <ul className={styles.libraryList}>
+              {library.map((entry) => (
+                <li key={entry.id}>
+                  <EntryRow
+                    title={entry.title}
+                    metadata={[entry.category, entry.location_name].filter(Boolean) as string[]}
+                    kept
+                    onSelect={() => navigate(`/entries/${entry.id}`)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </QueryGate>
       </section>
     </div>
   );

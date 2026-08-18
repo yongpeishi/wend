@@ -3,8 +3,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
+import { server } from '../mocks/server';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { setRole } from '../mocks/db';
 import { TripSchedule } from './TripSchedule';
@@ -463,5 +465,22 @@ describe('TripSchedule — on the day itself', () => {
     expect(screen.getByText(`Until 09:40 · then ${BUNDLE_TITLE} at 11:00`)).toBeInTheDocument();
     // The panel names where you are when the plan already knows.
     expect(await screen.findByRole('heading', { name: 'Nanzen-ji', level: 2 })).toBeInTheDocument();
+  });
+});
+
+/** A failed load is not an unplanned day — "Nothing placed yet" must never
+ * stand in for a plan the screen simply could not fetch. */
+describe('TripSchedule — when the load fails', () => {
+  it('says the plan failed to load instead of claiming the day is empty, and offers a way back', async () => {
+    server.use(
+      http.get('/api/trips/:tripId/schedule', () => HttpResponse.json({ error: 'boom' }, { status: 500 })),
+    );
+    renderSchedule();
+
+    expect(
+      await screen.findByText("Your plan didn't load. Nothing is lost — everything you've placed is still in it."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing placed/)).not.toBeInTheDocument();
   });
 });
