@@ -178,6 +178,17 @@ export function voteTallyFor(entryId: number): VoteTally {
     count: votes.length,
     average: votes.length ? Number((total / votes.length).toFixed(2)) : 0,
     by_user,
+    // Named from db.users rather than the vote's own copy, the way the server
+    // reads the name off the association — a renamed user must not keep an old
+    // name here. Ordered by user_id ascending, the serializer's guarantee.
+    voters: votes
+      .slice()
+      .sort((a, b) => a.user_id - b.user_id)
+      .map((v) => ({
+        user_id: v.user_id,
+        user_name: db.users.find((u) => u.id === v.user_id)?.name ?? v.user_name,
+        score: v.score,
+      })),
   };
 }
 
