@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_14_100001) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_18_090000) do
   create_table "day_versions", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
@@ -99,6 +99,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_100001) do
     t.index ["trip_id"], name: "index_schedule_items_on_trip_id"
   end
 
+  create_table "sessions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "token", null: false
+    t.datetime "updated_at", null: false
+    t.integer "user_id", null: false
+    t.index ["token"], name: "index_sessions_on_token", unique: true
+    t.index ["user_id"], name: "index_sessions_on_user_id"
+  end
+
   create_table "todos", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "done_at"
@@ -166,6 +176,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_14_100001) do
   add_foreign_key "schedule_items", "entries"
   add_foreign_key "schedule_items", "entries", column: "chosen_entry_id"
   add_foreign_key "schedule_items", "entries", column: "trip_id"
+  add_foreign_key "sessions", "users"
   add_foreign_key "todos", "entries"
   add_foreign_key "todos", "entries", column: "trip_id"
   add_foreign_key "trip_days", "entries", column: "lodging_entry_id"

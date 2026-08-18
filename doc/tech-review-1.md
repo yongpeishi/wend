@@ -305,17 +305,17 @@ writable params — which is exactly where all of these live.
   Unify the caps (pass `depth_cap: VISIBILITY_DEPTH_CAP` in `role_for`) and either
   forbid trip-under-parent at create or define the nested-trip role answer.
 
-- **M1 — No brute-force protection on `POST /api/session` or `POST /api/users`**
+- [DONE] **M1 — No brute-force protection on `POST /api/session` or `POST /api/users`**
   (`sessions_controller.rb`, `users_controller.rb`). Unlimited sign-in attempts +
   the collaborator invite endpoint's careful anti-enumeration design
   (`collaborators_controller.rb:79-107`) are undermined if the sign-in endpoint can
   be hammered. Rails 8 ships `rack-attack`-style rate limiting via
   `Rails.application.config` middleware or the new `rate_limit` controller API —
   `rate_limit to: 10, within: 1.minute, only: :create` is one line.
-- **M2 — No minimum password length.** `User` (`user.rb:897-917`) validates email
+- [DONE] **M2 — No minimum password length.** `User` (`user.rb:897-917`) validates email
   format but `has_secure_password` alone accepts a 1-character password. Add
   `validates :password, length: { minimum: 8 }, allow_nil: true`.
-- **M3 — Session cookie is permanent-ish and never expires or rotates**
+- [DONE] **M3 — Session cookie is permanent-ish and never expires or rotates**
   (`application_controller.rb:1060`): `cookies.signed[:user_id]` with no `expires`
   is a browser-session cookie, but nothing invalidates it server-side — there's no
   session record to revoke, and the cookie stays valid for the account's lifetime if

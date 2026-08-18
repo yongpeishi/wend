@@ -62,14 +62,14 @@ class Api::SessionsTest < ActionDispatch::IntegrationTest
   # The tests above share their cookie jar with the server, so they would still
   # pass if the browser were never told to drop the cookie. These assert on the
   # wire instead: the Set-Cookie header the browser actually receives.
-  test "DELETE /api/session tells the browser to expire the user_id cookie" do
+  test "DELETE /api/session tells the browser to expire the session_token cookie" do
     user = create_user
     sign_in_as(user)
     delete "/api/session"
     assert_response :no_content
 
-    directives = user_id_set_cookie
-    assert directives, "expected a Set-Cookie for user_id on sign out"
+    directives = session_token_set_cookie
+    assert directives, "expected a Set-Cookie for session_token on sign out"
     assert_equal "", directives.first.split("=", 2).last, "expected the cookie value to be emptied"
     assert_includes directives, "expires=thu, 01 jan 1970 00:00:00 gmt"
   end
@@ -77,10 +77,10 @@ class Api::SessionsTest < ActionDispatch::IntegrationTest
   test "DELETE /api/session clears the cookie on the same path sign in set it on" do
     user = create_user
     sign_in_as(user)
-    assert_includes user_id_set_cookie, "path=/", "sign in should scope the cookie to the whole site"
+    assert_includes session_token_set_cookie, "path=/", "sign in should scope the cookie to the whole site"
 
     delete "/api/session"
-    assert_includes user_id_set_cookie, "path=/", "a delete on a narrower path would not match the cookie"
+    assert_includes session_token_set_cookie, "path=/", "a delete on a narrower path would not match the cookie"
   end
 
   test "DELETE /api/session is 204 when already signed out" do
@@ -100,15 +100,89 @@ class Api::SessionsTest < ActionDispatch::IntegrationTest
     assert_response :unauthorized
   end
 
+  # The cookie is only a pointer; the Session row is the authority. Destroying
+  # the row must sign the browser out even though its cookie is still set --
+  # that is the server-side revocation the token model exists for.
+  test "destroying the session row signs the browser out despite its cookie" do
+    user = create_user
+    sign_in_as(user)
+    get "/api/me"
+    assert_response :success
+
+    user.sessions.sole.destroy
+
+    get "/api/me"
+    assert_response :unauthorized
+  end
+
+  test "a session past its expires_at no longer authenticates" do
+    user = create_user
+    sign_in_as(user)
+
+    travel Session::LIFETIME + 1.day do
+      get "/api/me"
+      assert_response :unauthorized
+    end
+  end
+
+  test "DELETE /api/session removes the session row, not just the cookie" do
+    user = create_user
+    sign_in_as(user)
+    assert_equal 1, user.sessions.count
+
+    delete "/api/session"
+    assert_response :no_content
+    assert_equal 0, user.sessions.count
+  end
+
+  test "each sign-in creates its own session with a fresh token" do
+    user = create_user
+    sign_in_as(user)
+    sign_in_as(user)
+
+    tokens = user.sessions.pluck(:token)
+    assert_equal 2, tokens.size
+    assert_equal 2, tokens.uniq.size
+  end
+
+  # The store is per-process (and cleared in the global test setup), so each
+  # test below crosses the limit entirely on its own attempts.
+  test "repeated wrong passwords for one email hit the rate limit; other emails do not" do
+    create_user(email: "limited@example.com")
+    10.times do
+      post "/api/session", params: { email: "limited@example.com", password: "wrong" }, as: :json
+      assert_response :unauthorized
+    end
+
+    post "/api/session", params: { email: "limited@example.com", password: "wrong" }, as: :json
+    assert_response :too_many_requests
+
+    # The key includes the email, so the same IP asking about someone else is
+    # a fresh counter -- an attacker cannot lock a shared NAT out wholesale.
+    post "/api/session", params: { email: "someone-else@example.com", password: "wrong" }, as: :json
+    assert_response :unauthorized
+  end
+
+  test "repeated signups from one IP hit the rate limit" do
+    10.times do |i|
+      post "/api/users", params: { name: "Flood", email: "flood#{i}@example.com", password: "password123" }, as: :json
+      assert_response :created
+    end
+
+    post "/api/users", params: { name: "Flood", email: "flood-last@example.com", password: "password123" }, as: :json
+    assert_response :too_many_requests
+  end
+
   private
 
-  # The `user_id=...` cookie from the last response, split into its lowercased
-  # directives (`["user_id=", "path=/", ...]`), or nil if the response set none.
-  def user_id_set_cookie
+  # The `session_token=...` cookie from the last response, split into its lowercased
+  # directives (`["session_token=", "path=/", ...]`), or nil if the response set none.
+  def session_token_set_cookie
     header = response.headers["Set-Cookie"]
     return nil if header.blank?
 
-    cookie = Array(header).flat_map { |value| value.split("\n") }.find { |value| value.start_with?("user_id=") }
+    cookie = Array(header).flat_map { |value| value.split("\n") }
+                          .find { |value| value.start_with?("session_token=") }
     cookie&.split(";")&.map { |directive| directive.strip.downcase }
   end
 end
