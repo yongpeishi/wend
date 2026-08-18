@@ -55,6 +55,16 @@ function DoubleThumbsFrame({ size = 22, className, children }: DoubleThumbsProps
       strokeWidth={1.5}
       strokeLinecap="round"
       strokeLinejoin="round"
+      // The drawing is taller than its box: the back thumb's top sits at about
+      // y -1.44, above the viewBox's 0, and SVG clips to the viewport by
+      // default. It survives today only by luck — `preserveAspectRatio`
+      // letterboxes a 34-wide box into a square, and the slack that leaves
+      // above the drawing happens to be a shade more than the overflow plus
+      // half the 1.5 stroke. Any change to `size`, aspect or box would shave
+      // the top off the small thumb. This attribute removes that cliff and
+      // changes nothing visible; the viewBox and paths stay verbatim from the
+      // design's own SVG, which is worth more than tidier geometry.
+      style={{ overflow: 'visible' }}
       aria-hidden="true"
       className={className}
     >
