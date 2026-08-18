@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '../../components/Modal';
 import { Field } from '../../components/Field';
 import { Button } from '../../design/components/core/Button';
@@ -39,10 +39,6 @@ export interface NewBundleModalProps {
  * 'bundle' })` finds bundles by walking down from the trip, so a bundle created
  * without that link exists but appears nowhere. It is the same attach the new
  * idea modal does.
- *
- * `close` is memoized for the reason NewIdeaModal spells out: Modal's focus
- * effect depends on its identity, and a fresh function every render steals
- * focus back from the field mid-word.
  */
 export function NewBundleModal({ open, onClose, tripId, onCreated }: NewBundleModalProps) {
   const canEdit = useCanEdit();
@@ -56,11 +52,11 @@ export function NewBundleModal({ open, onClose, tripId, onCreated }: NewBundleMo
     if (open) setName('');
   }, [open]);
 
-  const close = useCallback(() => {
+  function close() {
     if (createEntry.isPending) return;
     setName('');
     onClose();
-  }, [createEntry.isPending, onClose]);
+  }
 
   const trimmed = name.trim();
 

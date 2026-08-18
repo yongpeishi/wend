@@ -127,7 +127,8 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
   function save(field: string, value: string) {
     if (!entry) return;
     const numeric = ['lat', 'lng', 'duration_minutes'];
-    const parsed = numeric.includes(field)
+    const isNumeric = numeric.includes(field);
+    const parsed = isNumeric
       ? value.trim() === ''
         ? null
         : Number(value)
@@ -135,7 +136,23 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
         ? null
         : value;
 
-    if (field === 'title' && (parsed === null || parsed === entry.title)) return;
+    // An idea always has a name; blurring an emptied title abandons the edit
+    // rather than saving nothing.
+    if (field === 'title' && parsed === null) return;
+
+    // "12.5.6" is NaN, and NaN serializes to null — a typo would silently wipe
+    // the stored number. Refuse it, and put the stored value back in the box so
+    // the panel does not keep showing a number it never saved.
+    if (isNumeric && parsed !== null && !Number.isFinite(parsed)) {
+      const stored = entry[field as 'lat' | 'lng' | 'duration_minutes'];
+      setDraft((d) => ({ ...d, [field]: stored == null ? '' : String(stored) }));
+      return;
+    }
+
+    // Blur fires whether or not anything changed; only a real change earns a
+    // PATCH and the invalidation that follows it.
+    const stored = (entry as unknown as Record<string, unknown>)[field] ?? null;
+    if (stored === parsed) return;
 
     updateEntry.mutate(
       { entry: { [field]: parsed } },

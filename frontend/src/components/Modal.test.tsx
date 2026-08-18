@@ -109,4 +109,45 @@ describe('Modal', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  // Regression: the keydown effect used to depend on onClose's identity, so a
+  // caller passing a fresh close handler each render — the natural thing to
+  // write — re-ran Modal's effects on every keystroke. Every caller had to
+  // memoize its handler in self-defence.
+  it('keeps focus in a body input when onClose changes identity across renders', async () => {
+    const { rerender } = render(
+      <Modal open onClose={() => {}} title="Add an idea">
+        <input aria-label="What's the idea?" />
+      </Modal>,
+    );
+    const field = screen.getByLabelText("What's the idea?");
+    expect(document.activeElement).toBe(field);
+
+    await userEvent.keyboard('ramen');
+    rerender(
+      <Modal open onClose={() => {}} title="Add an idea">
+        <input aria-label="What's the idea?" />
+      </Modal>,
+    );
+    expect(document.activeElement).toBe(field);
+  });
+
+  it('Escape calls the latest onClose after a re-render swaps the handler', async () => {
+    const stale = vi.fn();
+    const latest = vi.fn();
+    const { rerender } = render(
+      <Modal open onClose={stale} title="Add an idea">
+        <input aria-label="What's the idea?" />
+      </Modal>,
+    );
+    rerender(
+      <Modal open onClose={latest} title="Add an idea">
+        <input aria-label="What's the idea?" />
+      </Modal>,
+    );
+
+    await userEvent.keyboard('{Escape}');
+    expect(stale).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledOnce();
+  });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '../../components/Modal';
 import { Field } from '../../components/Field';
 import { Button } from '../../design/components/core/Button';
@@ -82,17 +82,11 @@ export function NewTripModal({ open, onClose, onCreated }: NewTripModalProps) {
     setDatesOpen(false);
   }
 
-  // Modal's own mount effect re-runs whenever its `onClose` prop identity
-  // changes (its dependency array is [open, onClose]) and re-focuses the
-  // dialog wrapper each time it does — so an unmemoized `close` redefined on
-  // every keystroke was stealing focus back out of Name after the first
-  // character typed. Memoized so it only changes when it actually needs to.
-  const close = useCallback(() => {
+  function close() {
     if (working) return;
     reset();
     onClose();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [working, onClose]);
+  }
 
   function submit() {
     if (!trimmedName) {
