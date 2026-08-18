@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { TripRoleProvider } from '../auth/TripRoleContext';
+import { server } from '../mocks/server';
 import { EntryDetailModal } from './EntryDetail';
 import type { TripRole } from '../api/types';
 
@@ -341,5 +343,88 @@ describe('EntryDetail — it opens as a modal', () => {
   it('is already the same dialog while the entry is still coming', () => {
     renderPanel('member');
     expect(screen.getByRole('dialog', { name: 'Opening' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Every PATCH body the panel sends, in arrival order. The real handler is
+ * stood aside because what is on trial here is whether a blur earns a request
+ * at all, not what the server does with one.
+ */
+function recordPatches() {
+  const patched: Array<Record<string, unknown>> = [];
+  server.use(
+    http.patch('/api/entries/:id', async ({ params, request }) => {
+      const body = (await request.json()) as { entry?: Record<string, unknown> };
+      patched.push(body.entry ?? {});
+      return HttpResponse.json({ entry: { id: Number(params.id), ...body.entry } });
+    }),
+  );
+  return patched;
+}
+
+/**
+ * The feedback: every field saved itself on blur whether or not anything had
+ * changed — tabbing through the panel to read it fired a PATCH-and-refetch
+ * cycle per field — and a numeric typo was worse than wasteful: "12.5.6"
+ * parses to NaN, NaN serializes to null, and the stored coordinate was
+ * silently wiped. Only a real change PATCHes now, and a typo is refused with
+ * the stored value put back in the box.
+ *
+ * Each negative ends with one genuine edit; its PATCH arriving proves the
+ * quiet blurs before it stayed quiet, rather than merely not having landed yet.
+ */
+describe('EntryDetail — what blur actually saves', () => {
+  const SENTINEL = 'Go before the tour buses.';
+
+  it('does not PATCH a field you only tabbed through', async () => {
+    const patched = recordPatches();
+    const user = userEvent.setup();
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    // In at the name and out past the coordinates: eight blurs, none of them
+    // a change — the numeric fields included, which used to fire like the rest.
+    await user.click(read.getByRole('textbox', { name: 'Name' }));
+    for (let i = 0; i < 8; i++) await user.tab();
+
+    await user.type(read.getByRole('textbox', { name: 'Notes' }), SENTINEL);
+    await user.tab();
+
+    await waitFor(() => expect(patched).toEqual([{ notes: SENTINEL }]));
+  });
+
+  it('refuses a numeric typo and puts the stored value back', async () => {
+    const patched = recordPatches();
+    const user = userEvent.setup();
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    const lat = read.getByRole('textbox', { name: 'Latitude' });
+    await user.clear(lat);
+    await user.type(lat, '12.5.6');
+    await user.tab();
+
+    // The box shows what is actually stored again, not the typo it never saved.
+    expect(lat).toHaveValue('34.9671');
+
+    await user.type(read.getByRole('textbox', { name: 'Notes' }), SENTINEL);
+    await user.tab();
+
+    await waitFor(() => expect(patched).toEqual([{ notes: SENTINEL }]));
+  });
+
+  it('still PATCHes a genuine change, and exactly that field', async () => {
+    const patched = recordPatches();
+    const user = userEvent.setup();
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    const location = read.getByRole('textbox', { name: 'Location' });
+    await user.clear(location);
+    await user.type(location, 'Fushimi Inari, south gate');
+    await user.tab();
+
+    await waitFor(() => expect(patched).toEqual([{ location_name: 'Fushimi Inari, south gate' }]));
   });
 });
