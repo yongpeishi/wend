@@ -8,8 +8,11 @@ export interface FieldProps extends Omit<InputProps, 'id' | 'error'> {
   label: string;
   /** Plain-language help text shown when there is no error. */
   description?: string;
-  /** Validation message. No red is defined in the token set, so this reads in
-   * bold --text-strong rather than an invented error colour — see frontend README. */
+  /** Validation message. Reads in bold --text-error (rust), matching the error
+   * field state the design system specifies — rust border, bold rust message,
+   * role="alert". The rust reinforces the message; it never replaces it. Colour
+   * never carries meaning alone here, so the text must still name the fix on its
+   * own ("Enter a date in 2026 or later.") for anyone who can't see the hue. */
   error?: string;
   id?: string;
   /**

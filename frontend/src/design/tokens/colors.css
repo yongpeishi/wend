@@ -83,15 +83,15 @@
 
      Consumed today: --feedback-success and --feedback-error (Toast's success
      and error accent rules), --border-error (the Input and Select error
-     borders) and --action-destructive (the destructive Button).
+     borders), --text-error (Field's validation message) and
+     --action-destructive (the destructive Button).
 
      Not yet consumed: --feedback-success-wash, --feedback-error-wash,
-     --feedback-pending, --border-success, --text-success and --text-error.
+     --feedback-pending, --border-success and --text-success.
      Nothing in the product waits visibly, no surface tints itself with a
-     feedback wash, and error text is still written in --text-strong beside a
-     red border rather than in red itself. They are defined now so that the
-     first screen to need one does not invent a colour, and so anyone grepping
-     for dead tokens finds this note instead of deleting them. */
+     feedback wash, and no success state is drawn anywhere yet. They are defined
+     now so that the first screen to need one does not invent a colour, and so
+     anyone grepping for dead tokens finds this note instead of deleting them. */
   --feedback-success: var(--wend-jade);
   --feedback-success-wash: var(--wend-jade-wash);
   --feedback-error: var(--wend-rust);

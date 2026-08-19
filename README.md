@@ -108,7 +108,7 @@ timezones entirely for a hand-authored plan. The trade-off is written up in
 | `doc/architecture.md` | The build contract: schema, API surface, brand rules, ADRs |
 | `frontend/README.md` | Component inventory and design-system usage |
 | `backend/README.md` | API setup and conventions |
-| `wend-design/` | The original design bundle — **read-only reference** |
+| `wend-design-v2.3/` | The original design bundle — **read-only reference** |
 
 The design system ships brand identity and primitives only; it deliberately excludes
 application screens so the product UX could be designed fresh. 

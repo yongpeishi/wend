@@ -16,7 +16,8 @@ export interface LogoProps extends HTMLAttributes<HTMLSpanElement> {
 /**
  * The Michikusa mark: three stops on a dotted trail (decided, open, waiting/destination),
  * with the WEND wordmark lock-up. Path data is identical to
- * wend-design/project/assets/michikusa-mark*.svg.
+ * frontend/public/brand/michikusa-mark*.svg (the v2.3 design export ships no
+ * assets/ directory of its own).
  */
 export const Logo = forwardRef<HTMLSpanElement, LogoProps>(function Logo(
   { variant = 'primary', size = 40, showWordmark = true, className, style, ...rest },

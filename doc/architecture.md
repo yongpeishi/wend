@@ -27,11 +27,11 @@ better one that isn't.
 Repository layout:
 
 ```
-backend/     Rails API
-frontend/    Vite React SPA
-doc/         project.md, architecture.md
-             (.claude/interaction/wend-mvp/ holds decisions.md, screens.md, status.md)
-wend-design/ read-only design bundle (do not modify)
+backend/           Rails API
+frontend/          Vite React SPA
+doc/               project.md, architecture.md
+                   (.claude/interaction/wend-mvp/ holds decisions.md, screens.md, status.md)
+wend-design-v2.3/  read-only design bundle (do not modify)
 ```
 
 Ports: Rails on `:3000`, Vite on `:5173` with `/api` proxied to Rails.
@@ -516,17 +516,23 @@ ItineraryItem = {
 
 ## 5. Design system implementation
 
-The design bundle at `wend-design/project/` is **read-only reference**. Port it into
+The design bundle at `wend-design-v2.3/project/` is **read-only reference**. The system
+itself lives one level down, at
+`wend-design-v2.3/project/_ds/wend-design-system-current-c7e2ae4a-f365-4374-94ae-0d7e8c85279d/`
+(`readme.md`, `styles.css`, `tokens/`) — referred to below as `_ds/`. Port it into
 `frontend/src/design/`:
 
-- Copy `tokens/*.css` verbatim into `frontend/src/design/tokens/`.
-- Copy `assets/*.svg` into `frontend/public/brand/`.
-- Port `components/core/{Button,Chip,Input}.jsx` and `components/brand/{Logo,Trail}.jsx`
-  to TypeScript in `frontend/src/design/components/`, replacing inline `style` objects
+- Copy `_ds/tokens/*.css` verbatim into `frontend/src/design/tokens/`.
+- The four Michikusa marks live in `frontend/public/brand/*.svg`. The v2.3 export ships
+  no `assets/` directory, so those copies are now the only ones — don't expect to
+  re-copy them from the bundle.
+- Port the core (`Button`, `Chip`, `Input`) and brand (`Logo`, `Trail`) components to
+  TypeScript in `frontend/src/design/components/`, replacing inline `style` objects
   with CSS modules or a plain co-located stylesheet using the same token values. Visual
-  output must be identical.
+  output must be identical. The v2.3 export ships no `components/` source either — the
+  ported TypeScript in `frontend/src/design/components/` is the live version.
 
-### Non-negotiable brand rules (from `readme.md` + `Wend Design System.dc.html`)
+### Non-negotiable brand rules (from `_ds/readme.md` + `wend-design-v2.3/project/Wend MVP.dc.html`)
 
 - **No shadows anywhere.** Elevation is paper `#F0F3EE` vs card `#FBFCFA` tone.
 - **Apricot `#E89A5E` is never text.** It is a ring, a 3px focus outline, an underline.
