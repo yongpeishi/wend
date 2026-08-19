@@ -10,6 +10,7 @@ import { server } from '../mocks/server';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { setRole } from '../mocks/db';
 import { TripBoard } from './TripBoard';
+import styles from './TripBoard.module.css';
 import type { TripRole } from '../api/types';
 import type { MapViewProps } from '../features/map/MapView';
 
@@ -656,5 +657,38 @@ describe('TripBoard — when the load fails', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
     // The ideas column is untouched by the rail's failure.
     expect(await screen.findByText('Nanzen-ji')).toBeInTheDocument();
+  });
+});
+
+/**
+ * The card that follows the cursor while an idea is being dragged.
+ *
+ * @dnd-kit sizes the overlay from the node the drag came off — the grip, a 22px
+ * button — and EntryRow has no intrinsic width of its own, so the overlay is
+ * only as wide as it is told to be. When it was told nothing it drew as an empty
+ * pill with the title clipped away entirely, which is the regression this
+ * guards: you could not tell what you were dragging.
+ */
+describe('TripBoard — the card under the cursor', () => {
+  it('shows the idea being dragged, at a width wide enough to read it', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+
+    // Lifted by keyboard and left in the air: the overlay exists for as long as
+    // the drag does, and nothing here is about where it lands.
+    const grip = screen.getByRole('button', { name: /^Drag Nanzen-ji/ });
+    grip.focus();
+    await user.keyboard('[Space]');
+
+    const overlay = await waitFor(() => {
+      const card = document.querySelector<HTMLElement>(`.${styles.dragOverlayCard}`);
+      if (!card) throw new Error('no drag overlay on screen');
+      return card;
+    });
+    expect(within(overlay).getByText('Nanzen-ji')).toBeInTheDocument();
+    expect(getComputedStyle(overlay).width).toBe('300px');
+
+    await user.keyboard('{Escape}');
   });
 });

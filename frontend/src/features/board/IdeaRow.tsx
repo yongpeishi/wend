@@ -94,8 +94,9 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
  *   total in the header so the answer is legible without opening anything.
  *
  * What is still NOT here:
- *   - No hatch thumbnail / `EntryRow`. This row is scanned in a long list; the
- *     design trades the thumbnail for density.
+ *   - Not `EntryRow`. That row is the generic keep-toggle row; this one is
+ *     scanned in a long list and carries the board's own verbs — grip,
+ *     multi-select, ⋯ menu, expansion — so it stays its own component.
  *
  * What is kept, and why:
  *   - The drag handle. Dragging an idea onto a bundle is the core board gesture

@@ -590,7 +590,7 @@ export function TripItinerary() {
 
         <DragOverlay>
           {dragging && (
-            <Card padding={2}>
+            <Card padding={2} className={styles.dragOverlayCard}>
               <EntryRow title={dragging.title} kept />
             </Card>
           )}

@@ -119,3 +119,18 @@
     padding: var(--space-6) var(--space-8) var(--space-8);
   }
 }
+
+/* The card under the cursor while an idea is being dragged.
+
+   @dnd-kit sizes the drag overlay from the node the drag came off — here a 32px
+   grip — and EntryRow has no intrinsic width (body `flex: 1; min-width: 0`,
+   title clipped to an ellipsis), so without a width of its own the overlay drew
+   as an empty 32px pill with the title clipped away entirely.
+
+   300px is the board's number too: the same card is dragged on both screens and
+   it should not change size between them. It also sits just inside the 336px
+   floor of the rail this drag comes out of, so the card in the air is never
+   wider than the column it left. */
+.dragOverlayCard {
+  width: 300px;
+}
