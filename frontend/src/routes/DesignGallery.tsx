@@ -223,7 +223,9 @@ export function DesignGallery() {
           label="Destructive"
           note="The only control the error hue fills — a click that destroys something, never one that is merely important. In the product it is exactly one button: taking someone off a trip."
         >
-          <Button variant="destructive">Remove them</Button>
+          <Row wrap>
+            <Button variant="destructive">Remove them</Button>
+          </Row>
         </Specimen>
         <Specimen label="Disabled" note="Fills with --surface-disabled + muted text, never struck through">
           <Row wrap>
