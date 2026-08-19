@@ -79,7 +79,8 @@ function renderPanel(onOpenEntry: (id: number) => void = () => {}, role?: TripRo
   );
 }
 
-/** The row strip a title button sits in — where its dot, badge and chips are. */
+/** The title line a title button sits in — where its dot, badge and score are.
+ * (The "also under" report lives on its own line below, queried at screen level.) */
 function rowOf(title: string): HTMLElement {
   return screen.getByRole('button', { name: title }).parentElement as HTMLElement;
 }

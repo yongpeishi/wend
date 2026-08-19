@@ -7,8 +7,8 @@
   flex-direction: column;
 }
 
-/* One flat strip per row: grip, chevron/spacer, the marks and the title, and
-   the ⋯ menu at the far end. Indent arrives as inline paddingLeft (depth * 16).
+/* One strip per row: grip, chevron/spacer, the words (see .main), and the ⋯
+   menu at the far end. Indent arrives as inline paddingLeft (depth * 16).
    The border is always drawn and usually invisible, so becoming a drop target
    colours it without moving a pixel — the same accent BundleCard.over uses. */
 .row {
@@ -32,8 +32,10 @@
 
 /* The grip, at the tree's own 24px scale rather than the board rows' 44px tap
    square: these rows are a dense reading surface, and the handle is a sibling
-   in the strip, not a column of its own. */
+   in the strip, not a column of its own. Fixed and never growing — the row's
+   width belongs to the title. */
 .handle {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -45,6 +47,27 @@
   padding: 0;
   color: var(--text-muted);
   cursor: grab;
+}
+
+/* The 24px box is the visual; the target is bigger than the visual — the same
+   invisible ::before IdeaRow gives its grip and pick circle. 32px is the
+   pointer floor from architecture.md; touch gets the full 48px, which overlaps
+   its neighbours a little but is the rule that is not negotiable on a phone. */
+.handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+}
+
+@media (pointer: coarse) {
+  .handle::before {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
 }
 
 .handle:focus-visible {
@@ -88,9 +111,33 @@
   background: var(--stop-decided);
 }
 
+/* The row's words, stacked — the same shape as IdeaRow's `.text`. This is the
+   ONE flexible resident of the row strip: the grip, chevron and ⋯ are fixed
+   icons, so every pixel the pane has to spare lands here, on the reading. */
+.main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The title and its marks: dot, title, badge, score. The marks are fixed;
+   the title takes the rest of the line. */
+.titleLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* The title is the priority reader of this panel, so it WRAPS rather than
+   clipping: the marks around it never shrink, and an ellipsis at pane width
+   left "Shibuya afternoon" unidentifiable for an editor, whose rows also carry
+   a grip and a ⋯. IdeaRow's titles wrap too — a clipped title is a fact the
+   board withholds; a second line is just a taller row. */
 .title {
   min-width: 0;
-  flex-shrink: 1;
+  flex: 1 1 auto;
   text-align: left;
   background: none;
   border: none;
@@ -98,11 +145,12 @@
   border-radius: var(--radius-card);
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
+  /* 1.35, IdeaRow's own wrapping-title number — --text-small-line is 1.7, a
+     prose measure that would air out a dense tree. */
+  line-height: 1.35;
   color: var(--text-body);
   cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .title:hover {
@@ -137,14 +185,18 @@
   color: var(--text-muted);
 }
 
-/* "also under …" / "in N places" — a report, not a control. It gives way
-   before the title does when the row runs out of room. */
+/* "also under …" / "in N places" — a report, not a control. On its own line
+   under the title, so it never competes with the title for width; the LINE
+   keeps a single-line ellipsis of its own, because past that it is the ⋯
+   menu's chips that spell the other homes out in full. The side padding is the
+   title's, so the report sits flush under the words it annotates; the bottom
+   padding stands in for the title's, which the stacking took away. */
 .also {
-  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 0 var(--space-1) var(--space-1);
   font-family: var(--font-sans);
   font-size: var(--text-label-size);
   color: var(--text-muted);

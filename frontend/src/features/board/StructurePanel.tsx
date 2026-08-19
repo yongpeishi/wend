@@ -185,8 +185,12 @@ function TreeNode({
 
   return (
     <div>
-      {/* One flat flex strip per row: grip, chevron, marks and title, then the
-          ⋯ menu holding the row's pointer-free verbs at the far end. */}
+      {/* One flex strip per row: grip, chevron, then the row's words (title
+          line, and under it the "also under" report when there is one), then
+          the ⋯ menu holding the row's pointer-free verbs at the far end. The
+          words block is the only flexible resident — everything else is a
+          fixed-size icon, so the title is what a narrow pane spends its width
+          on. */}
       <div
         ref={setDropRef}
         className={[styles.row, isOver ? styles.rowOver : ''].filter(Boolean).join(' ')}
@@ -224,31 +228,40 @@ function TreeNode({
           <span className={styles.disclosureSpacer} aria-hidden="true" />
         )}
 
-        {/* The same 7px mark BundleCard puts on a member: colour as a redundant
-            cue, with a visually-hidden phrase carrying the fact in words. Only
-            drawn when true — this panel says "on the schedule", not "waiting". */}
-        {entry.scheduled && (
-          <>
-            <span className={styles.dot} aria-hidden="true" />
-            <span className={styles.srOnly}>On the schedule:</span>
-          </>
-        )}
+        {/* The row's words, stacked: the title line, then — when this
+            occurrence lives elsewhere too — the "also under" report on a line
+            of its own. Stacking is what stops the report and the title fighting
+            over one run of pixels; it is the same words-in-a-column shape
+            IdeaRow's `.text` uses. */}
+        <div className={styles.main}>
+          <div className={styles.titleLine}>
+            {/* The same 7px mark BundleCard puts on a member: colour as a redundant
+                cue, with a visually-hidden phrase carrying the fact in words. Only
+                drawn when true — this panel says "on the schedule", not "waiting". */}
+            {entry.scheduled && (
+              <>
+                <span className={styles.dot} aria-hidden="true" />
+                <span className={styles.srOnly}>On the schedule:</span>
+              </>
+            )}
 
-        {/* The title opens the entry; only the chevron discloses. */}
-        <button type="button" className={styles.title} onClick={() => onOpenEntry(entry.id)}>
-          {entry.title}
-        </button>
+            {/* The title opens the entry; only the chevron discloses. */}
+            <button type="button" className={styles.title} onClick={() => onOpenEntry(entry.id)}>
+              {entry.title}
+            </button>
 
-        {entry.kind === 'bundle' && <span className={styles.kindBadge}>Bundle</span>}
+            {entry.kind === 'bundle' && <span className={styles.kindBadge}>Bundle</span>}
 
-        {entry.vote_tally.count > 0 && (
-          <span className={styles.score} title="Everyone's votes added up, from +2 to -2 each">
-            {formatScore(entry.vote_tally.total)}
-          </span>
-        )}
+            {entry.vote_tally.count > 0 && (
+              <span className={styles.score} title="Everyone's votes added up, from +2 to -2 each">
+                {formatScore(entry.vote_tally.total)}
+              </span>
+            )}
+          </div>
 
-        {/* Muted text, not a control: it reports where else this one lives. */}
-        {also && <span className={styles.also}>{also}</span>}
+          {/* Muted text, not a control: it reports where else this one lives. */}
+          {also && <span className={styles.also}>{also}</span>}
+        </div>
 
         {/* The row's other verbs — the copy path and the schedule path. Not on
             the root: the trip is the frame, not a thing to re-file or place on

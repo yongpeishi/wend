@@ -212,14 +212,24 @@
    treatment as the map and for the same reason: it is an overview of the list
    beside it, and an overview that scrolls away stops being one. Its own
    scrollbar rather than the page's, because a deep tree is taller than a
-   viewport. The narrower basis of the three cells — it is an index, not a
+   viewport. The narrowest basis of the three cells — it is an index, not a
    reading surface — and it wraps under the others when the column runs out of
    width, exactly as the map/list pair already does. Below the 900px fold it is
    not rendered at all (TripBoard mounts the shared Drawer instead), so no
-   rule here needs to hide it. */
+   rule here needs to hide it.
+
+   300/280 rather than the 260/240 this first shipped at. Those numbers were
+   sized against a VIEWER's row; an editor's row spends ~56px more on chrome
+   that never shrinks — the grip, the ⋯, and their gaps — so at 240px a
+   depth-two bundle title kept about ten characters and the index stopped
+   naming things. The extra 40px goes entirely to titles (every other resident
+   of a row is a fixed-size icon), and the panel's own layout now wraps a long
+   title rather than clipping it, so 280px is a floor about ROW HEIGHT, not
+   legibility: below it typical titles start taking three lines. The 400px
+   ceiling stays — past it the pane reads as a page, not an index. */
 .structureCell {
-  flex: 1 1 260px;
-  min-width: 240px;
+  flex: 1 1 300px;
+  min-width: 280px;
   max-width: 400px;
   align-self: flex-start;
   position: sticky;
