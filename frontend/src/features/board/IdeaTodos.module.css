@@ -1,0 +1,204 @@
+/*
+ * The to-do block inside an expanded idea row.
+ *
+ * It sits on the card tone the panel already provides and draws no box of its
+ * own — the expanded panel is one surface, and a second border inside it would
+ * make the block read as a card within a card. What separates it from the add
+ * row below is a dashed hairline, which is the design's "this part is not
+ * written yet" line: the same dashed language as an empty day on the itinerary.
+ * No shadows; hover and press are opacity only.
+ */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/*
+ * The box. 20px against the row title's 15px — big enough to be aimed at,
+ * small enough that a list of five does not turn into a column of controls
+ * with some words beside it.
+ */
+.box {
+  position: relative;
+  /* 20px: no shape token covers control sizes; the pick circle next door is
+     22px and this deliberately sits a step under it, because a to-do is a
+     smaller commitment than picking the idea itself. */
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: var(--border-width) solid var(--border-strong);
+  /* 4px: --radius-card (12) is written for cards, and a 20px square wearing it
+     reads as a circle — which is already the board's "picked" shape. A square
+     is what says checkbox here, so the radius only takes the corner off. */
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/*
+ * The 20px square is the visual; the target is bigger than the visual. Same
+ * pattern and the same 32px pointer floor as IdeaRow's pick circle, growing to
+ * the full 48px on touch, where the rule is not negotiable.
+ */
+.box::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+}
+
+@media (pointer: coarse) {
+  .box::before {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+}
+
+.box:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.box:active:not(:disabled) {
+  opacity: 0.7;
+}
+
+.box:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Disabled here only ever means "this same tick is mid-flight", never "not
+   yours" — a permission answer is made by removing the control, not by greying
+   it. So the fade is slight and lasts one round trip. */
+.box:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Done. Leaf fill and a thicker edge, so the state survives without the tick
+   for anyone who cannot separate the two greens. */
+.boxDone {
+  border-width: var(--border-width-strong);
+  border-color: var(--wend-leaf);
+  background: var(--wend-leaf);
+}
+
+/* A viewer's box: the same drawing, none of the affordances. */
+.boxStill {
+  cursor: default;
+}
+
+.boxStill::before {
+  content: none;
+}
+
+/* 13px: a glyph inside a 20px box, not running text, so the 15px readable floor
+   does not apply — it is never read as words (aria-checked says it instead). */
+.tick {
+  font-size: 13px;
+  line-height: 1;
+  font-weight: var(--weight-bold);
+  color: var(--wend-paper);
+}
+
+/* The mockup sets these lines smaller; architecture.md fixes 15px as this
+   product's readable floor and --text-min-size encodes it, so they come up. */
+.title {
+  font-size: var(--text-min-size);
+  line-height: 1.4;
+  color: var(--text-body);
+}
+
+/* Struck through and muted together. The strike alone is a colour-free signal
+   and the mute alone survives a bad strike-through renderer; the pair is
+   readable either way. */
+.titleDone {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.failed {
+  margin: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+/*
+ * The add row. The dashed rule is the seam between what is written down and
+ * what is about to be — solid would make the block look finished.
+ */
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) dashed var(--border-subtle);
+}
+
+/* No box: the field is a line you type on, and the dashed rule above is already
+   the block's edge. A bordered input here would be the third rectangle in 60px. */
+.input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+  background: none;
+  border: none;
+  padding: var(--space-2) 0;
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

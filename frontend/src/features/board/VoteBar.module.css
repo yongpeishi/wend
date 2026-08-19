@@ -1,0 +1,201 @@
+/*
+ * The vote bar, inside an expanded idea row. One line: the question on the
+ * left, the five stops beside it, the result pushed to the right edge so the
+ * ballot and the answer never run into each other. Tokens throughout; the two
+ * px literals below are the mockup's own sizes and say so.
+ */
+.bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.label {
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.stops {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+ * 44px: the mockup's own circle. It is under --tap-min (48), so the target is
+ * grown past the visual below rather than the circle being redrawn — the row
+ * was designed around this diameter.
+ */
+.stop {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/*
+ * The pointer target is never smaller than the visual. 48px is --tap-min and
+ * only 4px wider than the circle, so it fits inside the --space-2 gap without
+ * stealing its neighbour's clicks.
+ */
+.stop::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  transform: translate(-50%, -50%);
+}
+
+.stop:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.stop:active:not(:disabled) {
+  opacity: 0.7;
+}
+
+.stop:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* A save in flight. The stops are coming back, so they dim rather than change
+   shape or colour — nothing here should read as a new answer. */
+.stop:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* Your vote. The border thickens as well as filling — the second, colourless
+   half of the signal, the same pairing the row's pick circle uses. */
+.stopOn {
+  border-width: var(--border-width-strong);
+  border-color: var(--wend-leaf);
+  background: var(--wend-leaf);
+  color: var(--wend-paper);
+}
+
+/* The result belongs to the far edge: the ballot is read left to right and the
+   answer is what you come to last. */
+.pills {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  /* 6px: between --space-1 (4) and --space-2 (8). A pill hugs its two marks
+     more tightly than a control does its label. */
+  padding: 6px var(--space-2);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  cursor: default;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.pill:hover {
+  opacity: 0.85;
+}
+
+.pill:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.pillFace {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.pillCount {
+  font-family: var(--font-mono);
+  font-size: var(--text-code-size);
+  line-height: 1;
+}
+
+/*
+ * Who voted. Opens on :hover AND :focus-visible — hover alone would put the
+ * names out of a keyboard's reach, which is the whole reason the pill is a
+ * button. Presentation only: the same names are already on the button as a
+ * visually-hidden label, so a screen reader never needs the bubble to open.
+ */
+.tip {
+  position: absolute;
+  /* 8px above the pill: --space-2, clear of the border without floating free. */
+  bottom: calc(100% + var(--space-2));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-card);
+  background: var(--wend-deep-leaf);
+  color: var(--text-on-dark);
+  font-size: var(--text-label-size);
+  line-height: 1.4;
+  white-space: nowrap;
+  /* Above the row's own borders and the next pill along; nothing on the board
+     stacks higher than a modal, and this is far below that. */
+  z-index: 2;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+  pointer-events: none;
+}
+
+.pill:hover .tip,
+.pill:focus-visible .tip {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* A viewer's line: the score and the headcount, in the mono the tally always
+   uses so the number reads as data rather than as a sentence. */
+.summary {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-code-size);
+  color: var(--text-muted);
+}
+
+/* Where the pills would have been, when there is nothing to put there. */
+.empty {
+  margin: 0;
+  margin-left: auto;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

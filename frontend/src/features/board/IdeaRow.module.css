@@ -4,9 +4,10 @@
  * hits; the handful of literals below are commented where the scale has no stop.
  */
 .row {
+  /* A column now: the header line, and under it the panel when the row is
+     open. The header keeps the row layout the card always had. */
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
+  flex-direction: column;
   background: var(--surface-card);
   border: var(--border-width) solid var(--border-subtle);
   border-radius: var(--radius-card);
@@ -15,9 +16,18 @@
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 /* Multi-selected rows take the apricot accent — the same "this one" signal the
-   design uses for the row currently under attention. */
-.row[data-selected] {
+   design uses for the row currently under attention. An open row takes the same
+   border: the mockup's own choice, and the same claim on attention. The two can
+   coincide, which the design accepts. */
+.row[data-selected],
+.row[data-expanded] {
   border-color: var(--wend-apricot);
 }
 
@@ -27,9 +37,10 @@
 }
 
 /*
- * The pick circle: the state dot's other life, while the board is selecting.
- * 22px against the dot's 10px, and the size change is the mode signal — so
- * these two rules are a pair, and neither size is arbitrary.
+ * The pick circle: what the left slot holds while the board is selecting, in
+ * place of the drag handle. 22px, which is also the handle's box — the slot
+ * keeps one width in both modes, so a row's title does not step sideways when
+ * the mode changes under it.
  */
 .pick {
   position: relative;
@@ -50,12 +61,14 @@
 }
 
 /*
- * The 22px circle is the visual; the target is bigger than the visual. 32px is
- * the pointer floor from architecture.md and fits inside the row's 16px gap
- * without stealing clicks from the title; touch gets the full 48px, which
- * overlaps a little but is the rule that is not negotiable on a phone.
+ * The 22px box is the visual; the target is bigger than the visual, for the
+ * pick circle and the grip alike. 32px is the pointer floor from
+ * architecture.md and fits inside the row's 16px gap without stealing clicks
+ * from the title; touch gets the full 48px, which overlaps a little but is the
+ * rule that is not negotiable on a phone.
  */
-.pick::before {
+.pick::before,
+.gripSlot::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -66,21 +79,25 @@
 }
 
 @media (pointer: coarse) {
-  .pick::before {
+  .pick::before,
+  .gripSlot::before {
     width: var(--tap-min);
     height: var(--tap-min);
   }
 }
 
-.pick:hover {
+.pick:hover,
+.gripSlot:hover {
   opacity: 0.85;
 }
 
-.pick:active {
+.pick:active,
+.gripSlot:active {
   opacity: 0.7;
 }
 
-.pick:focus-visible {
+.pick:focus-visible,
+.gripSlot:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
@@ -102,33 +119,55 @@
   color: var(--wend-paper);
 }
 
-/* 10px: smaller than any trail dot token, which are SVG radii, not CSS sizes. */
-.stateDot {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 10px;
-  border-radius: var(--radius-pill);
-}
-
-.stateDecided {
-  background: var(--stop-decided);
-}
-
-.stateOpen {
-  background: var(--stop-open);
-}
-
-.stateWaiting {
-  background: var(--stop-waiting);
+/*
+ * The drag handle in its new home at the head of the row. It used to ride in
+ * `.actions` at 48px square; on the left that width would push every title a
+ * thumb's breadth inwards for a control that is grabbed, not read. So it takes
+ * the pick circle's 22px box and the same invisible target around it — the
+ * pointer floor is met by `::before` above, not by the visible glyph.
+ */
+.gripSlot {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
 /*
- * The click target: title, meta, bundles. The design dims the whole row on
- * hover; here the dimming is scoped to this button, because the row also holds
- * its own controls and each of those already answers the pointer on its own.
- * Opacity only — this design system has no hover fills and no shadows.
+ * The click target — now the disclosure: title, meta and bundles on the left,
+ * the group score and the chevron on the right, all inside the one button. The
+ * design dims the whole row on hover; here the dimming is scoped to this
+ * button, because the row also holds its own controls and each of those already
+ * answers the pointer on its own. Opacity only — this design system has no
+ * hover fills and no shadows.
  */
 .main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-sans);
+  color: inherit;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* The words, stacked, as .main itself used to be. */
+.text {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -136,14 +175,6 @@
   /* 3px: tighter than --space-1 (4). The three lines read as one block. */
   gap: 3px;
   align-items: flex-start;
-  text-align: left;
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
 .main:hover {
@@ -223,6 +254,112 @@
   color: var(--wend-plum);
 }
 
+/*
+ * The group score: the number, and under it what the number is. Right-aligned
+ * and fixed-width-ish so a column of rows lines its totals up rather than
+ * letting "+12" shove the chevron about.
+ */
+.score {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 2px: half of --space-1. The word is a caption on the number, not a line
+     under it. */
+  gap: 2px;
+  white-space: nowrap;
+}
+
+/* 19px: the mockup's own size. The type scale steps 17 -> 20 and neither is
+   this — the same reason the title below carries an 18px literal. */
+.scoreValue {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  line-height: 1.1;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+.scoreLabel {
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.chevron {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* Pointing at the panel it opened. aria-expanded carries the real state. */
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/*
+ * The panel. One surface with the header above it, separated by a rule rather
+ * than by a box — nesting a card inside a card would make the idea look like
+ * two things.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  /* 14px each side of the rule, matching the row's own 14px vertical rhythm —
+     the panel hangs off the header at the same interval the header hangs off
+     the card edge. */
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: var(--border-width) solid var(--border-subtle);
+}
+
+/* Running text, at the product's readable floor. --measure-body keeps a long
+   description from running the full width of the board. */
+.body {
+  margin: 0;
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-strong);
+  max-width: var(--measure-body);
+}
+
+/* Notes are the aside to the description's pitch, so they read quieter. */
+.notes {
+  color: var(--text-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Same heading voice as the to-do block's and the vote bar's, so the panel
+   reads as one stack of sections rather than three imported blocks. */
+.sectionLabel {
+  margin: 0;
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.chips,
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
 .actions {
   flex: none;
   display: flex;
@@ -230,33 +367,7 @@
   gap: var(--space-1);
 }
 
-.iconButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--tap-min);
-  height: var(--tap-min);
-  flex: 0 0 var(--tap-min);
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-.iconButton:hover {
-  opacity: 0.7;
-}
-
-.iconButton:active {
-  opacity: 0.55;
-}
-
-.iconButton:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
+/* Cursor and touch handling, kept apart from the box so either could move. */
 .grip {
   cursor: grab;
   /* dnd-kit needs the browser's own touch panning out of the way to read a drag. */

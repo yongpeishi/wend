@@ -35,7 +35,7 @@ class Api::VotesTest < ActionDispatch::IntegrationTest
 
   test "PUT sets a vote and returns tally with by_user breakdown" do
     idea = create_idea(created_by: @user)
-    other = create_user
+    other = create_user(name: "Other Voter")
     Vote.create!(entry: idea, user: other, score: -1)
 
     put "/api/entries/#{idea.id}/vote", params: { score: 2 }, as: :json
@@ -48,6 +48,34 @@ class Api::VotesTest < ActionDispatch::IntegrationTest
     assert_equal 0.5, tally["average"]
     assert_equal 2, tally.dig("by_user", @user.id.to_s)
     assert_equal(-1, tally.dig("by_user", other.id.to_s))
+  end
+
+  # The tally the board patches in after a vote has to be the same shape as the
+  # one the entry list handed it, `voters` and all, or the row loses its names
+  # the moment somebody votes.
+  test "PUT tally carries the named voters in user_id order" do
+    idea = create_idea(created_by: @user)
+    other = create_user(name: "Other Voter")
+    Vote.create!(entry: idea, user: other, score: -1)
+
+    put "/api/entries/#{idea.id}/vote", params: { score: 2 }, as: :json
+    assert_response :success
+    voters = JSON.parse(response.body).dig("tally", "voters")
+    assert_equal [
+      { "user_id" => @user.id, "user_name" => @user.name, "score" => 2 },
+      { "user_id" => other.id, "user_name" => "Other Voter", "score" => -1 }
+    ], voters
+  end
+
+  # A first vote on an untouched entry: the array is the one vote, not empty and
+  # not missing.
+  test "PUT tally on an entry with no prior votes lists just the voter" do
+    idea = create_idea(created_by: @user)
+
+    put "/api/entries/#{idea.id}/vote", params: { score: 1 }, as: :json
+    assert_response :success
+    assert_equal [ { "user_id" => @user.id, "user_name" => @user.name, "score" => 1 } ],
+                 JSON.parse(response.body).dig("tally", "voters")
   end
 
   test "PUT rejects an out-of-range score" do

@@ -26,7 +26,7 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
   test "GET /api/entries returns list-form entries with computed fields" do
     idea = create_idea(created_by: @user)
     Vote.create!(entry: idea, user: @user, score: 2)
-    other = create_user
+    other = create_user(name: "Other Voter")
     Vote.create!(entry: idea, user: other, score: -1)
     Todo.create!(title: "Book", entry: idea)
 
@@ -36,7 +36,14 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     row = body["entries"].find { |e| e["id"] == idea.id }
 
     assert_equal idea.title, row["title"]
-    assert_equal({ "total" => 1, "count" => 2, "average" => 0.5 }, row["vote_tally"])
+    assert_equal({
+      "total" => 1, "count" => 2, "average" => 0.5,
+      # Named, in user_id order, so the list can show who is behind the score.
+      "voters" => [
+        { "user_id" => @user.id, "user_name" => @user.name, "score" => 2 },
+        { "user_id" => other.id, "user_name" => other.name, "score" => -1 }
+      ]
+    }, row["vote_tally"])
     assert_equal 2, row["my_vote"]
     assert_equal 1, row["todos_open_count"]
     assert_equal 0, row["children_count"]

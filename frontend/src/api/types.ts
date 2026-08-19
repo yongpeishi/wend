@@ -19,11 +19,32 @@ export interface EntryNote {
   text: string;
 }
 
+/**
+ * One person's vote as the tally carries it — who, and how hard. The name is
+ * null for a user who has none, exactly as `Vote.user_name` is.
+ */
+export interface VoteVoter {
+  user_id: number;
+  user_name: string | null;
+  score: -2 | -1 | 0 | 1 | 2;
+}
+
 export interface VoteTally {
   total: number;
   count: number;
   average: number;
   by_user?: Record<string, number>;
+  /**
+   * Who voted and how, ordered by `user_id` ascending — the server's ordering,
+   * which the UI may rely on rather than sorting again.
+   *
+   * The wire always carries this key; it is optional here only because the
+   * eleven-odd `makeEntry` fixtures that build a bare
+   * `vote_tally: { total, count, average }` would otherwise stop compiling, and
+   * they belong to other slices. Read it as `tally.voters ?? []` — the same
+   * trade-off, and the same discipline, as `Entry['my_role']` below.
+   */
+  voters?: VoteVoter[];
 }
 
 /** List/board form of Entry — what GET /api/entries and nested children return. */

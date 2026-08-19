@@ -25,7 +25,7 @@ class EntrySerializer
         base(entry).merge(
           "children_count" => children_counts[entry.id] || 0,
           "todos_open_count" => open_todo_counts[entry.id] || 0,
-          "vote_tally" => tallies[entry.id] || { "total" => 0, "count" => 0, "average" => 0.0 },
+          "vote_tally" => tallies[entry.id] || { "total" => 0, "count" => 0, "average" => 0.0, "voters" => [] },
           "my_vote" => my_votes[entry.id],
           "scheduled" => scheduled_ids.include?(entry.id),
           "my_role" => entry.kind == "trip" ? roles[entry.id] : nil
@@ -118,15 +118,30 @@ class EntrySerializer
 
     def vote_tallies(ids)
       rows = Vote.where(entry_id: ids).group(:entry_id).pluck(:entry_id, Arel.sql("SUM(score)"), Arel.sql("COUNT(*)"))
+      voters = voters_by_entry(ids)
       rows.each_with_object({}) do |(entry_id, total, count), hash|
         total = total.to_i
         count = count.to_i
         hash[entry_id] = {
           "total" => total,
           "count" => count,
-          "average" => count.zero? ? 0.0 : (total.to_f / count).round(2)
+          "average" => count.zero? ? 0.0 : (total.to_f / count).round(2),
+          "voters" => voters[entry_id] || []
         }
       end
+    end
+
+    # Who voted, not just how much: the idea list names the voters. One more bulk
+    # query for the whole page, grouped in Ruby -- never `entry.votes` in a loop.
+    # left_joins because a vote whose user row has gone missing must still show up:
+    # dropping it would make voters.size disagree with the count above.
+    def voters_by_entry(ids)
+      Vote.where(entry_id: ids).left_joins(:user).order(:user_id)
+          .pluck(:entry_id, :user_id, "users.name", :score)
+          .group_by(&:first)
+          .transform_values do |group|
+            group.map { |(_entry_id, user_id, user_name, score)| { "user_id" => user_id, "user_name" => user_name, "score" => score } }
+          end
     end
 
     # An entry is "scheduled" if a schedule_item references it directly
