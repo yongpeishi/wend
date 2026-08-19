@@ -145,7 +145,7 @@ shinkansen = entry!(
 
 # Shibuya and Harajuku are one walk apart, so the two Daiso branches and the
 # park are an afternoon, not three separate errands. Daiso Harajuku carries an
-# open to-do, so this bundle shows the plum "1 to-do" on a member row.
+# open to-do, so this bundle shows the bister "1 to-do" on a member row.
 shibuya_afternoon = entry!(
   kind: "bundle", title: "Shibuya afternoon", created_by: sarah,
   description: "Harajuku down to Shibuya on foot, then the park. Half a day, no bookings."

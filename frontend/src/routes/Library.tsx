@@ -132,8 +132,12 @@ export function Library() {
                     Clear selection
                   </Button>
                 )}
+                {/* Literally what happens: the modal behind this only ever
+                    creates a new trip and links the selection into it. There is
+                    no "add to an existing trip" path here, so the label is true
+                    as well as plain. The modal's own title keeps the warmth. */}
                 <Button disabled={selectedCount === 0} onClick={() => setTakingSomewhere(true)}>
-                  Take these somewhere
+                  Start a trip with these
                 </Button>
               </Row>
             </div>

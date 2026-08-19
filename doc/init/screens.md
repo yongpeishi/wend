@@ -99,7 +99,7 @@ per-user breakdown, todo list, and the actions **Lift out of trip** and **Set as
 Leaflet, OSM tiles. Pins for every entry in the trip with coordinates.
 
 - Pin state uses the trail vocabulary: **solid leaf green** = scheduled, **pale** =
-  potential, **plum** = a destination/lodging anchor. An apricot ring marks the selected pin
+  potential, **bister** = a destination/lodging anchor. An apricot ring marks the selected pin
   only — "where you are deciding". The status is also stated in the popover text, because
   colour never carries meaning alone.
 - Filter chips: scheduled · potential · by category.
@@ -178,7 +178,7 @@ Desktop-first. All ideas with no trip ancestor — "I saw something cool and wan
   highlights its pin, panning the map filters the list.
 - **Zoom to a cluster → "Start a trip from these nine".** This is the inspiration→trip flow
   and the screen's reason to exist. Selecting entries (by map region, by chip filter, or by
-  hand) enables one button: **"Take these somewhere"** → creates a trip with the selected
+  hand) enables one button: **"Start a trip with these"** → creates a trip with the selected
   ideas linked into it.
 - Those ideas then leave the library listing, which is correct: the library *is* "kept, not
   yet in a trip". Nothing is discarded — see `decisions.md` §5.
