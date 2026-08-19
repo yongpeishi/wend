@@ -12,6 +12,7 @@ Rails.application.routes.draw do
       member do
         post :restore
         get :tree
+        get :graph
         post :lift
         post :absorb
         post :fork

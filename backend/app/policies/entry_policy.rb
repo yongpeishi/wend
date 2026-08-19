@@ -7,6 +7,7 @@ class EntryPolicy < ApplicationPolicy
 
   def restore? = destroy?
   def tree?    = read?
+  def graph?   = read?
   def lift?    = write?
   def fork?    = write?
   # absorb needs owner on BOTH trips; the second check lives in the controller.

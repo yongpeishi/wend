@@ -1,6 +1,6 @@
 module Api
   class EntriesController < Api::BaseController
-    before_action :set_entry, only: [:show, :update, :destroy, :restore, :tree, :lift, :absorb, :fork]
+    before_action :set_entry, only: [:show, :update, :destroy, :restore, :tree, :graph, :lift, :absorb, :fork]
 
     def index
       trip_id = params[:trip_id].presence
@@ -16,11 +16,6 @@ module Api
         scope = scope.where(id: Entry.descendant_ids_of(trip_id))
       end
 
-      if params[:parent_id].present?
-        child_ids = EntryLink.where(parent_id: params[:parent_id]).pluck(:child_id)
-        scope = scope.where(id: child_ids)
-      end
-
       if params[:q].present?
         term = "%#{params[:q]}%"
         scope = scope.where("title LIKE :term OR description LIKE :term", term: term)
@@ -28,7 +23,18 @@ module Api
 
       scope = scope.active unless truthy?(params[:include_archived])
 
-      entries = scope.order(:id).to_a
+      # Children of a parent come back in that parent's rail order, not id
+      # order. [parent_id, child_id] is unique, so the join adds at most one
+      # entry_links row per entry and cannot duplicate anything policy_scope
+      # let through.
+      entries =
+        if params[:parent_id].present?
+          scope.joins(:parent_links)
+               .where(entry_links: { parent_id: params[:parent_id] })
+               .order("entry_links.position", :id).to_a
+        else
+          scope.order(:id).to_a
+        end
 
       if params[:scheduled].present? && trip_id
         want_scheduled = truthy?(params[:scheduled])
@@ -120,6 +126,23 @@ module Api
       render json: {
         entry: EntrySerializer.one(@entry, current_user: current_user),
         descendants: EntrySerializer.list(descendants, current_user: current_user)
+      }
+    end
+
+    # The subtree as a graph rather than a flattened list: the same visible node
+    # set as #tree, plus every edge whose BOTH endpoints are in {root} + that
+    # set -- so a link never names an entry the caller may not see.
+    def graph
+      depth = (params[:depth] || 3).to_i
+      trip_id = params[:trip_id].presence
+      visible = policy_scope(Entry).where(id: Entry.descendant_ids_of(@entry.id, depth_cap: depth)).to_a
+      node_ids = [@entry.id, *visible.map(&:id)]
+      links = EntryLink.where(parent_id: node_ids, child_id: node_ids).order(:parent_id, :position).to_a
+
+      render json: {
+        entry: EntrySerializer.one(@entry, current_user: current_user),
+        entries: EntrySerializer.list(visible, current_user: current_user, trip_id: trip_id),
+        links: links.map { |l| { "parent_id" => l.parent_id, "child_id" => l.child_id, "position" => l.position } }
       }
     end
 

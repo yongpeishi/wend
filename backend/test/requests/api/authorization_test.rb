@@ -182,6 +182,7 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
       "api/entries#destroy" => [ :denied, -> { delete "/api/entries/#{@idea.id}" } ],
       "api/entries#restore" => [ :denied, -> { post "/api/entries/#{@idea.id}/restore" } ],
       "api/entries#tree" => [ :denied, -> { get "/api/entries/#{@trip.id}/tree" } ],
+      "api/entries#graph" => [ :denied, -> { get "/api/entries/#{@trip.id}/graph" } ],
       "api/entries#lift" => [ :denied, -> { post "/api/entries/#{@idea.id}/lift" } ],
       "api/entries#absorb" => [ :denied, lambda {
         post "/api/entries/#{@trip.id}/absorb", params: { into_id: @bundle.id }, as: :json

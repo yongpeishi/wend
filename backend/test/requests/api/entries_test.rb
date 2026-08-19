@@ -304,6 +304,127 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     assert_includes body["descendants"].map { |e| e["id"] }, child.id
   end
 
+  test "GET /api/entries/:id/graph returns nodes and edges, edges in position order" do
+    trip = create_trip(created_by: @user)
+    # Created in id order but linked in the opposite position order, so a result
+    # sorted by id would fail the links assertion below.
+    second = create_idea(title: "Second by position", created_by: @user)
+    first = create_idea(title: "First by position", created_by: @user)
+    link!(parent: trip, child: second, position: 1)
+    link!(parent: trip, child: first, position: 0)
+
+    get "/api/entries/#{trip.id}/graph"
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal trip.id, body.dig("entry", "id")
+    assert_equal [first.id, second.id].sort, body["entries"].map { |e| e["id"] }.sort
+    # List form, not summaries: the board needs the computed fields.
+    assert body["entries"].all? { |e| e.key?("vote_tally") && e.key?("children_count") && e.key?("scheduled") }
+    assert_equal [
+      { "parent_id" => trip.id, "child_id" => first.id, "position" => 0 },
+      { "parent_id" => trip.id, "child_id" => second.id, "position" => 1 }
+    ], body["links"]
+  end
+
+  test "GET /api/entries/:id/graph caps the walk at depth" do
+    trip = create_trip(created_by: @user)
+    child = create_idea(title: "Child", created_by: @user)
+    grandchild = create_idea(title: "Grandchild", created_by: @user)
+    link!(parent: trip, child: child)
+    link!(parent: child, child: grandchild)
+
+    get "/api/entries/#{trip.id}/graph", params: { depth: 1 }
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal [child.id], body["entries"].map { |e| e["id"] }
+    # The child->grandchild edge would name a node outside the walk, so it is
+    # out along with the node.
+    assert_equal [{ "parent_id" => trip.id, "child_id" => child.id, "position" => 0 }], body["links"]
+  end
+
+  test "GET /api/entries/:id/graph returns a diamond as two links and one entries row" do
+    trip = create_trip(created_by: @user)
+    left = create_idea(title: "Left", created_by: @user)
+    right = create_idea(title: "Right", created_by: @user)
+    shared = create_idea(title: "Shared child", created_by: @user)
+    link!(parent: trip, child: left, position: 0)
+    link!(parent: trip, child: right, position: 1)
+    link!(parent: left, child: shared)
+    link!(parent: right, child: shared)
+
+    get "/api/entries/#{trip.id}/graph"
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal 1, body["entries"].count { |e| e["id"] == shared.id }
+    assert_equal [left.id, right.id], body["links"].select { |l| l["child_id"] == shared.id }.map { |l| l["parent_id"] }.sort
+  end
+
+  # A stranger's entry hung under one of mine: descendant_ids_of walks through
+  # it, but policy_scope does not let me see it -- so it must vanish from the
+  # node list AND from the edge list, or the link itself would leak its id.
+  test "GET /api/entries/:id/graph omits invisible entries from both entries and links" do
+    mine = create_idea(title: "My library idea", created_by: @user)
+    visible_child = create_idea(title: "Visible child", created_by: @user)
+    link!(parent: mine, child: visible_child, position: 0)
+
+    stranger = create_user
+    private_entry = create_idea(title: "Private", created_by: stranger)
+    link!(parent: mine, child: private_entry, position: 1)
+
+    get "/api/entries/#{mine.id}/graph"
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal [visible_child.id], body["entries"].map { |e| e["id"] }
+    assert_not_includes body["links"].flat_map { |l| [l["parent_id"], l["child_id"]] }, private_entry.id
+    assert_equal [{ "parent_id" => mine.id, "child_id" => visible_child.id, "position" => 0 }], body["links"]
+  end
+
+  test "GET /api/entries/:id/graph requires authentication" do
+    trip = create_trip(created_by: @user)
+    delete "/api/session"
+    get "/api/entries/#{trip.id}/graph"
+    assert_response :unauthorized
+  end
+
+  test "GET /api/entries/:id/graph on an invisible root is a 404" do
+    theirs = create_trip(title: "Not yours", created_by: create_user)
+    get "/api/entries/#{theirs.id}/graph"
+    assert_response :not_found
+  end
+
+  test "GET /api/entries/:id/graph scopes the scheduled flag to trip_id" do
+    trip = create_trip(created_by: @user)
+    other_trip = create_trip(title: "Other trip", created_by: @user)
+    idea = create_idea(created_by: @user)
+    link!(parent: trip, child: idea)
+    ScheduleItem.create!(trip: trip, entry: idea, day: Date.current)
+
+    get "/api/entries/#{trip.id}/graph", params: { trip_id: trip.id }
+    assert_response :success
+    row = JSON.parse(response.body)["entries"].find { |e| e["id"] == idea.id }
+    assert_equal true, row["scheduled"]
+
+    get "/api/entries/#{trip.id}/graph", params: { trip_id: other_trip.id }
+    assert_response :success
+    row = JSON.parse(response.body)["entries"].find { |e| e["id"] == idea.id }
+    assert_equal false, row["scheduled"]
+  end
+
+  test "GET /api/entries with parent_id returns children in link position order" do
+    trip = create_trip(created_by: @user)
+    # id order a < b < c, position order reversed -- id ordering would fail this.
+    a = create_idea(title: "A", created_by: @user)
+    b = create_idea(title: "B", created_by: @user)
+    c = create_idea(title: "C", created_by: @user)
+    link!(parent: trip, child: a, position: 2)
+    link!(parent: trip, child: b, position: 1)
+    link!(parent: trip, child: c, position: 0)
+
+    get "/api/entries", params: { parent_id: trip.id }
+    assert_response :success
+    assert_equal [c.id, b.id, a.id], JSON.parse(response.body)["entries"].map { |e| e["id"] }
+  end
+
   test "POST /api/entries/:id/lift converts an idea into a trip and detaches parents" do
     trip = create_trip(created_by: @user)
     idea = create_idea(created_by: @user)
