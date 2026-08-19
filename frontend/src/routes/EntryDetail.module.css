@@ -135,4 +135,27 @@
   outline-offset: var(--focus-offset);
 }
 
+/* One held child: the shared EntryRow, with a small dot ahead of it when the
+   child is already placed on a day. */
+.holdsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.holdsRow > :last-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* "Already on the plan", as a mark rather than a word — the trail's decided
+   colour, the same green the itinerary settles things in. */
+.scheduledDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--stop-decided);
+}
+
 

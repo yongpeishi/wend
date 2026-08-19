@@ -1,19 +1,36 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { Select } from '../design/components/core/Select';
 import { useCanEdit } from '../auth/TripRoleContext';
+import { EntryRow } from '../components/EntryRow';
 import { Modal } from '../components/Modal';
 import { Field } from '../components/Field';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
 import { useEntry, useRestoreEntry, useUpdateEntry } from '../api/entries';
-import type { EntryCategory } from '../api/types';
+import type { Entry, EntryCategory } from '../api/types';
+import { CATEGORY_LABELS } from '../features/board/filters';
 import { formatDuration } from '../lib/formatDates';
+import { AppearsInEditor } from './AppearsInEditor';
 import styles from './EntryDetail.module.css';
 
 const CATEGORIES: EntryCategory[] = ['place', 'food', 'activity', 'lodging', 'transport', 'other'];
+
+/**
+ * The middot line under a held child's name: category, how long, and the
+ * board's vote score when anyone has voted — the same "+2"/"-1" spelling
+ * IdeaRow uses, sign always explicit so a score is never mistaken for a count.
+ */
+function holdsMetadata(child: Entry): string[] {
+  const { total, count } = child.vote_tally;
+  return [
+    child.category ? CATEGORY_LABELS[child.category] : null,
+    formatDuration(child.duration_minutes),
+    count > 0 ? `${total > 0 ? '+' : ''}${total}` : null,
+  ].filter((part): part is string => part !== null);
+}
 
 /**
  * One fact, read rather than filled in.
@@ -95,6 +112,7 @@ export interface EntryDetailModalProps {
  */
 export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalProps) {
   const { show } = useToast();
+  const navigate = useNavigate();
   // Raised over the board it belongs to, so the trip's role is already in the
   // tree. Opened at /entries/:id for a library idea there is no provider and no
   // trip, and the default is editable — which is right: nobody else is on it.
@@ -105,6 +123,10 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
   const restoreEntry = useRestoreEntry();
 
   const [draft, setDraft] = useState<Record<string, string>>({});
+  // The "Add to…" picker inside AppearsInEditor. Its open state lives here
+  // because both dialogs hear Escape at the document: while the picker is up,
+  // this panel's own close routes to it, so one Escape peels one layer.
+  const [addOpen, setAddOpen] = useState(false);
 
   const entry = data?.entry;
 
@@ -183,7 +205,7 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
     <Modal
       open
       title={canEdit ? 'Edit idea' : 'Idea'}
-      onClose={close}
+      onClose={addOpen ? () => setAddOpen(false) : close}
       size="wide"
       /* One button, and it does not say "Save". Every field here writes itself
          on blur, so there is nothing held back to commit and nothing to cancel —
@@ -371,15 +393,39 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
           </>
         )}
 
+        {/* Upwards before downwards: where this entry is filed, then what it
+            holds. See AppearsInEditor for the section's own rules. */}
+        <AppearsInEditor
+          entry={entry}
+          parents={data.parents}
+          canEdit={canEdit}
+          addOpen={addOpen}
+          onAddOpenChange={setAddOpen}
+        />
+
         {data.children.length > 0 && (
           <section className={styles.section}>
             <h3 className={styles.sectionLabel}>Holds</h3>
+            {/* An idea holding ideas is a choice not yet made — say so once,
+                quietly, so the list below reads as alternatives rather than
+                an itinerary. */}
+            {entry.kind === 'idea' && (
+              <p className={styles.note}>Options — pick a specific one when scheduling.</p>
+            )}
             <ul className={styles.linkList}>
               {data.children.map((child) => (
-                <li key={child.id}>
-                  <Link className={styles.link} to={`/entries/${child.id}`}>
-                    {child.title}
-                  </Link>
+                <li key={child.id} className={styles.holdsRow}>
+                  {/* The dot only when it means something: this child is
+                      already placed on a day. Absence is the quiet state. */}
+                  {child.scheduled && (
+                    <span className={styles.scheduledDot} role="img" aria-label="Scheduled" />
+                  )}
+                  <EntryRow
+                    title={child.title}
+                    metadata={holdsMetadata(child)}
+                    kept
+                    onSelect={() => navigate(`/entries/${child.id}`)}
+                  />
                 </li>
               ))}
             </ul>

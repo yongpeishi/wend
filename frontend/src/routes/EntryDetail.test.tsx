@@ -7,6 +7,7 @@ import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { server } from '../mocks/server';
+import { db, now } from '../mocks/db';
 import { EntryDetailModal } from './EntryDetail';
 import type { TripRole } from '../api/types';
 
@@ -173,14 +174,6 @@ describe('EntryDetail — what it no longer asks for', () => {
       'placeholder',
       expect.stringContaining('link to where you found it'),
     );
-  });
-
-  /** Entry 2 sits in a bundle, so this list had something to show. Which
-   * bundles an idea is in is a board question, and the board answers it on the
-   * row itself. */
-  it('does not list the bundles the idea appears in', async () => {
-    const panel = await openPanel('member', RATED);
-    expect(within(panel).queryByRole('heading', { name: 'Appears in' })).not.toBeInTheDocument();
   });
 
   /** Entry 2 is the one two people rated, so the section had a tally, five
@@ -426,5 +419,197 @@ describe('EntryDetail — what blur actually saves', () => {
     await user.tab();
 
     await waitFor(() => expect(patched).toEqual([{ location_name: 'Fushimi Inari, south gate' }]));
+  });
+});
+
+/**
+ * Seeded entry 1 — the trip, whose three direct children (Nanzen-ji and the two
+ * bundles) are all placed on live itinerary versions; and seeded entry 4 — the
+ * market bundle, whose three members split one scheduled (Teramachi, in a live
+ * version) from two that are not (the coffee sits only in an ARCHIVED version,
+ * which the rail and the dot must both read as "free again").
+ */
+const TRIP = { id: 1, title: 'Six days in Kyoto' };
+const BUNDLE = { id: 4, title: 'Nishiki market crawl' };
+
+/**
+ * "Appears in" — the half of the hierarchy the panel never rendered. The detail
+ * response has carried `parents` from the start; these are its first pixels.
+ * (An earlier round of feedback removed a bundles list from this panel along
+ * with voting and todos; parents came back deliberately — where an entry is
+ * filed is a fact about the entry, and this section is also the editor for it.)
+ */
+describe('EntryDetail — Appears in', () => {
+  it('lists each parent as a link to it, with its kind said beside the name', async () => {
+    const panel = await openPanel('member', RATED);
+    const read = within(panel);
+
+    expect(read.getByRole('heading', { name: 'Appears in' })).toBeInTheDocument();
+    const link = read.getByRole('link', { name: 'Six days in Kyoto' });
+    expect(link).toHaveAttribute('href', '/entries/1');
+    expect(read.getByText('trip')).toBeInTheDocument();
+  });
+
+  it('is omitted entirely for a viewer of an unfiled idea', async () => {
+    const panel = await openPanel('viewer');
+    expect(within(panel).queryByRole('heading', { name: 'Appears in' })).not.toBeInTheDocument();
+  });
+
+  it('holds the door open for an editor of an unfiled idea', async () => {
+    const panel = await openPanel(null);
+    const read = within(panel);
+
+    expect(read.getByText('Not filed anywhere yet.')).toBeInTheDocument();
+    expect(read.getByRole('button', { name: 'Add to…' })).toBeInTheDocument();
+  });
+
+  it('gives a viewer the parents to read but no way to change them', async () => {
+    const panel = await openPanel('viewer', RATED);
+    const read = within(panel);
+
+    expect(read.getByRole('link', { name: 'Six days in Kyoto' })).toBeInTheDocument();
+    expect(read.queryByRole('button', { name: /Remove from/ })).not.toBeInTheDocument();
+    expect(read.queryByRole('button', { name: 'Add to…' })).not.toBeInTheDocument();
+  });
+
+  it('✕ unlinks the parent, and the row settles out of the list', async () => {
+    const deleted: string[] = [];
+    server.use(
+      http.delete('/api/entries/:id/links/:childId', ({ params }) => {
+        deleted.push(`${params.id}/${params.childId}`);
+        db.links = db.links.filter(
+          (l) => !(l.parent_id === Number(params.id) && l.child_id === Number(params.childId)),
+        );
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    const user = userEvent.setup();
+    const panel = await openPanel('member', RATED);
+
+    await user.click(within(panel).getByRole('button', { name: 'Remove from Six days in Kyoto' }));
+
+    await waitFor(() => expect(within(panel).getByText('Not filed anywhere yet.')).toBeInTheDocument());
+    expect(deleted).toEqual(['1/2']);
+    expect(within(panel).queryByRole('link', { name: 'Six days in Kyoto' })).not.toBeInTheDocument();
+  });
+});
+
+describe('EntryDetail — the Add to… picker', () => {
+  async function openPicker(role: TripRole | null, entry = IDEA) {
+    const user = userEvent.setup();
+    const panel = await openPanel(role, entry);
+    await user.click(within(panel).getByRole('button', { name: 'Add to…' }));
+    const picker = await screen.findByRole('dialog', { name: 'Add to…' });
+    return { user, panel, picker };
+  }
+
+  it('lists candidates of every kind, minus the entry itself and its current parents', async () => {
+    const { picker } = await openPicker('member', RATED);
+    const read = within(picker);
+
+    // One of each kind is on offer…
+    expect(await read.findByRole('button', { name: /Nishiki market crawl/ })).toBeInTheDocument();
+    expect(read.getByRole('button', { name: /Fushimi Inari at dawn/ })).toBeInTheDocument();
+    // …but never the entry being filed, and never a parent it already has.
+    expect(read.queryByRole('button', { name: /Nanzen-ji/ })).not.toBeInTheDocument();
+    expect(read.queryByRole('button', { name: /Six days in Kyoto/ })).not.toBeInTheDocument();
+  });
+
+  it('search narrows the list', async () => {
+    const { user, picker } = await openPicker(null);
+    const read = within(picker);
+
+    await read.findByRole('button', { name: /Nishiki market crawl/ });
+    await user.type(read.getByRole('textbox', { name: 'Search' }), 'Kamo');
+
+    await waitFor(() => expect(read.queryByRole('button', { name: /Nishiki market crawl/ })).not.toBeInTheDocument());
+    expect(read.getByRole('button', { name: /Kamo river walk/ })).toBeInTheDocument();
+  });
+
+  it('clicking a candidate links it, and the new parent settles into Appears in', async () => {
+    const { user, panel, picker } = await openPicker(null);
+
+    await user.click(await within(picker).findByRole('button', { name: /Nishiki market crawl/ }));
+
+    expect(await screen.findByText('Added to Nishiki market crawl.')).toBeInTheDocument();
+    const link = await within(panel).findByRole('link', { name: 'Nishiki market crawl' });
+    expect(link).toHaveAttribute('href', '/entries/4');
+  });
+
+  /** The one error a person can act on only as the server tells it: which loop
+   * the link would close. The generic save-failed line would hide the answer. */
+  it('a cycle refusal surfaces the server’s own sentence', async () => {
+    const refusal = 'would create a cycle: Fushimi Inari at dawn → Nishiki market crawl → Fushimi Inari at dawn';
+    server.use(
+      http.post('/api/entries/:id/links', () =>
+        HttpResponse.json({ errors: { base: [refusal] } }, { status: 422 }),
+      ),
+    );
+
+    const { user, picker } = await openPicker(null);
+    await user.click(await within(picker).findByRole('button', { name: /Nishiki market crawl/ }));
+
+    expect(await screen.findByText(refusal)).toBeInTheDocument();
+  });
+});
+
+/**
+ * "Holds" used to be bare title links. The children arrive in full list form,
+ * so the rows now say what the board's rows say: category, how long, the vote
+ * score when anyone has voted, and a dot on whatever is already placed on a
+ * live itinerary version.
+ */
+describe('EntryDetail — what Holds says about each child', () => {
+  it('a row carries category, duration and vote score in the meta line', async () => {
+    const panel = await openPanel('member', TRIP);
+    const read = within(panel);
+
+    expect(read.getByRole('heading', { name: 'Holds' })).toBeInTheDocument();
+    // Nanzen-ji: place, 40 minutes, and a +2/-1 tally said as the board says
+    // it — a signed total, never an average that could read as a count.
+    expect(read.getByText('Place · 40 min · +1')).toBeInTheDocument();
+  });
+
+  it('the dot marks exactly the children already placed on a live version', async () => {
+    const panel = await openPanel('member', BUNDLE);
+    const read = within(panel);
+
+    // Teramachi is in Day 2's live Version A. The coffee's only placement is
+    // an archived version — a plan the group rejected — and Nishiki market was
+    // never placed, so of the bundle's three members exactly one is marked.
+    expect(read.getAllByRole('button', { name: /Coffee at Weekenders|Nishiki market|Teramachi/ })).toHaveLength(3);
+    expect(read.getAllByRole('img', { name: 'Scheduled' })).toHaveLength(1);
+  });
+
+  it('keeps the children in the order the server sent', async () => {
+    const panel = await openPanel('member', BUNDLE);
+    const holds = within(panel).getByRole('heading', { name: 'Holds' }).closest('section');
+
+    const titles = Array.from(holds?.querySelectorAll('li p:first-child') ?? []).map((p) => p.textContent);
+    expect(titles).toEqual(['Coffee at Weekenders', 'Nishiki market', 'Teramachi arcade']);
+  });
+});
+
+/**
+ * An idea that holds ideas is a decision not yet made — "somewhere for ramen",
+ * holding three ramen shops. The seed has no such entry, so the link is added
+ * by hand; resetDb() in afterEach clears it.
+ */
+describe('EntryDetail — an idea holding options', () => {
+  function fileUnder(parentId: number, childId: number) {
+    db.links.push({ id: 9001, parent_id: parentId, child_id: childId, position: 0, created_at: now(), updated_at: now() });
+  }
+
+  it('says once, quietly, that the children are options', async () => {
+    fileUnder(IDEA.id, RATED.id);
+    const panel = await openPanel(null);
+
+    expect(within(panel).getByText('Options — pick a specific one when scheduling.')).toBeInTheDocument();
+  });
+
+  it('says nothing of the sort on a trip or bundle that holds things', async () => {
+    const asTrip = await openPanel('member', TRIP);
+    expect(within(asTrip).queryByText(/pick a specific one/)).not.toBeInTheDocument();
   });
 });

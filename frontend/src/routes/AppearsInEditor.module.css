@@ -1,0 +1,125 @@
+/* "Appears in" — parent rows and the Add-to picker. Section chrome (heading,
+   link styling) comes from EntryDetail.module.css, imported alongside this
+   file, so the two sections of the same panel cannot drift apart. */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* The kind said as a word in a small pill — trip/idea/bundle. Muted and
+   bordered rather than coloured: it qualifies the name, it does not compete
+   with it. */
+.kindBadge {
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 1px var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Nothing yet, said quietly — same voice as the panel's other empty facts. */
+.empty {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+/* ✕ per parent row. Visually small, but the hit area meets --tap-min. */
+.remove {
+  flex-shrink: 0;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: calc((var(--tap-min) - 20px) / -2) 0;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.remove:hover {
+  opacity: 0.7;
+  color: var(--text-strong);
+}
+
+.remove:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ---- The picker ---------------------------------------------------------- */
+
+.pickerBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.candidateList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  /* A long library scrolls inside the dialog rather than growing it. */
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* One candidate: the whole row is the button, click to link. */
+.candidate {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap-min);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-card);
+  text-align: left;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.candidate:hover {
+  background: var(--surface-card);
+}
+
+.candidate:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 0;
+}
+
+.candidateTitle {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
