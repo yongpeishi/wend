@@ -17,6 +17,8 @@ function renderBar(
     onNewIdea?: () => void;
     visibleCount?: number;
     totalCount?: number;
+    structureOpen?: boolean;
+    onToggleStructure?: () => void;
   } = {},
 ) {
   return render(
@@ -28,6 +30,8 @@ function renderBar(
       groupMode={overrides.groupMode ?? 'none'}
       onGroupModeChange={overrides.onGroupModeChange ?? (() => {})}
       onNewIdea={overrides.onNewIdea}
+      structureOpen={overrides.structureOpen}
+      onToggleStructure={overrides.onToggleStructure}
     />,
   );
 }
@@ -448,6 +452,53 @@ describe('FilterBar — the escape hatch', () => {
   it('does not treat the grouping as a narrowing to escape from', () => {
     renderBar({ filters: EMPTY_FILTERS, groupMode: 'location' });
     expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
+  });
+});
+
+// Same contract as the map toggle it sits beside: drawn only when the board
+// wires it, the label IS the state, and it survives being a viewer — the panel
+// it opens is reading, not editing.
+describe('FilterBar — the structure toggle', () => {
+  it('is left out when the board does not wire it', () => {
+    renderBar();
+    expect(screen.queryByRole('button', { name: /structure/i })).not.toBeInTheDocument();
+  });
+
+  it('says which way it will go', () => {
+    const closed = renderBar({ onToggleStructure: () => {} });
+    expect(screen.getByRole('button', { name: 'Show structure' })).toBeInTheDocument();
+    closed.unmount();
+
+    renderBar({ structureOpen: true, onToggleStructure: () => {} });
+    expect(screen.getByRole('button', { name: 'Hide structure' })).toBeInTheDocument();
+  });
+
+  it('fires the handler', async () => {
+    const user = userEvent.setup();
+    const onToggleStructure = vi.fn();
+    renderBar({ onToggleStructure });
+
+    await user.click(screen.getByRole('button', { name: 'Show structure' }));
+
+    expect(onToggleStructure).toHaveBeenCalled();
+  });
+
+  it('stays for a viewer', () => {
+    render(
+      <TripRoleProvider role="viewer">
+        <FilterBar
+          filters={EMPTY_FILTERS}
+          onChange={() => {}}
+          visibleCount={8}
+          totalCount={12}
+          groupMode="none"
+          onGroupModeChange={() => {}}
+          onToggleStructure={() => {}}
+        />
+      </TripRoleProvider>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Show structure' })).toBeInTheDocument();
   });
 });
 

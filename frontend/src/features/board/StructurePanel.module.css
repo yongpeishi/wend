@@ -1,0 +1,129 @@
+/* The structure tree. Row and disclosure geometry carried over from the old
+   EntryTree stylesheet (superseded by this panel); everything else is the
+   board's own vocabulary — tokens only, no new colours. */
+
+.tree {
+  display: flex;
+  flex-direction: column;
+}
+
+/* One flat strip per row: chevron/spacer, then the marks and the title, with
+   room at either end for the later slice's drag handle and ⋯ menu to join as
+   plain siblings. Indent arrives as inline paddingLeft (depth * 16). */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.disclosure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.disclosure:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.disclosureSpacer {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+}
+
+/* 7px, the same status mark BundleCard puts beside a scheduled member. Below
+   the smallest space-scale step by design — it is a mark, not spacing. Colour
+   is a redundant cue; the row carries a visually-hidden phrase too. */
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--stop-decided);
+}
+
+.title {
+  min-width: 0;
+  flex-shrink: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-card);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-body);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title:hover {
+  opacity: 0.7;
+}
+
+.title:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Plum, the app's grouping colour — the same family as the bundle chips on the
+   idea rows — so "this row is a grouping" needs no learning. */
+.kindBadge {
+  flex: none;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--wend-plum-wash);
+  color: var(--wend-plum);
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+}
+
+/* The group score in miniature: a number is data, so it is set in the mono. */
+.score {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-code-size);
+  color: var(--text-muted);
+}
+
+/* "also under …" / "in N places" — a report, not a control. It gives way
+   before the title does when the row runs out of room. */
+.also {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  color: var(--text-muted);
+}
+
+/* Same clip pattern as BundleCard's srOnly — the words behind the dot. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

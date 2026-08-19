@@ -208,6 +208,41 @@
   max-width: 560px;
 }
 
+/* The structure pane, third resident of the .body flex row. Same sticky
+   treatment as the map and for the same reason: it is an overview of the list
+   beside it, and an overview that scrolls away stops being one. Its own
+   scrollbar rather than the page's, because a deep tree is taller than a
+   viewport. The narrower basis of the three cells — it is an index, not a
+   reading surface — and it wraps under the others when the column runs out of
+   width, exactly as the map/list pair already does. Below the 900px fold it is
+   not rendered at all (TripBoard mounts the shared Drawer instead), so no
+   rule here needs to hide it. */
+.structureCell {
+  flex: 1 1 260px;
+  min-width: 240px;
+  max-width: 400px;
+  align-self: flex-start;
+  position: sticky;
+  top: var(--gutter-screen);
+  max-height: calc(100vh - 190px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The pane names itself the way the popover's section labels do: small caps,
+   muted — a label, not a heading competing with the trip title. */
+.structureHeading {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
 /* Nothing survived the narrowing. Same voice and same measure as /library's own
    "nothing in view" line. */
 .noneInView {

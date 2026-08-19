@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   DndContext,
@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent, SensorDescriptor, SensorOptions } from '@dnd-kit/core';
 import { useCanEdit } from '../auth/TripRoleContext';
+import { Drawer } from '../components/Drawer';
 import { EntryRow } from '../components/EntryRow';
 import { Card } from '../components/layout/Card';
 import { EmptyState } from '../components/EmptyState';
@@ -24,6 +25,7 @@ import { NewIdeaModal } from '../features/board/NewIdeaModal';
 import { BulkBar } from '../features/board/BulkBar';
 import { BundlePanel } from '../features/board/BundlePanel';
 import { SetAsideSection } from '../features/board/SetAsideSection';
+import { StructurePanel } from '../features/board/StructurePanel';
 import { useBundleMembers } from '../features/board/useBundleMembers';
 import { useLinkMutations } from '../features/board/useLinkMutations';
 import type { BundleDropData } from '../features/board/bundleDrop';
@@ -45,17 +47,55 @@ import styles from './TripBoard.module.css';
  */
 const NO_SENSORS: SensorDescriptor<SensorOptions>[] = [];
 
+/** The board's own fold — the width at which the stylesheet collapses the grid
+ * to one column. The structure panel switches presentation at the same line so
+ * the two can never disagree about what "narrow" means here. */
+const NARROW = '(max-width: 900px)';
+
+/** `matchMedia` is missing in some test environments; without it the answer is
+ * "wide", which is the layout with no overlay for anyone to be trapped in. */
+function narrowQuery(): MediaQueryList | null {
+  return typeof window.matchMedia === 'function' ? window.matchMedia(NARROW) : null;
+}
+
+/**
+ * Whether the structure panel should be a pane or a Drawer. A CSS media query
+ * cannot answer this one because the answer decides what is MOUNTED: rendering
+ * both and hiding one would leave a modal dialog in the tree that nobody
+ * opened. Local to this file on purpose, same as TripSchedule's copy — a
+ * shared useMediaQuery invites every screen to branch markup on width.
+ */
+function useIsNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => narrowQuery()?.matches ?? false);
+
+  useEffect(() => {
+    const mql = narrowQuery();
+    if (!mql) return;
+    // Re-read once on mount as well as subscribing: a width that changed
+    // between the initial state and this effect would otherwise stay wrong
+    // until the next resize.
+    setNarrow(mql.matches);
+    const onChange = (event: MediaQueryListEvent) => setNarrow(event.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+
+  return narrow;
+}
+
 /**
  * /trips/:id — the planning board. Two columns: the ideas the trip is made of,
  * and the bundle rail that groups them. Renders inside TripLayout, which draws
  * the trip title and dates; the trip's own tabs live in the app sidebar, not
  * here.
  *
- * The entry tree that used to occupy a third column is gone. Ideas and bundles
- * are genuinely many-to-many in the data model — an idea can sit in several
- * bundles at once — but showing that hierarchy as navigation was descoped, so
- * the board no longer scopes itself to a sub-entry. EntryTree.tsx is left on
- * disk deliberately: this is "not for now", not "never".
+ * The hierarchy itself — ideas and bundles are genuinely many-to-many, and a
+ * child can hang under several parents at once — is on screen again as the
+ * Structure panel: a read-only disclosure tree of the whole subtree, toggled
+ * from the FilterBar and drawn from the same graph query useBundleMembers
+ * already makes, so opening it costs no request. It never scopes the board;
+ * it only shows the shape. On a narrow viewport the same tree arrives as the
+ * shared Drawer instead of a third pane — see the structure block below.
  *
  * Filtering and grouping are separate axes and must stay that way. The category
  * chips narrow WHICH ideas show; the group mode only changes how the survivors
@@ -116,6 +156,12 @@ export function TripBoard() {
   // A nonce, not a boolean: "widen" is something that HAPPENED, and the same
   // thing can happen twice. See MapView's `fitRequest`.
   const [fitRequest, setFitRequest] = useState(0);
+  // The structure panel starts closed, unlike the map: the map is half of what
+  // the board has to say, the structure is an overview you reach for. Both can
+  // be open at once — the panes share the ideas column's wrapping flex row, so
+  // neither has to push the other out to exist.
+  const [structureOpen, setStructureOpen] = useState(false);
+  const isNarrow = useIsNarrow();
   // Picking several ideas is a mode now, not a permanent column of checkboxes.
   const [selectMode, setSelectMode] = useState(false);
   // The pin the reader last pointed at, held here only to draw it as "this one".
@@ -134,6 +180,17 @@ export function TripBoard() {
   // Same reason, now that editing is a <Modal> too: a fresh arrow every render
   // would re-subscribe Modal's key handler on every keystroke the board causes.
   const closeEditing = useCallback(() => setEditingId(null), []);
+  const toggleStructure = useCallback(() => setStructureOpen((open) => !open), []);
+  // Stable for the same Modal-focus reason as closeNewIdea: Drawer's focus
+  // effect depends on [open, onClose].
+  const closeStructure = useCallback(() => setStructureOpen(false), []);
+  // From the narrow-viewport Drawer only: opening an entry closes the drawer
+  // first, so the detail dialog never stacks on another aria-modal surface.
+  // The desktop pane has no such problem and stays up (plain setEditingId).
+  const openEntryFromDrawer = useCallback((id: number) => {
+    setStructureOpen(false);
+    setEditingId(id);
+  }, []);
 
   const ideasQuery = useEntries({ trip_id: trip.id, kind: 'idea', include_archived: true });
   const bundlesQuery = useEntries({ trip_id: trip.id, kind: 'bundle', include_archived: true });
@@ -353,6 +410,8 @@ export function TripBoard() {
             onFollowMapChange={setFollowMap}
             selectMode={selectMode}
             onSelectModeChange={setSelecting}
+            structureOpen={structureOpen}
+            onToggleStructure={toggleStructure}
             mapNarrowing={narrowing}
             mapOffCount={offCount}
             countKnown={countKnown}
@@ -438,6 +497,17 @@ export function TripBoard() {
                 canEdit={canEdit}
               />
             </div>
+
+            {/* The structure pane, mirroring the map's residence in this row:
+                a sibling cell that wraps under the others when the column runs
+                out of width. Wide viewports only — narrow ones get the Drawer
+                below instead, never both. */}
+            {structureOpen && !isNarrow && (
+              <div className={styles.structureCell}>
+                <h2 className={styles.structureHeading}>Structure</h2>
+                <StructurePanel trip={trip} onOpenEntry={setEditingId} />
+              </div>
+            )}
           </div>
         </section>
 
@@ -451,6 +521,16 @@ export function TripBoard() {
           onToast={(message) => show(message, 'success')}
         />
       </div>
+
+      {/* Narrow viewports: the same tree, presented as the shared Drawer — a
+          panel over the board rather than a fourth thing crammed into one
+          column. Mounted only while open AND narrow, so the desktop pane and
+          this dialog can never be in the accessibility tree together. */}
+      {structureOpen && isNarrow && (
+        <Drawer open onClose={closeStructure} title="Structure">
+          <StructurePanel trip={trip} onOpenEntry={openEntryFromDrawer} />
+        </Drawer>
+      )}
 
       {editingId !== null && <EntryDetailModal entryId={editingId} onClose={closeEditing} />}
 

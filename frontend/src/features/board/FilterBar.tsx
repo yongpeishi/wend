@@ -32,6 +32,13 @@ export interface FilterBarProps {
   selectMode?: boolean;
   onSelectModeChange?: (selecting: boolean) => void;
   /**
+   * The structure panel's toggle — same contract as the map pair above: drawn
+   * only when the board wires the handler, and never gated on canEdit, because
+   * the panel it opens is reading, not editing.
+   */
+  structureOpen?: boolean;
+  onToggleStructure?: () => void;
+  /**
    * The map's viewport is currently narrowing the list, so the count line
    * switches to the in-view phrasing. Separate from `mapOffCount > 0` because
    * "following the map, and everything happens to be in it" is a real state and
@@ -147,6 +154,8 @@ export function FilterBar({
   onFollowMapChange,
   selectMode = false,
   onSelectModeChange,
+  structureOpen = false,
+  onToggleStructure,
   mapNarrowing = false,
   mapOffCount = 0,
   countKnown = true,
@@ -356,6 +365,20 @@ export function FilterBar({
             >
               <span className={styles.dot} aria-hidden="true" />
               {mapOpen ? 'Hide map' : 'Show map'}
+            </button>
+          )}
+
+          {/* Same quiet shape as the map toggle beside it, for the same kind of
+              act: it changes what panes the screen holds, not what the data
+              says. The label is the state — no aria-pressed, exactly as the
+              map button reasons. */}
+          {onToggleStructure && (
+            <button
+              type="button"
+              className={structureOpen ? `${styles.toggleButton} ${styles.toggleButtonOn}` : styles.toggleButton}
+              onClick={onToggleStructure}
+            >
+              {structureOpen ? 'Hide structure' : 'Show structure'}
             </button>
           )}
 

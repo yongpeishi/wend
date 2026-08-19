@@ -232,6 +232,46 @@ describe('TripBoard — showing and hiding the map', () => {
   });
 });
 
+describe('TripBoard — showing and hiding the structure panel', () => {
+  // Closed by default, unlike the map: the structure is an overview you reach
+  // for, not half of what the board opens saying. jsdom's stubbed matchMedia
+  // answers "wide", so what these tests exercise is the desktop pane — the
+  // narrow presentation is the shared Drawer, same content, same toggle.
+  it('opens the tree from the filter bar and closes it again', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+
+    expect(screen.queryByRole('navigation', { name: 'Trip structure' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Show structure' }));
+
+    const tree = await screen.findByRole('navigation', { name: 'Trip structure' });
+    // The whole subtree, bundles inline with their members under them.
+    expect(within(tree).getByText('Six days in Kyoto')).toBeInTheDocument();
+    expect(within(tree).getByText(MARKET_BUNDLE_TITLE)).toBeInTheDocument();
+    expect(within(tree).getByText('Coffee at Weekenders')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Hide structure' }));
+
+    expect(screen.queryByRole('navigation', { name: 'Trip structure' })).not.toBeInTheDocument();
+  });
+
+  // Both panes at once is a supported posture, not a conflict: they share the
+  // ideas column's wrapping flex row, so neither closes the other.
+  it('keeps the map up alongside the structure', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+    await mapUp();
+
+    await user.click(screen.getByRole('button', { name: 'Show structure' }));
+
+    expect(await screen.findByRole('navigation', { name: 'Trip structure' })).toBeInTheDocument();
+    expect(screen.getByTestId('map-view')).toBeInTheDocument();
+  });
+});
+
 describe('TripBoard — the map narrows the list', () => {
   it('panning cuts the list to what is in view and says so on one count line', async () => {
     const user = userEvent.setup();
