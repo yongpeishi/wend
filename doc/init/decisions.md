@@ -26,9 +26,11 @@ Decisions marked **↩ reversible cheaply** can be changed late without a rewrit
 
 ### Out
 
-- **Photo upload — cut, not deferred.** The `--placeholder-hatch` diagonal is the final
-  treatment for entry imagery, not a stand-in. Entries carry `source_url` as their only
-  external reference. Do not build upload affordances or design around future photos.
+- **Photo upload — cut, not deferred.** Entries carry no imagery at all: there is no image
+  slot, no thumbnail, and no placeholder treatment standing in for one. That absence is
+  the design, not a gap waiting to be filled — the system is flat paper, and an entry is
+  its title, its notes and its place. Entries carry `source_url` as their only external
+  reference. Do not build upload affordances or design around future photos.
 - **Import from Instagram / TikTok / Maps links.** Paste a URL, title it yourself.
 - **Offline / PWA.**
 - **Transport routing and live times.** Transport is an Entry between two Entries with a

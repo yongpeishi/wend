@@ -538,7 +538,10 @@ The design bundle at `wend-design/project/` is **read-only reference**. Port it 
 - Spacing on a 4px base: 8 · 12 · 16 · 24 · 32 · 48 · 64. Screen gutter 20px,
   list rows 12px apart, sections 48px. Inside a group the gap is the divider.
 - Tap targets ≥ 48×48 on touch, never below 32×32 for pointer.
-- Imagery: the `--placeholder-hatch` diagonal, **never a grey box**.
+- Backgrounds and imagery: **flat paper — no gradients, no textures, no full-bleed
+  photography in the system itself.** Entries carry no imagery at all: there is no image
+  slot, no thumbnail and no placeholder treatment for one. The only dark surface in the
+  product is the finished day plan, which inverts for outdoor reading.
 - Motion: the trail draws forward dot-by-dot, 420ms ease-out; reverse plays at the same
   speed. Everything else is a 160ms opacity change. No bounce, no scale, no spring.
   Honour `prefers-reduced-motion` (tokens already collapse to 0ms).
@@ -549,8 +552,12 @@ The design bundle at `wend-design/project/` is **read-only reference**. Port it 
 
 ### Voice
 
-Second person, short sentences, plain words, sentence case. Buttons are verbs of
-movement — "Widen again", "Keep both for now". Placeholders ask a
+Second person, short sentences, plain words, sentence case. Buttons name the outcome in
+ordinary words — "Save trip", "Add scenic route", "Save both", "Delete". Movement verbs
+like "Take the long way", "Widen again" or "Keep both for now" are headings and
+confirmations, **never labels**: a user should never have to press a button to find out
+what it does. Soften in helper text instead — "Add scenic route" · *Adds about 40
+minutes.* Copy on a control is literal; copy beside one may wander. Placeholders ask a
 plain question: "Where are you going?" not "Destination". Never urgent, never scarce.
 No exclamation marks. 24-hour times (`09:40`), en-dash ranges (`10:15–11:40`), middot
 separators (`morning · east`).

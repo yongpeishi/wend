@@ -7,8 +7,8 @@ import styles from './Button.module.css';
 describe('Button', () => {
   it('renders its label and responds to a click', async () => {
     const onClick = vi.fn();
-    render(<Button onClick={onClick}>Take the long way</Button>);
-    const button = screen.getByRole('button', { name: 'Take the long way' });
+    render(<Button onClick={onClick}>Save trip</Button>);
+    const button = screen.getByRole('button', { name: 'Save trip' });
     await userEvent.click(button);
     expect(onClick).toHaveBeenCalledOnce();
   });
@@ -56,7 +56,7 @@ describe('Button', () => {
     const onClick = vi.fn();
     render(
       <Button disabled onClick={onClick}>
-        Take the long way
+        Save trip
       </Button>,
     );
     const button = screen.getByRole('button');

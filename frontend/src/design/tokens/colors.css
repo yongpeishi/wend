@@ -81,11 +81,17 @@
         --action-destructive above). Everywhere else rust is a border, an icon
         or text.
 
-     Not yet consumed: --feedback-success, --feedback-pending, --border-success
-     and --text-success. There are no success or pending surfaces in the product
-     yet — nothing confirms, and nothing waits visibly. They are defined now so
-     that the first screen to need one does not invent a green, and so anyone
-     grepping for dead tokens finds this note instead of deleting them. */
+     Consumed today: --feedback-success and --feedback-error (Toast's success
+     and error accent rules), --border-error (the Input and Select error
+     borders) and --action-destructive (the destructive Button).
+
+     Not yet consumed: --feedback-success-wash, --feedback-error-wash,
+     --feedback-pending, --border-success, --text-success and --text-error.
+     Nothing in the product waits visibly, no surface tints itself with a
+     feedback wash, and error text is still written in --text-strong beside a
+     red border rather than in red itself. They are defined now so that the
+     first screen to need one does not invent a colour, and so anyone grepping
+     for dead tokens finds this note instead of deleting them. */
   --feedback-success: var(--wend-jade);
   --feedback-success-wash: var(--wend-jade-wash);
   --feedback-error: var(--wend-rust);
