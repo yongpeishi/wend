@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"WendDesignSystem_c7e2ae","components":[{"name":"Logo","sourcePath":"components/brand/Logo.jsx"},{"name":"Placeholder","sourcePath":"components/brand/Placeholder.jsx"},{"name":"Trail","sourcePath":"components/brand/Trail.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"Chip","sourcePath":"components/core/Chip.jsx"},{"name":"FormBanner","sourcePath":"components/core/FormBanner.jsx"},{"name":"Input","sourcePath":"components/core/Input.jsx"},{"name":"KeepToggle","sourcePath":"components/core/KeepToggle.jsx"},{"name":"Label","sourcePath":"components/core/Label.jsx"},{"name":"PlaceCard","sourcePath":"components/travel/PlaceCard.jsx"},{"name":"TimeRow","sourcePath":"components/travel/TimeRow.jsx"}],"sourceHashes":{"components/brand/Logo.jsx":"4ff026b950d6","components/brand/Placeholder.jsx":"df64a99f0de9","components/brand/Trail.jsx":"e04f68718bfb","components/core/Button.jsx":"dd7e118e96f6","components/core/Card.jsx":"930daaead110","components/core/Chip.jsx":"0b725f140c89","components/core/FormBanner.jsx":"fa4db2dbf318","components/core/Input.jsx":"db0935afddce","components/core/KeepToggle.jsx":"c3b9ac845fe5","components/core/Label.jsx":"0ef89fe0b1b1","components/travel/PlaceCard.jsx":"fdf8bdccb4f1","components/travel/TimeRow.jsx":"d0602ffe9fdd","ui_kits/roadbook/DaysScreen.jsx":"59fb8c6d2bb6","ui_kits/roadbook/KeptScreen.jsx":"97f5c3f9d740","ui_kits/roadbook/Phone.jsx":"42bf724d45b0","ui_kits/roadbook/TodayScreen.jsx":"5d1fd81f1c2b","ui_kits/roadbook/data.js":"daf089a1a6ef"},"inlinedExternals":[],"unexposedExports":[]} */
+/* @ds-bundle: {"format":4,"namespace":"WendDesignSystem_c7e2ae","components":[{"name":"Logo","sourcePath":"components/brand/Logo.jsx"},{"name":"Trail","sourcePath":"components/brand/Trail.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"Chip","sourcePath":"components/core/Chip.jsx"},{"name":"FormBanner","sourcePath":"components/core/FormBanner.jsx"},{"name":"Input","sourcePath":"components/core/Input.jsx"},{"name":"KeepToggle","sourcePath":"components/core/KeepToggle.jsx"},{"name":"Label","sourcePath":"components/core/Label.jsx"},{"name":"PlaceCard","sourcePath":"components/travel/PlaceCard.jsx"},{"name":"TimeRow","sourcePath":"components/travel/TimeRow.jsx"}],"sourceHashes":{"components/brand/Logo.jsx":"4ff026b950d6","components/brand/Trail.jsx":"e04f68718bfb","components/core/Button.jsx":"dd7e118e96f6","components/core/Card.jsx":"930daaead110","components/core/Chip.jsx":"0b725f140c89","components/core/FormBanner.jsx":"fa4db2dbf318","components/core/Input.jsx":"db0935afddce","components/core/KeepToggle.jsx":"c3b9ac845fe5","components/core/Label.jsx":"0ef89fe0b1b1","components/travel/PlaceCard.jsx":"fdf8bdccb4f1","components/travel/TimeRow.jsx":"d0602ffe9fdd","ui_kits/roadbook/DaysScreen.jsx":"59fb8c6d2bb6","ui_kits/roadbook/KeptScreen.jsx":"97f5c3f9d740","ui_kits/roadbook/Phone.jsx":"42bf724d45b0","ui_kits/roadbook/TodayScreen.jsx":"5d1fd81f1c2b","ui_kits/roadbook/data.js":"daf089a1a6ef"},"inlinedExternals":[],"unexposedExports":[]} */
 
 (() => {
 
@@ -78,34 +78,6 @@ function Logo({
 }
 Object.assign(__ds_scope, { Logo });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/brand/Logo.jsx", error: String((e && e.message) || e) }); }
-
-// components/brand/Placeholder.jsx
-try { (() => {
-function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
-function Placeholder({
-  height = 120,
-  radius = 'media',
-  caption,
-  style,
-  ...rest
-}) {
-  return /*#__PURE__*/React.createElement("div", _extends({
-    style: {
-      height,
-      background: 'var(--placeholder-hatch)',
-      borderRadius: radius === 'card' ? 'var(--radius-card)' : radius === 'none' ? 0 : 'var(--radius-media)',
-      display: 'flex',
-      alignItems: 'flex-end',
-      padding: 'var(--space-2)',
-      fontFamily: 'var(--font-mono)',
-      fontSize: 'var(--text-code-size)',
-      color: 'var(--text-muted)',
-      ...style
-    }
-  }, rest), caption);
-}
-Object.assign(__ds_scope, { Placeholder });
-})(); } catch (e) { __ds_ns.__errors.push({ path: "components/brand/Placeholder.jsx", error: String((e && e.message) || e) }); }
 
 // components/brand/Trail.jsx
 try { (() => {
@@ -1138,8 +1110,6 @@ window.WEND_ROAD = {
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/roadbook/data.js", error: String((e && e.message) || e) }); }
 
 __ds_ns.Logo = __ds_scope.Logo;
-
-__ds_ns.Placeholder = __ds_scope.Placeholder;
 
 __ds_ns.Trail = __ds_scope.Trail;
 

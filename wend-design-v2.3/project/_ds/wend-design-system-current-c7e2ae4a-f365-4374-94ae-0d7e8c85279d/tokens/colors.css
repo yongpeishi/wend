@@ -71,7 +71,4 @@
 
   --focus-ring: var(--wend-apricot);
   --focus-ring-wash: var(--wend-apricot-wash);
-
-  /* Placeholder imagery: hatch, never a grey box */
-  --placeholder-hatch: repeating-linear-gradient(135deg, var(--wend-hatch-a) 0 5px, var(--wend-hatch-b) 5px 10px);
 }

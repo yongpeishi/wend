@@ -93,14 +93,6 @@
         "message": "<PlaceCard> doesn't accept that prop. Declared props: name, meta, note, kept, onToggle."
       },
       {
-        "selector": "JSXOpeningElement[name.name='Placeholder'] > JSXAttribute > JSXIdentifier[name!=/^(?:height|radius|caption|key|ref|className|style|children)$/]",
-        "message": "<Placeholder> doesn't accept that prop. Declared props: height, radius, caption."
-      },
-      {
-        "selector": "JSXOpeningElement[name.name='Placeholder'] > JSXAttribute[name.name='radius'] > Literal[value!=/^(?:media|card|none)$/]",
-        "message": "<Placeholder> radius must be one of 'media' | 'card' | 'none'."
-      },
-      {
         "selector": "JSXOpeningElement[name.name='TimeRow'] > JSXAttribute > JSXIdentifier[name!=/^(?:time|title|meta|state|onDark|trailing|key|ref|className|style|children)$/]",
         "message": "<TimeRow> doesn't accept that prop. Declared props: time, title, meta, state, onDark, trailing."
       },
@@ -150,9 +142,6 @@
       "PlaceCard": {
         "replaces": []
       },
-      "Placeholder": {
-        "replaces": []
-      },
       "TimeRow": {
         "replaces": []
       },
@@ -182,7 +171,6 @@
       "--motion-fade-ease",
       "--motion-trail-duration",
       "--motion-trail-ease",
-      "--placeholder-hatch",
       "--radius-card",
       "--radius-media",
       "--radius-pill",
@@ -293,7 +281,6 @@
       "--trail-line-on-dark": "color",
       "--focus-ring": "color",
       "--focus-ring-wash": "color",
-      "--placeholder-hatch": "color",
       "--font-sans": "font",
       "--font-mono": "font",
       "--weight-regular": "font",
