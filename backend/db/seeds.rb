@@ -89,6 +89,20 @@ daiso_kyoto = entry!(
   location_name: "Daiso Kyoto Kawaramachi", address: "556 Nakanocho, Nakagyo Ward, Kyoto",
   lat: 35.0038, lng: 135.7681, duration_minutes: 45
 )
+# The three Daiso branches are the same errand, not three errands: one 100-yen
+# run, location undecided. "visit Daiso" is the parent idea that holds them as
+# alternatives to compare (they differ in neighborhood and hours). Each branch
+# also keeps its place in an area bundle below -- an entry may sit under many
+# parents, and that second parent is what the "also under" chips read out.
+visit_daiso = entry!(
+  kind: "idea", title: "visit Daiso", category: "place", created_by: sarah,
+  description: "One big 100-yen haul somewhere on the trip. Three branches to compare; pick by neighborhood and opening hours."
+)
+link!(parent: japan, child: visit_daiso)
+link!(parent: visit_daiso, child: daiso_harajuku, position: 0)
+link!(parent: visit_daiso, child: daiso_shibuya, position: 1)
+link!(parent: visit_daiso, child: daiso_kyoto, position: 2)
+
 yoyogi = entry!(
   kind: "idea", title: "Yoyogi Park, late afternoon", category: "activity", created_by: sarah,
   location_name: "Yoyogi Park", lat: 35.6720, lng: 139.6949, duration_minutes: 60,
