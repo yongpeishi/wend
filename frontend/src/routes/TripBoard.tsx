@@ -455,7 +455,11 @@ export function TripBoard() {
       {editingId !== null && <EntryDetailModal entryId={editingId} onClose={closeEditing} />}
 
       <DragOverlay>
-        {activeDrag && <Card padding={2}><EntryRow title={activeDrag.title} kept={false} /></Card>}
+        {activeDrag && (
+          <Card padding={2} className={styles.dragOverlayCard}>
+            <EntryRow title={activeDrag.title} kept={false} />
+          </Card>
+        )}
       </DragOverlay>
     </DndContext>
   );

@@ -7,6 +7,7 @@ import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
 import { findEntry, setRole } from '../mocks/db';
 import { TripItinerary } from './TripItinerary';
+import styles from './TripItinerary.module.css';
 import { TripLayout } from './TripLayout';
 
 // Integration test: the real container, the real TripLayout that hands it the
@@ -918,5 +919,39 @@ describe('TripItinerary — as a viewer', () => {
     expect(screen.getByRole('button', { name: 'Change dates' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Fork this day' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Drag Kiyamachi onto a day' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * The card that follows the cursor while an idea is being dragged.
+ *
+ * @dnd-kit sizes the overlay from the node the drag came off — the grip, a 32px
+ * button — and EntryRow has no intrinsic width of its own, so the overlay is
+ * only as wide as it is told to be. When it was told nothing it drew as an empty
+ * pill with the title clipped away entirely, which is the regression this
+ * guards: you could not tell what you were dragging.
+ */
+describe('TripItinerary — the card under the cursor', () => {
+  it('shows the idea being dragged, at a width wide enough to read it', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+
+    // Lifted and left in the air: the overlay exists for as long as the drag
+    // does, and nothing here is about where it lands.
+    const grip = await screen.findByRole('button', { name: 'Drag Kiyamachi onto a day' });
+    grip.focus();
+    await user.keyboard('[Space]');
+
+    const overlay = await waitFor(() => {
+      const card = document.querySelector<HTMLElement>(`.${styles.dragOverlayCard}`);
+      if (!card) throw new Error('no drag overlay on screen');
+      return card;
+    });
+    expect(within(overlay).getByText('Kiyamachi')).toBeInTheDocument();
+    // The same 300px the board's overlay takes: one card, two screens.
+    expect(getComputedStyle(overlay).width).toBe('300px');
+
+    await user.keyboard('{Escape}');
   });
 });

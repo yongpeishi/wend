@@ -262,3 +262,22 @@
     max-width: none;
   }
 }
+
+/* The card under the cursor while an idea is being dragged.
+
+   @dnd-kit sizes the drag overlay from the node the drag came off, and on this
+   board that node is the grip — a 22px button. EntryRow has no intrinsic width
+   of its own (its body is `flex: 1; min-width: 0`, and the title clips to an
+   ellipsis), so at 22px the overlay drew as an empty rounded pill with the
+   title clipped away entirely: you dragged an unlabelled blob and could not
+   tell what you were moving.
+
+   300px is the width that makes the title readable and still reads as the same
+   object the drag came from: it is just inside the 336px floor of the bundle
+   rail the drag is usually headed for, so the card in the air is never wider
+   than its destination, and the itinerary's overlay takes the same number —
+   the two screens drag the same card and it should not change size between
+   them. Explicit, because there is nothing intrinsic here to size from. */
+.dragOverlayCard {
+  width: 300px;
+}
