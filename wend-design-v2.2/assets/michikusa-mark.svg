@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="96" height="72" viewBox="0 0 96 72" fill="none" role="img" aria-label="Wend">
-  <path d="M10 60 C 10 34, 44 46, 44 26 C 44 10, 74 12, 82 30" stroke="#3F6B4A" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 8"></path>
-  <circle cx="10" cy="60" r="7" fill="#3F6B4A"></circle>
-  <circle cx="44" cy="26" r="9" fill="#F0F3EE" stroke="#E89A5E" stroke-width="3.5"></circle>
-  <circle cx="82" cy="30" r="6" fill="#8A4A61"></circle>
-</svg>

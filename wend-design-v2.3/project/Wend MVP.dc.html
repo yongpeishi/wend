@@ -1,0 +1,2329 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/wend-design-system-current-c7e2ae4a-f365-4374-94ae-0d7e8c85279d/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/wend-design-system-current-c7e2ae4a-f365-4374-94ae-0d7e8c85279d/tokens/colors.css">
+<link rel="stylesheet" href="_ds/wend-design-system-current-c7e2ae4a-f365-4374-94ae-0d7e8c85279d/tokens/typography.css">
+<link rel="stylesheet" href="_ds/wend-design-system-current-c7e2ae4a-f365-4374-94ae-0d7e8c85279d/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/wend-design-system-current-c7e2ae4a-f365-4374-94ae-0d7e8c85279d/tokens/shape.css">
+<link rel="stylesheet" href="_ds/wend-design-system-current-c7e2ae4a-f365-4374-94ae-0d7e8c85279d/tokens/motion.css">
+<link rel="stylesheet" href="_ds/wend-design-system-current-c7e2ae4a-f365-4374-94ae-0d7e8c85279d/styles.css">
+<script src="_ds/wend-design-system-current-c7e2ae4a-f365-4374-94ae-0d7e8c85279d/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--wend-paper);font-family:var(--font-sans);color:var(--text-body)}
+a{color:var(--wend-leaf);text-decoration:none}
+a:hover{opacity:.7}
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--wend-line);border-radius:99px;border:3px solid var(--wend-paper)}
+</style>
+</helmet>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <g id="thumbGlyph" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 10v12"></path>
+      <path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"></path>
+    </g>
+  </defs>
+</svg>
+<div style="display:flex;min-height:100vh;background:var(--wend-paper)">
+
+  <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+  <nav style="width:246px;flex:none;background:var(--wend-deep-leaf);color:var(--text-on-dark);display:flex;flex-direction:column;padding:26px 18px 20px;gap:26px;position:sticky;top:0;height:100vh">
+    <div style="display:flex;align-items:center;gap:10px;padding:0 8px">
+      <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Logo" variant="reversed" size="{{ 28 }}" hint-size="178px,30px"></x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-on-dark-muted);padding:0 8px 6px">EXPLORE</div>
+      <button onClick="{{ goTrips }}" style="all:unset;cursor:pointer;padding:10px 12px;border-radius:12px;font-size:15px;color:var(--text-on-dark-muted)" style-hover="opacity:.75">All trips</button>
+      <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-on-dark-muted);padding:0 8px 6px">PLAN</div><div style="border-radius:8px;background:rgba(240,243,238,.07);overflow:hidden">
+        <div style="padding:10px 12px">
+          <div style="font-size:17px;font-weight:700;color:var(--text-on-dark)">Kyoto + Osaka</div>
+          <div style="font-size:13px;letter-spacing:.04em;color:var(--text-on-dark-muted);margin-top:2px">6 days · 12–17 Oct</div>
+        </div>
+        <div style="height:1.5px;background:rgba(240,243,238,.12);margin:4px 12px"></div>
+        <div style="display:flex;flex-direction:column;gap:2px;padding:6px">
+          <sc-for list="{{ nav }}" as="n" hint-placeholder-count="6">
+            <button onClick="{{ n.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;font-size:16px;min-height:44px" style-hover="opacity:.8">
+              <span style="width:9px;height:9px;border-radius:50%;flex:none;background:{{ n.dot }}"></span>
+              <span style="color:{{ n.color }};font-weight:{{ n.weight }}">{{ n.label }}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="height:1.5px;background:rgba(240,243,238,.12);margin:4px 12px"></div>
+        <div style="padding:10px 12px 12px">
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-on-dark-muted);margin-bottom:10px">Planning with</div>
+          <button onClick="{{ openPeople }}" title="Who's on this trip" style="all:unset;cursor:pointer;display:flex;gap:6px;align-items:center" style-hover="opacity:.8">
+            <sc-for list="{{ voters }}" as="v" hint-placeholder-count="3">
+              <span style="width:32px;height:32px;border-radius:50%;background:var(--wend-leaf);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--wend-paper)">{{ v.init }}</span>
+            </sc-for>
+            <span style="width:32px;height:32px;border-radius:50%;border:1.5px dashed rgba(240,243,238,.45);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text-on-dark-muted)">+</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+  </sc-if>
+
+  <sc-if value="{{ peopleOpen }}">
+    <div onClick="{{ closePeople }}" style="position:fixed;inset:0;background:rgba(47,74,54,.45);display:flex;align-items:center;justify-content:center;z-index:40">
+      <div onClick="{{ stopClick }}" style="background:var(--surface-card);border-radius:12px;padding:28px;width:500px;max-width:92vw;max-height:88vh;overflow:auto;display:flex;flex-direction:column;gap:22px">
+
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="font-size:26px;line-height:1.3;font-weight:700;color:var(--text-strong)">Who's on this trip</div>
+          <button onClick="{{ closePeople }}" style="all:unset;cursor:pointer;color:var(--text-muted);font-size:18px;line-height:1;flex:none" style-hover="opacity:.6">×</button>
+        </div>
+
+        <sc-for list="{{ people }}" as="pp" hint-placeholder-count="3">
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <span style="width:36px;height:36px;flex:none;border-radius:50%;background:var(--wend-leaf);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--wend-paper)">{{ pp.init }}</span>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <span style="font-size:17px;font-weight:700;color:var(--text-strong)">{{ pp.name }}</span>
+                <span style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">{{ pp.youLabel }}</span>
+              </div>
+              <div style="font-size:14px;color:var(--text-muted)">{{ pp.email }}</div>
+              <sc-if value="{{ pp.canEditRole }}">
+                <select value="{{ pp.role }}" onChange="{{ pp.setRole }}" style="appearance:none;width:260px;max-width:100%;border:1.5px solid var(--border-strong);border-radius:12px;padding:11px 14px;font-family:var(--font-sans);font-size:15px;color:var(--text-strong);background:var(--surface-card);cursor:pointer">
+                  <option value="edit">Add and change things</option>
+                  <option value="look">Look and add ideas</option>
+                </select>
+              </sc-if>
+              <div style="font-size:14px;line-height:1.6;color:var(--text-body)">{{ pp.roleNote }}</div>
+              <sc-if value="{{ pp.canEditRole }}">
+                <div style="display:flex;gap:20px;margin-top:2px">
+                  <button onClick="{{ pp.handOver }}" style="all:unset;cursor:pointer;font-size:14px;font-weight:700;color:var(--wend-leaf);border-bottom:2px solid var(--wend-leaf);padding-bottom:4px;white-space:nowrap" style-hover="opacity:.7">Make them the owner</button>
+                  <button onClick="{{ pp.remove }}" style="all:unset;cursor:pointer;font-size:14px;font-weight:700;color:var(--feedback-error);border-bottom:2px solid var(--feedback-error);padding-bottom:4px;white-space:nowrap" style-hover="opacity:.7">Remove them</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+
+        <div style="height:1.5px;background:var(--border-subtle)"></div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Add someone by email</div>
+          <input value="{{ emailDraft }}" onChange="{{ setEmailDraft }}" onKeyDown="{{ emailKey }}" placeholder="Their email address" style="border:1.5px solid var(--border-strong);border-radius:12px;padding:12px 14px;font-family:var(--font-sans);font-size:15px;color:var(--text-strong);background:var(--surface-card);outline:none">
+          <div style="font-size:14px;line-height:1.6;color:var(--text-body)">If someone is here under that email, the trip will be waiting for them next time they sign in. If not, nothing happens.</div>
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-top:8px">They can</div>
+          <select value="{{ newRole }}" onChange="{{ setNewRole }}" style="appearance:none;width:260px;max-width:100%;border:1.5px solid var(--border-strong);border-radius:12px;padding:11px 14px;font-family:var(--font-sans);font-size:15px;color:var(--text-strong);background:var(--surface-card);cursor:pointer">
+            <option value="edit">Add and change things</option>
+            <option value="look">Look and add ideas</option>
+          </select>
+          <button onClick="{{ addPerson }}" disabled="{{ addDisabled }}" style="all:unset;margin-top:8px;padding:11px 22px;border-radius:12px;background:{{ addBg }};color:{{ addColor }};font-size:15px;font-weight:700;width:fit-content;white-space:nowrap;cursor:{{ addCursor }}" style-hover="opacity:.85">Add them</button>
+        </div>
+
+      </div>
+    </div>
+  </sc-if>
+
+  <main style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+    <sc-if value="{{ narrow }}">
+      <div style="background:var(--wend-deep-leaf);padding:14px 20px 12px;display:flex;flex-direction:column;gap:12px;position:sticky;top:0;z-index:20">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Logo" variant="reversed" size="{{ 24 }}" hint-size="150px,26px"></x-import>
+          <button onClick="{{ openPeople }}" style="all:unset;cursor:pointer;display:flex;gap:4px;align-items:center" style-hover="opacity:.8">
+            <sc-for list="{{ voters }}" as="v" hint-placeholder-count="3">
+              <span style="width:30px;height:30px;border-radius:50%;background:var(--wend-leaf);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--wend-paper)">{{ v.init }}</span>
+            </sc-for>
+          </button>
+        </div>
+        <div style="display:flex;gap:6px;overflow:auto">
+          <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4">
+            <button onClick="{{ n.go }}" style="all:unset;cursor:pointer;flex:none;padding:9px 14px;min-height:44px;box-sizing:border-box;display:flex;align-items:center;border-radius:99px;border:1.5px solid {{ n.chipBorder }};background:{{ n.chipBg }};font-size:15px;font-weight:700;color:{{ n.color }}">{{ n.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isTrips }}">
+      <div style="padding:44px 48px 64px;max-width:1120px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Your trips</div>
+            <h1 style="font-size:40px;line-height:1.2;font-weight:700;color:var(--text-strong);margin:8px 0 6px;white-space:nowrap">Where next</h1>
+          </div>
+          <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="primary" onClick="{{ openNewTrip }}" hint-size="auto,44px" style="flex:none;white-space:nowrap">+ New trip</x-import>
+        </div>
+        <p style="font-size:17px;line-height:1.7;color:var(--text-body);margin:0 0 32px;max-width:60ch">Nothing here is decided. Trips you set aside keep their ideas, and you can lift one out into a trip of its own whenever you like.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px">
+          <sc-for list="{{ trips }}" as="t" hint-placeholder-count="2">
+            <div onClick="{{ t.go }}" style="cursor:pointer;background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:14px" style-hover="opacity:.96">
+
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                <div style="font-size:26px;line-height:1.3;font-weight:700;color:var(--text-strong)">{{ t.name }}</div>
+                <button onClick="{{ t.archive }}" title="Save for later" style="all:unset;cursor:pointer;flex:none;width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border-subtle);display:flex;align-items:center;justify-content:center;color:var(--text-muted)" style-hover="opacity:.65">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"></rect><path d="M5 9v9a2 2 0 002 2h10a2 2 0 002-2V9"></path><path d="M10 13h4"></path></svg>
+                </button>
+              </div>
+
+              <div style="font-size:15px;line-height:1.7;color:var(--text-body)">{{ t.note }}</div>
+
+              <div style="display:flex;gap:24px">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                  <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--wend-leaf)">Pros</div>
+                  <sc-for list="{{ t.pros }}" as="p" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(63,107,74,.10);border-radius:12px;padding:9px 12px;font-size:15px;color:var(--text-strong)">
+                      <span>{{ p.text }}</span>
+                      <button onClick="{{ p.remove }}" style="all:unset;cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1" style-hover="opacity:.6">×</button>
+                    </div>
+                  </sc-for>
+                  <button onClick="{{ t.addPro }}" style="all:unset;cursor:pointer;border:1.5px dashed var(--border-strong);border-radius:12px;padding:9px 12px;font-size:15px;color:var(--text-muted);text-align:left" style-hover="opacity:.7">+ add pro</button>
+                </div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                  <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--wend-bister)">Cons</div>
+                  <sc-for list="{{ t.cons }}" as="c" hint-placeholder-count="1">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--wend-bister-wash);border-radius:12px;padding:9px 12px;font-size:15px;color:var(--text-strong)">
+                      <span>{{ c.text }}</span>
+                      <button onClick="{{ c.remove }}" style="all:unset;cursor:pointer;color:var(--text-muted);font-size:16px;line-height:1" style-hover="opacity:.6">×</button>
+                    </div>
+                  </sc-for>
+                  <button onClick="{{ t.addCon }}" style="all:unset;cursor:pointer;border:1.5px dashed var(--border-strong);border-radius:12px;padding:9px 12px;font-size:15px;color:var(--text-muted);text-align:left" style-hover="opacity:.7">+ add con</button>
+                </div>
+              </div>
+
+              <div style="margin-top:auto;font-size:15px;letter-spacing:.04em;color:var(--text-muted)">{{ t.meta }}</div>
+            </div>
+          </sc-for>
+
+          <div style="border:1.5px dashed var(--border-strong);border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:12px;min-height:190px;justify-content:center;align-items:flex-start">
+            <div style="font-size:20px;line-height:1.4;font-weight:700;color:var(--text-strong)">Start from ideas</div>
+            <div style="font-size:15px;line-height:1.7;color:var(--text-muted)">You've kept 41 ideas with no trip attached. 23 of them are in Japan.</div>
+            <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="secondary" hint-size="auto,44px">Look at them on a map</x-import>
+          </div>
+        </div>
+
+        <sc-if value="{{ hasSaved }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:36px;padding-top:28px;border-top:1.5px solid var(--border-subtle)">
+            <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:14px">Saved for later</div>
+            <div style="display:flex;flex-direction:column;gap:1px">
+              <sc-for list="{{ savedTrips }}" as="t" hint-placeholder-count="1">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;background:var(--surface-card);border-radius:12px;padding:16px 20px">
+                  <div style="display:flex;align-items:baseline;gap:12px;min-width:0">
+                    <div style="font-size:17px;font-weight:700;color:var(--text-strong);white-space:nowrap">{{ t.name }}</div>
+                    <div style="font-size:15px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.note }}</div>
+                  </div>
+                  <button onClick="{{ t.bring }}" style="all:unset;cursor:pointer;flex:none;padding:9px 18px;border-radius:12px;border:1.5px solid var(--border-strong);font-size:15px;font-weight:700;color:var(--text-strong)" style-hover="opacity:.7">Bring back</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ isNewTripOpen }}">
+        <div onClick="{{ closeNewTrip }}" style="position:fixed;inset:0;background:rgba(47,74,54,.45);display:flex;align-items:center;justify-content:center;z-index:10">
+          <div onClick="{{ stopClick }}" style="background:var(--surface-card);border-radius:12px;padding:32px;width:440px;max-width:90vw;display:flex;flex-direction:column;gap:18px">
+            <div style="font-size:26px;line-height:1.3;font-weight:700;color:var(--text-strong)">New trip</div>
+
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Name</label>
+              <input value="{{ newTripForm.name }}" onChange="{{ setNewTripName }}" placeholder="Where to?" style="font-family:var(--font-sans);font-size:17px;color:var(--text-strong);background:var(--surface-card);border:1.5px solid var(--border-strong);border-radius:12px;padding:12px 14px;min-height:44px;outline:none" style-focus="border-color:var(--focus-ring);box-shadow:0 0 0 3px var(--focus-ring-wash)">
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Dates</label>
+              <input value="{{ newTripForm.dates }}" onChange="{{ setNewTripDates }}" placeholder="No dates yet" style="font-family:var(--font-sans);font-size:17px;color:var(--text-strong);background:var(--surface-card);border:1.5px solid var(--border-strong);border-radius:12px;padding:12px 14px;min-height:44px;outline:none" style-focus="border-color:var(--focus-ring);box-shadow:0 0 0 3px var(--focus-ring-wash)">
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Note</label>
+              <textarea value="{{ newTripForm.note }}" onChange="{{ setNewTripNote }}" placeholder="What's the idea?" rows="{{ 3 }}" style="font-family:var(--font-sans);font-size:15px;line-height:1.6;color:var(--text-strong);background:var(--surface-card);border:1.5px solid var(--border-strong);border-radius:12px;padding:12px 14px;outline:none;resize:none" style-focus="border-color:var(--focus-ring);box-shadow:0 0 0 3px var(--focus-ring-wash)"></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+              <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="quiet" onClick="{{ closeNewTrip }}" hint-size="auto,44px">Cancel</x-import>
+              <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="primary" onClick="{{ createNewTrip }}" disabled="{{ newTripDisabled }}" hint-size="auto,44px">Add trip</x-import>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ isBoard }}">
+      <div style="display:flex;flex-direction:column;min-height:100vh;background:var(--wend-paper)">
+
+        <div style="padding:26px 32px 10px">
+          <h1 style="font-size:40px;line-height:1.2;font-weight:700;color:var(--text-strong);margin:0">Kyoto + Osaka</h1>
+        </div>
+
+        <div style="flex:1;display:flex;align-items:stretch;min-height:0">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+            <div style="position:relative;padding:8px 32px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <button onClick="{{ toggleFilter }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;border:1.5px solid {{ filterBorder }};font-size:14px;color:var(--text-strong);font-weight:700">
+                  Filter
+                  <sc-if value="{{ hasFilters }}">
+                    <span style="font-family:var(--font-mono);font-size:12px;background:var(--wend-leaf-soft);color:var(--wend-leaf);padding:1px 7px;border-radius:99px">{{ filterCount }}</span>
+                  </sc-if>
+                </button>
+                <div style="width:1.5px;height:22px;background:var(--border-subtle)"></div>
+                <div style="display:flex;background:var(--wend-line);border-radius:99px;padding:3px;gap:2px">
+                  <sc-for list="{{ groupByOptions }}" as="go" hint-placeholder-count="3">
+                    <span onClick="{{ go.go }}" style="cursor:pointer;padding:6px 12px;border-radius:99px;font-size:13px;font-weight:{{ go.weight }};background:{{ go.bg }};color:{{ go.color }}">{{ go.label }}</span>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ mapOpen }}">
+                  <div style="width:1.5px;height:22px;background:var(--border-subtle)"></div>
+                  <span onClick="{{ toggleFollow }}" style="cursor:pointer;display:flex;align-items:center;gap:9px;font-size:14px;color:var(--text-strong)">
+                    <span style="width:34px;height:20px;border-radius:99px;position:relative;flex:none;background:{{ followBg }}">
+                      <span style="position:absolute;top:2px;left:{{ followKnob }};width:16px;height:16px;border-radius:50%;background:var(--wend-paper)"></span>
+                    </span>
+                    Follow the map
+                  </span>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px">
+                <button onClick="{{ toggleMap }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:99px;border:2px solid {{ mapBtnBorder }};font-size:14px;font-weight:700;color:{{ mapBtnColor }}">
+                  <span style="width:9px;height:9px;border-radius:50%;background:{{ mapBtnColor }}"></span>{{ mapBtnLabel }}
+                </button>
+                <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="primary" onClick="{{ openNewIdea }}" hint-size="auto,40px">+ New idea</x-import>
+              </div>
+
+<sc-if value="{{ filterOpen }}">
+  <div onClick="{{ closeFilter }}" style="position:fixed;inset:0;z-index:19"></div>
+  <div onClick="{{ stopClick }}" style="position:absolute;top:46px;left:32px;z-index:20;background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:18px;width:360px;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Kind of thing</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <sc-for list="{{ catChips }}" as="c" hint-placeholder-count="5">
+          <span onClick="{{ c.go }}" style="cursor:pointer">
+            <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Chip" selected="{{ c.selected }}" hint-size="auto,34px">{{ c.label }}</x-import>
+          </span>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Where it stands</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <sc-for list="{{ stateChips }}" as="c" hint-placeholder-count="4">
+          <span onClick="{{ c.go }}" style="cursor:pointer">
+            <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Chip" selected="{{ c.selected }}" hint-size="auto,34px">{{ c.label }}</x-import>
+          </span>
+        </sc-for>
+      </div>
+    </div>
+    <div style="font-size:14px;line-height:1.6;color:var(--text-muted)">Nothing you filter out is gone. Clear the filter and it comes back.</div>
+  </div>
+</sc-if>
+</div>
+
+<div style="padding:0 32px 60px">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+    <div style="font-size:15px;letter-spacing:.04em;color:var(--text-muted)">{{ countLine }}</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button onClick="{{ toggleSelectMode }}" style="all:unset;cursor:pointer;padding:8px 14px;border-radius:99px;border:1.5px solid {{ selectBorder }};font-size:14px;color:var(--text-strong);font-weight:700">{{ selectLabel }}</button>
+      <button onClick="{{ toggleAlwaysExpanded }}" style="all:unset;cursor:pointer;padding:8px 14px;border-radius:99px;border:1.5px solid var(--border-subtle);font-size:14px;color:var(--text-strong);font-weight:700">{{ alwaysExpandedLabel }}</button>
+    </div>
+  </div>
+
+  <sc-if value="{{ ungrouped }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <sc-for list="{{ visibleEntries }}" as="e" hint-placeholder-count="8">
+<div style="background:var(--surface-card);border:1.5px solid {{ e.border }};border-radius:12px;padding:14px 16px;display:flex;flex-direction:column">
+  <div onClick="{{ e.go }}" style="cursor:pointer;display:flex;align-items:center;gap:16px" style-hover="opacity:.85">
+    <span onClick="{{ e.pick }}" style="width:{{ e.dotSize }};height:{{ e.dotSize }};border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;border:{{ e.pickBorder }};background:{{ e.pickBg }};color:var(--wend-paper);font-size:13px;font-weight:700;cursor:pointer">{{ e.pickTick }}</span>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div style="font-size:18px;line-height:1.35;font-weight:700;color:var(--text-strong)">{{ e.name }}</div>
+        <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:{{ e.catColor }}">{{ e.category }}</div>
+      </div>
+      <div style="font-size:14px;letter-spacing:.04em;color:var(--text-muted)">{{ e.meta }}</div>
+      <sc-if value="{{ e.inBundles }}">
+        <div style="font-size:13px;letter-spacing:.04em;color:var(--wend-bister)">{{ e.bundleLine }}</div>
+      </sc-if>
+    </div>
+    <sc-if value="{{ showVotes }}" hint-placeholder-val="{{ true }}">
+      <div title="Everyone's votes added up, from +2 to -2 each" style="flex:none;text-align:right">
+        <div style="font-size:19px;font-weight:700;font-family:var(--font-mono);color:var(--text-strong)">{{ e.scoreLabel }}</div>
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">group score</div>
+      </div>
+    </sc-if>
+    <span style="flex:none;font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ e.chevron }}</span>
+  </div>
+
+  <sc-if value="{{ e.expanded }}">
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border-subtle);display:flex;flex-direction:column;gap:16px">
+      <sc-if value="{{ e.hasNote }}">
+        <p style="font-size:15px;line-height:1.7;color:var(--text-body);margin:0">{{ e.note }}</p>
+      </sc-if>
+
+      <sc-if value="{{ showVotes }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);flex:none">Keen?</div>
+          <div style="display:flex;gap:8px;flex:none">
+            <sc-for list="{{ e.voteButtons }}" as="vb" hint-placeholder-count="5">
+              <button onClick="{{ vb.go }}" title="{{ vb.title }}" style="all:unset;cursor:pointer;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:{{ vb.borderW }} solid {{ vb.border }};background:{{ vb.bg }};color:{{ vb.color }}" style-hover="opacity:.8"><sc-if value="{{ vb.isUp2 }}"><svg width="22" height="22" viewBox="0 0 34 30"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></svg></sc-if><sc-if value="{{ vb.isUp1 }}"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#thumbGlyph"></use></svg></sc-if><sc-if value="{{ vb.isMid }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path></svg></sc-if><sc-if value="{{ vb.isDown1 }}"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#thumbGlyph" transform="rotate(180 12 12)"></use></svg></sc-if><sc-if value="{{ vb.isDown2 }}"><svg width="22" height="22" viewBox="0 0 34 30"><g transform="rotate(180 17 15)"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></g></svg></sc-if></button>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">
+            <sc-for list="{{ e.votePills }}" as="vp" hint-placeholder-count="2">
+              <span style="position:relative;display:inline-block" onMouseEnter="{{ vp.onEnter }}" onMouseLeave="{{ vp.onLeave }}">
+                <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;background:var(--wend-paper);border:1.5px solid var(--border-subtle);color:var(--text-muted)"><sc-if value="{{ vp.isUp2 }}"><svg width="18" height="18" viewBox="0 0 34 30"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></svg></sc-if><sc-if value="{{ vp.isUp1 }}"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#thumbGlyph"></use></svg></sc-if><sc-if value="{{ vp.isMid }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path></svg></sc-if><sc-if value="{{ vp.isDown1 }}"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#thumbGlyph" transform="rotate(180 12 12)"></use></svg></sc-if><sc-if value="{{ vp.isDown2 }}"><svg width="18" height="18" viewBox="0 0 34 30"><g transform="rotate(180 17 15)"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></g></svg></sc-if><span style="font-family:var(--font-mono);font-size:14px;color:var(--text-strong)">{{ vp.count }}</span></span>
+                <sc-if value="{{ vp.hovered }}">
+                  <span style="position:absolute;bottom:calc(100% + 6px);left:0;white-space:nowrap;background:var(--wend-deep-leaf);color:var(--text-on-dark);font-size:13px;padding:6px 10px;border-radius:12px;z-index:5">{{ vp.names }}</span>
+                </sc-if>
+              </span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ e.hasTodos }}">
+        <div>
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">To-do</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ e.todos }}" as="t" hint-placeholder-count="2">
+              <button onClick="{{ t.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:36px;font-size:15px;color:var(--text-body)">
+                <span style="width:20px;height:20px;flex:none;border-radius:4px;border:1.5px solid var(--border-strong);background:{{ t.box }};display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--wend-paper);font-weight:700">{{ t.tick }}</span>
+                <span style="color:{{ t.color }}">{{ t.text }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ e.inBundles }}">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <sc-for list="{{ e.bundleTags }}" as="b" hint-placeholder-count="2">
+            <span style="font-size:14px;padding:5px 12px;border-radius:99px;background:var(--wend-bister-wash);color:var(--wend-bister)">{{ b.name }}</span>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="border-top:1.5px dashed var(--border-subtle);padding-top:10px;font-size:15px;color:var(--text-muted)">+ to-do (book, reserve, buy...)</div>
+    </div>
+  </sc-if>
+</div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ groupByPlace }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+  <sc-for list="{{ areaGroups }}" as="g" hint-placeholder-count="4">
+    <div>
+      <button onClick="{{ g.toggle }}" style="all:unset;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 4px;border-bottom:1.5px solid var(--border-subtle)">
+        <span style="font-size:17px;font-weight:700;color:var(--text-strong)">{{ g.area }}</span>
+        <span style="font-size:14px;letter-spacing:.04em;color:var(--text-muted)">{{ g.countLabel }} · {{ g.chevron }}</span>
+      </button>
+      <sc-if value="{{ g.open }}">
+        <div style="display:flex;flex-direction:column;gap:10px;padding:10px 0 4px">
+          <sc-for list="{{ g.entries }}" as="e" hint-placeholder-count="3">
+<div style="background:var(--surface-card);border:1.5px solid {{ e.border }};border-radius:12px;padding:14px 16px;display:flex;flex-direction:column">
+  <div onClick="{{ e.go }}" style="cursor:pointer;display:flex;align-items:center;gap:16px" style-hover="opacity:.85">
+    <span onClick="{{ e.pick }}" style="width:{{ e.dotSize }};height:{{ e.dotSize }};border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;border:{{ e.pickBorder }};background:{{ e.pickBg }};color:var(--wend-paper);font-size:13px;font-weight:700;cursor:pointer">{{ e.pickTick }}</span>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div style="font-size:18px;line-height:1.35;font-weight:700;color:var(--text-strong)">{{ e.name }}</div>
+        <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:{{ e.catColor }}">{{ e.category }}</div>
+      </div>
+      <div style="font-size:14px;letter-spacing:.04em;color:var(--text-muted)">{{ e.meta }}</div>
+      <sc-if value="{{ e.inBundles }}">
+        <div style="font-size:13px;letter-spacing:.04em;color:var(--wend-bister)">{{ e.bundleLine }}</div>
+      </sc-if>
+    </div>
+    <sc-if value="{{ showVotes }}" hint-placeholder-val="{{ true }}">
+      <div title="Everyone's votes added up, from +2 to -2 each" style="flex:none;text-align:right">
+        <div style="font-size:19px;font-weight:700;font-family:var(--font-mono);color:var(--text-strong)">{{ e.scoreLabel }}</div>
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">group score</div>
+      </div>
+    </sc-if>
+    <span style="flex:none;font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ e.chevron }}</span>
+  </div>
+
+  <sc-if value="{{ e.expanded }}">
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border-subtle);display:flex;flex-direction:column;gap:16px">
+      <sc-if value="{{ e.hasNote }}">
+        <p style="font-size:15px;line-height:1.7;color:var(--text-body);margin:0">{{ e.note }}</p>
+      </sc-if>
+
+      <sc-if value="{{ showVotes }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);flex:none">Keen?</div>
+          <div style="display:flex;gap:8px;flex:none">
+            <sc-for list="{{ e.voteButtons }}" as="vb" hint-placeholder-count="5">
+              <button onClick="{{ vb.go }}" title="{{ vb.title }}" style="all:unset;cursor:pointer;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:{{ vb.borderW }} solid {{ vb.border }};background:{{ vb.bg }};color:{{ vb.color }}" style-hover="opacity:.8"><sc-if value="{{ vb.isUp2 }}"><svg width="22" height="22" viewBox="0 0 34 30"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></svg></sc-if><sc-if value="{{ vb.isUp1 }}"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#thumbGlyph"></use></svg></sc-if><sc-if value="{{ vb.isMid }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path></svg></sc-if><sc-if value="{{ vb.isDown1 }}"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#thumbGlyph" transform="rotate(180 12 12)"></use></svg></sc-if><sc-if value="{{ vb.isDown2 }}"><svg width="22" height="22" viewBox="0 0 34 30"><g transform="rotate(180 17 15)"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></g></svg></sc-if></button>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">
+            <sc-for list="{{ e.votePills }}" as="vp" hint-placeholder-count="2">
+              <span style="position:relative;display:inline-block" onMouseEnter="{{ vp.onEnter }}" onMouseLeave="{{ vp.onLeave }}">
+                <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;background:var(--wend-paper);border:1.5px solid var(--border-subtle);color:var(--text-muted)"><sc-if value="{{ vp.isUp2 }}"><svg width="18" height="18" viewBox="0 0 34 30"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></svg></sc-if><sc-if value="{{ vp.isUp1 }}"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#thumbGlyph"></use></svg></sc-if><sc-if value="{{ vp.isMid }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path></svg></sc-if><sc-if value="{{ vp.isDown1 }}"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#thumbGlyph" transform="rotate(180 12 12)"></use></svg></sc-if><sc-if value="{{ vp.isDown2 }}"><svg width="18" height="18" viewBox="0 0 34 30"><g transform="rotate(180 17 15)"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></g></svg></sc-if><span style="font-family:var(--font-mono);font-size:14px;color:var(--text-strong)">{{ vp.count }}</span></span>
+                <sc-if value="{{ vp.hovered }}">
+                  <span style="position:absolute;bottom:calc(100% + 6px);left:0;white-space:nowrap;background:var(--wend-deep-leaf);color:var(--text-on-dark);font-size:13px;padding:6px 10px;border-radius:12px;z-index:5">{{ vp.names }}</span>
+                </sc-if>
+              </span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ e.hasTodos }}">
+        <div>
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">To-do</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ e.todos }}" as="t" hint-placeholder-count="2">
+              <button onClick="{{ t.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:36px;font-size:15px;color:var(--text-body)">
+                <span style="width:20px;height:20px;flex:none;border-radius:4px;border:1.5px solid var(--border-strong);background:{{ t.box }};display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--wend-paper);font-weight:700">{{ t.tick }}</span>
+                <span style="color:{{ t.color }}">{{ t.text }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ e.inBundles }}">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <sc-for list="{{ e.bundleTags }}" as="b" hint-placeholder-count="2">
+            <span style="font-size:14px;padding:5px 12px;border-radius:99px;background:var(--wend-bister-wash);color:var(--wend-bister)">{{ b.name }}</span>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="border-top:1.5px dashed var(--border-subtle);padding-top:10px;font-size:15px;color:var(--text-muted)">+ to-do (book, reserve, buy...)</div>
+    </div>
+  </sc-if>
+</div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </sc-for>
+</div>
+  </sc-if>
+
+  <sc-if value="{{ groupByCategory }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+  <sc-for list="{{ categoryGroups }}" as="g" hint-placeholder-count="4">
+    <div>
+      <button onClick="{{ g.toggle }}" style="all:unset;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 4px;border-bottom:1.5px solid var(--border-subtle)">
+        <span style="font-size:17px;font-weight:700;color:var(--text-strong)">{{ g.area }}</span>
+        <span style="font-size:14px;letter-spacing:.04em;color:var(--text-muted)">{{ g.countLabel }} · {{ g.chevron }}</span>
+      </button>
+      <sc-if value="{{ g.open }}">
+        <div style="display:flex;flex-direction:column;gap:10px;padding:10px 0 4px">
+          <sc-for list="{{ g.entries }}" as="e" hint-placeholder-count="3">
+<div style="background:var(--surface-card);border:1.5px solid {{ e.border }};border-radius:12px;padding:14px 16px;display:flex;flex-direction:column">
+  <div onClick="{{ e.go }}" style="cursor:pointer;display:flex;align-items:center;gap:16px" style-hover="opacity:.85">
+    <span onClick="{{ e.pick }}" style="width:{{ e.dotSize }};height:{{ e.dotSize }};border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;border:{{ e.pickBorder }};background:{{ e.pickBg }};color:var(--wend-paper);font-size:13px;font-weight:700;cursor:pointer">{{ e.pickTick }}</span>
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div style="font-size:18px;line-height:1.35;font-weight:700;color:var(--text-strong)">{{ e.name }}</div>
+        <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:{{ e.catColor }}">{{ e.category }}</div>
+      </div>
+      <div style="font-size:14px;letter-spacing:.04em;color:var(--text-muted)">{{ e.meta }}</div>
+      <sc-if value="{{ e.inBundles }}">
+        <div style="font-size:13px;letter-spacing:.04em;color:var(--wend-bister)">{{ e.bundleLine }}</div>
+      </sc-if>
+    </div>
+    <sc-if value="{{ showVotes }}" hint-placeholder-val="{{ true }}">
+      <div title="Everyone's votes added up, from +2 to -2 each" style="flex:none;text-align:right">
+        <div style="font-size:19px;font-weight:700;font-family:var(--font-mono);color:var(--text-strong)">{{ e.scoreLabel }}</div>
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)">group score</div>
+      </div>
+    </sc-if>
+    <span style="flex:none;font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ e.chevron }}</span>
+  </div>
+
+  <sc-if value="{{ e.expanded }}">
+    <div style="margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border-subtle);display:flex;flex-direction:column;gap:16px">
+      <sc-if value="{{ e.hasNote }}">
+        <p style="font-size:15px;line-height:1.7;color:var(--text-body);margin:0">{{ e.note }}</p>
+      </sc-if>
+
+      <sc-if value="{{ showVotes }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);flex:none">Keen?</div>
+          <div style="display:flex;gap:8px;flex:none">
+            <sc-for list="{{ e.voteButtons }}" as="vb" hint-placeholder-count="5">
+              <button onClick="{{ vb.go }}" title="{{ vb.title }}" style="all:unset;cursor:pointer;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:{{ vb.borderW }} solid {{ vb.border }};background:{{ vb.bg }};color:{{ vb.color }}" style-hover="opacity:.8"><sc-if value="{{ vb.isUp2 }}"><svg width="22" height="22" viewBox="0 0 34 30"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></svg></sc-if><sc-if value="{{ vb.isUp1 }}"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#thumbGlyph"></use></svg></sc-if><sc-if value="{{ vb.isMid }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path></svg></sc-if><sc-if value="{{ vb.isDown1 }}"><svg width="20" height="20" viewBox="0 0 24 24"><use href="#thumbGlyph" transform="rotate(180 12 12)"></use></svg></sc-if><sc-if value="{{ vb.isDown2 }}"><svg width="22" height="22" viewBox="0 0 34 30"><g transform="rotate(180 17 15)"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></g></svg></sc-if></button>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">
+            <sc-for list="{{ e.votePills }}" as="vp" hint-placeholder-count="2">
+              <span style="position:relative;display:inline-block" onMouseEnter="{{ vp.onEnter }}" onMouseLeave="{{ vp.onLeave }}">
+                <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;background:var(--wend-paper);border:1.5px solid var(--border-subtle);color:var(--text-muted)"><sc-if value="{{ vp.isUp2 }}"><svg width="18" height="18" viewBox="0 0 34 30"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></svg></sc-if><sc-if value="{{ vp.isUp1 }}"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#thumbGlyph"></use></svg></sc-if><sc-if value="{{ vp.isMid }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 12h14"></path></svg></sc-if><sc-if value="{{ vp.isDown1 }}"><svg width="16" height="16" viewBox="0 0 24 24"><use href="#thumbGlyph" transform="rotate(180 12 12)"></use></svg></sc-if><sc-if value="{{ vp.isDown2 }}"><svg width="18" height="18" viewBox="0 0 34 30"><g transform="rotate(180 17 15)"><use href="#thumbGlyph" transform="translate(12,-3) scale(0.78)"></use><use href="#thumbGlyph" transform="translate(0,5) scale(1)"></use></g></svg></sc-if><span style="font-family:var(--font-mono);font-size:14px;color:var(--text-strong)">{{ vp.count }}</span></span>
+                <sc-if value="{{ vp.hovered }}">
+                  <span style="position:absolute;bottom:calc(100% + 6px);left:0;white-space:nowrap;background:var(--wend-deep-leaf);color:var(--text-on-dark);font-size:13px;padding:6px 10px;border-radius:12px;z-index:5">{{ vp.names }}</span>
+                </sc-if>
+              </span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ e.hasTodos }}">
+        <div>
+          <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:8px">To-do</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ e.todos }}" as="t" hint-placeholder-count="2">
+              <button onClick="{{ t.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:36px;font-size:15px;color:var(--text-body)">
+                <span style="width:20px;height:20px;flex:none;border-radius:4px;border:1.5px solid var(--border-strong);background:{{ t.box }};display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--wend-paper);font-weight:700">{{ t.tick }}</span>
+                <span style="color:{{ t.color }}">{{ t.text }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ e.inBundles }}">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <sc-for list="{{ e.bundleTags }}" as="b" hint-placeholder-count="2">
+            <span style="font-size:14px;padding:5px 12px;border-radius:99px;background:var(--wend-bister-wash);color:var(--wend-bister)">{{ b.name }}</span>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <div style="border-top:1.5px dashed var(--border-subtle);padding-top:10px;font-size:15px;color:var(--text-muted)">+ to-do (book, reserve, buy...)</div>
+    </div>
+  </sc-if>
+</div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </sc-for>
+</div>
+  </sc-if>
+
+                <sc-if value="{{ hasSelection }}">
+                  <div style="position:relative;margin-top:18px;border:2px solid var(--wend-deep-leaf);border-radius:99px;padding:9px 12px 9px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--surface-card)">
+                    <span style="font-size:15px;color:var(--text-strong);font-weight:700">{{ selectionLine }}</span>
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span onClick="{{ clearSelection }}" style="cursor:pointer;font-size:14px;color:var(--text-muted)">Clear</span>
+                      <button onClick="{{ toggleAddMenu }}" style="all:unset;cursor:pointer;padding:9px 16px;border-radius:12px;background:var(--wend-leaf);color:var(--wend-paper);font-size:14px;font-weight:700">Add to a bundle</button>
+                    </div>
+                    <sc-if value="{{ addMenuOpen }}">
+                      <div onClick="{{ closeAddMenu }}" style="position:fixed;inset:0;z-index:19"></div>
+                      <div onClick="{{ stopClick }}" style="position:absolute;right:12px;bottom:52px;z-index:20;background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:12px;width:280px;display:flex;flex-direction:column;gap:6px">
+                        <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);padding:2px 6px 6px">Add to</div>
+                        <sc-for list="{{ bundleTargets }}" as="bt" hint-placeholder-count="4">
+                          <span onClick="{{ bt.go }}" style="cursor:pointer;border-radius:4px;padding:9px 10px;font-size:15px;color:var(--text-body);background:var(--wend-paper)">{{ bt.name }}</span>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+
+              </div>
+            </div>
+<aside style="width: 34%; flex: 0 1 auto; min-width: 240px; border-left: 1.5px solid var(--border-subtle); padding: 26px 24px 60px; display: flex; flex-direction: column; gap: 18px; background-color: var(--wend-paper)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Bundles</div>
+            
+          </div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <p style="font-size:15px;line-height:1.7;color:var(--text-body);margin:0">A bundle is group of things that goes well together. Bundles can be used to form your itinerary.&nbsp;</p><x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="secondary" hint-size="auto,36px" style="width: 100%; align-self: flex-end">+ New bundle</x-import>
+            <sc-for list="{{ bundles }}" as="b" hint-placeholder-count="4">
+              <div style="border: 1.5px solid var(--border-subtle); border-radius: 12px; padding: 14px; background-color: var(--wend-card); border-color: var(--wend-line)">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                  <div style="flex:1;min-width:0;font-size:17px;font-weight:700;color:var(--text-strong)">{{ b.name }}</div>
+                  <div style="flex:none;font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ b.count }}</div>
+                </div>
+                <div style="font-size:13px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin:4px 0 10px">{{ b.meta }}</div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <sc-for list="{{ b.items }}" as="i" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:9px;font-size:15px;color:var(--text-body);background:var(--wend-paper);border-radius:4px;padding:7px 10px">
+                      <span style="width:7px;height:7px;border-radius:50%;flex:none;background:{{ i.dot }}"></span>
+                      <span>{{ i.name }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </aside>
+        </div>
+      </div>
+
+      <sc-if value="{{ isNewIdeaOpen }}">
+        <div onClick="{{ closeNewIdea }}" style="position:fixed;inset:0;background:rgba(47,74,54,.45);display:flex;align-items:center;justify-content:center;z-index:10">
+          <div onClick="{{ stopClick }}" style="background:var(--surface-card);border-radius:12px;padding:32px;width:440px;max-width:90vw;display:flex;flex-direction:column;gap:18px">
+            <div style="font-size:26px;line-height:1.3;font-weight:700;color:var(--text-strong)">New idea</div>
+
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Name</label>
+              <input value="{{ newIdeaForm.name }}" onChange="{{ setNewIdeaName }}" placeholder="What's the idea?" style="font-family:var(--font-sans);font-size:17px;color:var(--text-strong);background:var(--surface-card);border:1.5px solid var(--border-strong);border-radius:12px;padding:12px 14px;min-height:44px;outline:none" style-focus="border-color:var(--focus-ring);box-shadow:0 0 0 3px var(--focus-ring-wash)">
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ newIdeaAreaChips }}" as="c" hint-placeholder-count="6">
+                <span onClick="{{ c.go }}" style="cursor:pointer">
+                  <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Chip" selected="{{ c.selected }}" hint-size="auto,34px">{{ c.label }}</x-import>
+                </span>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ newIdeaCatChips }}" as="c" hint-placeholder-count="6">
+                <span onClick="{{ c.go }}" style="cursor:pointer">
+                  <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Chip" selected="{{ c.selected }}" hint-size="auto,34px">{{ c.label }}</x-import>
+                </span>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+              <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="quiet" onClick="{{ closeNewIdea }}" hint-size="auto,44px">Cancel</x-import>
+              <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="primary" onClick="{{ createNewIdea }}" disabled="{{ newIdeaDisabled }}" hint-size="auto,44px">Add idea</x-import>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ isItinerary }}">
+
+      <sc-if value="{{ needDates }}">
+        <div style="padding:56px 48px;display:flex;justify-content:center">
+          <div style="width:100%;max-width:520px;background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:30px;display:flex;flex-direction:column;gap:20px">
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Before the days appear</div>
+              <div style="font-size:26px;line-height:1.3;font-weight:700;color:var(--text-strong)">When are you going?</div>
+              <div style="font-size:17px;line-height:1.7;color:var(--text-body)">Days come from your dates. Rough is fine — you can move them later and everything you've placed shifts with them.</div>
+            </div>
+            <div style="display:flex;gap:14px">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">First day</label>
+                <input value="{{ dateForm.start }}" onChange="{{ setDateStart }}" placeholder="Pick a day" style="font-family:var(--font-mono);font-size:17px;color:var(--text-strong);background:var(--surface-card);border:1.5px solid var(--border-strong);border-radius:12px;padding:12px 14px;min-height:48px;outline:none" style-focus="border-color:var(--focus-ring);box-shadow:0 0 0 3px var(--focus-ring-wash)">
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+                <label style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Last day</label>
+                <input value="{{ dateForm.end }}" onChange="{{ setDateEnd }}" placeholder="Pick a day" style="font-family:var(--font-mono);font-size:17px;color:var(--text-strong);background:var(--surface-card);border:1.5px solid var(--border-strong);border-radius:12px;padding:12px 14px;min-height:48px;outline:none" style-focus="border-color:var(--focus-ring);box-shadow:0 0 0 3px var(--focus-ring-wash)">
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="font-size:14px;color:var(--text-muted)">Or set a length:</span>
+              <sc-for list="{{ lengthChips }}" as="c" hint-placeholder-count="3">
+                <button onClick="{{ c.go }}" style="all:unset;cursor:pointer;padding:7px 14px;border-radius:99px;border:1.5px solid var(--border-strong);font-size:14px;color:var(--text-strong)" style-hover="opacity:.7">{{ c.label }}</button>
+              </sc-for>
+            </div>
+            <div style="background:var(--wend-paper);border-radius:12px;padding:14px 16px;font-size:15px;line-height:1.7;color:var(--text-body)">You've kept 41 ideas and 4 bundles for this trip. They'll be waiting on the right when the days open.</div>
+            <div style="display:flex;gap:10px;justify-content:flex-end">
+              <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="quiet" onClick="{{ goBoard }}" hint-size="auto,44px">Back to ideas</x-import>
+              <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="primary" onClick="{{ confirmDates }}" disabled="{{ datesDisabled }}" hint-size="auto,44px">Open the days</x-import>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ datesReady }}">
+        <div style="display:flex;align-items:stretch;min-height:100vh">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+            <div style="padding:26px 32px 18px;background:var(--surface-card);border-bottom:1.5px solid var(--border-subtle);display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+              <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                <h1 style="font-size:40px;line-height:1.2;font-weight:700;color:var(--text-strong);margin:0">Itinerary</h1>
+                <div style="display:flex;align-items:baseline;gap:10px">
+                  <span style="font-family:var(--font-mono);font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ itinMeta }}</span>
+                  <sc-if value="{{ hasSplit }}">
+                    <span style="font-family:var(--font-mono);font-size:13px;letter-spacing:.04em;font-weight:700;color:var(--wend-bister)">{{ splitLine }}</span>
+                  </sc-if>
+                </div>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <div style="display:flex;background:var(--wend-line);border-radius:99px;padding:3px;gap:2px">
+                  <button onClick="{{ expandAllDays }}" style="all:unset;cursor:pointer;padding:7px 14px;border-radius:99px;font-size:14px;font-weight:700;color:var(--text-strong);white-space:nowrap" style-hover="opacity:.7">Expand all</button>
+                  <button onClick="{{ collapseAllDays }}" style="all:unset;cursor:pointer;padding:7px 14px;border-radius:99px;font-size:14px;color:var(--text-muted);white-space:nowrap" style-hover="opacity:.7">Collapse all</button>
+                </div>
+                <button onClick="{{ reopenDates }}" style="all:unset;cursor:pointer;padding:9px 16px;border-radius:12px;border:1.5px solid var(--border-strong);font-size:14px;font-weight:700;color:var(--text-strong)" style-hover="opacity:.7">Change dates</button>
+              </div>
+            </div>
+
+            <div style="flex:1;display:flex;flex-direction:column;gap:12px;padding:20px 32px 48px">
+              <sc-for list="{{ itinDays }}" as="d" hint-placeholder-count="6">
+
+                <sc-if value="{{ d.closed }}">
+                  <button onClick="{{ d.toggle }}" onDragOver="{{ d.dragOver }}" onDrop="{{ d.drop }}" style="all:unset;cursor:pointer;background:{{ d.rowBg }};border:1.5px {{ d.rowBorderStyle }} {{ d.rowBorder }};border-radius:12px;padding:14px 18px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;outline:{{ d.rowOutline }};outline-offset:2px" style-hover="opacity:.9">
+                    <span style="display:flex;align-items:center;gap:14px">
+                      <span style="width:{{ d.dotSize }};height:{{ d.dotSize }};border-radius:50%;background:{{ d.dotFill }};border:{{ d.dotRing }};box-sizing:border-box;flex:none"></span>
+                      <span style="font-size:15px;font-weight:700;color:var(--text-strong);white-space:nowrap;text-align:left">{{ d.label }}</span>
+                    </span>
+                    <span style="display:flex;align-items:center;gap:12px;min-width:0;overflow:hidden">
+                      <span style="font-size:15px;color:{{ d.summaryColor }};flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left">{{ d.summary }}</span>
+                      <sc-if value="{{ d.multi }}">
+                        <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--wend-bister);flex:none;white-space:nowrap">{{ d.statusLine }}</span>
+                      </sc-if>
+                      <sc-if value="{{ d.hasLodging }}">
+                        <span style="display:flex;align-items:center;gap:7px;padding:4px 12px;border-radius:99px;background:var(--wend-bister-wash);flex:0 1 auto;min-width:0;max-width:180px">
+                          <span style="display:flex;flex:none;color:var(--wend-bister)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg></span>
+                          <span style="font-size:13px;color:var(--text-strong);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.lodging }}</span>
+                        </span>
+                      </sc-if>
+                      <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.hours }}</span>
+                    </span>
+                    <span style="display:flex;color:var(--wend-leaf);flex:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></span>
+                  </button>
+                </sc-if>
+
+                <sc-if value="{{ d.open }}">
+                  <div onDragOver="{{ d.dragOver }}" onDrop="{{ d.drop }}" style="background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;outline:{{ d.dropOutline }};outline-offset:2px">
+
+                    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                      <span style="width:{{ d.dotSize }};height:{{ d.dotSize }};border-radius:50%;background:{{ d.dotFill }};border:{{ d.dotRing }};box-sizing:border-box;flex:none"></span>
+                      <div style="font-size:17px;font-weight:700;color:var(--text-strong)">{{ d.label }}</div>
+                      <sc-if value="{{ d.multi }}">
+                        <span style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--wend-bister)">{{ d.statusLine }}</span>
+                      </sc-if>
+
+                      <sc-if value="{{ d.hasLodging }}">
+                        <button onClick="{{ d.lodgeToggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:99px;background:var(--wend-bister-wash)" style-hover="opacity:.8">
+                          <span style="display:flex;flex:none;color:var(--wend-bister)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg></span>
+                          <span style="font-size:14px;color:var(--text-strong)">{{ d.lodging }}</span>
+                        </button>
+                      </sc-if>
+                      <sc-if value="{{ d.noLodging }}">
+                        <button onClick="{{ d.lodgeToggle }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:99px;border:1.5px dashed var(--wend-bister-tint)" style-hover="opacity:.75">
+                          <span style="display:flex;flex:none;color:var(--wend-bister-tint)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg></span>
+                          <span style="font-size:14px;color:var(--text-muted)">+ where you sleep</span>
+                        </button>
+                      </sc-if>
+
+                      <span style="margin-left:auto;display:flex;gap:10px;flex:none">
+                        <sc-if value="{{ d.forkable }}">
+                          <button onClick="{{ d.fork }}" style="all:unset;cursor:pointer;padding:8px 14px;border-radius:12px;border:1.5px solid var(--border-strong);font-size:14px;font-weight:700;color:var(--text-strong)" style-hover="opacity:.7">Fork this day</button>
+                        </sc-if>
+                        <sc-if value="{{ d.multi }}">
+                          <button onClick="{{ d.fork }}" style="all:unset;cursor:pointer;padding:8px 14px;border-radius:12px;border:1.5px solid var(--border-strong);font-size:14px;font-weight:700;color:var(--text-strong)" style-hover="opacity:.7">Add another</button>
+                        </sc-if>
+                        <button onClick="{{ d.toggle }}" title="Close this day" style="all:unset;cursor:pointer;display:flex;align-items:center;color:var(--wend-leaf);padding:8px 4px" style-hover="opacity:.7"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"></path></svg></button>
+                      </span>
+                    </div>
+
+                    <sc-if value="{{ d.lodgeOpen }}">
+                      <div style="background:var(--wend-paper);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px">
+                        <div style="font-size:13px;color:var(--text-muted)">Kept places, or your own words</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px">
+                          <sc-for list="{{ d.lodgeChoices }}" as="c" hint-placeholder-count="3">
+                            <button onClick="{{ c.go }}" style="all:unset;cursor:pointer;padding:7px 14px;border-radius:99px;border:1.5px solid var(--border-strong);font-size:14px;color:var(--text-strong)" style-hover="opacity:.7">{{ c.label }}</button>
+                          </sc-for>
+                          <sc-if value="{{ d.hasLodging }}">
+                            <button onClick="{{ d.clearLodge }}" style="all:unset;cursor:pointer;padding:7px 14px;border-radius:12px;font-size:14px;color:var(--text-muted)" style-hover="opacity:.7">Clear it</button>
+                          </sc-if>
+                        </div>
+                        <input value="{{ lodgeText }}" onChange="{{ setLodgeText }}" placeholder="Or type it — night bus, a friend's sofa" style="font-family:var(--font-mono);font-size:15px;color:var(--text-strong);background:var(--surface-card);border:1.5px solid var(--border-strong);border-radius:12px;padding:10px 12px;outline:none" style-focus="border-color:var(--focus-ring);box-shadow:0 0 0 3px var(--focus-ring-wash)">
+                        <button onClick="{{ d.saveLodgeText }}" style="all:unset;cursor:pointer;align-self:flex-start;padding:8px 16px;border-radius:12px;background:var(--wend-leaf);color:var(--wend-paper);font-size:14px;font-weight:700" style-hover="opacity:.85">Use what I wrote</button>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ d.single }}">
+                      <div style="display:flex;flex-direction:column;gap:6px">
+                        <sc-for list="{{ d.items }}" as="it" hint-placeholder-count="4">
+                          <sc-if value="{{ it.isBundle }}">
+                            <div style="background:var(--wend-hatch-b);border-radius:12px;padding:8px 10px 10px;display:flex;flex-direction:column;gap:4px">
+                              <div style="display:flex;align-items:center;gap:8px;padding:0 3px 2px">
+                                <span style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Bundle · {{ it.title }}</span>
+                                <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">{{ it.time }}</span>
+                                <button onClick="{{ it.ungroup }}" style="all:unset;cursor:pointer;margin-left:auto;font-size:13px;font-weight:700;color:var(--wend-leaf)" style-hover="opacity:.7">Ungroup</button>
+                              </div>
+                              <sc-for list="{{ it.members }}" as="m" hint-placeholder-count="2">
+                                <div style="background:var(--surface-card);border-radius:12px;padding:11px 13px;display:flex;gap:14px;align-items:baseline">
+                                  <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);width:104px;flex:none">{{ m.time }}</span>
+                                  <span style="font-size:15px;color:var(--text-strong)">{{ m.title }}</span>
+                                  <span style="margin-left:auto;font-size:13px;color:var(--text-muted);flex:none">{{ m.meta }}</span>
+                                </div>
+                              </sc-for>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{ it.isGap }}">
+                            <div style="border:2px dashed var(--wend-line-strong);background:var(--wend-paper);border-radius:12px;padding:14px 13px;display:flex;gap:14px;align-items:center">
+                              <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);width:104px;flex:none">{{ it.time }}</span>
+                              <span style="font-size:15px;font-weight:700;color:var(--text-strong)">{{ it.title }}</span>
+                              <span style="font-size:13px;color:var(--text-muted)">{{ it.meta }}</span>
+                              <button onClick="{{ it.fill }}" style="all:unset;cursor:pointer;margin-left:auto;flex:none;padding:7px 14px;border-radius:12px;border:1.5px solid var(--border-strong);font-size:13px;font-weight:700;color:var(--text-strong)" style-hover="opacity:.7">Fill it</button>
+                            </div>
+                          </sc-if>
+                          <sc-if value="{{ it.isIdea }}">
+                            <div style="border:1.5px solid var(--border-subtle);border-radius:12px;padding:11px 13px;display:flex;gap:14px;align-items:baseline">
+                              <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);width:104px;flex:none">{{ it.time }}</span>
+                              <span style="font-size:15px;color:var(--text-strong)">{{ it.title }}</span>
+                              <span style="margin-left:auto;font-size:13px;color:var(--text-muted);flex:none">{{ it.meta }}</span>
+                            </div>
+                          </sc-if>
+                        </sc-for>
+                        <button onClick="{{ d.addTo }}" style="all:unset;cursor:pointer;border:1.5px dashed var(--border-strong);border-radius:12px;padding:11px 12px;font-size:14px;color:var(--text-muted);text-align:center;margin-top:2px" style-hover="opacity:.7">+ add to this day</button>
+                        <sc-if value="{{ d.addPickerOpen }}">
+                          <div style="background:var(--wend-paper);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px">
+                            <div style="font-size:13px;color:var(--text-muted)">Kept and not placed yet</div>
+                            <sc-for list="{{ d.addChoices }}" as="c" hint-placeholder-count="3">
+                              <button onClick="{{ c.go }}" style="all:unset;cursor:pointer;background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:10px 12px;display:flex;align-items:baseline;gap:12px" style-hover="opacity:.8">
+                                <span style="font-size:15px;color:var(--text-strong)">{{ c.label }}</span>
+                                <span style="margin-left:auto;font-size:13px;color:var(--text-muted)">{{ c.meta }}</span>
+                              </button>
+                            </sc-for>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+
+                    <sc-if value="{{ d.multi }}">
+                      <div style="display:flex;gap:14px;align-items:stretch">
+                        <sc-for list="{{ d.versions }}" as="v" hint-placeholder-count="2">
+                          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;background:var(--wend-paper);border-radius:12px;padding:14px">
+                            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+                              <div style="font-size:15px;font-weight:700;color:var(--text-strong)">{{ v.name }}</div>
+                              <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">{{ v.note }}</div>
+                            </div>
+                            <sc-for list="{{ v.items }}" as="it" hint-placeholder-count="3">
+                              <sc-if value="{{ it.isBundle }}">
+                                <div style="background:var(--wend-hatch-b);border-radius:12px;padding:8px 10px 10px;display:flex;flex-direction:column;gap:4px">
+                                  <div style="display:flex;align-items:center;gap:8px;padding:0 3px 2px">
+                                    <span style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Bundle · {{ it.title }}</span>
+                                    <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted)">{{ it.time }}</span>
+                                  </div>
+                                  <sc-for list="{{ it.members }}" as="m" hint-placeholder-count="2">
+                                    <div style="background:var(--surface-card);border-radius:12px;padding:10px 12px;display:flex;gap:12px;align-items:baseline">
+                                      <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);width:96px;flex:none">{{ m.time }}</span>
+                                      <span style="font-size:15px;color:var(--text-strong)">{{ m.title }}</span>
+                                    </div>
+                                  </sc-for>
+                                </div>
+                              </sc-if>
+                              <sc-if value="{{ it.isGap }}">
+                                <div style="border:2px dashed var(--wend-line-strong);background:var(--surface-card);border-radius:12px;padding:13px 12px;display:flex;gap:12px;align-items:center">
+                                  <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);width:96px;flex:none">{{ it.time }}</span>
+                                  <span style="font-size:15px;font-weight:700;color:var(--text-strong)">{{ it.title }}</span>
+                                  <button onClick="{{ it.fill }}" style="all:unset;cursor:pointer;margin-left:auto;flex:none;font-size:13px;font-weight:700;color:var(--wend-leaf)" style-hover="opacity:.7">Fill it</button>
+                                </div>
+                              </sc-if>
+                              <sc-if value="{{ it.isIdea }}">
+                                <div style="border:1.5px solid var(--border-subtle);background:var(--surface-card);border-radius:12px;padding:10px 12px;display:flex;gap:12px;align-items:baseline">
+                                  <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-muted);width:96px;flex:none">{{ it.time }}</span>
+                                  <span style="font-size:15px;color:var(--text-strong)">{{ it.title }}</span>
+                                  <span style="margin-left:auto;font-size:13px;color:var(--text-muted);flex:none">{{ it.meta }}</span>
+                                </div>
+                              </sc-if>
+                            </sc-for>
+                            <button onClick="{{ v.keep }}" style="all:unset;cursor:pointer;margin-top:auto;text-align:center;padding:10px 18px;border-radius:12px;background:{{ v.keepBg }};border:2px solid var(--wend-leaf);color:{{ v.keepColor }};font-size:14px;font-weight:700;min-height:44px;box-sizing:border-box" style-hover="opacity:.85">{{ v.keepLabel }}</button>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+
+                  </div>
+                </sc-if>
+
+              </sc-for>
+            </div>
+          </div>
+
+          <aside style="width:300px;flex:none;border-left:1.5px solid var(--border-subtle);background:var(--surface-card);padding:24px 20px 40px;display:flex;flex-direction:column;gap:12px">
+            <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">{{ shelfTitle }}</div>
+            <div style="font-size:15px;line-height:1.7;color:var(--text-body)">{{ shelfLine }}</div>
+            <sc-for list="{{ shelf }}" as="b" hint-placeholder-count="4">
+              <div draggable="{{ true }}" onDragStart="{{ b.dragStart }}" onDragEnd="{{ b.dragEnd }}" style="background:{{ b.bg }};border:1.5px solid {{ b.border }};border-radius:12px;padding:11px 13px;display:flex;align-items:flex-start;gap:10px;cursor:grab">
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:15px;color:var(--text-strong)">{{ b.name }}</span>
+                  <span style="font-size:13px;color:{{ b.metaColor }}">{{ b.meta }}</span>
+                </span>
+                <span style="flex:none;position:relative">
+                  <button onClick="{{ b.toggleMenu }}" title="Add to a day" style="all:unset;cursor:pointer;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;color:var(--text-muted)" style-hover="opacity:.6">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></svg>
+                  </button>
+                  <sc-if value="{{ b.menuOpen }}">
+                    <span style="position:absolute;top:30px;right:0;z-index:5;width:220px;background:var(--surface-card);border:1.5px solid var(--border-strong);border-radius:12px;padding:6px;display:flex;flex-direction:column">
+                      <sc-for list="{{ b.dayTargets }}" as="t" hint-placeholder-count="6">
+                        <button onClick="{{ t.go }}" style="all:unset;cursor:pointer;padding:9px 10px;border-radius:12px;font-size:14px;color:var(--text-strong);text-align:left" style-hover="background:var(--wend-paper)">{{ t.label }}</button>
+                      </sc-for>
+                    </span>
+                  </sc-if>
+                </span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ hasArchived }}">
+              <div style="margin-top:12px;padding-top:16px;border-top:1.5px solid var(--border-subtle);display:flex;flex-direction:column;gap:10px">
+                <button onClick="{{ toggleArchivedPanel }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--wend-leaf)" style-hover="opacity:.7">
+                  <span>{{ archivedLabel }}</span>
+                  <span style="display:flex"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="{{ archivedChevron }}"></path></svg></span>
+                </button>
+                <sc-if value="{{ archivedOpen }}">
+                  <div style="display:flex;flex-direction:column;gap:10px">
+                    <sc-for list="{{ archived }}" as="a" hint-placeholder-count="1">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                        <div style="font-size:14px;line-height:1.5;color:var(--text-body)">{{ a.label }}</div>
+                        <button onClick="{{ a.restore }}" style="all:unset;cursor:pointer;flex:none;font-size:13px;font-weight:700;color:var(--wend-leaf)" style-hover="opacity:.7">Bring back</button>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+            <div style="margin-top:auto;padding-top:20px;font-size:13px;line-height:1.7;color:var(--text-muted)">Nothing here is used up. A bundle can sit in two days at once until you decide.</div>
+          </aside>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ isBundles }}">
+      <div style="padding:36px 48px 64px">
+        
+        <h1 style="font-size:40px;line-height:1.2;font-weight:700;color:var(--text-strong);margin:8px 0 6px">Bundles</h1>
+        <p style="font-size:17px;line-height:1.7;color:var(--text-body);margin:0 0 30px;max-width:62ch">A bundle is a set of ideas that go together — a half day, an area, an evening. Bundles aren't days. You place them onto days later, and the same bundle can land twice.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;align-items:start">
+          <sc-for list="{{ bundles }}" as="b" hint-placeholder-count="4">
+            <div style="background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:20px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                <div style="flex:1;min-width:0;font-size:20px;line-height:1.4;font-weight:700;color:var(--text-strong)">{{ b.name }}</div>
+                <div style="flex:none;font-size:15px;letter-spacing:.04em;color:var(--text-muted)">{{ b.duration }}</div>
+              </div>
+              <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin:6px 0 14px">{{ b.meta }}</div>
+              <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:14px">
+                <sc-for list="{{ b.items }}" as="i" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;font-size:15px;color:var(--text-body);background:var(--wend-paper);border-radius:4px;padding:9px 12px">
+                    <span style="width:7px;height:7px;border-radius:50%;flex:none;background:{{ i.dot }}"></span>
+                    <span style="flex:1">{{ i.name }}</span>
+                    <span style="font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ i.shared }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1.5px solid var(--border-subtle)">
+                <span style="font-size:15px;color:var(--text-muted)">{{ b.placed }}</span>
+                <span style="font-size:17px;font-weight:700;color:var(--text-strong)">{{ b.score }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:40px;background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:24px">
+          <div style="font-size:20px;line-height:1.4;font-weight:700;color:var(--text-strong)">Two ways Thursday evening could go</div>
+          <p style="font-size:15px;line-height:1.7;color:var(--text-body);margin:8px 0 20px;max-width:62ch">Both are kept. Take either on the night — the day plan will show whichever you haven't ruled out.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+            <sc-for list="{{ compare }}" as="c" hint-placeholder-count="2">
+              <div style="border:1.5px solid var(--border-subtle);border-radius:12px;padding:18px">
+                <div style="font-size:17px;font-weight:700;color:var(--text-strong);margin-bottom:12px">{{ c.name }}</div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="3">
+                    <div style="display:flex;gap:12px;font-size:15px;line-height:1.6">
+                      <span style="width:96px;flex:none;letter-spacing:.04em;color:var(--text-muted)">{{ r.time }}</span>
+                      <span style="color:var(--text-body)">{{ r.what }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="margin-top:14px;padding-top:12px;border-top:1.5px solid var(--border-subtle);font-size:15px;color:var(--text-muted)">{{ c.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCalendar }}">
+
+      <sc-if value="{{ narrow }}">
+        <div style="flex:1;display:flex;flex-direction:column;position:relative;min-height:0">
+          <div style="padding:16px 20px 14px;display:flex;flex-direction:column;gap:12px;border-bottom:1.5px solid var(--border-subtle)">
+            <div style="font-size:26px;line-height:1.3;font-weight:700;color:var(--text-strong)">Final schedule</div>
+            <div style="display:flex;gap:8px;overflow:auto">
+              <sc-for list="{{ days }}" as="d" hint-placeholder-count="6">
+                <button onClick="{{ d.go }}" style="all:unset;cursor:pointer;min-width:52px;flex:none;text-align:center;padding:8px 4px;border-radius:12px;border:1.5px solid {{ d.border }};background:{{ d.bg }}">
+                  <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:{{ d.sub }}">{{ d.dow }}</div>
+                  <div style="font-family:var(--font-mono);font-size:16px;font-weight:700;color:{{ d.color }}">{{ d.date }}</div>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="flex:1;min-height:0;overflow:auto;padding:4px 20px 120px">
+            <sc-for list="{{ sched }}" as="r" hint-placeholder-count="7">
+              <div style="display:flex;gap:14px;padding:16px 0;border-bottom:1.5px solid var(--border-subtle)">
+                <div style="width:14px;flex:none;display:flex;flex-direction:column;align-items:center;padding-top:6px">
+                  <span style="width:14px;height:14px;border-radius:50%;background:{{ r.fill }};border:{{ r.ring }};outline:{{ r.outline }};outline-offset:3px;box-sizing:border-box"></span>
+                </div>
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px">
+                    <span style="font-family:var(--font-mono);font-size:17px;font-weight:700;letter-spacing:.02em;color:{{ r.timeColor }}">{{ r.time }}</span>
+                    <span style="font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ r.dur }}</span>
+                  </div>
+                  <div style="font-size:20px;line-height:1.4;font-weight:700;color:var(--text-strong);margin-top:4px">{{ r.title }}</div>
+                  <div style="font-size:15px;line-height:1.6;color:var(--text-muted);margin-top:2px">{{ r.meta }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="position:fixed;left:0;right:0;bottom:0;background:var(--surface-card);border-top:1.5px solid var(--border-subtle);padding:12px 20px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;z-index:20">
+            <div style="min-width:0">
+              <div style="font-size:15px;font-weight:700;color:var(--text-strong)">{{ nowTitle }}</div>
+              <div style="font-size:14px;color:var(--text-muted)">{{ nowSub }}</div>
+            </div>
+            <button onClick="{{ openNear }}" style="all:unset;cursor:pointer;flex:none;padding:12px 18px;min-height:48px;box-sizing:border-box;border-radius:12px;border:2px solid var(--wend-leaf);font-size:15px;font-weight:700;color:var(--wend-leaf)" style-hover="opacity:.75">What's nearby</button>
+          </div>
+
+          <sc-if value="{{ nearOpen }}">
+            <div style="position:fixed;inset:0;background:var(--wend-paper);display:flex;flex-direction:column;z-index:30">
+              <div style="padding:20px 20px 12px;display:flex;flex-direction:column;gap:12px;border-bottom:1.5px solid var(--border-subtle)">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                  <div style="min-width:0">
+                    <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Around you now</div>
+                    <div style="font-size:26px;line-height:1.3;font-weight:700;color:var(--text-strong);margin-top:4px">Fushimi, south</div>
+                    <div style="font-size:15px;line-height:1.6;color:var(--text-body);margin-top:4px">Nothing to be anywhere for until dinner at 18:30. Three kept places are close.</div>
+                  </div>
+                  <button onClick="{{ closeNear }}" style="all:unset;cursor:pointer;flex:none;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--text-muted)" style-hover="opacity:.6">×</button>
+                </div>
+              </div>
+              <div style="flex:1;min-height:0;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:10px">
+                <div ref="{{ nearRef }}" onMouseDown="{{ nearDown }}" style="position:relative;height:320px;flex:none;border:1.5px solid var(--border-subtle);border-radius:10px;overflow:hidden;background:#EDF1EA;cursor:grab;user-select:none">
+                      <div style="position:absolute;left:0;top:0;width:{{ nearLayerW }};height:{{ nearLayerH }};transform:{{ nearTransform }}">
+                        <svg viewBox="0 0 400 640" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+                        <rect x="0" y="0" width="400" height="640" fill="#EDF1EA"></rect>
+                        <rect x="16" y="24" width="150" height="120" fill="#E2E9DE"></rect>
+                        <rect x="196" y="24" width="188" height="120" fill="#E2E9DE"></rect>
+                        <rect x="16" y="168" width="150" height="150" fill="#E2E9DE"></rect>
+                        <rect x="196" y="168" width="188" height="150" fill="#DFE7DB"></rect>
+                        <rect x="16" y="344" width="150" height="150" fill="#E2E9DE"></rect>
+                        <rect x="196" y="344" width="188" height="150" fill="#E2E9DE"></rect>
+                        <rect x="16" y="518" width="368" height="106" fill="#E2E9DE"></rect>
+                        <path d="M0 332 C 110 320, 210 356, 400 330" stroke="#CBD8CF" stroke-width="14" fill="none"></path>
+                        <g stroke="#D2DACD" stroke-width="2">
+                          <line x1="182" y1="0" x2="182" y2="640"></line>
+                          <line x1="0" y1="156" x2="400" y2="156"></line>
+                          <line x1="0" y1="332" x2="400" y2="332"></line>
+                          <line x1="0" y1="506" x2="400" y2="506"></line>
+                        </g>
+                      </svg>
+                        <sc-for list="{{ nearPins }}" as="pin" hint-placeholder-count="8">
+                          <span style="position:absolute;left:{{ pin.left }};top:{{ pin.top }};transform:translate(-50%,-50%);white-space:nowrap;border-radius:99px;padding:6px 12px;font-size:13px;font-weight:700;background:var(--surface-card);color:var(--text-strong);border:1.5px solid var(--border-strong)">{{ pin.name }}</span>
+                        </sc-for>
+                        <span style="position:absolute;left:{{ youLeft }};top:{{ youTop }};transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:var(--wend-apricot);border:3px solid var(--wend-paper);box-sizing:border-box"></span>
+                      </div>
+                      <div style="position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:8px">
+                        <button onClick="{{ nearZoomIn }}" title="Zoom in" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:50%;background:var(--surface-card);border:1.5px solid var(--border-subtle);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:var(--text-strong)" style-hover="opacity:.8">+</button>
+                        <button onClick="{{ nearZoomOut }}" title="Zoom out" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:50%;background:var(--surface-card);border:1.5px solid var(--border-subtle);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:var(--text-strong)" style-hover="opacity:.8">−</button>
+                        <button onClick="{{ recenterNear }}" title="Back to where you are" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:50%;background:var(--surface-card);border:2px solid var(--wend-apricot);display:flex;align-items:center;justify-content:center" style-hover="opacity:.8"><span style="width:12px;height:12px;border-radius:50%;border:3px solid var(--wend-apricot);box-sizing:border-box"></span></button>
+                      </div>
+                      <div style="position:absolute;left:12px;bottom:12px">
+                        <span style="background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:99px;padding:7px 13px;font-size:13px;color:var(--text-muted)">{{ nearCount }}</span>
+                      </div>
+                    </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ nearPlaces }}" as="n" hint-placeholder-count="4">
+                    <x-import component-from-global-scope="WendDesignSystem_c7e2ae.PlaceCard" name="{{ n.name }}" meta="{{ n.metaLine }}" kept="{{ true }}" hint-size="100%,86px"></x-import>
+                  </sc-for>
+                </div>
+                <div style="font-size:15px;line-height:1.7;color:var(--text-muted)">Move the map and the list follows. Nothing here changes the plan.</div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:{{ calPad }}">
+        
+
+        <div style="display:flex;align-items:{{ calHeadAlign }};justify-content:space-between;gap:20px;margin-bottom:8px;flex-direction:{{ calHeadDir }}">
+          <div>
+            
+            <h1 style="font-size:40px;line-height:1.2;font-weight:700;color:var(--text-strong);margin:8px 0 0">Final schedule</h1>
+          </div>
+          <div style="display:flex;gap:6px;overflow:auto;max-width:100%;padding-bottom:2px">
+            <sc-for list="{{ days }}" as="d" hint-placeholder-count="6">
+              <button onClick="{{ d.go }}" style="all:unset;cursor:pointer;min-width:64px;text-align:center;padding:9px 10px;border-radius:12px;border:1.5px solid {{ d.border }};background:{{ d.bg }}">
+                <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:{{ d.sub }}">{{ d.dow }}</div>
+                <div style="font-size:17px;font-weight:700;letter-spacing:.04em;color:{{ d.color }}">{{ d.date }}</div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        <p style="font-size:17px;line-height:1.7;color:var(--text-body);margin:0 0 26px;max-width:62ch">{{ dayBlurb }}</p>
+
+        <div style="display:flex;gap:24px;align-items:flex-start;flex-direction:{{ calDir }}">
+          <div style="flex:1;min-width:0;align-self:stretch;background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:8px 20px 20px">
+            <sc-for list="{{ sched }}" as="s" hint-placeholder-count="8">
+              <div style="display:flex;gap:18px;padding:14px 0;border-bottom:1.5px solid var(--border-subtle)">
+                <div style="width:118px;flex:none;padding-top:2px">
+                  <div style="font-family:var(--font-mono);font-size:17px;letter-spacing:.02em;font-weight:700;color:{{ s.timeColor }}">{{ s.time }}</div>
+                  <div style="font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ s.dur }}</div>
+                </div>
+                <span style="flex:none;margin-top:8px;width:14px;height:14px;border-radius:50%;background:{{ s.fill }};border:{{ s.ring }};outline:{{ s.outline }};outline-offset:3px;box-sizing:border-box"></span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:20px;line-height:1.4;font-weight:700;color:var(--text-strong)">{{ s.title }}</div>
+                  <div style="font-size:15px;letter-spacing:.04em;color:var(--text-muted);margin-top:2px">{{ s.meta }}</div>
+                  <sc-if value="{{ s.hasOptions }}">
+                    <div style="margin-top:12px;display:flex;flex-direction:column;gap:7px">
+                      <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--wend-apricot)">Decide on the night</div>
+                      <sc-for list="{{ s.options }}" as="o" hint-placeholder-count="3">
+                        <div style="display:flex;align-items:center;gap:10px;background:var(--wend-paper);border-radius:4px;padding:9px 12px;font-size:15px">
+                          <span style="flex:1;color:var(--text-body)">{{ o.name }}</span>
+                          <span style="letter-spacing:.04em;color:var(--text-muted)">{{ o.meta }}</span>
+                          <span style="font-weight:700;color:var(--text-strong)">{{ o.score }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="width:{{ calPanelW }};flex:none;display:flex;flex-direction:{{ calPanelGrow }};gap:16px;align-self:stretch">
+            <div style="flex:1;min-width:0;background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:18px">
+              <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:12px"><span style="letter-spacing: 1.44px; background-color: var(--wend-card)">Around you now</span></div>
+              
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div ref="{{ nearRef }}" onMouseDown="{{ nearDown }}" style="position:relative;height:300px;flex:none;border:1.5px solid var(--border-subtle);border-radius:10px;overflow:hidden;background:#EDF1EA;cursor:grab;user-select:none">
+                      <div style="position:absolute;left:0;top:0;width:{{ nearLayerW }};height:{{ nearLayerH }};transform:{{ nearTransform }}">
+                        <svg viewBox="0 0 400 640" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+                        <rect x="0" y="0" width="400" height="640" fill="#EDF1EA"></rect>
+                        <rect x="16" y="24" width="150" height="120" fill="#E2E9DE"></rect>
+                        <rect x="196" y="24" width="188" height="120" fill="#E2E9DE"></rect>
+                        <rect x="16" y="168" width="150" height="150" fill="#E2E9DE"></rect>
+                        <rect x="196" y="168" width="188" height="150" fill="#DFE7DB"></rect>
+                        <rect x="16" y="344" width="150" height="150" fill="#E2E9DE"></rect>
+                        <rect x="196" y="344" width="188" height="150" fill="#E2E9DE"></rect>
+                        <rect x="16" y="518" width="368" height="106" fill="#E2E9DE"></rect>
+                        <path d="M0 332 C 110 320, 210 356, 400 330" stroke="#CBD8CF" stroke-width="14" fill="none"></path>
+                        <g stroke="#D2DACD" stroke-width="2">
+                          <line x1="182" y1="0" x2="182" y2="640"></line>
+                          <line x1="0" y1="156" x2="400" y2="156"></line>
+                          <line x1="0" y1="332" x2="400" y2="332"></line>
+                          <line x1="0" y1="506" x2="400" y2="506"></line>
+                        </g>
+                      </svg>
+                        <sc-for list="{{ nearPins }}" as="pin" hint-placeholder-count="8">
+                          <span style="position:absolute;left:{{ pin.left }};top:{{ pin.top }};transform:translate(-50%,-50%);white-space:nowrap;border-radius:99px;padding:6px 12px;font-size:13px;font-weight:700;background:var(--surface-card);color:var(--text-strong);border:1.5px solid var(--border-strong)">{{ pin.name }}</span>
+                        </sc-for>
+                        <span style="position:absolute;left:{{ youLeft }};top:{{ youTop }};transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:var(--wend-apricot);border:3px solid var(--wend-paper);box-sizing:border-box"></span>
+                      </div>
+                      <div style="position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:8px">
+                        <button onClick="{{ nearZoomIn }}" title="Zoom in" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:50%;background:var(--surface-card);border:1.5px solid var(--border-subtle);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:var(--text-strong)" style-hover="opacity:.8">+</button>
+                        <button onClick="{{ nearZoomOut }}" title="Zoom out" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:50%;background:var(--surface-card);border:1.5px solid var(--border-subtle);display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;color:var(--text-strong)" style-hover="opacity:.8">−</button>
+                        <button onClick="{{ recenterNear }}" title="Back to where you are" style="all:unset;cursor:pointer;width:40px;height:40px;border-radius:50%;background:var(--surface-card);border:2px solid var(--wend-apricot);display:flex;align-items:center;justify-content:center" style-hover="opacity:.8"><span style="width:12px;height:12px;border-radius:50%;border:3px solid var(--wend-apricot);box-sizing:border-box"></span></button>
+                      </div>
+                      <div style="position:absolute;left:12px;bottom:12px">
+                        <span style="background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:99px;padding:7px 13px;font-size:13px;color:var(--text-muted)">{{ nearCount }}</span>
+                      </div>
+                    </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <sc-for list="{{ nearPlaces }}" as="n" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:10px;background:var(--wend-paper);border-radius:4px;padding:10px 12px;font-size:15px">
+                      <span style="width:12px;height:12px;flex:none;border-radius:50%;border:3px solid var(--stop-open);box-sizing:border-box"></span>
+                      <span style="flex:1;min-width:0;color:var(--text-body)">{{ n.name }}</span>
+                      <span style="flex:none;font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ n.dist }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ isMap }}">
+      <div style="padding:36px 48px 48px;display:flex;flex-direction:column;min-height:100vh">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:18px">
+          <div>
+            <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Everything, on the ground</div>
+            <h1 style="font-size:40px;line-height:1.2;font-weight:700;color:var(--text-strong);margin:8px 0 0">Map</h1>
+          </div>
+          <div style="display:flex;gap:8px">
+            <sc-for list="{{ mapFilters }}" as="f" hint-placeholder-count="3">
+              <span onClick="{{ f.go }}" style="cursor:pointer">
+                <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Chip" selected="{{ f.selected }}" hint-size="auto,34px">{{ f.label }}</x-import>
+              </span>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="flex:1;display:flex;gap:20px;align-items:stretch;min-height:600px">
+          <div style="flex:1;position:relative;border-radius:10px;overflow:hidden;background:var(--wend-hatch-b);border:1.5px solid var(--border-subtle)">
+            <div style="position:absolute;inset:0;background:var(--placeholder-hatch);opacity:.45"></div>
+            <div style="position:absolute;left:20%;top:-10%;width:4px;height:120%;background:var(--wend-line-strong);transform:rotate(9deg)"></div>
+            <div style="position:absolute;left:0;top:56%;width:100%;height:3px;background:var(--wend-line-strong)"></div>
+            <div style="position:absolute;left:24px;top:20px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Kyoto</div>
+            <div style="position:absolute;left:24px;bottom:22px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted)">Osaka</div>
+            <div style="position:absolute;right:20px;bottom:18px;font-size:13px;letter-spacing:.04em;color:var(--text-muted);background:var(--surface-card);padding:6px 10px;border-radius:4px">Schematic — real map goes here</div>
+            <sc-for list="{{ mapPinsBig }}" as="p" hint-placeholder-count="10">
+              <div style="position:absolute;left:{{ p.x }};top:{{ p.y }};transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px">
+                <span style="width:{{ p.size }};height:{{ p.size }};border-radius:50%;background:{{ p.fill }};border:{{ p.ring }};box-sizing:border-box"></span>
+                <span style="font-size:15px;font-weight:700;color:var(--text-strong);background:var(--surface-card);padding:3px 9px;border-radius:4px;white-space:nowrap">{{ p.name }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="width:320px;flex:none;background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:14px">
+            <div style="font-size:20px;line-height:1.4;font-weight:700;color:var(--text-strong)">Around Namba</div>
+            <p style="font-size:15px;line-height:1.7;color:var(--text-body);margin:0">Six ideas within a 12-minute walk. Four are already on Thursday; two are only kept.</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ cluster }}" as="c" hint-placeholder-count="6">
+                <div style="display:flex;align-items:center;gap:10px;background:var(--wend-paper);border-radius:4px;padding:10px 12px;font-size:15px">
+                  <span style="width:{{ c.size }};height:{{ c.size }};flex:none;border-radius:50%;background:{{ c.fill }};border:{{ c.ring }};box-sizing:border-box"></span>
+                  <span style="flex:1;color:var(--text-body)">{{ c.name }}</span>
+                  <span style="font-size:13px;letter-spacing:.04em;color:var(--text-muted)">{{ c.meta }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">
+              <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="primary" hint-size="auto,44px">Bundle these six</x-import>
+              <x-import component-from-global-scope="WendDesignSystem_c7e2ae.Button" variant="quiet" hint-size="auto,44px">Start a new trip from this cluster</x-import>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isChecklist }}">
+      <div style="padding:36px 48px 64px;max-width:900px">
+        
+        <h1 style="font-size:40px;line-height:1.2;font-weight:700;color:var(--text-strong);margin:8px 0 6px">Checklist</h1>
+        <p style="font-size:17px;line-height:1.7;color:var(--text-body);margin:0 0 8px;max-width:62ch">Getting ready for the trip. {{ doneLine }}</p>
+        <div style="height:6px;border-radius:99px;background:var(--wend-line);margin:22px 0 34px;overflow:hidden;max-width:420px">
+          <div style="height:100%;background:var(--wend-leaf);width:{{ donePct }}"></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:34px">
+          <sc-for list="{{ checklist }}" as="g" hint-placeholder-count="3">
+            <div>
+              <div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:14px">{{ g.title }}</div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <sc-for list="{{ g.items }}" as="t" hint-placeholder-count="4">
+                  <button onClick="{{ t.go }}" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:14px;min-height:52px;padding:6px 12px;border-radius:12px;background:var(--surface-card);border:1.5px solid var(--border-subtle)" style-hover="opacity:.85">
+                    <span style="width:22px;height:22px;flex:none;border-radius:4px;border:1.5px solid var(--border-strong);background:{{ t.box }};display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--wend-paper);font-weight:700">{{ t.tick }}</span>
+                    <span style="flex:1;font-size:17px;color:{{ t.color }}">{{ t.text }}</span>
+                    <span style="font-size:15px;letter-spacing:.04em;color:var(--text-muted)">{{ t.from }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;trips&quot;,&quot;board&quot;,&quot;itinerary&quot;,&quot;checklist&quot;,&quot;calendar&quot;,&quot;bundles&quot;,&quot;map&quot;],&quot;default&quot;:&quot;itinerary&quot;,&quot;tsType&quot;:&quot;'trips'|'board'|'itinerary'|'checklist'|'calendar'|'bundles'|'map'&quot;,&quot;section&quot;:&quot;Review&quot;},&quot;datesSet&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Itinerary&quot;},&quot;showVotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Features&quot;},&quot;voterCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;min&quot;:1,&quot;max&quot;:3,&quot;default&quot;:3,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Features&quot;}}">
+const VOTERS = [
+  { id: 'mei', name: 'Mei', init: 'M' },
+  { id: 'ken', name: 'Ken', init: 'K' },
+  { id: 'mom', name: 'Mom', init: 'A' },
+];
+
+const CAT_COLOR = {
+  place: 'var(--wend-leaf)', food: 'var(--wend-apricot)', activity: 'var(--wend-leaf)',
+  lodging: 'var(--wend-bister)', transport: 'var(--text-muted)', other: 'var(--text-muted)',
+};
+
+const ENTRIES = [
+  { id: 'inari', name: 'Fushimi Inari, before eight', cat: 'place', area: 'Kyoto south', meta: 'morning · south · 2 hr', state: 'decided', votes: { mei: 2, ken: 2, mom: 1 }, note: 'Empty at seven, solid by nine. The full loop is two hours; the first gates take twenty minutes.', todos: ['Check first train from Gion'], bundles: ['Tuesday south'] },
+  { id: 'nishiki', name: 'Nishiki Market', cat: 'food', area: 'Kyoto central', meta: 'midday · central · 1 hr', state: 'decided', votes: { mei: 1, ken: 2, mom: 2 }, note: 'Narrow and slow. Eat standing. Closes stall by stall from five.', todos: ['Check Monday closures'], bundles: ['Central wander'] },
+  { id: 'daiso-kyoto', name: 'Daiso, Kyoto Station', cat: 'other', area: 'Kyoto central', meta: 'any time · station · 45 min', state: 'open', votes: { mei: 0, ken: 0, mom: 2 }, note: "Mom's list is nine items long. Either Daiso works — this one is on the way to the Shinkansen, the Osaka one is bigger.", todos: ['Ask mom for her list', 'Check opening time'], bundles: ['Tuesday south', 'Travel day'] },
+  { id: 'daiso-osaka', name: 'Daiso, Shinsaibashi', cat: 'other', area: 'Osaka minami', meta: 'evening · minami · 1 hr', state: 'open', votes: { mei: 1, ken: 0, mom: 2 }, note: 'Three floors. Open until nine, so it survives a late afternoon.', todos: ['Check opening time'], bundles: ['Thursday minami'] },
+  { id: 'arashi', name: 'Arashiyama bamboo', cat: 'place', area: 'Kyoto west', meta: 'morning · west · half day', state: 'open', votes: { mei: 2, ken: 1, mom: 1 }, note: 'Forty minutes out. Only worth it as a half day with the monkey park or the boat.', todos: ['Decide: boat or monkeys'], bundles: ['Arashiyama half day'] },
+  { id: 'kiyomizu', name: 'Kiyomizu-dera at night', cat: 'place', area: 'Kyoto east', meta: 'evening · east · 90 min', state: 'decided', votes: { mei: 2, ken: 1, mom: 2 }, note: 'Autumn night opening runs to nine thirty. Ticketed separately from the day visit.', todos: ['Book night entry'], bundles: ['Higashiyama evening'] },
+  { id: 'gion', name: 'Gion, walking slowly', cat: 'activity', area: 'Kyoto east', meta: 'evening · east · 1 hr', state: 'decided', votes: { mei: 1, ken: 1, mom: 1 }, note: 'No plan needed. Walk from Yasaka down Hanamikoji and stop when something looks good.', todos: [], bundles: ['Higashiyama evening'] },
+  { id: 'kinkaku', name: 'Kinkaku-ji', cat: 'place', area: 'Kyoto west', meta: 'morning · west · 1 hr', state: 'waiting', votes: { mei: 0, ken: -1, mom: 2 }, note: "One view, twenty minutes, a lot of bus. Ken would rather not; mom has wanted it since the photo.", todos: [], bundles: [] },
+  { id: 'dotonbori', name: 'Dotonbori after dark', cat: 'activity', area: 'Osaka minami', meta: 'evening · minami · 1 hr', state: 'decided', votes: { mei: 2, ken: 2, mom: 1 }, note: 'Loud, bright, worth one evening. Ten minutes from Shinsaibashi.', todos: [], bundles: ['Thursday minami'] },
+  { id: 'kuromon', name: 'Kuromon market', cat: 'food', area: 'Osaka minami', meta: 'morning · minami · 1 hr', state: 'open', votes: { mei: 1, ken: 2, mom: 0 }, note: 'Better before eleven. Most stalls will grill it for you and let you stand there.', todos: [], bundles: ['Thursday minami'] },
+  { id: 'castle', name: 'Osaka Castle grounds', cat: 'place', area: 'Osaka north', meta: 'afternoon · north · 2 hr', state: 'waiting', votes: { mei: 0, ken: 1, mom: 0 }, note: 'The grounds are free and the good part — moat, stone walls, plenty of shade to sit in. The keep itself is a lift and a museum, closer to a gift shop with a view than a castle, and the queue for the lift alone can run twenty minutes on a weekend. Worth it once for the photo from the top floor, not worth a second visit.', todos: ['Check weekend queue times', 'Decide if the keep is worth it'], bundles: [] },
+  { id: 'ichiran', name: 'Ramen, somewhere in Namba', cat: 'food', area: 'Osaka minami', meta: 'late · minami · 45 min', state: 'open', votes: { mei: 2, ken: 1, mom: 0 }, note: 'One of four kept nearby. Pick on the night depending on the queue.', todos: [], bundles: ['Thursday minami'] },
+  { id: 'machiya', name: 'Machiya near Yasaka', cat: 'lodging', area: 'Kyoto east', meta: 'nights 1–3 · east', state: 'destination', votes: { mei: 2, ken: 2, mom: 2 }, note: 'Booked. Two rooms, no lift, and the last check-in is eleven. Owner asks for a message an hour out so someone can meet you at the gate — it is easy to miss if you are not looking for the sign, which is small and set back from the street behind a vending machine. Bags stay downstairs if you arrive before three.', todos: ['Send confirmation to mom', 'Message owner on arrival day', 'Check where to leave bags early', 'Ask about the vending machine sign', 'Confirm quiet hours after ten'], bundles: [] },
+  { id: 'jr', name: 'Kyoto → Osaka, special rapid', cat: 'transport', area: 'Kyoto central', meta: '29 min · from platform 4', state: 'decided', votes: { mei: 0, ken: 0, mom: 0 }, note: 'Every fifteen minutes, no reservation. Covered by the pass.', todos: [], bundles: ['Travel day'] },
+];
+
+const BUNDLES = [
+  { name: 'Higashiyama evening', meta: 'Kyoto east · evening', duration: '4 hr', items: ['Kiyomizu-dera at night', 'Gion, walking slowly', 'Dinner near Yasaka'], placed: 'On Monday', score: '+7' },
+  { name: 'Thursday minami', meta: 'Osaka south · afternoon into night', duration: '6 hr', items: ['Kuromon market', 'Daiso, Shinsaibashi', 'Dotonbori after dark', 'Ramen, somewhere in Namba'], placed: 'On Thursday', score: '+11' },
+  { name: 'Arashiyama half day', meta: 'Kyoto west · morning', duration: '5 hr', items: ['Arashiyama bamboo', 'Boat or monkeys — undecided', 'Lunch by the river'], placed: 'Not placed yet', score: '+4' },
+  { name: 'Travel day', meta: 'Kyoto → Osaka · midday', duration: '2 hr', items: ['Daiso, Kyoto Station', 'Kyoto → Osaka, special rapid'], placed: 'On Wednesday', score: '+2' },
+];
+
+const SHARED = { 'Daiso, Kyoto Station': 'also travel day', 'Ramen, somewhere in Namba': '1 of 4 options' };
+
+const SCHEDULE = [
+  { time: '08:10', dur: '40 min', title: 'Breakfast at the machiya', meta: 'Yasaka · included', state: 'decided' },
+  { time: '09:00–09:25', dur: 'transport', title: 'Walk to Kiyomizu-zaka', meta: 'uphill · 1.4 km', state: 'waiting' },
+  { time: '09:30–11:00', dur: '90 min', title: 'Kiyomizu-dera', meta: 'east · ¥400 · quiet before ten', state: 'decided' },
+  { time: '11:15–12:30', dur: '75 min', title: 'Nishiki Market', meta: 'central · eat standing', state: 'decided' },
+  { time: '13:00–15:40', dur: '2 hr 40', title: 'Fushimi Inari', meta: 'south · full loop · JR two stops', state: 'decided' },
+  { time: '15:40–18:30', dur: 'open', title: 'Nothing planned', meta: "You're in the south — three kept ideas are close", state: 'open' },
+  { time: '18:30–20:00', dur: '90 min', title: 'Dinner', meta: 'five kept nearby', state: 'open', options: [
+    { name: 'Izakaya on Shomen-dori', meta: 'no booking · 8 min', score: '+4' },
+    { name: 'Sushi counter, Fushimi', meta: 'booking needed · 4 min', score: '+3' },
+    { name: 'Udon by the station', meta: 'walk-in · 2 min', score: '+2' },
+  ] },
+  { time: '20:30', dur: '', title: 'Back at the machiya', meta: 'last check-in 23:00', state: 'destination' },
+];
+
+const ITIN = [
+  { id: 'd1', n: 'Day 1', dow: 'Sun', date: '12', hours: '6 hr', state: 'decided', lodging: 'Machiya near Yasaka',
+    versions: [{ id: 'a', name: 'Version A', note: '6 hr · arrival', items: [
+      { k: 'idea', time: '14:00–16:00', title: 'Arrive, drop bags', meta: 'east' },
+      { k: 'bundle', time: '18:00–22:00', title: 'Higashiyama evening', members: [
+        { time: '18:00–19:30', title: 'Kiyomizu-dera at night', meta: 'east · ¥400' },
+        { time: '19:45–20:45', title: 'Gion, walking slowly', meta: 'east' },
+        { time: '21:00–22:00', title: 'Dinner near Yasaka', meta: 'undecided' } ] },
+    ] }] },
+  { id: 'd2', n: 'Day 2', dow: 'Mon', date: '13', hours: '7 hr', state: 'decided', lodging: 'Machiya near Yasaka',
+    versions: [{ id: 'a', name: 'Version A', note: '7 hr · Kyoto south', items: [
+      { k: 'bundle', time: '08:00–12:30', title: 'Tuesday south', members: [
+        { time: '08:00–10:30', title: 'Fushimi Inari, before eight', meta: 'south · 2 hr' },
+        { time: '11:30–12:30', title: 'Daiso, Kyoto Station', meta: 'station · 45 min' } ] },
+      { k: 'idea', time: '13:00–14:15', title: 'Nishiki Market', meta: 'central · eat standing' },
+      { k: 'gap', time: '14:15–18:30', title: 'Nothing planned · 4 hr 15', meta: 'Three kept ideas are close' },
+      { k: 'idea', time: '18:30–20:00', title: 'Dinner, undecided', meta: '5 kept nearby' },
+    ] }] },
+  { id: 'd3', n: 'Day 3', dow: 'Tue', date: '14', hours: '5 hr', state: 'open', lodging: 'Machiya near Yasaka',
+    versions: [{ id: 'a', name: 'Version A', note: '5 hr · Kyoto west', items: [
+      { k: 'bundle', time: '09:00–14:00', title: 'Arashiyama half day', members: [
+        { time: '09:00–11:00', title: 'Arashiyama bamboo', meta: 'west' },
+        { time: '11:15–12:30', title: 'Boat or monkeys', meta: 'undecided' },
+        { time: '12:45–14:00', title: 'Lunch by the river', meta: 'west' } ] },
+      { k: 'gap', time: '14:00–19:00', title: 'Nothing planned · 5 hr', meta: 'A long open afternoon' },
+      { k: 'idea', time: '19:00–21:00', title: 'Gion, walking slowly', meta: 'east' },
+    ] }] },
+  { id: 'd4', n: 'Day 4', dow: 'Wed', date: '15', hours: '4 hr', state: 'open', lodging: 'Hotel in Namba',
+    versions: [
+      { id: 'a', name: 'Version A', note: '4 hr · easy morning', items: [
+        { k: 'bundle', time: '10:00–12:00', title: 'Travel day', members: [
+          { time: '10:00–10:45', title: 'Daiso, Kyoto Station', meta: 'station' },
+          { time: '11:15–11:45', title: 'Kyoto → Osaka, rapid', meta: 'platform 4' } ] },
+        { k: 'gap', time: '12:00–13:00', title: 'Nothing planned · 1 hr', meta: 'Lunch near Namba' },
+        { k: 'idea', time: '13:00–15:00', title: 'Osaka Castle grounds', meta: 'north' },
+      ] },
+      { id: 'b', name: 'Version B', note: '6 hr · fits Kinkaku-ji', items: [
+        { k: 'idea', time: '09:00–11:00', title: 'Kinkaku-ji', meta: 'only here' },
+        { k: 'bundle', time: '12:00–14:00', title: 'Travel day', members: [
+          { time: '12:00–12:45', title: 'Daiso, Kyoto Station', meta: 'station' },
+          { time: '13:15–13:45', title: 'Kyoto → Osaka, rapid', meta: 'platform 4' } ] },
+        { k: 'idea', time: '15:00–17:00', title: 'Osaka Castle grounds', meta: 'late light' },
+      ] },
+    ] },
+  { id: 'd5', n: 'Day 5', dow: 'Thu', date: '16', hours: '8 hr', state: 'decided', lodging: 'Hotel in Namba',
+    versions: [{ id: 'a', name: 'Version A', note: '8 hr · Osaka minami', items: [
+      { k: 'idea', time: '11:00–13:00', title: 'Kuromon market', meta: 'minami · before eleven is better' },
+      { k: 'gap', time: '13:00–16:00', title: 'Nothing planned · 3 hr', meta: 'Rest, or the castle' },
+      { k: 'bundle', time: '16:00–22:00', title: 'Thursday minami', members: [
+        { time: '16:00–17:30', title: 'Daiso, Shinsaibashi', meta: 'three floors' },
+        { time: '18:00–20:00', title: 'Dotonbori after dark', meta: 'minami' },
+        { time: '20:30–21:30', title: 'Ramen, somewhere in Namba', meta: '1 of 4' } ] },
+    ] }] },
+  { id: 'd6', n: 'Day 6', dow: 'Fri', date: '17', hours: '', state: 'waiting', lodging: 'Sleeping on the plane',
+    versions: [{ id: 'a', name: 'Version A', note: 'going home', items: [
+      { k: 'idea', time: '12:00', title: 'Airport, from Namba', meta: 'allow 90 min' },
+    ] }] },
+];
+
+const ITIN_SHELF = [
+  { id: 's1', name: 'Central wander', meta: 'Bundle · 2 things · 3 hr', bundle: true, time: '15:00–18:00',
+    members: [{ time: '15:00–16:30', title: 'Nishiki Market', meta: 'central' }, { time: '16:45–18:00', title: 'Coffee on Sanjo', meta: 'central' }] },
+  { id: 's2', name: 'Kinkaku-ji', meta: 'Kyoto west · 1 hr', bundle: false, time: '09:00–10:00' },
+  { id: 's3', name: 'Ramen, somewhere in Namba', meta: 'Osaka minami · 45 min · 1 of 4', bundle: false, time: '20:00–20:45' },
+  { id: 's4', name: "Nara, if there's a day", meta: 'Half day · nowhere yet', bundle: false, time: '09:00–14:00' },
+];
+
+const LODGE_CHOICES = ['Machiya near Yasaka', 'Hotel in Namba', 'Same as last night'];
+
+const CHECKLIST = [
+  { title: 'General', items: [
+    { id: 'visa', text: 'Check whether mom needs a visa', from: '', done: true },
+    { id: 'pass', text: 'Buy the JR regional pass', from: '', done: true },
+    { id: 'esim', text: 'Load an eSIM for all three of us', from: '', done: false },
+    { id: 'cash', text: 'Get yen — most markets are cash only', from: '', done: false },
+  ] },
+  { title: 'Tied to an idea', items: [
+    { id: 'night', text: 'Book night entry', from: 'Kiyomizu-dera at night', done: true },
+    { id: 'list', text: "Ask mom for her Daiso list", from: 'Daiso, Kyoto Station', done: false },
+    { id: 'hours', text: 'Check opening time', from: 'Daiso, Shinsaibashi', done: false },
+    { id: 'monday', text: 'Check Monday closures', from: 'Nishiki Market', done: false },
+    { id: 'boat', text: 'Decide: boat or monkeys', from: 'Arashiyama bamboo', done: false },
+    { id: 'conf', text: 'Send confirmation to mom', from: 'Machiya near Yasaka', done: true },
+  ] },
+];
+
+const PINS = [
+  { name: 'Kinkaku-ji', x: '18%', y: '12%', state: 'waiting' },
+  { name: 'Arashiyama', x: '8%', y: '26%', state: 'open' },
+  { name: 'Nishiki', x: '46%', y: '18%', state: 'decided' },
+  { name: 'Kiyomizu', x: '68%', y: '24%', state: 'decided' },
+  { name: 'Machiya', x: '72%', y: '34%', state: 'destination' },
+  { name: 'Daiso Kyoto', x: '52%', y: '40%', state: 'open' },
+  { name: 'Fushimi Inari', x: '58%', y: '50%', state: 'decided' },
+  { name: 'Osaka Castle', x: '62%', y: '70%', state: 'waiting' },
+  { name: 'Dotonbori', x: '34%', y: '80%', state: 'decided' },
+  { name: 'Daiso Shinsaibashi', x: '30%', y: '90%', state: 'open' },
+];
+
+const PIN_STYLE = {
+  decided: { size: '14px', fill: 'var(--stop-decided)', ring: 'none' },
+  open: { size: '16px', fill: 'var(--surface-card)', ring: '3.5px solid var(--stop-open)' },
+  waiting: { size: '11px', fill: 'var(--stop-waiting)', ring: 'none' },
+  destination: { size: '13px', fill: 'var(--stop-destination)', ring: 'none' },
+};
+
+const TRIPS = [
+  { id: 'kyoto', name: 'Kyoto + Osaka', note: 'Three of you. Six days, two cities, forty-one ideas kept.', meta: '12–17 Oct · 41 ideas', screen: 'board',
+    pros: ['Flights are already booked', 'Everyone has kept ideas here'], cons: ['Forty-one ideas, nothing sorted yet'] },
+  { id: 'malaysia', name: 'Malaysia, sometime', note: 'Penang and Melaka, no dates. Bali was lifted out into its own trip.', meta: 'No dates · 18 ideas', screen: 'board',
+    pros: ['Cheap flights', 'Penang food, Melaka history'], cons: ['No dates set yet'] },
+  { id: 'singapore', name: 'Singapore, drafted', note: 'Four days from last year that never happened. Fold it into Malaysia when you like.', meta: '4 days · 22 ideas', screen: 'board',
+    pros: [], cons: [], archived: true },
+];
+
+const AREA_XY = {
+  'Kyoto west': { x: 0.16, y: 0.22 },
+  'Kyoto central': { x: 0.44, y: 0.30 },
+  'Kyoto east': { x: 0.72, y: 0.20 },
+  'Kyoto south': { x: 0.60, y: 0.52 },
+  'Osaka north': { x: 0.44, y: 0.72 },
+  'Osaka minami': { x: 0.30, y: 0.88 },
+};
+
+const YOU = { x: 0.60, y: 0.52 };
+
+const NEAR_PLACES = [
+  { name: 'Standing coffee by the shrine', dist: '4 min', mins: 4, meta: 'kept in April · open until 18:00', x: 0.615, y: 0.495 },
+  { name: 'Sushi counter, Fushimi', dist: '4 min', mins: 4, meta: 'kept by Mei · booking needed', x: 0.575, y: 0.60 },
+  { name: 'Izakaya on Shomen-dori', dist: '8 min', mins: 8, meta: 'kept by Ken · no booking', x: 0.68, y: 0.44 },
+  { name: 'Tofuku-ji gardens', dist: '9 min', mins: 9, meta: 'kept in March · closes 16:30', x: 0.52, y: 0.455 },
+  { name: 'Sake tasting, Fushimi', dist: '12 min', mins: 12, meta: 'kept by Ken · no booking', x: 0.655, y: 0.585 },
+  { name: 'Tea house on the Uji road', dist: '18 min', mins: 18, meta: 'kept in February · quiet', x: 0.76, y: 0.67 },
+  { name: 'Kiyomizu lanes', dist: '26 min', mins: 26, meta: 'kept in March · busy after ten', x: 0.72, y: 0.20 },
+  { name: 'Nishiki Market', dist: '31 min', mins: 31, meta: 'kept by Mei · eat standing', x: 0.44, y: 0.30 },
+];
+
+const VOTE_LABEL = { 2: 'Really keen', 1: 'Keen', 0: 'Neutral', '-1': 'Not keen', '-2': 'Really not keen' };
+
+class Component extends DCLogic {
+  state = {
+    screen: null, cat: 'Anything', mapFilter: 'Everything', day: 'Mon',
+    groupBy: 'none', collapsedAreas: {}, expanded: {}, alwaysExpanded: false, hoverPill: null,
+    filterOpen: false, stateFilters: {},
+    customIdeas: [], newIdeaOpen: false, newIdeaForm: { name: '', area: 'Kyoto east', cat: 'place' },
+    votes: {}, done: {},
+    itin: null, openDays: { d2: true, d4: true }, lodgeOpen: null, lodgeText: '',
+    placedShelf: {}, shelfHint: null, datesOpen: false, datesConfirmed: false,
+    peopleOpen: false, emailDraft: '', newRole: 'edit',
+    narrow: false, mid: false, nearOpen: false,
+    nBox: { w: 0, h: 0 }, nZoom: 2, nPan: null,
+    people: [
+      { id: 'mei', name: 'Mei', init: 'M', email: 'mei@example.com', role: 'edit', owner: true },
+      { id: 'ken', name: 'Ken', init: 'K', email: 'ken@example.com', role: 'edit', owner: false },
+      { id: 'mom', name: 'Mom', init: 'A', email: 'anna@example.com', role: 'look', owner: false },
+    ],
+    dateForm: { start: '12 Oct 2026', end: '17 Oct 2026' },
+    archivedVersions: [{ id: 'seed', dayId: 'd2', label: 'Day 2, version B', version: { id: 'seedb', name: 'Version B', note: '5 hr · slower', items: [
+      { k: 'idea', time: '09:00–10:00', title: 'Coffee, then walk', meta: 'east' },
+      { k: 'bundle', time: '11:00–15:00', title: 'Central wander', members: [
+        { time: '11:00–12:30', title: 'Nishiki Market', meta: 'central' },
+        { time: '13:00–15:00', title: 'Teramachi arcades', meta: 'central' } ] },
+    ] } }],
+    trips: TRIPS.map(t => ({ ...t, pros: [...t.pros], cons: [...t.cons], archived: !!t.archived })),
+    newTripOpen: false, newTripForm: { name: '', dates: '', note: '' },
+    mapOpen: false, followMap: true, zoom: 1, pan: { x: 0, y: 0 }, box: { w: 0, h: 0 },
+    selectMode: false, selected: {}, addMenuOpen: false, addedTo: {},
+  };
+
+  mapRef = React.createRef();
+  nearRef = React.createRef();
+
+  measureNear = () => {
+    const el = this.nearRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const b = this.state.nBox;
+    if (r.width && (Math.abs(r.width - b.w) > 1 || Math.abs(r.height - b.h) > 1)) this.setState({ nBox: { w: r.width, h: r.height } });
+  };
+  nearPan() {
+    const b = this.state.nBox, z = this.state.nZoom;
+    if (this.state.nPan) return this.clampPan(this.state.nPan, z, b);
+    return this.clampPan({ x: b.w / 2 - YOU.x * b.w * z, y: b.h / 2 - YOU.y * b.h * z }, z, b);
+  }
+  nearDown = e => { this._nDrag = { x: e.clientX, y: e.clientY, pan: this.nearPan() }; e.preventDefault(); };
+  onNearMove = e => {
+    if (!this._nDrag) return;
+    const p = { x: this._nDrag.pan.x + (e.clientX - this._nDrag.x), y: this._nDrag.pan.y + (e.clientY - this._nDrag.y) };
+    this.setState(s => ({ nPan: this.clampPan(p, s.nZoom, s.nBox) }));
+  };
+  onNearUp = () => { this._nDrag = null; };
+  nearZoomBy = d => () => {
+    const pan = this.nearPan();
+    this.setState(s => {
+      const z = Math.max(1, Math.min(3.6, +(s.nZoom + d).toFixed(2)));
+      const k = z / s.nZoom, cx = s.nBox.w / 2, cy = s.nBox.h / 2;
+      return { nZoom: z, nPan: this.clampPan({ x: cx - (cx - pan.x) * k, y: cy - (cy - pan.y) * k }, z, s.nBox) };
+    });
+  };
+  recenterNear = () => this.setState({ nPan: null, nZoom: 2 });
+
+  measureMap = () => {
+    const el = this.mapRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const b = this.state.box;
+    if (r.width && (Math.abs(r.width - b.w) > 1 || Math.abs(r.height - b.h) > 1)) this.setState({ box: { w: r.width, h: r.height } });
+  };
+  clampPan(pan, zoom, box) {
+    const ww = box.w * zoom, wh = box.h * zoom;
+    return { x: Math.min(0, Math.max(box.w - ww, pan.x)), y: Math.min(0, Math.max(box.h - wh, pan.y)) };
+  }
+  mapDown = e => { this._drag = { x: e.clientX, y: e.clientY, pan: this.state.pan }; e.preventDefault(); };
+  onMapMove = e => {
+    if (!this._drag) return;
+    const p = { x: this._drag.pan.x + (e.clientX - this._drag.x), y: this._drag.pan.y + (e.clientY - this._drag.y) };
+    this.setState(s => ({ pan: this.clampPan(p, s.zoom, s.box) }));
+  };
+  onMapUp = () => { this._drag = null; };
+  zoomBy = d => () => this.setState(s => {
+    const z = Math.max(1, Math.min(3.4, +(s.zoom + d).toFixed(2)));
+    const k = z / s.zoom, cx = s.box.w / 2, cy = s.box.h / 2;
+    const pan = { x: cx - (cx - s.pan.x) * k, y: cy - (cy - s.pan.y) * k };
+    return { zoom: z, pan: this.clampPan(pan, z, s.box) };
+  });
+  resetMap = () => this.setState({ zoom: 1, pan: { x: 0, y: 0 } });
+  zoomToArea = area => () => this.setState(s => {
+    const c = AREA_XY[area] || { x: 0.5, y: 0.5 };
+    const z = 2.2;
+    const pan = { x: s.box.w / 2 - c.x * s.box.w * z, y: s.box.h / 2 - c.y * s.box.h * z };
+    return { zoom: z, pan: this.clampPan(pan, z, s.box) };
+  });
+  toggleMap = () => this.setState(s => ({ mapOpen: !s.mapOpen, zoom: 1, pan: { x: 0, y: 0 } }));
+  toggleFollow = () => this.setState(s => ({ followMap: !s.followMap }));
+  toggleSelectMode = () => this.setState(s => ({ selectMode: !s.selectMode, selected: s.selectMode ? {} : s.selected, addMenuOpen: false }));
+  toggleSelected = id => () => this.setState(s => {
+    const sel = Object.assign({}, s.selected);
+    if (sel[id]) delete sel[id]; else sel[id] = true;
+    return { selected: sel };
+  });
+  clearSelection = () => this.setState({ selected: {}, addMenuOpen: false });
+  toggleAddMenu = () => this.setState(s => ({ addMenuOpen: !s.addMenuOpen }));
+  closeAddMenu = () => this.setState({ addMenuOpen: false });
+  addSelectedTo = name => () => this.setState(s => {
+    const byId = {};
+    ENTRIES.concat(s.customIdeas).forEach(e => { byId[e.id] = e; });
+    const added = Object.assign({}, s.addedTo);
+    Object.keys(s.selected).forEach(id => {
+      const base = (byId[id] && byId[id].bundles) || [];
+      const mine = added[id] || [];
+      if (base.indexOf(name) === -1 && mine.indexOf(name) === -1) added[id] = mine.concat([name]);
+    });
+    return { addedTo: added, selected: {}, addMenuOpen: false, selectMode: false };
+  });
+  posOf(e, i) {
+    const c = AREA_XY[e.area] || { x: 0.5, y: 0.5 };
+    return { x: c.x + (((i * 37) % 13) - 6) / 130, y: c.y + (((i * 53) % 11) - 5) / 150 };
+  }
+
+  go = screen => () => this.setState({ screen });
+
+  setGroupBy = mode => () => this.setState({ groupBy: mode });
+  toggleFilter = () => this.setState(s => ({ filterOpen: !s.filterOpen }));
+  closeFilter = () => this.setState({ filterOpen: false });
+  toggleStateFilter = key => () => this.setState(s => ({ stateFilters: Object.assign({}, s.stateFilters, { [key]: !s.stateFilters[key] }) }));
+  openNewIdea = () => this.setState({ newIdeaOpen: true, newIdeaForm: { name: '', area: 'Kyoto east', cat: 'place' } });
+  closeNewIdea = () => this.setState({ newIdeaOpen: false });
+  setNewIdeaName = e => this.setState(s => ({ newIdeaForm: { ...s.newIdeaForm, name: e.target.value } }));
+  setNewIdeaArea = area => () => this.setState(s => ({ newIdeaForm: { ...s.newIdeaForm, area } }));
+  setNewIdeaCat = cat => () => this.setState(s => ({ newIdeaForm: { ...s.newIdeaForm, cat } }));
+  createNewIdea = () => this.setState(s => {
+    const f = s.newIdeaForm;
+    if (!f.name.trim()) return null;
+    const idea = { id: 'idea-' + Date.now(), name: f.name.trim(), cat: f.cat, area: f.area,
+      meta: 'just added', state: 'open', votes: { mei: 0, ken: 0, mom: 0 }, note: '', todos: [], bundles: [] };
+    return { customIdeas: [...s.customIdeas, idea], newIdeaOpen: false };
+  });
+  toggleAreaGroup = area => () => this.setState(s => ({ collapsedAreas: { ...s.collapsedAreas, [area]: !s.collapsedAreas[area] } }));
+
+  toggleArchive = id => this.setState(s => ({ trips: s.trips.map(t => t.id === id ? { ...t, archived: !t.archived } : t) }));
+  addPro = id => this.setState(s => ({ trips: s.trips.map(t => t.id === id ? { ...t, pros: [...t.pros, 'New pro'] } : t) }));
+  addCon = id => this.setState(s => ({ trips: s.trips.map(t => t.id === id ? { ...t, cons: [...t.cons, 'New con'] } : t) }));
+  removePro = (id, i) => this.setState(s => ({ trips: s.trips.map(t => t.id === id ? { ...t, pros: t.pros.filter((_, idx) => idx !== i) } : t) }));
+  removeCon = (id, i) => this.setState(s => ({ trips: s.trips.map(t => t.id === id ? { ...t, cons: t.cons.filter((_, idx) => idx !== i) } : t) }));
+
+  openNewTrip = () => this.setState({ newTripOpen: true, newTripForm: { name: '', dates: '', note: '' } });
+  closeNewTrip = () => this.setState({ newTripOpen: false });
+  setNewTripName = e => this.setState(s => ({ newTripForm: { ...s.newTripForm, name: e.target.value } }));
+  setNewTripDates = e => this.setState(s => ({ newTripForm: { ...s.newTripForm, dates: e.target.value } }));
+  setNewTripNote = e => this.setState(s => ({ newTripForm: { ...s.newTripForm, note: e.target.value } }));
+  createNewTrip = () => this.setState(s => {
+    const f = s.newTripForm;
+    if (!f.name.trim()) return null;
+    const trip = { id: 'trip-' + Date.now(), name: f.name.trim(), note: f.note.trim() || 'Just an idea so far.',
+      meta: (f.dates.trim() || 'No dates') + ' · 0 ideas', screen: 'board', pros: [], cons: [], archived: false };
+    return { trips: [...s.trips, trip], newTripOpen: false };
+  });
+
+  componentDidMount() {
+    this._onResize = () => { this.measureMap(); this.syncWidth(); };
+    this.syncWidth();
+    window.addEventListener('resize', this._onResize);
+    window.addEventListener('mousemove', this.onMapMove);
+    window.addEventListener('mouseup', this.onMapUp);
+    window.addEventListener('mousemove', this.onNearMove);
+    window.addEventListener('mouseup', this.onNearUp);
+    this.measureMap();
+    this.measureNear();
+  }
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+    window.removeEventListener('mousemove', this.onMapMove);
+    window.removeEventListener('mouseup', this.onMapUp);
+    window.removeEventListener('mousemove', this.onNearMove);
+    window.removeEventListener('mouseup', this.onNearUp);
+  }
+  componentDidUpdate(prev) {
+    if (prev.startScreen !== this.props.startScreen) this.setState({ screen: null });
+    this.measureMap();
+    this.measureNear();
+  }
+
+  toggleExpand = id => () => this.setState(p => ({ expanded: Object.assign({}, p.expanded, { [id]: !p.expanded[id] }) }));
+  toggleAlwaysExpanded = () => this.setState(p => ({ alwaysExpanded: !p.alwaysExpanded }));
+  setHoverPill = (id, val) => () => this.setState({ hoverPill: { id, val } });
+  clearHoverPill = () => this.setState({ hoverPill: null });
+  setMyVote = (id, val) => () => this.setState(p => ({ votes: Object.assign({}, p.votes, { [id]: Object.assign({}, p.votes[id], { mei: val }) }) }));
+
+  activeVoters() {
+    return this.state.people;
+  }
+
+  score(e) {
+    const o = this.state.votes[e.id] || {};
+    return this.activeVoters().reduce((n, v) => {
+      const raw = o[v.id] !== undefined ? o[v.id] : e.votes[v.id];
+      return n + (raw === undefined ? 0 : raw);
+    }, 0);
+  }
+
+  itin() { return this.state.itin || ITIN; }
+  setItin(fn) { this.setState(s => ({ itin: fn(s.itin || ITIN) })); }
+  mapDay(id, fn) { this.setItin(list => list.map(d => (d.id === id ? fn(d) : d))); }
+
+  toggleDay = id => () => this.setState(s => ({ openDays: Object.assign({}, s.openDays, { [id]: !s.openDays[id] }), lodgeOpen: null }));
+  expandAllDays = () => this.setState(s => {
+    const all = {};
+    (s.itin || ITIN).forEach(d => { all[d.id] = true; });
+    return { openDays: all };
+  });
+  collapseAllDays = () => this.setState({ openDays: {}, lodgeOpen: null });
+
+  forkDay = id => () => {
+    this.mapDay(id, d => {
+      const base = d.versions[d.versions.length - 1];
+      const letter = String.fromCharCode(65 + d.versions.length);
+      return Object.assign({}, d, { versions: d.versions.concat([{
+        id: 'v' + Date.now(), name: 'Version ' + letter, note: 'copy of ' + base.name.replace('Version ', ''),
+        items: base.items.map(it => Object.assign({}, it)),
+      }]) });
+    });
+    this.setState(s => ({ openDays: Object.assign({}, s.openDays, { [id]: true }) }));
+  };
+  keepVersion = (dayId, verId) => () => {
+    const day = this.itin().find(d => d.id === dayId);
+    const dropped = day.versions.filter(v => v.id !== verId);
+    this.setState(s => ({ archivedVersions: dropped.map(v => ({
+      id: dayId + ':' + v.id, dayId, label: day.n + ', ' + v.name.toLowerCase(), version: v,
+    })).concat(s.archivedVersions || []) }));
+    this.mapDay(dayId, d => Object.assign({}, d, {
+      versions: d.versions.filter(v => v.id === verId).map(v => Object.assign({}, v, { name: 'Version A' })),
+    }));
+  };
+  restoreVersion = key => () => {
+    const rec = (this.state.archivedVersions || []).find(a => a.id === key);
+    if (!rec) return;
+    this.mapDay(rec.dayId, d => Object.assign({}, d, { versions: d.versions.concat([rec.version]) }));
+    this.setState(s => ({
+      archivedVersions: (s.archivedVersions || []).filter(a => a.id !== key),
+      openDays: Object.assign({}, s.openDays, { [rec.dayId]: true }),
+    }));
+  };
+
+  openLodge = id => () => this.setState(s => ({ lodgeOpen: s.lodgeOpen === id ? null : id, lodgeText: '' }));
+  setLodgeText = e => this.setState({ lodgeText: e.target.value });
+  setLodging = (id, place) => () => { this.mapDay(id, d => Object.assign({}, d, { lodging: place })); this.setState({ lodgeOpen: null, lodgeText: '' }); };
+  saveLodgeText = id => () => {
+    const t = (this.state.lodgeText || '').trim();
+    if (!t) return;
+    this.mapDay(id, d => Object.assign({}, d, { lodging: t }));
+    this.setState({ lodgeOpen: null, lodgeText: '' });
+  };
+
+  toggleShelfMenu = sid => e => { if (e && e.stopPropagation) e.stopPropagation(); this.setState(s => ({ shelfMenu: s.shelfMenu === sid ? null : sid })); };
+  openAddPicker = id => () => this.setState(s => ({ addPicker: s.addPicker === id ? null : id }));
+  dragStart = sid => e => { if (e && e.dataTransfer) { e.dataTransfer.setData('text/plain', sid); e.dataTransfer.effectAllowed = 'copy'; } this.setState({ dragId: sid }); };
+  dragEnd = () => this.setState({ dragId: null, dragOver: null });
+  dragOverDay = id => e => { e.preventDefault(); if (this.state.dragOver !== id) this.setState({ dragOver: id }); };
+  dropOnDay = id => e => {
+    e.preventDefault();
+    const sid = (e.dataTransfer && e.dataTransfer.getData('text/plain')) || this.state.dragId;
+    this.setState({ dragOver: null, dragId: null });
+    if (sid) this.placeShelf(sid, id)();
+  };
+  placeShelf = (sid, dayId) => () => {
+    const item = ITIN_SHELF.find(s => s.id === sid);
+    if (!item || !dayId) return;
+    this.mapDay(dayId, d => Object.assign({}, d, {
+      versions: d.versions.map((v, i) => (i === 0 ? Object.assign({}, v, { items: v.items.concat([
+        item.bundle
+          ? { k: 'bundle', time: item.time, title: item.name, members: item.members }
+          : { k: 'idea', time: item.time, title: item.name, meta: 'just placed' },
+      ]) }) : v)),
+    }));
+    this.setState(s => ({ placedShelf: Object.assign({}, s.placedShelf, { [sid]: true }),
+      shelfMenu: null, addPicker: null,
+      openDays: Object.assign({}, s.openDays, { [dayId]: true }) }));
+  };
+
+  toggleArchivedPanel = () => this.setState(s => ({ archivedOpen: !s.archivedOpen }));
+  reopenDates = () => this.setState({ datesOpen: true });
+  setDateStart = e => this.setState(s => ({ dateForm: Object.assign({}, s.dateForm || {}, { start: e.target.value }) }));
+  setDateEnd = e => this.setState(s => ({ dateForm: Object.assign({}, s.dateForm || {}, { end: e.target.value }) }));
+  setLength = (label, end) => () => this.setState(s => ({ dateForm: Object.assign({}, s.dateForm || {}, { end }) }));
+  confirmDates = () => this.setState({ datesOpen: false, datesConfirmed: true });
+
+  nearVals() {
+    const b = this.state.nBox, z = this.state.nZoom, pan = this.nearPan();
+    const W = b.w * z, H = b.h * z;
+    const px = p => ({ x: p.x * W + pan.x, y: p.y * H + pan.y });
+    const inView = p => { const q = px(p); return q.x >= -20 && q.x <= b.w + 20 && q.y >= -20 && q.y <= b.h + 20; };
+    const list = NEAR_PLACES.filter(p => !b.w || inView(p)).sort((a, c) => a.mins - c.mins);
+    const you = px(YOU);
+    return {
+      nearRef: this.nearRef, nearDown: this.nearDown,
+      nearLayerW: (b.w ? W : 0) + 'px', nearLayerH: (b.h ? H : 0) + 'px',
+      nearTransform: 'translate(' + pan.x + 'px,' + pan.y + 'px)',
+      nearZoomIn: this.nearZoomBy(0.6), nearZoomOut: this.nearZoomBy(-0.6),
+      recenterNear: this.recenterNear,
+      youInView: !b.w || (you.x >= 0 && you.x <= b.w && you.y >= 0 && you.y <= b.h),
+      nearPins: NEAR_PLACES.map(p => ({
+        name: p.name, left: (p.x * 100) + '%', top: (p.y * 100) + '%',
+        bg: 'var(--surface-card)', color: 'var(--text-strong)', border: 'var(--border-strong)',
+      })),
+      youLeft: (YOU.x * 100) + '%', youTop: (YOU.y * 100) + '%',
+      nearPlaces: list.map(p => Object.assign({}, p, { metaLine: p.dist + ' · ' + p.meta })),
+      nearCount: list.length === NEAR_PLACES.length
+        ? 'All ' + NEAR_PLACES.length + ' kept places nearby'
+        : list.length + ' of ' + NEAR_PLACES.length + ' kept places in view',
+    };
+  }
+  syncWidth = () => {
+    const w = window.innerWidth;
+    const n = w < 760, m = w >= 760 && w < 1100;
+    if (n !== this.state.narrow || m !== this.state.mid) this.setState({ narrow: n, mid: m });
+  };
+  openNear = () => this.setState({ nearOpen: true });
+  closeNear = () => this.setState({ nearOpen: false });
+  openPeople = () => this.setState({ peopleOpen: true });
+  closePeople = () => this.setState({ peopleOpen: false });
+  setEmailDraft = e => this.setState({ emailDraft: e.target.value });
+  setNewRole = e => this.setState({ newRole: e.target.value });
+  setPersonRole = id => e => {
+    const role = e.target.value;
+    this.setState(s => ({ people: s.people.map(p => (p.id === id ? Object.assign({}, p, { role }) : p)) }));
+  };
+  removePerson = id => () => this.setState(s => ({ people: s.people.filter(p => p.id !== id) }));
+  handOver = id => () => this.setState(s => ({
+    people: s.people.map(p => Object.assign({}, p, { owner: p.id === id, role: p.id === id ? 'edit' : p.role })),
+  }));
+  addPerson = () => {
+    const email = (this.state.emailDraft || '').trim();
+    if (!email) return;
+    const handle = email.split('@')[0].replace(/[^a-zA-Z]/g, ' ').trim() || email;
+    const name = handle.charAt(0).toUpperCase() + handle.slice(1);
+    const id = 'p' + Date.now();
+    this.setState(s => ({
+      people: s.people.concat([{ id, name, init: name.charAt(0).toUpperCase(), email, role: s.newRole, owner: false }]),
+      emailDraft: '',
+    }));
+  };
+  emailKey = e => { if (e.key === 'Enter') this.addPerson(); };
+
+  renderVals() {
+    const stop = fn => e => { e.stopPropagation(); fn(); };
+    const p = this.props;
+    const showVotes = p.showVotes !== false;
+    const voters = this.state.people;
+    const roleNote = r => (r === 'look'
+      ? 'Can look at everything here and add ideas, but not change the days.'
+      : 'Can add, change and rearrange everything here, and bring others along.');
+    const people = this.state.people.map(pp => ({
+      id: pp.id, name: pp.name, init: pp.init, email: pp.email, role: pp.role,
+      youLabel: pp.owner ? 'You' : '',
+      canEditRole: !pp.owner,
+      roleNote: pp.owner ? 'Started this trip. Can bring people on, change what they can do, and set the trip aside.' : roleNote(pp.role),
+      setRole: this.setPersonRole(pp.id),
+      remove: this.removePerson(pp.id),
+      handOver: this.handOver(pp.id),
+    }));
+    const canAdd = !!(this.state.emailDraft || '').trim();
+    const s = Object.assign({}, this.state, {
+      screen: this.state.screen || p.startScreen || 'board',
+      rail: this.state.rail || p.defaultRail || 'bundles',
+    });
+    const navItems = [
+      ['board', 'Ideas'], ['itinerary', 'Itinerary'],
+      ['checklist', 'Checklist'], ['calendar', 'Final schedule'],
+    ];
+    const nav = navItems.map(([id, label]) => ({
+      label, go: this.go(id),
+      dot: s.screen === id ? 'var(--wend-apricot)' : 'rgba(240,243,238,.28)',
+      chipBorder: s.screen === id ? 'var(--wend-apricot)' : 'rgba(240,243,238,.28)',
+      chipBg: s.screen === id ? 'rgba(240,243,238,.10)' : 'transparent',
+      color: s.screen === id ? 'var(--text-on-dark)' : 'var(--text-on-dark-muted)',
+      weight: s.screen === id ? 700 : 400,
+    }));
+
+    const areaList = ['Kyoto east', 'Kyoto central', 'Kyoto west', 'Kyoto south', 'Osaka minami', 'Osaka north'];
+    const cats = ['Anything', 'place', 'food', 'activity', 'lodging', 'transport', 'other'];
+    const allEntries = ENTRIES.concat(s.customIdeas);
+    const stateFilterDefs = [
+      { key: 'located', label: 'Has location', test: () => true },
+      { key: 'scheduled', label: 'Scheduled', test: e => e.state === 'decided' || e.state === 'destination' },
+      { key: 'potential', label: 'Potential', test: e => e.state === 'open' || e.state === 'waiting' },
+    ];
+    const activeStateFilters = stateFilterDefs.filter(f => s.stateFilters[f.key]);
+    const filtered = allEntries.filter(e =>
+      (s.cat === 'Anything' || e.cat === s.cat) &&
+      (activeStateFilters.length === 0 || activeStateFilters.some(f => f.test(e)))
+    );
+    const box = s.box, zoom = s.zoom, pan = s.pan;
+    const ww = box.w * zoom, wh = box.h * zoom;
+    const posIndex = {};
+    allEntries.forEach((e, i) => { posIndex[e.id] = this.posOf(e, i); });
+    const screenOf = e => { const p = posIndex[e.id]; return { x: p.x * ww + pan.x, y: p.y * wh + pan.y }; };
+    const inView = e => {
+      if (!box.w) return true;
+      const c = screenOf(e);
+      return c.x >= 6 && c.x <= box.w - 6 && c.y >= 6 && c.y <= box.h - 6;
+    };
+    const mapCut = s.mapOpen && s.followMap;
+    const visible = mapCut ? filtered.filter(inView) : filtered;
+    const offCount = filtered.length - visible.length;
+    const fmt = n => (n > 0 ? '+' + n : String(n));
+    const valFor = (e, voterId) => { const o = this.state.votes[e.id] || {}; const v = o[voterId] !== undefined ? o[voterId] : e.votes[voterId]; return v === undefined ? 0 : v; };
+    const mapEntry = e => {
+      const expanded = s.alwaysExpanded || !!s.expanded[e.id];
+      const myVal = valFor(e, 'mei');
+      const groups = {};
+      voters.forEach(v => { const val = valFor(e, v.id); (groups[val] = groups[val] || []).push(v.name); });
+      const order = [2, 1, 0, -1, -2];
+      const todosDone = this.state.done;
+      const picked = !!this.state.selected[e.id];
+      const dotColor = e.state === 'decided' ? 'var(--stop-decided)' : e.state === 'open' ? 'var(--stop-open)' : e.state === 'destination' ? 'var(--stop-destination)' : 'var(--stop-waiting)';
+      const extraBundles = (this.state.addedTo[e.id] || []);
+      const allBundles = e.bundles.concat(extraBundles);
+      return {
+        id: e.id, name: e.name, category: e.cat, meta: e.meta, note: e.note, hasNote: !!e.note,
+        dotSize: this.state.selectMode ? '22px' : '10px',
+        pickBorder: this.state.selectMode ? (picked ? '2px solid var(--wend-leaf)' : '1.5px solid var(--border-strong)') : 'none',
+        pickBg: this.state.selectMode ? (picked ? 'var(--wend-leaf)' : 'transparent') : dotColor,
+        pickTick: this.state.selectMode && picked ? '✓' : '',
+        pick: this.state.selectMode ? stop(() => this.toggleSelected(e.id)()) : this.toggleExpand(e.id),
+        catColor: CAT_COLOR[e.cat],
+        stateDot: e.state === 'decided' ? 'var(--stop-decided)' : e.state === 'open' ? 'var(--stop-open)' : e.state === 'destination' ? 'var(--stop-destination)' : 'var(--stop-waiting)',
+        border: expanded ? 'var(--wend-apricot)' : 'var(--border-subtle)',
+        expanded, chevron: s.alwaysExpanded ? '' : (expanded ? 'hide' : 'show'),
+        scoreLabel: fmt(this.score(e)),
+        inBundles: allBundles.length > 0,
+        bundleLine: 'in ' + allBundles.join(', '),
+        bundleTags: allBundles.map(n => ({ name: n })),
+        hasTodos: e.todos.length > 0,
+        todos: e.todos.map((t, i) => {
+          const key = e.id + i, on = !!todosDone[key];
+          return { text: t, tick: on ? '✓' : '', box: on ? 'var(--wend-leaf)' : 'transparent', color: on ? 'var(--text-muted)' : 'var(--text-body)', go: () => this.setState(p => ({ done: Object.assign({}, p.done, { [key]: !p.done[key] }) })) };
+        }),
+        go: this.toggleExpand(e.id),
+        voteButtons: order.map(n => ({
+          title: VOTE_LABEL[n],
+          isUp2: n === 2, isUp1: n === 1, isMid: n === 0, isDown1: n === -1, isDown2: n === -2,
+          borderW: myVal === n ? '2px' : '1.5px',
+          border: myVal === n ? 'var(--wend-leaf)' : 'var(--border-subtle)',
+          bg: myVal === n ? 'var(--wend-leaf)' : 'var(--surface-card)',
+          color: myVal === n ? 'var(--wend-paper)' : 'var(--text-muted)',
+          go: this.setMyVote(e.id, n),
+        })),
+        votePills: order.filter(n => groups[n] && groups[n].length).map(n => ({
+          isUp2: n === 2, isUp1: n === 1, isMid: n === 0, isDown1: n === -1, isDown2: n === -2,
+          glyph: n === 2 ? '⌃⌃' : n === 1 ? '⌃' : n === 0 ? '·' : n === -1 ? '⌄' : '⌄⌄',
+          count: groups[n].length, names: groups[n].join(', '),
+          bg: n === myVal ? 'var(--wend-leaf-soft)' : 'rgba(63,107,74,0.08)',
+          border: n === myVal ? 'var(--wend-leaf)' : 'rgba(63,107,74,0.3)',
+          hovered: !!(this.state.hoverPill && this.state.hoverPill.id === e.id && this.state.hoverPill.val === n),
+          onEnter: this.setHoverPill(e.id, n), onLeave: this.clearHoverPill,
+        })),
+      };
+    };
+    const areaGroups = areaList.map(area => {
+      const entries = visible.filter(e => e.area === area);
+      return {
+        area, countLabel: entries.length + (entries.length === 1 ? ' idea' : ' ideas'),
+        open: !s.collapsedAreas[area], chevron: s.collapsedAreas[area] ? 'show' : 'hide',
+        toggle: this.toggleAreaGroup(area),
+        entries: entries.map(mapEntry),
+      };
+    }).filter(g => g.entries.length > 0);
+    const catList = cats.filter(c => c !== 'Anything');
+    const categoryGroups = catList.map(cat => {
+      const key = 'cat:' + cat;
+      const entries = visible.filter(e => e.cat === cat);
+      return {
+        area: cat, color: CAT_COLOR[cat], countLabel: entries.length + (entries.length === 1 ? ' idea' : ' ideas'),
+        open: !s.collapsedAreas[key], chevron: s.collapsedAreas[key] ? 'show' : 'hide',
+        toggle: this.toggleAreaGroup(key),
+        entries: entries.map(mapEntry),
+      };
+    }).filter(g => g.entries.length > 0);
+
+    return {
+      ...this.nearVals(),
+      voters, nav, showVotes, people,
+      peopleOpen: this.state.peopleOpen, openPeople: this.openPeople, closePeople: this.closePeople,
+      emailDraft: this.state.emailDraft, setEmailDraft: this.setEmailDraft, emailKey: this.emailKey,
+      newRole: this.state.newRole, setNewRole: this.setNewRole, addPerson: this.addPerson,
+      addDisabled: !canAdd,
+      addBg: canAdd ? 'var(--wend-leaf)' : 'var(--surface-disabled)',
+      addColor: canAdd ? 'var(--wend-paper)' : 'var(--text-muted)',
+      addCursor: canAdd ? 'pointer' : 'default',
+      alwaysExpanded: s.alwaysExpanded, toggleAlwaysExpanded: this.toggleAlwaysExpanded,
+      alwaysExpandedLabel: s.alwaysExpanded ? 'Collapse cards' : 'Show all details',
+      isTrips: s.screen === 'trips', isBoard: s.screen === 'board',
+      isBundles: s.screen === 'bundles', isCalendar: s.screen === 'calendar', isMap: s.screen === 'map',
+      isItinerary: s.screen === 'itinerary',
+      isChecklist: s.screen === 'checklist',
+      goTrips: this.go('trips'), goBoard: this.go('board'),
+
+      trailLabels: ['Explore', 'Shortlist', 'Day plan'],
+      trailBoard: ['decided', 'open', 'waiting'],
+      trailPlan: ['decided', 'decided', 'open'],
+
+      trips: s.trips.filter(t => !t.archived).map(t => ({
+        name: t.name, note: t.note, meta: t.meta,
+        go: this.go(t.screen),
+        archive: stop(() => this.toggleArchive(t.id)),
+        addPro: stop(() => this.addPro(t.id)),
+        addCon: stop(() => this.addCon(t.id)),
+        pros: t.pros.map((text, i) => ({ text, remove: stop(() => this.removePro(t.id, i)) })),
+        cons: t.cons.map((text, i) => ({ text, remove: stop(() => this.removeCon(t.id, i)) })),
+      })),
+      savedTrips: s.trips.filter(t => t.archived).map(t => ({
+        name: t.name, note: t.note,
+        bring: stop(() => this.toggleArchive(t.id)),
+      })),
+      hasSaved: s.trips.some(t => t.archived),
+      isNewTripOpen: !!s.newTripOpen, newTripForm: s.newTripForm,
+      newTripDisabled: !s.newTripForm.name.trim(),
+      openNewTrip: this.openNewTrip, closeNewTrip: this.closeNewTrip, stopClick: e => e.stopPropagation(),
+      setNewTripName: this.setNewTripName, setNewTripDates: this.setNewTripDates, setNewTripNote: this.setNewTripNote,
+      createNewTrip: this.createNewTrip,
+
+      catChips: cats.map(c => ({ label: c, selected: s.cat === c, go: () => this.setState({ cat: c }) })),
+      countLine: mapCut
+        ? visible.length + ' of ' + filtered.length + ' ideas in view' + (offCount ? ' · ' + offCount + ' just off-screen' : '')
+        : visible.length + ' of ' + ENTRIES.length + ' ideas · nothing hidden is gone',
+
+      mapOpen: !!s.mapOpen, toggleMap: this.toggleMap, mapRef: this.mapRef, mapDown: this.mapDown,
+      mapBtnLabel: s.mapOpen ? 'Hide map' : 'Show map',
+      mapBtnBorder: s.mapOpen ? 'var(--wend-leaf)' : 'var(--border-strong)',
+      mapBtnColor: s.mapOpen ? 'var(--wend-leaf)' : 'var(--text-strong)',
+      toggleFollow: this.toggleFollow,
+      followBg: s.followMap ? 'var(--wend-leaf)' : 'var(--border-strong)',
+      followKnob: s.followMap ? '16px' : '2px',
+      zoomIn: this.zoomBy(0.5), zoomOut: this.zoomBy(-0.5), resetMap: this.resetMap,
+      mapLayerW: (box.w ? ww : 0) + 'px', mapLayerH: (box.h ? wh : 0) + 'px',
+      mapLayerTransform: 'translate(' + pan.x + 'px,' + pan.y + 'px)',
+      mapNarrowed: zoom > 1 || pan.x !== 0 || pan.y !== 0,
+      mapChipLine: mapCut
+        ? (offCount ? offCount + ' ideas outside this view' : 'Everything kept is in view')
+        : 'The list is not following the map',
+      mapPins: zoom < 1.6
+        ? Object.keys(AREA_XY).map(area => {
+            const group = filtered.filter(e => e.area === area);
+            if (!group.length) return null;
+            const c = AREA_XY[area];
+            return {
+              name: area + ' · ' + group.length,
+              left: (c.x * 100) + '%', top: (c.y * 100) + '%',
+              bg: 'var(--surface-card)', color: 'var(--text-strong)', border: 'var(--border-strong)',
+              ring: 'none', go: this.zoomToArea(area),
+            };
+          }).filter(Boolean)
+        : filtered.map(e => {
+            const p = posIndex[e.id];
+            const picked = !!s.selected[e.id];
+            const inside = inView(e);
+            const bundled = (e.bundles.length + (s.addedTo[e.id] || []).length) > 0;
+            return {
+              name: e.name, left: (p.x * 100) + '%', top: (p.y * 100) + '%',
+              bg: bundled ? 'var(--wend-bister)' : inside ? 'var(--wend-leaf)' : 'var(--surface-card)',
+              color: bundled || inside ? 'var(--wend-paper)' : 'var(--text-strong)',
+              border: bundled ? 'var(--wend-bister)' : inside ? 'var(--wend-leaf)' : 'var(--border-strong)',
+              ring: picked ? '3px solid var(--wend-apricot)' : 'none',
+              go: s.selectMode ? this.toggleSelected(e.id) : this.toggleExpand(e.id),
+            };
+          }),
+
+      selectMode: !!s.selectMode, toggleSelectMode: this.toggleSelectMode,
+      selectLabel: s.selectMode ? 'Done selecting' : 'Select',
+      selectBorder: s.selectMode ? 'var(--wend-leaf)' : 'var(--border-subtle)',
+      hasSelection: Object.keys(s.selected).length > 0,
+      selectionLine: Object.keys(s.selected).length + (Object.keys(s.selected).length === 1 ? ' idea selected' : ' ideas selected'),
+      clearSelection: this.clearSelection,
+      addMenuOpen: !!s.addMenuOpen, toggleAddMenu: this.toggleAddMenu, closeAddMenu: this.closeAddMenu,
+      bundleTargets: BUNDLES.map(b => ({ name: b.name, go: this.addSelectedTo(b.name) }))
+        .concat([{ name: 'A new bundle', go: this.addSelectedTo('New bundle') }]),
+
+      ungrouped: s.groupBy === 'none',
+      groupByPlace: s.groupBy === 'place',
+      groupByCategory: s.groupBy === 'category',
+      groupByOptions: [['none', 'Ungrouped'], ['place', 'By location'], ['category', 'By category']].map(([id, label]) => ({
+        label, go: this.setGroupBy(id),
+        weight: s.groupBy === id ? 700 : 400,
+        bg: s.groupBy === id ? 'var(--surface-card)' : 'transparent',
+        color: s.groupBy === id ? 'var(--text-strong)' : 'var(--text-muted)',
+      })),
+      areaGroups, categoryGroups,
+
+      filterOpen: !!s.filterOpen, toggleFilter: this.toggleFilter, closeFilter: this.closeFilter,
+      stopClick: e => e.stopPropagation(),
+      filterCount: (s.cat !== 'Anything' ? 1 : 0) + activeStateFilters.length,
+      hasFilters: (s.cat !== 'Anything' ? 1 : 0) + activeStateFilters.length > 0,
+      filterBorder: ((s.cat !== 'Anything' ? 1 : 0) + activeStateFilters.length > 0) ? 'var(--wend-leaf)' : 'var(--border-strong)',
+      stateChips: stateFilterDefs.map(f => ({ label: f.label, selected: !!s.stateFilters[f.key], go: this.toggleStateFilter(f.key) })),
+
+      isNewIdeaOpen: !!s.newIdeaOpen, newIdeaForm: s.newIdeaForm,
+      newIdeaDisabled: !s.newIdeaForm.name.trim(),
+      openNewIdea: this.openNewIdea, closeNewIdea: this.closeNewIdea,
+      setNewIdeaName: this.setNewIdeaName,
+      newIdeaAreaChips: areaList.map(a => ({ label: a, selected: s.newIdeaForm.area === a, go: this.setNewIdeaArea(a) })),
+      newIdeaCatChips: cats.filter(c => c !== 'Anything').map(c => ({ label: c, selected: s.newIdeaForm.cat === c, go: this.setNewIdeaCat(c) })),
+      createNewIdea: this.createNewIdea,
+
+      visibleEntries: visible.map(mapEntry),
+
+      bundles: (() => {
+        const byId = {};
+        allEntries.forEach(e => { byId[e.id] = e; });
+        const extraFor = name => Object.keys(s.addedTo)
+          .filter(id => s.addedTo[id].indexOf(name) !== -1 && byId[id])
+          .map(id => byId[id].name);
+        const knownNames = BUNDLES.map(b => b.name);
+        const newNames = [];
+        Object.keys(s.addedTo).forEach(id => s.addedTo[id].forEach(n => {
+          if (knownNames.indexOf(n) === -1 && newNames.indexOf(n) === -1) newNames.push(n);
+        }));
+        const all = BUNDLES.map(b => ({ name: b.name, meta: b.meta, duration: b.duration, placed: b.placed, score: b.score, items: b.items }))
+          .concat(newNames.map(n => ({ name: n, meta: 'just made', duration: '', placed: '', score: '', items: [] })));
+        return all.map(b => {
+          const items = b.items.concat(extraFor(b.name).filter(n => b.items.indexOf(n) === -1));
+          return {
+            name: b.name, meta: b.meta, duration: b.duration, placed: b.placed, score: b.score,
+            count: items.length + ' ideas',
+            items: items.map(n => ({ name: n, shared: SHARED[n] || '', dot: SHARED[n] ? 'var(--stop-open)' : 'var(--stop-decided)' })),
+          };
+        });
+      })(),
+
+      compare: [
+        { name: 'Thursday minami', note: 'Everything within a 12-minute walk.', rows: [
+          { time: '17:00–18:00', what: 'Daiso, Shinsaibashi' }, { time: '18:15–19:30', what: 'Dotonbori after dark' }, { time: '19:45', what: 'Ramen — pick on the night' } ] },
+        { name: 'Thursday, quieter', note: 'Same area, half the noise. Kept in case Dotonbori is too much.', rows: [
+          { time: '17:00–18:00', what: 'Daiso, Shinsaibashi' }, { time: '18:30–20:00', what: 'Kuromon, late stalls' }, { time: '20:15', what: 'Standing bar in Uranamba' } ] },
+      ],
+
+      days: [['Mon', '13'], ['Tue', '14'], ['Wed', '15'], ['Thu', '16'], ['Fri', '17'], ['Sat', '18']].map(([dow, date]) => ({
+        dow, date, go: () => this.setState({ day: dow }),
+        bg: s.day === dow ? 'var(--surface-card)' : 'transparent',
+        border: s.day === dow ? 'var(--wend-apricot)' : 'var(--border-subtle)',
+        color: 'var(--text-strong)', sub: s.day === dow ? 'var(--wend-apricot)' : 'var(--text-muted)',
+      })),
+      dayBlurb: s.day === 'Mon'
+        ? 'Kyoto east and south. Two fixed things, one long open stretch in the afternoon, and dinner left undecided.'
+        : 'This day is still mostly open. Drop a bundle onto it, or leave it — a loose day is fine.',
+      schedule: (s.day === 'Mon' ? SCHEDULE : SCHEDULE.slice(0, 3)).map(r => {
+        const p = PIN_STYLE[r.state];
+        return { time: r.time, dur: r.dur, title: r.title, meta: r.meta,
+          dotSize: p.size, dotFill: p.fill, dotRing: p.ring,
+          hasOptions: !!r.options, options: r.options || [] };
+      }),
+      wide: !s.narrow, narrow: s.narrow,
+      calPad: s.mid ? '28px 24px 64px' : '36px 48px 64px',
+      calDir: s.mid ? 'column' : 'row',
+      calPanelW: s.mid ? '100%' : '308px',
+      calPanelGrow: s.mid ? 'row' : 'column',
+      calHeadDir: s.mid ? 'column' : 'row',
+      calHeadAlign: s.mid ? 'flex-start' : 'flex-end',
+      nearOpen: s.nearOpen, openNear: this.openNear, closeNear: this.closeNear,
+      nowTitle: s.day === 'Mon' ? 'Fushimi Inari' : 'Nothing planned yet',
+      nowSub: s.day === 'Mon' ? 'Until 15:40 · dinner at 18:30' : 'A loose day is fine',
+      sched: (() => {
+        const rows = s.day === 'Mon' ? SCHEDULE : SCHEDULE.slice(0, 3);
+        const nowIdx = s.day === 'Mon' ? 4 : 1;
+        return rows.map((r, i) => {
+          const isNow = i === nowIdx, open = r.state === 'open';
+          const base = r.state === 'destination' ? 'var(--stop-destination)'
+            : r.state === 'waiting' ? 'var(--stop-waiting)' : 'var(--stop-decided)';
+          return { time: r.time, dur: r.dur, title: r.title, meta: r.meta,
+            fill: isNow ? 'var(--wend-apricot)' : open ? 'transparent' : base,
+            ring: open && !isNow ? '3px solid var(--stop-open)' : 'none',
+            outline: isNow ? '3px solid var(--wend-apricot)' : 'none',
+            timeColor: i < nowIdx ? 'var(--text-muted)' : 'var(--text-strong)',
+            hasOptions: !!r.options, options: r.options || [] };
+        });
+      })(),
+      nearby: [
+        { name: 'Tofuku-ji gardens', dist: '9 min' },
+        { name: 'Sake tasting, Fushimi', dist: '12 min' },
+        { name: 'Standing coffee by the shrine', dist: '4 min' },
+      ],
+
+      mapFilters: ['Everything', 'Scheduled', 'Potential'].map(f => ({
+        label: f, selected: s.mapFilter === f, go: () => this.setState({ mapFilter: f }),
+      })),
+      mapPinsBig: PINS.filter(p =>
+        s.mapFilter === 'Everything' ? true : s.mapFilter === 'Scheduled' ? p.state === 'decided' || p.state === 'destination' : p.state === 'open' || p.state === 'waiting'
+      ).map(p => Object.assign({ name: p.name, x: p.x, y: p.y }, PIN_STYLE[p.state])),
+      cluster: [
+        { name: 'Dotonbori after dark', meta: 'Thu 18:15', state: 'decided' },
+        { name: 'Daiso, Shinsaibashi', meta: 'Thu 17:00', state: 'decided' },
+        { name: 'Kuromon market', meta: 'Thu 18:30', state: 'decided' },
+        { name: 'Ramen, somewhere in Namba', meta: '1 of 4', state: 'open' },
+        { name: 'Standing bar, Uranamba', meta: 'kept', state: 'open' },
+        { name: 'Namba Yasaka shrine', meta: 'kept', state: 'waiting' },
+      ].map(c => Object.assign({ name: c.name, meta: c.meta }, PIN_STYLE[c.state])),
+
+      ...(() => {
+        const itin = s.itin || ITIN;
+        const datesSet = this.props.datesSet !== false || s.datesConfirmed;
+        const needDates = s.datesOpen || !datesSet;
+        const archivedVersions = s.archivedVersions || [];
+        const openIds = itin.filter(d => s.openDays[d.id]).map(d => d.id);
+        const mapItems = (dayId, verId, items) => items.map((it, i) => ({
+          isBundle: it.k === 'bundle', isGap: it.k === 'gap', isIdea: it.k === 'idea',
+          time: it.time, title: it.title, meta: it.meta || '',
+          members: (it.members || []).map(m => ({ time: m.time, title: m.title, meta: m.meta || '' })),
+          fill: this.openAddPicker(dayId),
+          ungroup: () => this.mapDay(dayId, d => Object.assign({}, d, {
+            versions: d.versions.map(v => (v.id !== verId ? v : Object.assign({}, v, {
+              items: v.items.reduce((acc, x, xi) => acc.concat(
+                xi !== i ? [x] : (x.members || []).map(m => ({ k: 'idea', time: m.time, title: m.title, meta: m.meta }))
+              ), []),
+            }))),
+          })),
+        }));
+        const stateDot = st => (st === 'decided'
+          ? { size: '11px', fill: 'var(--stop-decided)', ring: 'none' }
+          : st === 'open' ? { size: '13px', fill: 'var(--surface-card)', ring: '3px solid var(--stop-open)' }
+          : { size: '9px', fill: 'var(--stop-waiting)', ring: 'none' });
+        const totalHours = itin.reduce((n, d) => n + (parseInt(d.hours, 10) || 0), 0);
+        const splitCount = itin.filter(d => d.versions.length > 1).length;
+        return {
+          needDates, datesReady: !needDates,
+          dateForm: s.dateForm, setDateStart: this.setDateStart, setDateEnd: this.setDateEnd,
+          datesDisabled: !(s.dateForm.start || '').trim() || !(s.dateForm.end || '').trim(),
+          confirmDates: this.confirmDates, reopenDates: this.reopenDates,
+          lengthChips: [['4 days', '15 Oct 2026'], ['6 days', '17 Oct 2026'], ['A week', '18 Oct 2026']]
+            .map(([label, end]) => ({ label, go: this.setLength(label, end) })),
+          itinMeta: s.dateForm.start.replace(' 2026', '') + '–' + s.dateForm.end.replace(' 2026', '') + ' · ' + itin.length + ' days',
+          hasSplit: splitCount > 0,
+          splitLine: splitCount + (splitCount === 1 ? ' day split' : ' days split') + ' · not settled',
+          expandAllDays: this.expandAllDays, collapseAllDays: this.collapseAllDays,
+          lodgeText: s.lodgeText, setLodgeText: this.setLodgeText,
+          itinDays: itin.map(d => {
+            const dot = stateDot(d.state);
+            const open = !!s.openDays[d.id];
+            const multi = d.versions.length > 1;
+            const first = d.versions[0];
+            const summary = first.items.filter(i => i.k !== 'gap').map(i => i.title).join(' · ') || 'Nothing here yet';
+            return {
+              label: d.n + ' · ' + d.dow + ' ' + d.date,
+              summary, summaryColor: first.items.length ? 'var(--text-body)' : 'var(--text-muted)',
+              hours: d.hours || '',
+              dotSize: dot.size, dotFill: dot.fill, dotRing: dot.ring,
+              rowBg: d.items === 0 ? 'transparent' : 'var(--surface-card)',
+              rowBorder: first.items.length ? 'var(--border-subtle)' : 'var(--border-strong)',
+              rowBorderStyle: first.items.length ? 'solid' : 'dashed',
+              open, closed: !open, toggle: this.toggleDay(d.id),
+              outline: multi ? '2px solid var(--wend-apricot)' : 'none',
+              statusLine: multi ? d.versions.length + ' versions · not settled' : '',
+              statusColor: multi ? 'var(--wend-bister)' : 'var(--text-muted)',
+              hasLodging: !!d.lodging, noLodging: !d.lodging, lodging: d.lodging || '',
+              lodgeToggle: this.openLodge(d.id), lodgeOpen: s.lodgeOpen === d.id,
+              lodgeChoices: LODGE_CHOICES.map(c => ({ label: c, go: this.setLodging(d.id, c) })),
+              clearLodge: this.setLodging(d.id, ''), saveLodgeText: this.saveLodgeText(d.id),
+              forkable: !multi, multi, single: !multi,
+              fork: this.forkDay(d.id), addTo: this.openAddPicker(d.id),
+              addPickerOpen: s.addPicker === d.id,
+              addChoices: ITIN_SHELF.filter(x => !s.placedShelf[x.id]).map(x => ({
+                label: x.name, meta: x.meta, go: this.placeShelf(x.id, d.id),
+              })),
+              hasAddChoices: ITIN_SHELF.filter(x => !s.placedShelf[x.id]).length > 0,
+              dragOver: this.dragOverDay(d.id), drop: this.dropOnDay(d.id),
+              dropOutline: s.dragOver === d.id ? '2px solid var(--wend-leaf)' : (multi ? '2px solid var(--wend-apricot)' : 'none'),
+              rowOutline: s.dragOver === d.id ? '2px solid var(--wend-leaf)' : 'none',
+              items: mapItems(d.id, first.id, first.items),
+              versions: d.versions.map((v, i) => ({
+                name: v.name, note: v.note,
+                items: mapItems(d.id, v.id, v.items),
+                keep: this.keepVersion(d.id, v.id),
+                keepLabel: i === d.versions.length - 1 ? 'Keep this day, archive the rest' : 'Keep this day',
+                keepBg: i === d.versions.length - 1 ? 'var(--wend-leaf)' : 'transparent',
+                keepColor: i === d.versions.length - 1 ? 'var(--wend-paper)' : 'var(--wend-leaf)',
+              })),
+            };
+          }),
+          shelfTitle: 'Not placed yet · ' + ITIN_SHELF.filter(x => !s.placedShelf[x.id]).length,
+          shelfLine: 'Drag one onto a day, or use its menu. It lands at the end and you can set the hours after.',
+          shelf: ITIN_SHELF.filter(x => !s.placedShelf[x.id]).map(x => ({
+            name: x.name, meta: x.meta,
+            bg: x.bundle ? 'var(--wend-hatch-b)' : 'var(--surface-card)',
+            border: x.bundle ? 'var(--wend-hatch-b)' : 'var(--border-subtle)',
+            metaColor: 'var(--text-muted)',
+            dragStart: this.dragStart(x.id), dragEnd: this.dragEnd,
+            menuOpen: s.shelfMenu === x.id, toggleMenu: this.toggleShelfMenu(x.id),
+            dayTargets: itin.map(d => ({ label: 'Add to ' + d.n + ' · ' + d.dow + ' ' + d.date, go: this.placeShelf(x.id, d.id) })),
+          })),
+          hasArchived: archivedVersions.length > 0,
+          archivedOpen: !!s.archivedOpen, toggleArchivedPanel: this.toggleArchivedPanel,
+          archivedLabel: 'Archived · ' + archivedVersions.length,
+          archivedChevron: s.archivedOpen ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6',
+          archived: archivedVersions.map(a => ({ label: a.label, restore: this.restoreVersion(a.id) })),
+        };
+      })(),
+
+      checklist: CHECKLIST.map(g => ({
+        title: g.title,
+        items: g.items.map(t => {
+          const on = s.done[t.id] !== undefined ? s.done[t.id] : t.done;
+          return { text: t.text, from: t.from, tick: on ? '✓' : '',
+            box: on ? 'var(--wend-leaf)' : 'transparent',
+            color: on ? 'var(--text-muted)' : 'var(--text-strong)',
+            go: () => this.setState(p => ({ done: Object.assign({}, p.done, { [t.id]: !on }) })) };
+        }),
+      })),
+      doneLine: (() => {
+        const all = CHECKLIST.flatMap(g => g.items);
+        const n = all.filter(t => (s.done[t.id] !== undefined ? s.done[t.id] : t.done)).length;
+        return n + ' of ' + all.length + ' done. The rest will keep.';
+      })(),
+      donePct: (() => {
+        const all = CHECKLIST.flatMap(g => g.items);
+        const n = all.filter(t => (s.done[t.id] !== undefined ? s.done[t.id] : t.done)).length;
+        return Math.round((n / all.length) * 100) + '%';
+      })(),
+    };
+  }
+}
+
+</script>
+</body>
+</html>
