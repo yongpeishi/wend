@@ -452,8 +452,18 @@ export function TripBoard() {
               itself: the list's reading-measure cap only makes sense while
               there is a map to hand the surplus width to, and CSS has no way
               to ask whether a sibling exists. Present or absent rather than
-              open/closed, so the closed case needs no selector at all. */}
-          <div className={styles.body} data-map={mapOpen ? 'open' : undefined}>
+              open/closed, so the closed case needs no selector at all.
+
+              data-structure is the same fact about the third cell, and it
+              tracks whether the PANE is mounted rather than whether the panel
+              is open: on a narrow viewport the tree is a Drawer over the board
+              and this row still holds two cells. The stylesheet rearranges the
+              row around it — see [data-structure='open'] there. */}
+          <div
+            className={styles.body}
+            data-map={mapOpen ? 'open' : undefined}
+            data-structure={structureOpen && !isNarrow ? 'open' : undefined}
+          >
             {/* Rendered only while open, never merely hidden. See toggleMap. */}
             {mapOpen && (
               <div className={styles.mapCell}>

@@ -213,10 +213,11 @@
    beside it, and an overview that scrolls away stops being one. Its own
    scrollbar rather than the page's, because a deep tree is taller than a
    viewport. The narrowest basis of the three cells — it is an index, not a
-   reading surface — and it wraps under the others when the column runs out of
-   width, exactly as the map/list pair already does. Below the 900px fold it is
-   not rendered at all (TripBoard mounts the shared Drawer instead), so no
-   rule here needs to hide it.
+   reading surface — and it keeps its place beside the list when the column runs
+   out of room for all three: the map is the cell that wraps, for the reasons
+   under [data-structure='open'] below. Below the 900px fold it is not rendered
+   at all (TripBoard mounts the shared Drawer instead), so no rule here needs to
+   hide it.
 
    300/280 rather than the 260/240 this first shipped at. Those numbers were
    sized against a VIEWER's row; an editor's row spends ~56px more on chrome
@@ -239,6 +240,74 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* Three panes in one row want 932px of column: the three floors above — 300,
+   320, 280 — and the two gaps between them. The ideas column does not have
+   that until the window is about 1710px wide (the arithmetic is at the foot of
+   this file), so on every ordinary desk something has to leave the row.
+
+   It is the map that leaves. The list and the tree are the same reading job at
+   two scales — the tree is an index OF the list, and reading one against the
+   other is the whole reason the pane exists — so those two stay side by side
+   and the map takes the full-width line above them, which is where this row's
+   wrapping has always put it.
+
+   Left to itself, flex wrapped the wrong cell: the structure is last in source
+   order, so IT dropped to the second line, and there it landed under a map that
+   is `position: sticky`. A sticky cell can travel the whole height of its flex
+   container, second line included, so the map slid down over the tree as the
+   page scrolled and the index was unreadable until you hid the map. Choosing
+   the map as the cell that wraps is what fixes that, and dropping its sticky
+   while it is up there is what keeps it fixed: sticky is a promise about being
+   BESIDE something, and a full-width map that stays put while the page scrolls
+   paints over everything under it — the tree here, and the idea list in the
+   same stacked shape. With a line of its own it scrolls away with the page,
+   which is the honest behaviour for a pane nothing is being read against.
+
+   data-structure is the same trick as data-map on the line above, and it is
+   there for the same reason: CSS cannot ask whether a sibling cell exists, and
+   these rules are only right while the tree is one of three residents. */
+[data-structure='open'] .mapCell {
+  flex-basis: 100%;
+  position: static;
+}
+
+/* The second line: the list and the tree, both asking for their floors rather
+   than their preferences. The preferences — 440 and 300 — were about competing
+   with the map for one row; on a line of their own they only decide when the
+   pair gives up and stacks, and at their floors that is a 616px column, about a
+   1250px window, instead of a 756px one. The caps still decide where any
+   surplus lands (560 for the list, 400 for the tree), so this costs the pair
+   nothing at the widths where there is room. */
+[data-structure='open'] .listCell {
+  flex-basis: 320px;
+}
+
+[data-structure='open'] .structureCell {
+  flex-basis: 280px;
+}
+
+/* 1710px is where the ideas column finally reaches 932px and all three fit
+   beside each other, so the map comes back into the row and is sticky again.
+
+   The number is exact rather than a guess, because past 1658px the rail has hit
+   its 480px ceiling and every remaining pixel goes to the ideas: the shell's
+   sidebar is 246px (the @media at the foot of this file already counts it), the
+   rail 480, this column's own gutters 52, so the column is the window minus
+   778. 932 + 778 = 1710. Below that the percentage rail is still growing and
+   the column never gets there — at 1658px, the last width before the cap, it is
+   only 880px — so there is no window this rule wrongly claims.
+
+   The map asks for the 300px floor rather than its usual 380px basis: at 1710px
+   there is room for the three floors and nothing else, and a basis that did not
+   fit would simply wrap the row again. Grow puts the surplus back the moment
+   there is any, and the two caps above send most of it here. */
+@media (min-width: 1710px) {
+  [data-structure='open'] .mapCell {
+    flex-basis: 300px;
+    position: sticky;
+  }
 }
 
 /* The pane names itself the way the popover's section labels do: small caps,
