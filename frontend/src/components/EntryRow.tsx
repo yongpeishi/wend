@@ -1,4 +1,3 @@
-import { HatchPlaceholder } from './HatchPlaceholder';
 import styles from './EntryRow.module.css';
 
 export interface EntryRowProps {
@@ -23,8 +22,8 @@ export interface EntryRowProps {
 
 /**
  * The "Place row" specimen (Wend Design System.dc.html §06), generalised into a
- * real row: hatch thumbnail, title + middot metadata, and a keep toggle whose tap
- * target is 48x48 even though the visible dot is 28px.
+ * real row: title + middot metadata, and a keep toggle whose tap target is
+ * 48x48 even though the visible dot is 28px.
  */
 export function EntryRow({
   title,
@@ -37,13 +36,10 @@ export function EntryRow({
 }: EntryRowProps) {
   const metaText = metadata.join(' · ');
   const main = (
-    <>
-      <HatchPlaceholder size={56} />
-      <span className={styles.body}>
-        <p className={styles.title}>{title}</p>
-        {metaText && <p className={styles.metadata}>{metaText}</p>}
-      </span>
-    </>
+    <span className={styles.body}>
+      <p className={styles.title}>{title}</p>
+      {metaText && <p className={styles.metadata}>{metaText}</p>}
+    </span>
   );
 
   return (

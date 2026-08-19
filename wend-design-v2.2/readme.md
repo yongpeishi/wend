@@ -42,7 +42,7 @@ Numbers are written plainly: 24-hour times (`09:40`), en-dash ranges (`10:15–1
 
 **Shape.** Cards 6px, media 14px, buttons and chips full pills, stops and toggles circles, phone surfaces 22px. Borders 1.5px (2px when a border carries an action). **No shadows anywhere** — elevation is page tone versus card tone.
 
-**Backgrounds & imagery.** Flat paper. No gradients, no textures, no full-bleed photography in the system itself. Where imagery goes, use the diagonal hatch placeholder (`--placeholder-hatch`) until real photographs are supplied — never a grey box. The one dark surface in the product is the finished day plan, which inverts for outdoor reading.
+**Backgrounds & imagery.** Flat paper. No gradients, no textures, no full-bleed photography in the system itself. The one dark surface in the product is the finished day plan, which inverts for outdoor reading.
 
 **Animation.** One gesture: the trail draws itself forward when a step completes, dot by dot, 420ms ease-out. Going back plays it in reverse at the same speed — returning should feel as considered as advancing. Everything else is a 160ms opacity change. No bounces, no scale, no spring. `prefers-reduced-motion` collapses both durations to zero; the dots still change state.
 
@@ -66,7 +66,7 @@ Assets in `assets/`: `michikusa-mark.svg` (primary), `-reversed.svg` (on deep le
 
 ### Components
 
-- `components/brand/` — **Logo**, **Trail**, **Placeholder**
+- `components/brand/` — **Logo**, **Trail**
 - `components/core/` — **Button**, **Chip**, **Input**, **Card**, **Label**, **KeepToggle**
 - `components/travel/` — **PlaceCard**, **TimeRow**
 

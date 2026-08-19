@@ -55,7 +55,4 @@
      and far too little for it to compete with the card for attention. Keep it
      literal rgba: --wend-paper is a hex token, and var() cannot carry an alpha. */
   --overlay-scrim: rgba(240, 243, 238, 0.92);
-
-  /* Placeholder imagery: hatch, never a grey box */
-  --placeholder-hatch: repeating-linear-gradient(135deg, var(--wend-hatch-a) 0 5px, var(--wend-hatch-b) 5px 10px);
 }

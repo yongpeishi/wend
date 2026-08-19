@@ -8,7 +8,6 @@ import { Input } from '../design/components/core/Input';
 import { Switch } from '../design/components/core/Switch';
 import { Card } from '../components/layout/Card';
 import { Stack, Row } from '../components/layout/Stack';
-import { HatchPlaceholder } from '../components/HatchPlaceholder';
 import { EntryRow } from '../components/EntryRow';
 import { VoteControl } from '../components/VoteControl';
 import { Field } from '../components/Field';
@@ -273,10 +272,9 @@ export function DesignGallery() {
         </Specimen>
       </Section>
 
-      <Section index="08" label="App" title="Layout: Card, Stack, Row, hatch placeholder">
-        <Specimen label="Card padding + hatch placeholder media">
+      <Section index="08" label="App" title="Layout: Card, Stack, Row">
+        <Specimen label="Card padding inside a Row">
           <Row gap={4} align="start">
-            <HatchPlaceholder size={56} />
             <Card padding={4} bordered>
               <p style={{ margin: 0, color: 'var(--text-body)' }}>Card tone against page tone — the only elevation.</p>
             </Card>

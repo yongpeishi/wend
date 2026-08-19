@@ -3,9 +3,6 @@ export type { CardProps } from './layout/Card';
 export { Stack, Row } from './layout/Stack';
 export type { StackProps, RowProps } from './layout/Stack';
 
-export { HatchPlaceholder } from './HatchPlaceholder';
-export type { HatchPlaceholderProps } from './HatchPlaceholder';
-
 export { EntryRow } from './EntryRow';
 export type { EntryRowProps } from './EntryRow';
 

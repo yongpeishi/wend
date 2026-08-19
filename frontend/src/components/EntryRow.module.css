@@ -9,7 +9,7 @@
   padding: 8px;
 }
 
-/* The clickable region (thumbnail + title/metadata). A real <button> sitting
+/* The clickable region (title/metadata). A real <button> sitting
    alongside — never nested inside — the keep-toggle button. */
 .mainButton {
   display: flex;
