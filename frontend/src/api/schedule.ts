@@ -18,12 +18,18 @@ export function useSchedule(tripId: number | undefined, day?: string) {
  * Schedule items are the itinerary's rows too, read through a different
  * endpoint — so writing one has to invalidate both screens' queries, or the
  * itinerary keeps showing a day that no longer has that item on it.
+ *
+ * Entries are invalidated as well: the server computes `scheduled` on every
+ * Entry from its schedule items, so placing or removing an item changes data
+ * the entries queries own (the Structure tree's dot, BundleCard member dots).
+ * Without this the flag stays stale until a reload.
  */
 function useInvalidateSchedule() {
   const queryClient = useQueryClient();
   return () => {
     void queryClient.invalidateQueries({ queryKey: queryKeys.schedule.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.itinerary.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.entries.all });
   };
 }
 
