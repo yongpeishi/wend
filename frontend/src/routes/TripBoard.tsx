@@ -29,6 +29,7 @@ import { StructurePanel } from '../features/board/StructurePanel';
 import { useBundleMembers } from '../features/board/useBundleMembers';
 import { useLinkMutations } from '../features/board/useLinkMutations';
 import type { BundleDropData } from '../features/board/bundleDrop';
+import { isStructureDrag, isStructureDrop, performStructureMove } from '../features/board/structureDrop';
 import { EMPTY_FILTERS, applyFilters, groupEntries } from '../features/board/filters';
 import type { GroupMode, IdeaFilters } from '../features/board/filters';
 import { isWithinBounds } from '../features/map/bounds';
@@ -91,11 +92,16 @@ function useIsNarrow(): boolean {
  *
  * The hierarchy itself — ideas and bundles are genuinely many-to-many, and a
  * child can hang under several parents at once — is on screen again as the
- * Structure panel: a read-only disclosure tree of the whole subtree, toggled
- * from the FilterBar and drawn from the same graph query useBundleMembers
- * already makes, so opening it costs no request. It never scopes the board;
- * it only shows the shape. On a narrow viewport the same tree arrives as the
- * shared Drawer instead of a third pane — see the structure block below.
+ * Structure panel: a disclosure tree of the whole subtree, toggled from the
+ * FilterBar and drawn from the same graph query useBundleMembers already
+ * makes, so opening it costs no request. It never scopes the board; it shows
+ * the shape, and for an editor it now also EDITS the shape: its rows ride
+ * this board's DndContext (drag a row onto a row to move it — see
+ * handleDragEnd's routing), and each row's ⋯ menu holds the copy and
+ * schedule verbs. On a narrow viewport the same tree arrives as the shared
+ * Drawer instead of a third pane — the Drawer portals its DOM to the body,
+ * but it renders inside this DndContext's React tree, so the rows' drag
+ * registration works there the same way.
  *
  * Filtering and grouping are separate axes and must stay that way. The category
  * chips narrow WHICH ideas show; the group mode only changes how the survivors
@@ -168,7 +174,7 @@ export function TripBoard() {
   const [pinnedId, setPinnedId] = useState<number | null>(null);
 
   const restoreEntry = useRestoreEntry();
-  const { addLink } = useLinkMutations();
+  const { addLink, removeLink } = useLinkMutations();
 
   // Stable handle, not an inline arrow: NewIdeaModal memoizes its own internal
   // onClose forward to keep Modal's focus effect (which depends on [open,
@@ -354,25 +360,45 @@ export function TripBoard() {
   }
 
   function handleDragStart(event: DragStartEvent) {
-    const data = event.active.data.current as { entryId: number; title: string } | undefined;
-    if (data) setActiveDrag(data);
+    const data = event.active.data.current;
+    // Both kinds of drag share the one overlay card: whatever is in the air,
+    // the reader follows it by its title.
+    if (isStructureDrag(data)) {
+      setActiveDrag({ entryId: data.childId, title: data.title });
+      return;
+    }
+    const entryData = data as { entryId: number; title: string } | undefined;
+    if (entryData) setActiveDrag(entryData);
   }
 
   /**
-   * There is one kind of drop target left: a bundle that already exists. It is
-   * recognised by its droppable data rather than by parsing its id — see
-   * bundleDrop.ts, which also records what the second kind used to be and why
-   * the dashed "start a bundle" target is gone.
+   * Two kinds of drag share this one DndContext now, and they are routed by
+   * what the payload SAYS it is, never by guessing from ids: a structure-tree
+   * drag declares `type: 'structure'` on both ends (see structureDrop.ts), and
+   * everything else is the board's original idea-onto-bundle gesture.
    *
-   * Dropping onto a bundle COPIES the link and never removes the old one, so an
-   * idea can belong to several bundles at once. Nothing here creates anything:
-   * a bundle is made by naming it, in the rail's own header.
+   * The two deliberately do different things. Dropping an idea onto a bundle
+   * card COPIES — a new link, the old ones untouched, because an idea can
+   * belong to several bundles at once. Dropping a tree row onto a tree row
+   * MOVES — add under the target first, and only on success remove the grabbed
+   * occurrence's old link, so a failure can only ever leave a copy, never a
+   * orphan. A structure drag over a bundle card (or an idea over a tree row)
+   * falls through to nothing: each gesture only lands on its own targets.
    */
   function handleDragEnd(event: DragEndEvent) {
     setActiveDrag(null);
     const { active, over } = event;
     if (!over) return;
-    const entryData = active.data.current as { entryId: number; title: string } | undefined;
+
+    const activeData = active.data.current;
+    if (isStructureDrag(activeData)) {
+      const target = over.data.current;
+      if (!isStructureDrop(target)) return;
+      performStructureMove({ drag: activeData, drop: target, addLink, removeLink, show });
+      return;
+    }
+
+    const entryData = activeData as { entryId: number; title: string } | undefined;
     const overData = over.data.current as BundleDropData | undefined;
     if (!entryData || !overData) return;
 

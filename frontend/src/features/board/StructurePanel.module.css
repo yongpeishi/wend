@@ -7,14 +7,49 @@
   flex-direction: column;
 }
 
-/* One flat strip per row: chevron/spacer, then the marks and the title, with
-   room at either end for the later slice's drag handle and ⋯ menu to join as
-   plain siblings. Indent arrives as inline paddingLeft (depth * 16). */
+/* One flat strip per row: grip, chevron/spacer, the marks and the title, and
+   the ⋯ menu at the far end. Indent arrives as inline paddingLeft (depth * 16).
+   The border is always drawn and usually invisible, so becoming a drop target
+   colours it without moving a pixel — the same accent BundleCard.over uses. */
 .row {
   display: flex;
   align-items: center;
   gap: var(--space-1);
   min-width: 0;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-card);
+}
+
+.rowOver {
+  border-color: var(--focus-ring);
+}
+
+/* The occurrence being dragged: still in place — the move is not real until
+   the server says so — but visibly the one in the air. */
+.row[data-dragging] {
+  opacity: 0.4;
+}
+
+/* The grip, at the tree's own 24px scale rather than the board rows' 44px tap
+   square: these rows are a dense reading surface, and the handle is a sibling
+   in the strip, not a column of its own. */
+.handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: grab;
+}
+
+.handle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .disclosure {

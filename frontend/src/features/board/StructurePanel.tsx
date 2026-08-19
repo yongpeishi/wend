@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { useEntryGraph } from '../../api';
 import type { Entry } from '../../api/types';
 import { QueryGate } from '../../components/QueryGate';
+import { useCanEdit } from '../../auth/TripRoleContext';
 import { buildTreeFromGraph } from './graphTree';
 import type { GraphTree } from './graphTree';
+import type { StructureDragData, StructureDropData } from './structureDrop';
+import { StructureRowMenu } from './StructureRowMenu';
 import styles from './StructurePanel.module.css';
 
 export interface StructurePanelProps {
@@ -30,13 +34,24 @@ export interface StructurePanelProps {
  * duplicateLine). The visited-path guard in TreeNode is safety only: the
  * backend rejects cyclic links, so a well-formed response never trips it.
  *
- * Read-only in this slice: rows open the entry, chevrons disclose, and nothing
- * here edits. The row's markup is a flat flex strip so a later slice can
- * prepend a drag handle and append a ⋯ menu button without restructuring.
+ * No longer read-only. For an editor, every row is now three things at once:
+ * a draggable (the grip — dragging a row onto another row MOVES it there,
+ * one occurrence's link at a time), a droppable (the row IS the target "put
+ * it under me", the root row included, which is how something comes back to
+ * the top level), and a ⋯ menu carrying the pointer-free verbs — the copy
+ * path and "Send to schedule". The drag rides the BOARD's DndContext: this
+ * panel registers its rows there, TripBoard's onDragEnd routes structure
+ * payloads to structureDrop.ts, and the board's own idea→bundle drags keep
+ * their lane because both sides type their data (see structureDrop.ts).
+ *
+ * A viewer keeps exactly the slice-3 panel: `useCanEdit()` gates the grip,
+ * the menu, and both dnd registrations — and the board's NO_SENSORS has
+ * already closed the DndContext above us anyway.
  */
 export function StructurePanel({ trip, onOpenEntry }: StructurePanelProps) {
   const graphQuery = useEntryGraph(trip.id, { tripId: trip.id });
   const tree = useMemo(() => (graphQuery.data ? buildTreeFromGraph(graphQuery.data) : null), [graphQuery.data]);
+  const canEdit = useCanEdit();
 
   return (
     <nav aria-label="Trip structure" className={styles.tree}>
@@ -46,7 +61,16 @@ export function StructurePanel({ trip, onOpenEntry }: StructurePanelProps) {
         errorMessage="The structure didn't load. Nothing is lost — every idea and bundle is still on the board."
       >
         {tree && !tree.root.archived_at && (
-          <TreeNode tree={tree} entry={tree.root} depth={0} path={EMPTY_PATH} parentId={null} onOpenEntry={onOpenEntry} />
+          <TreeNode
+            tree={tree}
+            trip={trip}
+            entry={tree.root}
+            depth={0}
+            path={EMPTY_PATH}
+            parentId={null}
+            canEdit={canEdit}
+            onOpenEntry={onOpenEntry}
+          />
         )}
       </QueryGate>
     </nav>
@@ -94,18 +118,22 @@ function formatScore(total: number): string {
  */
 function TreeNode({
   tree,
+  trip,
   entry,
   depth,
   path,
   parentId,
+  canEdit,
   onOpenEntry,
 }: {
   tree: GraphTree;
+  trip: Entry;
   entry: Entry;
   depth: number;
   /** Ancestor ids of this occurrence — the visited-path guard. */
   path: number[];
   parentId: number | null;
+  canEdit: boolean;
   onOpenEntry: (id: number) => void;
 }) {
   const [expanded, setExpanded] = useState(depth < 2);
@@ -117,12 +145,67 @@ function TreeNode({
   const hasChildren = kids.length > 0;
   const also = duplicateLine(tree, entry.id, parentId);
 
+  // dnd-kit ids must be unique, and "this entry" is not unique here — a shared
+  // child is on screen once per parent, and a shared PARENT repeats its whole
+  // subtree. The occurrence's path is the one thing no two rows share, so it is
+  // the id; the meaning travels in `data`, which is all the drop handler reads.
+  const occurrenceKey = [...path, entry.id].join('-');
+  const isRoot = parentId === null;
+
+  const dragData: StructureDragData = {
+    type: 'structure',
+    childId: entry.id,
+    sourceParentId: parentId ?? -1,
+    sourceParentTitle: (parentId !== null && tree.entryById.get(parentId)?.title) || '',
+    parentIds: tree.parentsOf(entry.id).map((parent) => parent.id),
+    title: entry.title,
+  };
+  // The root cannot be moved — it is what everything else moves relative to.
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+    isDragging,
+  } = useDraggable({
+    id: `structure-drag-${occurrenceKey}`,
+    data: dragData,
+    disabled: !canEdit || isRoot,
+  });
+
+  // Every row is a target, the root included — dropping on the root row is how
+  // an entry comes back to the top level. Disabled for a viewer the same way
+  // BundleCard's droppable is: dnd-kit resolves drops against every registered
+  // droppable, and styling alone would not stop it.
+  const dropData: StructureDropData = { type: 'structure', targetId: entry.id, title: entry.title };
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `structure-drop-${occurrenceKey}`,
+    data: dropData,
+    disabled: !canEdit,
+  });
+
   return (
     <div>
-      {/* One flat flex strip per row. A later slice adds a drag handle at the
-          front and a ⋯ menu button at the end — both land as siblings in this
-          strip, no restructuring. */}
-      <div className={styles.row} style={{ paddingLeft: depth * 16 }}>
+      {/* One flat flex strip per row: grip, chevron, marks and title, then the
+          ⋯ menu holding the row's pointer-free verbs at the far end. */}
+      <div
+        ref={setDropRef}
+        className={[styles.row, isOver ? styles.rowOver : ''].filter(Boolean).join(' ')}
+        style={{ paddingLeft: depth * 16 }}
+        data-dragging={isDragging || undefined}
+      >
+        {canEdit && !isRoot && (
+          <button
+            type="button"
+            ref={setDragRef}
+            {...listeners}
+            {...attributes}
+            className={styles.handle}
+            aria-label={`Move ${entry.title}`}
+          >
+            <GripVertical size={16} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+        )}
+
         {hasChildren ? (
           <button
             type="button"
@@ -166,6 +249,11 @@ function TreeNode({
 
         {/* Muted text, not a control: it reports where else this one lives. */}
         {also && <span className={styles.also}>{also}</span>}
+
+        {/* The row's other verbs — the copy path and the schedule path. Not on
+            the root: the trip is the frame, not a thing to re-file or place on
+            its own schedule. A viewer gets no ⋯ at all, same as IdeaRow. */}
+        {canEdit && !isRoot && <StructureRowMenu entry={entry} tree={tree} trip={trip} />}
       </div>
 
       {expanded && hasChildren && (
@@ -174,10 +262,12 @@ function TreeNode({
             <TreeNode
               key={`${child.id}-${index}`}
               tree={tree}
+              trip={trip}
               entry={child}
               depth={depth + 1}
               path={[...path, entry.id]}
               parentId={entry.id}
+              canEdit={canEdit}
               onOpenEntry={onOpenEntry}
             />
           ))}

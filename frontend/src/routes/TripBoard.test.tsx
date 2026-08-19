@@ -24,6 +24,14 @@ import type { MapViewProps } from '../features/map/MapView';
  */
 vi.setConfig({ testTimeout: 15_000 });
 
+// jsdom implements neither layout nor scrolling, and scrollIntoView is one of
+// the holes: dnd-kit's KeyboardSensor calls it on lift whenever the dragged
+// node has a scrollable ancestor — which the structure pane's own overflow
+// gives its rows. A no-op keeps the lift on the code path the browser takes.
+if (!window.HTMLElement.prototype.scrollIntoView) {
+  window.HTMLElement.prototype.scrollIntoView = () => {};
+}
+
 /**
  * jsdom has no layout engine, so a real Leaflet map cannot be mounted here (see
  * MapView.tsx's own doc comment) — the seam is mocked to a stub that exposes
@@ -255,6 +263,33 @@ describe('TripBoard — showing and hiding the structure panel', () => {
     await user.click(screen.getByRole('button', { name: 'Hide structure' }));
 
     expect(screen.queryByRole('navigation', { name: 'Trip structure' })).not.toBeInTheDocument();
+  });
+
+  // The tree rides the board's own DndContext — one context, two drag
+  // vocabularies, routed by payload type (structureDrop.ts). Lifting a tree
+  // row by keyboard is the proof the registration works end to end: the
+  // handle is a real dnd-kit draggable on the board's sensors, and the same
+  // overlay card the idea rows use follows it. The move semantics themselves
+  // are unit-tested in structureDrop.test.ts.
+  it('lifts a structure row into the board’s one drag overlay', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+    await user.click(screen.getByRole('button', { name: 'Show structure' }));
+    await screen.findByRole('navigation', { name: 'Trip structure' });
+
+    const handle = screen.getByRole('button', { name: 'Move Coffee at Weekenders' });
+    handle.focus();
+    await user.keyboard('[Space]');
+
+    const overlay = await waitFor(() => {
+      const card = document.querySelector<HTMLElement>(`.${styles.dragOverlayCard}`);
+      if (!card) throw new Error('no drag overlay on screen');
+      return card;
+    });
+    expect(within(overlay).getByText('Coffee at Weekenders')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
   });
 
   // Both panes at once is a supported posture, not a conflict: they share the
