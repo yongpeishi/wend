@@ -5,10 +5,11 @@ import type { ReactNode } from 'react';
 import { useBundleMembers } from './useBundleMembers';
 import type { Entry } from '../../api/types';
 
-// Runs against the MSW handlers' seeded db: bundle 4 ("Nishiki market crawl")
-// holds entries 6/7/8 and bundle 9 ("A night out in Pontocho") holds 3/10/11,
-// each linked in position order — which is exactly the order the detail
-// endpoint's `children` must come back in.
+// Runs against the MSW handlers' seeded db, through the ONE
+// GET /entries/1/graph call the hook now makes: bundle 4 ("Nishiki market
+// crawl") holds entries 6/7/8 and bundle 9 ("A night out in Pontocho") holds
+// 3/10/11, each linked in position order — which is exactly the order the
+// graph's links must yield members in.
 
 function makeEntry(overrides: Partial<Entry>): Entry {
   return {
@@ -51,10 +52,10 @@ function setup() {
 }
 
 describe('useBundleMembers', () => {
-  it('maps each bundle to its members in children (position) order once the queries resolve', async () => {
+  it('maps each bundle to its members in link (position) order once the graph resolves', async () => {
     const { wrapper } = setup();
     const bundles = [makeEntry({ id: 4 }), makeEntry({ id: 9 })];
-    const { result } = renderHook(() => useBundleMembers(bundles), { wrapper });
+    const { result } = renderHook(() => useBundleMembers(bundles, 1), { wrapper });
 
     await waitFor(() => expect(result.current.get(4)?.length).toBe(3));
     await waitFor(() => expect(result.current.get(9)?.length).toBe(3));
@@ -74,7 +75,7 @@ describe('useBundleMembers', () => {
   it('returns an identity-stable Map across a rerender with the same bundles reference', async () => {
     const { wrapper } = setup();
     const bundles = [makeEntry({ id: 4 })];
-    const { result, rerender } = renderHook(() => useBundleMembers(bundles), { wrapper });
+    const { result, rerender } = renderHook(() => useBundleMembers(bundles, 1), { wrapper });
 
     await waitFor(() => expect(result.current.get(4)?.length).toBe(3));
     const settled = result.current;
@@ -83,11 +84,11 @@ describe('useBundleMembers', () => {
     expect(result.current).toBe(settled);
   });
 
-  it('yields [] for a bundle whose query has not settled with data', async () => {
+  it('yields [] for a bundle the graph does not know', async () => {
     const { wrapper } = setup();
-    // 999 is not in the seeded db, so its detail query 404s and never has data.
+    // 999 is not in the seeded db, so it never appears in the trip's graph.
     const bundles = [makeEntry({ id: 4 }), makeEntry({ id: 999 })];
-    const { result } = renderHook(() => useBundleMembers(bundles), { wrapper });
+    const { result } = renderHook(() => useBundleMembers(bundles, 1), { wrapper });
 
     // Before anything resolves, every bundle is present and empty — not absent.
     expect(result.current.get(4)).toEqual([]);
@@ -95,5 +96,12 @@ describe('useBundleMembers', () => {
 
     await waitFor(() => expect(result.current.get(4)?.length).toBe(3));
     expect(result.current.get(999)).toEqual([]);
+  });
+
+  it('yields an all-empty map while there is no trip to ask about', () => {
+    const { wrapper } = setup();
+    const bundles = [makeEntry({ id: 4 })];
+    const { result } = renderHook(() => useBundleMembers(bundles, undefined), { wrapper });
+    expect(result.current.get(4)).toEqual([]);
   });
 });

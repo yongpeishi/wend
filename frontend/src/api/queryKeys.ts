@@ -8,6 +8,10 @@ export const queryKeys = {
     list: (query?: EntriesQuery) => ['entries', 'list', query ?? {}] as const,
     detail: (id: number) => ['entries', 'detail', id] as const,
     tree: (id: number, depth?: number) => ['entries', 'tree', id, depth ?? null] as const,
+    // Stays under the ['entries'] prefix on purpose: every entry/link mutation
+    // invalidates that prefix, which is what keeps the graph fresh.
+    graph: (id: number, depth?: number, tripId?: number) =>
+      ['entries', 'graph', id, depth ?? null, tripId ?? null] as const,
   },
   todos: {
     all: ['todos'] as const,

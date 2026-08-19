@@ -8,6 +8,7 @@ import type {
   Entry,
   EntriesQuery,
   EntryDetailResponse,
+  EntryGraphResponse,
   EntryTree,
   UpdateEntryParams,
 } from './types';
@@ -41,6 +42,26 @@ export function useEntryTree(id: number | undefined, depth = 3) {
     queryKey: queryKeys.entries.tree(id ?? -1, depth),
     queryFn: () => api.get<EntryTree>(`/entries/${id}/tree`, { params: { depth } }),
     enabled: id !== undefined,
+  });
+}
+
+/**
+ * The whole visible subtree under `id` in one round trip — { entry, entries,
+ * links }, root excluded from `entries`. See EntryGraphResponse; pair it with
+ * `buildTreeFromGraph` (features/board/graphTree.ts) for ordered lookups.
+ */
+export function useEntryGraph(
+  id: number | undefined,
+  opts?: { depth?: number; tripId?: number; enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: queryKeys.entries.graph(id ?? -1, opts?.depth, opts?.tripId),
+    queryFn: () =>
+      api.get<EntryGraphResponse>(`/entries/${id}/graph`, {
+        // The client strips undefined params — see buildQuery in client.ts.
+        params: { depth: opts?.depth, trip_id: opts?.tripId },
+      }),
+    enabled: (opts?.enabled ?? true) && id !== undefined,
   });
 }
 

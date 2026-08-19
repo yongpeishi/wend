@@ -1,57 +1,41 @@
-import { useCallback } from 'react';
-import { useQueries } from '@tanstack/react-query';
-import type { UseQueryResult } from '@tanstack/react-query';
-import { api, queryKeys } from '../../api';
-import type { Entry, EntryDetailResponse } from '../../api/types';
+import { useMemo } from 'react';
+import { useEntryGraph } from '../../api';
+import type { Entry } from '../../api/types';
+import { buildTreeFromGraph } from './graphTree';
 
 /**
- * Fetches the direct children of every bundle in `bundles` in parallel, and
- * returns a bundleId -> members map, in `entry_links.position` order. Lifted
+ * Derives every bundle's direct members from ONE `GET /entries/:tripId/graph`
+ * call, as a bundleId -> members map in `entry_links.position` order. Lifted
  * to one place (rather than each BundleCard fetching its own) because the
  * "Add to bundle" menu on every idea row also needs to know, for a single
  * idea, which bundles already contain it — that's a query across all
  * bundles, not one.
  *
- * This deliberately calls `GET /entries/:id` (the detail endpoint), not
- * `GET /entries?parent_id=X` — the list endpoint orders by entry id
- * (backend: `entries.order(:id)`), which is not the reorderable sequence a
- * bundle needs. The detail endpoint's `children` comes from the `children`
- * association, which the model orders by `position` (`has_many :children,
- * -> { order(:position) }`), the same order `useReorderLinks`/
- * `useUpdateLinkPosition` change — so drag/move-up/move-down in BundleCard
- * are reflected here once the query re-settles. Using the same query key
- * `useEntry` uses (`queryKeys.entries.detail`) with the same response shape
- * keeps this cache-compatible with the entry drawer and with the existing
- * `['entries']`-prefix invalidation every create/update/link mutation
- * already does — introducing a new key here would fall outside that prefix
- * and silently stop refreshing.
+ * This replaced a `useQueries` fan-out of `GET /entries/:id` per bundle — an
+ * N+1 that grew with the board. The graph response carries the whole visible
+ * subtree with its links, and `buildTreeFromGraph` keeps the property the
+ * detail endpoint gave us: `childrenOf` is in link `position` order, the same
+ * order `useReorderLinks`/`useUpdateLinkPosition` change — so drag/move-up/
+ * move-down in BundleCard are reflected here once the query re-settles. The
+ * graph query key sits under the `['entries']` prefix, so the existing
+ * invalidation every create/update/link mutation already does refreshes it.
  *
- * The map is built via `useQueries`' `combine` option rather than a
- * `useMemo` over the results array: in TanStack Query v5, `useQueries`
- * returns a fresh array each render, so a `useMemo` keyed on it recomputed
- * (and re-created the Map) every render, cascading into every IdeaRow's
- * `bundleNames` memo. `combine`'s output is memoized by the library, so the
- * Map keeps its identity while `bundles` and the query results are stable —
- * which is why `combine` is wrapped in `useCallback` on `bundles`: a fresh
- * combine function would defeat that memoization.
+ * The map is memoized on `[bundles, data]`: `useQuery` hands back a
+ * referentially stable `data` between refetches (unlike `useQueries`' fresh
+ * results array, which is what forced the old `combine` dance), so the Map
+ * keeps its identity across rerenders and IdeaRow's `bundleNames` memos stay
+ * quiet. Before the graph settles — or with no tripId at all — every bundle
+ * maps to [], present but empty.
  */
-export function useBundleMembers(bundles: Entry[]): Map<number, Entry[]> {
-  const combine = useCallback(
-    (results: UseQueryResult<EntryDetailResponse>[]) => {
-      const map = new Map<number, Entry[]>();
-      bundles.forEach((bundle, index) => {
-        map.set(bundle.id, results[index]?.data?.children ?? []);
-      });
-      return map;
-    },
-    [bundles],
-  );
+export function useBundleMembers(bundles: Entry[], tripId: number | undefined): Map<number, Entry[]> {
+  const { data } = useEntryGraph(tripId, { tripId });
 
-  return useQueries({
-    queries: bundles.map((bundle) => ({
-      queryKey: queryKeys.entries.detail(bundle.id),
-      queryFn: () => api.get<EntryDetailResponse>(`/entries/${bundle.id}`),
-    })),
-    combine,
-  });
+  return useMemo(() => {
+    const tree = data ? buildTreeFromGraph(data) : null;
+    const map = new Map<number, Entry[]>();
+    for (const bundle of bundles) {
+      map.set(bundle.id, tree ? tree.childrenOf(bundle.id) : []);
+    }
+    return map;
+  }, [bundles, data]);
 }

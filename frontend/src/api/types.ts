@@ -156,6 +156,28 @@ export interface EntryTree {
   descendants: Entry[];
 }
 
+/**
+ * One edge of the graph response — the wire may also carry an `id`, which the
+ * client ignores. Ordered by (parent_id, position) as the server sends them.
+ */
+export interface EntryGraphLink {
+  parent_id: number;
+  child_id: number;
+  position: number;
+}
+
+/**
+ * GET /api/entries/:id/graph?depth=3&trip_id=... — the whole visible subtree in
+ * one round trip. `entries` is every visible node of the subtree EXCLUDING the
+ * root, which travels separately as `entry`. Links may reference ids missing
+ * from `entries` (server-side visibility filtering) — skip those.
+ */
+export interface EntryGraphResponse {
+  entry: Entry;
+  entries: Entry[];
+  links: EntryGraphLink[];
+}
+
 export interface EntryLink {
   id: number;
   parent_id: number;

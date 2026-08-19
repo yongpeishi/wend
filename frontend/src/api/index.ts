@@ -3,7 +3,7 @@ export { queryClient } from './queryClient';
 export { queryKeys } from './queryKeys';
 export * from './types';
 
-export { useEntries, useEntry, useEntryTree, useCreateEntry, useUpdateEntry, useChangeTripDates, useArchiveEntry, useRestoreEntry, useLiftEntry, useAbsorbEntry, useForkEntry } from './entries';
+export { useEntries, useEntry, useEntryTree, useEntryGraph, useCreateEntry, useUpdateEntry, useChangeTripDates, useArchiveEntry, useRestoreEntry, useLiftEntry, useAbsorbEntry, useForkEntry } from './entries';
 export type { ChangeTripDatesParams, ChangeTripDatesResult } from './entries';
 export { useCreateLink, useUpdateLinkPosition, useDeleteLink, useReorderLinks } from './links';
 export { useVote, useDeleteVote } from './votes';

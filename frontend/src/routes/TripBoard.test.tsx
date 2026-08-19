@@ -382,7 +382,9 @@ describe('TripBoard — the pins', () => {
   it('tones an already-bundled idea as bundled, whatever the view is doing', async () => {
     await api.post(`/entries/${MARKET_BUNDLE_ID}/links`, { child_id: NANZENJI_ID });
     renderBoard();
-    await screen.findByText('Nanzen-ji');
+    // Scoped, not screen-wide: Nanzen-ji is now ALSO a bundle member, and the
+    // rail lists members by title — see `ideas()`.
+    await within(ideas()).findByText('Nanzen-ji');
     await mapUp();
 
     expect(await screen.findByRole('button', { name: 'Nanzen-ji (bundled)' })).toBeInTheDocument();

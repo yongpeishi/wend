@@ -340,6 +340,43 @@ export const handlers = [
     return HttpResponse.json({ entry: toEntry(entry, db.currentUserId), descendants });
   }),
 
+  // The whole visible subtree in one response — { entry, entries, links },
+  // root excluded from `entries`, links ordered by (parent_id, position).
+  // `trip_id` is accepted but unused: the mock db has no cross-trip
+  // visibility to filter by.
+  http.get('/api/entries/:id/graph', ({ params, request }) => {
+    const root = findEntry(Number(params.id));
+    if (!root) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
+    const url = new URL(request.url);
+    const depth = Number(url.searchParams.get('depth') ?? 3);
+
+    const seen = new Set<number>([root.id]);
+    const entries: Entry[] = [];
+    const links: { parent_id: number; child_id: number; position: number }[] = [];
+    // BFS, so a node shared between levels is expanded from its shallowest
+    // reach — the depth cap a real server would apply.
+    const queue: { id: number; level: number }[] = [{ id: root.id, level: 0 }];
+    while (queue.length) {
+      const item = queue.shift();
+      if (!item || item.level >= depth) continue;
+      const outgoing = db.links
+        .filter((l) => l.parent_id === item.id)
+        .sort((a, b) => a.position - b.position);
+      for (const link of outgoing) {
+        const child = findEntry(link.child_id);
+        if (!child) continue;
+        links.push({ parent_id: link.parent_id, child_id: link.child_id, position: link.position });
+        if (!seen.has(child.id)) {
+          seen.add(child.id);
+          entries.push(toEntry(child, db.currentUserId));
+          queue.push({ id: child.id, level: item.level + 1 });
+        }
+      }
+    }
+    links.sort((a, b) => a.parent_id - b.parent_id || a.position - b.position);
+    return HttpResponse.json({ entry: toEntry(root, db.currentUserId), entries, links });
+  }),
+
   http.post('/api/entries/:id/lift', ({ params }) => {
     const entry = findEntry(Number(params.id));
     if (!entry) return HttpResponse.json({ error: 'Not found' }, { status: 404 });

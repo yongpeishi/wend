@@ -143,7 +143,7 @@ export function TripBoard() {
   const bundles = useMemo(() => (bundlesQuery.data ?? []).filter((e) => !e.archived_at), [bundlesQuery.data]);
   const archivedBundles = useMemo(() => (bundlesQuery.data ?? []).filter((e) => e.archived_at), [bundlesQuery.data]);
 
-  const members = useBundleMembers(bundles);
+  const members = useBundleMembers(bundles, trip.id);
 
   const visibleIdeas = useMemo(() => applyFilters(allIdeas, filters), [allIdeas, filters]);
 
