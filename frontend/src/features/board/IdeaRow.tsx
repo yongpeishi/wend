@@ -22,9 +22,9 @@ export interface IdeaRowProps {
   bundles: Entry[];
   members: Map<number, Entry[]>;
   /**
-   * The board is picking several ideas at once. This turns the state dot into
-   * the pick circle — see the `Dot` comment for why one element plays both
-   * parts, and what that costs.
+   * The board is picking several ideas at once. The row's left slot swaps its
+   * drag handle for the pick circle — see the comment on the slot for why the
+   * two share one place rather than sitting side by side.
    */
   selectMode: boolean;
   selected: boolean;
@@ -49,55 +49,13 @@ export interface IdeaRowProps {
 }
 
 /**
- * The state dot, one of the two colour signals on the row.
- *
- * The design mocks four idea states (decided / open / destination / waiting)
- * against a `state` field an Entry simply does not have — inventing one here
- * would put a fiction in the UI that no endpoint can ever confirm. So the dot is
- * derived from two fields that DO exist, and means only what they mean:
- *
- *   scheduled === true                        -> "decided": it has a slot on the
- *                                                schedule. The strongest settled
- *                                                signal the data model carries.
- *   not scheduled, todos_open_count > 0       -> "open": something is still to
- *                                                find out before it can be placed.
- *   not scheduled, no open todos              -> "waiting": kept, nothing
- *                                                blocking it, just not placed yet.
- *
- * `--stop-destination` (plum) is deliberately unused: it belongs to the trip
- * itself in the trail language, not to an idea within it.
- *
- * Colour is never the only carrier — the dot is exposed to assistive tech with
- * the same wording as `aria-label`, and open todos also appear as words in the
- * meta line below the title.
- */
-type IdeaState = 'decided' | 'open' | 'waiting';
-
-const STATE_CLASS: Record<IdeaState, string> = {
-  decided: styles.stateDecided,
-  open: styles.stateOpen,
-  waiting: styles.stateWaiting,
-};
-
-const STATE_LABEL: Record<IdeaState, string> = {
-  decided: 'Scheduled',
-  open: 'Still something to sort out',
-  waiting: 'Kept, not placed yet',
-};
-
-function ideaState(entry: Entry): IdeaState {
-  if (entry.scheduled) return 'decided';
-  return entry.todos_open_count > 0 ? 'open' : 'waiting';
-}
-
-/**
- * Category colour, the row's other colour signal. The mapping is lifted
- * verbatim from the design prototype's `CAT_COLOR` table, which reaches for
- * existing brand tokens rather than new hexes — so nothing is invented here
- * either. Two categories deliberately share a colour (place and activity are
- * both leaf), and transport/other fall back to `--text-muted`: the palette is
- * three brand hues wide, not six, and stretching it would mean minting colours
- * the design system has never sanctioned.
+ * Category colour — the row's only colour signal now that the state dot is
+ * gone. The mapping is lifted verbatim from the design prototype's `CAT_COLOR`
+ * table, which reaches for existing brand tokens rather than new hexes — so
+ * nothing is invented here either. Two categories deliberately share a colour
+ * (place and activity are both leaf), and transport/other fall back to
+ * `--text-muted`: the palette is three brand hues wide, not six, and stretching
+ * it would mean minting colours the design system has never sanctioned.
  *
  * The label itself is always the word, so the colour is decoration only.
  */
@@ -111,10 +69,18 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
 };
 
 /**
- * One idea on the board, as a flat bordered row rather than the old card:
- * state dot, title with its category, a middot meta line, and — when it is in
- * one — the bundles it belongs to. Clicking it opens the row downwards into a
- * panel where the idea can be acted on.
+ * One idea on the board, as a flat bordered row rather than the old card: the
+ * grip, title with its category, a middot meta line, and — when it is in one —
+ * the bundles it belongs to. Clicking it opens the row downwards into a panel
+ * where the idea can be acted on.
+ *
+ * What used to sit at the left edge was a state dot, derived from `scheduled`
+ * and `todos_open_count`. It is gone: the two facts it stood for are both
+ * already words on this row — "N open" in the meta line, and the schedule
+ * itself on the itinerary — so the dot was a colour restating text beside it,
+ * spending the row's most valuable position on the least of its signals. The
+ * grip took the position instead, because dragging is the thing you reach for
+ * on this row without reading it.
  *
  * Where the vote lives, and why here.
  *   This row used to carry a comment saying there was deliberately no vote
@@ -137,7 +103,7 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
  *     TripBoard's onDragEnd turns into a link). Its pointer-free equivalent is
  *     the bundle list inside the ⋯ menu — every drag in Wend has one.
  *   - Multi-select, which is what `BulkBar` acts on — but as a mode now rather
- *     than a permanent checkbox on every row. See the pick circle below.
+ *     than a permanent checkbox on every row. See the left slot below.
  *   - Set aside. Nothing on the board is ever deleted; the archive action
  *     soft-archives and `SetAsideSection` brings it back. It moved into the ⋯
  *     menu with the rest of the row's verbs.
@@ -190,8 +156,6 @@ export function IdeaRow({
     data: { entryId: entry.id, title: entry.title },
     disabled: !canEdit,
   });
-
-  const state = ideaState(entry);
 
   function edit() {
     if (onEdit) onEdit(entry.id);
@@ -250,25 +214,37 @@ export function IdeaRow({
     >
       <div className={styles.header}>
         {/*
-          One slot, two jobs. Out of select mode this is the 10px state dot and
-          nothing else; in select mode it grows to a 22px pick circle, and that
-          growth IS how the board says it is in a different mode — no banner, no
+          One slot, two controls, never both. Out of select mode this is the
+          drag handle; in select mode it is the 22px pick circle, and that
+          swap IS how the board says it is in a different mode — no banner, no
           row of ghost checkboxes waiting to be used.
 
+          Why the grip goes away while picking rather than shuffling aside:
+          the two gestures both start with a press on a row, and dnd-kit reads
+          a press-and-move as the start of a drag. Leaving the handle in reach
+          of someone shift-clicking their way down a list is an invitation to
+          drag an idea onto a bundle by accident, mid-selection. Picking is
+          also the mode's whole point, so it takes the mode's one slot.
+
           The two are different elements rather than one element wearing two
-          hats, because they are genuinely different things to assistive tech: an
-          image that describes the idea's state, and a control you can operate.
-          Rendering a `role="checkbox"` that is not operable, or a dot that
+          hats, because they are genuinely different things to assistive tech.
+          Rendering a `role="checkbox"` that is not operable, or a handle that
           claims to be checkable, would be a lie in one direction or the other.
-          The state meaning is not lost while picking — the open-todo count is
-          still spelled out in words in the meta line, and the state returns the
-          moment select mode ends.
+          Nothing is lost by the swap: the drag's pointer-free equivalent — the
+          bundle list in the ⋯ menu — is untouched while picking, and the
+          handle returns the moment select mode ends.
 
           A <button role="checkbox"> rather than <input type="checkbox">: the
           visual is a filled circle with a tick, which no native checkbox will
           render without being hidden and redrawn anyway, and the shift-click
           range gesture needs the modifier off a click event. Space and Enter
           both activate a button, so the keyboard contract is intact.
+
+          A viewer gets neither: no pick circle, because a viewer is never
+          given select mode, and no grip, because an unlabelled handle that
+          refuses is worse than an absent one (doc/architecture.md §5 will not
+          let a control be greyed to mean "no"). Their rows simply start at the
+          title, which is consistent down the whole board.
         */}
         {selectMode ? (
           <button
@@ -294,7 +270,18 @@ export function IdeaRow({
             )}
           </button>
         ) : (
-          <span className={[styles.stateDot, STATE_CLASS[state]].join(' ')} role="img" aria-label={STATE_LABEL[state]} />
+          canEdit && (
+            <button
+              type="button"
+              ref={setNodeRef}
+              {...listeners}
+              {...attributes}
+              className={[styles.gripSlot, styles.grip].join(' ')}
+              aria-label={`Drag ${entry.title} onto a bundle to add it there`}
+            >
+              <GripVertical size={18} strokeWidth={1.5} aria-hidden="true" />
+            </button>
+          )
         )}
 
         {/*
@@ -346,14 +333,11 @@ export function IdeaRow({
         </button>
 
         {/*
-          A viewer gets the row's words and none of its verbs. Not a greyed ⋯ and
-          not a grip that refuses — an unlabelled handle that does nothing is
-          worse than an absent one, and doc/architecture.md §5 will not let a
-          control be greyed to mean "no". This guard deliberately stops here: the
-          toggle above and the panel below are reading, not editing, and a viewer
-          keeps both. What they find inside answers for itself — VoteBar prints
-          the result instead of the ballot, IdeaTodos the list instead of the
-          checkboxes.
+          A viewer gets the row's words and none of its verbs — not a greyed ⋯,
+          just no ⋯. This guard deliberately stops here: the toggle above and
+          the panel below are reading, not editing, and a viewer keeps both.
+          What they find inside answers for itself — VoteBar prints the result
+          instead of the ballot, IdeaTodos the list instead of the checkboxes.
         */}
         {canEdit && (
           <div className={styles.actions}>
@@ -364,17 +348,6 @@ export function IdeaRow({
               onEdit={edit}
               onToast={onToast}
             />
-
-            <button
-              type="button"
-              ref={setNodeRef}
-              {...listeners}
-              {...attributes}
-              className={[styles.iconButton, styles.grip].join(' ')}
-              aria-label={`Drag ${entry.title} onto a bundle to add it there`}
-            >
-              <GripVertical size={18} strokeWidth={1.5} aria-hidden="true" />
-            </button>
           </div>
         )}
       </div>

@@ -620,27 +620,25 @@ describe('IdeaRow — the ⋯ actions menu', () => {
   });
 });
 
-// The dot is derived, not stored — see the mapping comment in IdeaRow.tsx.
-// It is never colour alone: the same wording reaches assistive tech.
-describe('IdeaRow — the state dot', () => {
-  it('reads as scheduled once the idea has a slot', () => {
+// The state dot is gone from the row's left edge — the two facts it stood for
+// are already words on the row. What the slot holds now is the drag handle, and
+// nothing at all for someone who may not edit.
+describe('IdeaRow — the left slot', () => {
+  it('holds the drag handle while the board is not selecting', () => {
+    renderRow();
+    expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' })).toBeInTheDocument();
+  });
+
+  it('no longer paints the idea state as a dot beside the title', () => {
     renderRow({ entry: makeEntry({ scheduled: true }) });
-    expect(screen.getByRole('img', { name: 'Scheduled' })).toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
-  it('reads as still-to-sort-out while unscheduled with open todos', () => {
-    renderRow({ entry: makeEntry({ scheduled: false, todos_open_count: 1 }) });
-    expect(screen.getByRole('img', { name: 'Still something to sort out' })).toBeInTheDocument();
-  });
-
-  it('reads as kept-but-unplaced when nothing is blocking it', () => {
-    renderRow({ entry: makeEntry({ scheduled: false, todos_open_count: 0 }) });
-    expect(screen.getByRole('img', { name: 'Kept, not placed yet' })).toBeInTheDocument();
-  });
-
-  it('prefers scheduled over open todos — a placed idea is placed', () => {
-    renderRow({ entry: makeEntry({ scheduled: true, todos_open_count: 3 }) });
-    expect(screen.getByRole('img', { name: 'Scheduled' })).toBeInTheDocument();
+  // The count is the half of the old dot's meaning that was worth keeping, and
+  // it was always in words as well as colour. It must stay in words.
+  it('still says how much is open, in the meta line', () => {
+    renderRow({ entry: makeEntry({ scheduled: false, todos_open_count: 2 }) });
+    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveTextContent('2 open');
   });
 
   it('offers nothing to check while the board is not selecting', () => {
@@ -649,16 +647,24 @@ describe('IdeaRow — the state dot', () => {
   });
 });
 
-// The always-visible checkbox is gone. The dot does both jobs: it describes the
-// idea's state until the board starts picking, and becomes the pick circle when
-// it does — the growth from 10px to 22px is the only announcement the mode gets.
+// The always-visible checkbox is gone. The left slot does both jobs: it holds
+// the drag handle until the board starts picking, and holds the pick circle
+// while it does — the swap is the only announcement the mode gets.
 describe('IdeaRow — select mode', () => {
-  it('turns the state dot into a real checkbox, keeping the name it always had', () => {
+  it('puts a real checkbox in the slot the drag handle had', () => {
     renderRow({ selectMode: true });
 
     const pick = screen.getByRole('checkbox', { name: 'Select Fushimi Inari' });
     expect(pick).toHaveAttribute('aria-checked', 'false');
-    expect(screen.queryByRole('img', { name: 'Kept, not placed yet' })).not.toBeInTheDocument();
+  });
+
+  // A press-and-drag and a shift-click both start the same way. Leaving the
+  // handle within reach of someone picking their way down a list is how an
+  // idea lands on a bundle by accident, so picking takes the slot outright.
+  it('takes the drag handle away entirely while picking', () => {
+    renderRow({ selectMode: true });
+
+    expect(screen.queryByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' })).not.toBeInTheDocument();
   });
 
   it('reports a picked idea as checked rather than leaving colour to say it', () => {
@@ -669,9 +675,9 @@ describe('IdeaRow — select mode', () => {
     expect(pick).toHaveTextContent('✓');
   });
 
-  it('gives the state dot back the moment select mode ends', () => {
-    renderRow({ selectMode: false, entry: makeEntry({ scheduled: true }) });
-    expect(screen.getByRole('img', { name: 'Scheduled' })).toBeInTheDocument();
+  it('gives the drag handle back the moment select mode ends', () => {
+    renderRow({ selectMode: false });
+    expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' })).toBeInTheDocument();
   });
 
   it('can be picked from the keyboard, since it is a button underneath', async () => {
@@ -733,7 +739,7 @@ describe('IdeaRow — reading along', () => {
     expect(screen.queryByRole('button', { name: 'Actions for Fushimi Inari' })).not.toBeInTheDocument();
   });
 
-  it('still says everything it said before — title, category, meta, state and its bundles', () => {
+  it('still says everything it said before — title, category, meta and its bundles', () => {
     renderRow({
       canEdit: false,
       bundles: [BUNDLE],
@@ -745,7 +751,15 @@ describe('IdeaRow — reading along', () => {
     expect(row).toHaveTextContent('Place');
     expect(row).toHaveTextContent('Kyoto south · 2 hr');
     expect(row).toHaveTextContent('in Tuesday south');
-    expect(screen.getByRole('img', { name: 'Kept, not placed yet' })).toBeInTheDocument();
+  });
+
+  // Nothing stands in for the grip a viewer does not get: the row simply starts
+  // at the title, which is consistent down a viewer's whole board.
+  it('leaves the left slot empty rather than filling it with a stand-in', () => {
+    renderRow({ canEdit: false });
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
   // Was: "still opens the idea". The row opens in place now, and a viewer keeps

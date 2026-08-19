@@ -16,11 +16,10 @@ export function useTodos(query?: TodosQuery) {
  * The entries half is not incidental: `todos_open_count` is a field on `Entry`,
  * served by the *entries* endpoint, not by `/todos`. Ticking one to-do
  * therefore changes data that only an entries refetch can see, and on the board
- * it drives two visible things — the "N open" text in an idea row's meta line,
- * and the row's state dot, which `ideaState()` reads straight off
- * `todos_open_count`. The bundle card sums the same field across its members.
- * Without this the checkbox updates and the count beside it stays wrong until a
- * reload. Nothing in this file shows that, so: do not drop it as redundant.
+ * it drives the "N open" text in an idea row's meta line. The bundle card sums
+ * the same field across its members. Without this the checkbox updates and the
+ * count beside it stays wrong until a reload. Nothing in this file shows that,
+ * so: do not drop it as redundant.
  */
 function useInvalidateTodos() {
   const queryClient = useQueryClient();

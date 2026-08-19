@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
-import { Minus, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { DoubleThumbsDown, DoubleThumbsUp } from '../../components/icons/DoubleThumbs';
+import { SidewaysThumb } from '../../components/icons/SidewaysThumb';
 import type { VoteTally, VoteVoter } from '../../api/types';
 import styles from './VoteBar.module.css';
 
@@ -28,9 +29,9 @@ const VOTE_LABEL: Record<VoteScore, string> = {
 
 /**
  * The glyph for a stop. Magnitude is doubling (one thumb vs two) and direction
- * is which way it points; 0 is a flat line, not an absent thumb, so that
- * "no strong feeling" is an answer you can give rather than the gap between the
- * two halves of the scale.
+ * is which way it points — up, sideways, down. 0 is a thumb held flat rather
+ * than a dash, so that "no strong feeling" is an answer in the same language as
+ * the other four rather than the gap between the two halves of the scale.
  */
 function Glyph({ score, size }: { score: VoteScore; size: number }) {
   switch (score) {
@@ -41,7 +42,7 @@ function Glyph({ score, size }: { score: VoteScore; size: number }) {
     case 1:
       return <ThumbsUp size={size} strokeWidth={1.5} aria-hidden />;
     case 0:
-      return <Minus size={size} strokeWidth={1.5} aria-hidden />;
+      return <SidewaysThumb size={size} />;
     case -1:
       return <ThumbsDown size={size} strokeWidth={1.5} aria-hidden />;
     case -2:

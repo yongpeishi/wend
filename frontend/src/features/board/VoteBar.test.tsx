@@ -62,6 +62,18 @@ describe('VoteBar — the ballot', () => {
     ]);
   });
 
+  // The neutral stop used to be a dash — the only mark on the scale that was
+  // not a hand. It is a thumb turned sideways now, so all five stops speak one
+  // language; the drawing is lucide's thumbs-up geometry under a quarter turn,
+  // which is what this asserts rather than a pixel.
+  it('draws neutral as a thumb held flat, not as a dash', () => {
+    renderBar();
+
+    const glyph = screen.getByRole('radio', { name: 'Neutral' }).querySelector('svg');
+    expect(glyph?.querySelector('g')).toHaveAttribute('transform', 'rotate(-90 12 12)');
+    expect(glyph?.querySelectorAll('path')).toHaveLength(2);
+  });
+
   it('marks your vote and only yours', () => {
     renderBar({ myVote: 1 });
 

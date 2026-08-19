@@ -153,7 +153,7 @@ describe('IdeaList', () => {
     expect(screen.getByRole('button', { name: /^Kinkaku-ji/ })).toBeInTheDocument();
   });
 
-  it('leaves every row showing its state, not a checkbox, until the board says otherwise', () => {
+  it('leaves every row with its drag handle, not a checkbox, until the board says otherwise', () => {
     renderList('none');
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
   });

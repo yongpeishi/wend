@@ -37,9 +37,10 @@
 }
 
 /*
- * The pick circle: the state dot's other life, while the board is selecting.
- * 22px against the dot's 10px, and the size change is the mode signal — so
- * these two rules are a pair, and neither size is arbitrary.
+ * The pick circle: what the left slot holds while the board is selecting, in
+ * place of the drag handle. 22px, which is also the handle's box — the slot
+ * keeps one width in both modes, so a row's title does not step sideways when
+ * the mode changes under it.
  */
 .pick {
   position: relative;
@@ -60,12 +61,14 @@
 }
 
 /*
- * The 22px circle is the visual; the target is bigger than the visual. 32px is
- * the pointer floor from architecture.md and fits inside the row's 16px gap
- * without stealing clicks from the title; touch gets the full 48px, which
- * overlaps a little but is the rule that is not negotiable on a phone.
+ * The 22px box is the visual; the target is bigger than the visual, for the
+ * pick circle and the grip alike. 32px is the pointer floor from
+ * architecture.md and fits inside the row's 16px gap without stealing clicks
+ * from the title; touch gets the full 48px, which overlaps a little but is the
+ * rule that is not negotiable on a phone.
  */
-.pick::before {
+.pick::before,
+.gripSlot::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -76,21 +79,25 @@
 }
 
 @media (pointer: coarse) {
-  .pick::before {
+  .pick::before,
+  .gripSlot::before {
     width: var(--tap-min);
     height: var(--tap-min);
   }
 }
 
-.pick:hover {
+.pick:hover,
+.gripSlot:hover {
   opacity: 0.85;
 }
 
-.pick:active {
+.pick:active,
+.gripSlot:active {
   opacity: 0.7;
 }
 
-.pick:focus-visible {
+.pick:focus-visible,
+.gripSlot:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
@@ -112,24 +119,26 @@
   color: var(--wend-paper);
 }
 
-/* 10px: smaller than any trail dot token, which are SVG radii, not CSS sizes. */
-.stateDot {
-  width: 10px;
-  height: 10px;
-  flex: 0 0 10px;
-  border-radius: var(--radius-pill);
-}
-
-.stateDecided {
-  background: var(--stop-decided);
-}
-
-.stateOpen {
-  background: var(--stop-open);
-}
-
-.stateWaiting {
-  background: var(--stop-waiting);
+/*
+ * The drag handle in its new home at the head of the row. It used to ride in
+ * `.actions` at 48px square; on the left that width would push every title a
+ * thumb's breadth inwards for a control that is grabbed, not read. So it takes
+ * the pick circle's 22px box and the same invisible target around it — the
+ * pointer floor is met by `::before` above, not by the visible glyph.
+ */
+.gripSlot {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
 /*
@@ -358,33 +367,7 @@
   gap: var(--space-1);
 }
 
-.iconButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--tap-min);
-  height: var(--tap-min);
-  flex: 0 0 var(--tap-min);
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-.iconButton:hover {
-  opacity: 0.7;
-}
-
-.iconButton:active {
-  opacity: 0.55;
-}
-
-.iconButton:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
+/* Cursor and touch handling, kept apart from the box so either could move. */
 .grip {
   cursor: grab;
   /* dnd-kit needs the browser's own touch panning out of the way to read a drag. */
