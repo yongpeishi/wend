@@ -1,8 +1,19 @@
-/* No red/error hue is defined in the token set (colors.css has none), so tone is
-   carried by a left accent bar in an existing brand colour, never by text colour:
-   success -> leaf green (the same "decided" meaning it carries on <Trail>),
-   error -> plum (already used for "notice this" — saved/destination tags),
-   neutral -> a plain border, no accent. Message text is always --text-strong. */
+/* Tone is carried by a left accent bar, never by text colour:
+   error -> rust (--feedback-error), success -> jade (--feedback-success),
+   neutral -> a plain border, no accent. Message text is always --text-strong,
+   at full contrast, whatever the tone — a toast has to be readable first and
+   categorised second.
+
+   The accent bar is the whole treatment. Jade and rust never fill a toast, they
+   only edge it: a filled panel of either would read as a control (jade) or as
+   the single most alarming object on the page (rust), and a toast is neither —
+   it is a remark about something that already happened.
+
+   Success is jade rather than the leaf green it used to be. Leaf is
+   --action-primary; a leaf-edged "Saved" sitting near a leaf Save button made
+   the confirmation look like another button. Jade is deliberately cooler and
+   brighter than leaf for exactly this reason, so a confirmation never reads as
+   something to press. */
 
 .toast {
   display: flex;
@@ -33,11 +44,11 @@
 }
 
 .success {
-  border-left-color: var(--stop-decided);
+  border-left-color: var(--feedback-success);
 }
 
 .error {
-  border-left-color: var(--stop-destination);
+  border-left-color: var(--feedback-error);
 }
 
 .message {

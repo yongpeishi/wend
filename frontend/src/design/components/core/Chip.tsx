@@ -6,7 +6,7 @@ export type ChipTone = 'default' | 'saved';
 
 export interface ChipProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   selected?: boolean;
-  /** 'saved' renders the plum tag used for kept places. */
+  /** 'saved' renders the bister tag used for kept places. */
   tone?: ChipTone;
 }
 

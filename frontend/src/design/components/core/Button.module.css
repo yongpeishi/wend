@@ -44,6 +44,28 @@
   color: var(--action-disabled-text);
 }
 
+/* The only control in the product the error hue is allowed to FILL. Rust is a
+   border, an icon or a word everywhere else; a filled red rectangle is the
+   strongest object on any page, so it is spent on the one place a click
+   destroys something and nowhere else. Not for "important", not for "careful",
+   not for a warning banner — for delete.
+
+   Geometry is deliberately identical to .primary (same radius, same padding
+   below): a destructive button is a normal button that happens to be red, and
+   making it a different shape as well would read as a different kind of thing.
+   Card radius IS button radius here — there is no --radius-button token and
+   every variant uses --radius-card. */
+.destructive {
+  background: var(--action-destructive);
+  color: var(--action-destructive-text);
+  border-radius: var(--radius-card);
+}
+
+.destructive:disabled {
+  background: var(--surface-disabled);
+  color: var(--action-disabled-text);
+}
+
 .secondary {
   background: transparent;
   color: var(--text-strong);
@@ -94,7 +116,8 @@
   min-height: 36px;
 }
 
-.small.primary {
+.small.primary,
+.small.destructive {
   padding: 7px 16px;
 }
 
@@ -111,7 +134,8 @@
   min-height: var(--tap-min);
 }
 
-.medium.primary {
+.medium.primary,
+.medium.destructive {
   padding: 14px 26px;
 }
 
@@ -129,7 +153,8 @@
   font-size: var(--text-body-size);
 }
 
-.large.primary {
+.large.primary,
+.large.destructive {
   padding: 18px 34px;
 }
 

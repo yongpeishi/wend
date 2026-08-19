@@ -5,7 +5,12 @@ import styles from './Input.module.css';
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   /** Trailing affordance, e.g. the return glyph "↵". */
   hint?: string;
-  /** Renders the destination-plum error border. Pair with a <Field> error message. */
+  /**
+   * Renders the rust error border (--border-error). Rust is reserved for
+   * problems and means nothing else in this product, so set this only when the
+   * field's value is actually wrong — not to draw attention. Pair with a
+   * <Field> error message: the border says "something here", the text says what.
+   */
   error?: boolean;
   wrapperClassName?: string;
 }

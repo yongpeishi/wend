@@ -2,11 +2,15 @@ import { forwardRef } from 'react';
 import type { ButtonHTMLAttributes } from 'react';
 import styles from './Button.module.css';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'onDark';
+export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'onDark' | 'destructive';
 export type ButtonSize = 'small' | 'medium' | 'large';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  /** primary is the single forward action per screen. onDark for deep-leaf surfaces. */
+  /**
+   * primary is the single forward action per screen. onDark for deep-leaf
+   * surfaces. destructive is the one control allowed to be filled rust, for a
+   * click that destroys something — never for merely "important".
+   */
   variant?: ButtonVariant;
   /**
    * medium is the default and covers nearly every case. small is for a button
@@ -22,6 +26,7 @@ const VARIANT_CLASS: Record<ButtonVariant, string> = {
   secondary: styles.secondary,
   quiet: styles.quiet,
   onDark: styles.onDark,
+  destructive: styles.destructive,
 };
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
@@ -31,7 +36,13 @@ const SIZE_CLASS: Record<ButtonSize, string> = {
 };
 
 /**
- * Actions. Labels are verbs of movement — "Take the long way", "Widen again".
+ * Actions. Labels name the outcome in ordinary words — "Save trip", "Add scenic
+ * route", "Save both", "Delete" — because a user should never have to press a
+ * button to find out what it does. Movement verbs like "Take the long way" or
+ * "Keep both for now" read as headings and confirmations, not as labels: they
+ * describe a mood rather than a result, and on a button they leave the reader
+ * guessing what is about to change. Put the warmth in the heading or the helper
+ * text next to the button, where it costs nothing; keep the label literal.
  * Focus is handled by :focus-visible (real keyboard-focus detection), not a prop.
  */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(

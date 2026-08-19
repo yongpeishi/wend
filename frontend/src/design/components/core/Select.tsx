@@ -4,7 +4,12 @@ import { ChevronDown } from 'lucide-react';
 import styles from './Select.module.css';
 
 export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  /** Renders the destination-plum error border. Pair with a <Field> error message. */
+  /**
+   * Renders the rust error border (--border-error). Rust is reserved for
+   * problems and means nothing else in this product, so set this only when the
+   * selection is actually wrong — not to draw attention. Pair with a <Field>
+   * error message: the border says "something here", the text says what.
+   */
   error?: boolean;
   /** Escape hatch for the positioning wrapper — e.g. `flex: 1` inside a row. */
   wrapperClassName?: string;

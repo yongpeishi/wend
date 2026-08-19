@@ -26,7 +26,7 @@ export const Logo = forwardRef<HTMLSpanElement, LogoProps>(function Logo(
   const trail = reversed ? 'var(--trail-line-on-dark)' : 'var(--stop-decided)';
   const openFill = reversed ? 'var(--surface-inverse)' : 'var(--surface-page)';
   const start = reversed ? 'var(--text-on-dark)' : 'var(--stop-decided)';
-  const end = reversed ? 'var(--wend-plum-tint)' : 'var(--stop-destination)';
+  const end = reversed ? 'var(--wend-bister-tint)' : 'var(--stop-destination)';
   const small = size <= 28;
 
   return (
