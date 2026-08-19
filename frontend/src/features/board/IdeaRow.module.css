@@ -228,8 +228,8 @@
   color: var(--wend-apricot);
 }
 
-.catPlum {
-  color: var(--wend-plum);
+.catBister {
+  color: var(--wend-bister);
 }
 
 .catMuted {
@@ -251,7 +251,7 @@
 .bundleLine {
   font-size: var(--text-min-size);
   letter-spacing: var(--text-data-tracking);
-  color: var(--wend-plum);
+  color: var(--wend-bister);
 }
 
 /*

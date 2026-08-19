@@ -29,7 +29,7 @@ export interface ItineraryHeaderProps {
  *
  * Unsettled work is signalled once and never nagged about — the split line
  * simply is not there when nothing is split, and when it is, it states the
- * count in plum and stops. No warning colour, no count badge, no "finish this".
+ * count in bister and stops. No warning colour, no count badge, no "finish this".
  */
 export function ItineraryHeader({
   meta,

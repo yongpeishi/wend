@@ -179,7 +179,7 @@
   outline-offset: var(--focus-offset);
 }
 
-/* A member's own open to-dos, immediately left of its actions. Plum with the
+/* A member's own open to-dos, immediately left of its actions. Bister with the
    data tracking is IdeaRow's `.bundleLine` treatment — the same annotation one
    level down, so the two features do not each invent a way to say "there is
    something attached to this". `flex: none` plus nowrap is what puts the
@@ -199,7 +199,7 @@
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
   letter-spacing: var(--text-data-tracking);
-  color: var(--wend-plum);
+  color: var(--wend-bister);
 }
 
 .memberActions {

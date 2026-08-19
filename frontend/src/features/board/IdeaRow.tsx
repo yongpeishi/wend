@@ -63,7 +63,7 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
   place: styles.catLeaf,
   food: styles.catApricot,
   activity: styles.catLeaf,
-  lodging: styles.catPlum,
+  lodging: styles.catBister,
   transport: styles.catMuted,
   other: styles.catMuted,
 };
@@ -171,7 +171,7 @@ export function IdeaRow({
     entry.todos_open_count > 0 ? `${entry.todos_open_count} open` : null,
   );
 
-  // The optional plum "in <bundle>, <bundle>" line. Derived from the bundle
+  // The optional bister "in <bundle>, <bundle>" line. Derived from the bundle
   // membership TripBoard already loads for the drag targets — no extra request.
   const bundleNames = useMemo(
     () =>
@@ -404,7 +404,7 @@ export function IdeaRow({
             </div>
           ) : (
             // A viewer gets the answer to "which bundles?" without a toggle
-            // that would only refuse. The plum tag is the same one the header's
+            // that would only refuse. The bister tag is the same one the header's
             // bundle line is written in, so the two agree at a glance.
             bundleNames.length > 0 && (
               <div className={styles.tags}>

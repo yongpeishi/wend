@@ -50,13 +50,13 @@
   color: var(--text-muted);
 }
 
-/* Plum, bold: the one place the screen says something is unsettled. */
+/* Bister, bold: the one place the screen says something is unsettled. */
 .split {
   font-family: var(--font-mono);
   font-size: var(--text-min-size);
   letter-spacing: var(--text-data-tracking);
   font-weight: var(--weight-bold);
-  color: var(--wend-plum);
+  color: var(--wend-bister);
 }
 
 .actions {

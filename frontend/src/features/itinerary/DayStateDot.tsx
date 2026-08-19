@@ -13,7 +13,7 @@ export interface DayStateDotProps {
  * only what they mean:
  *
  *   more than one live version  -> "split": more than one way to spend it,
- *                                  none of them settled. A plum ring — plum is
+ *                                  none of them settled. A bister ring — bister is
  *                                  what Wend already uses for things kept and
  *                                  set aside, and it is what the versions tag
  *                                  beside this dot is drawn in.

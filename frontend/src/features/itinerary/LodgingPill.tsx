@@ -13,8 +13,8 @@ export interface LodgingPillProps {
  * property of the night, not an item on the day — so it never joins the
  * running order (itinerary-decisions.md, option 4c).
  *
- * One of the two places plum is allowed to mean something: lodging and
- * archived. Set, it is the saved-plum chip; unset, a dashed outline of the same
+ * One of the two places bister is allowed to mean something: lodging and
+ * archived. Set, it is the saved chip in bister; unset, a dashed outline of the same
  * shape, so the day header keeps its rhythm either way. A true chip, so this is
  * one of the two things on the screen that keeps --radius-pill.
  */

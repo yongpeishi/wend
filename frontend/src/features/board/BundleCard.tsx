@@ -95,7 +95,7 @@ export interface BundleCardProps {
  *   dot ships a visually-hidden phrase so the state is readable without it.
  *
  *   The member to-do label. The same field one level down: a member holding
- *   open to-dos says "2 to-dos" in plum just left of its row actions, so the
+ *   open to-dos says "2 to-dos" in bister just left of its row actions, so the
  *   total above can be traced to the ideas that own it without opening
  *   anything. Members with nothing outstanding carry no label at all — here a
  *   mark on the exceptions beats a column of zeroes, because the reader is
