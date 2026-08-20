@@ -26,9 +26,11 @@ Decisions marked **↩ reversible cheaply** can be changed late without a rewrit
 
 ### Out
 
-- **Photo upload — cut, not deferred.** The `--placeholder-hatch` diagonal is the final
-  treatment for entry imagery, not a stand-in. Entries carry `source_url` as their only
-  external reference. Do not build upload affordances or design around future photos.
+- **Photo upload — cut, not deferred.** Entries carry no imagery at all: there is no image
+  slot, no thumbnail, and no placeholder treatment standing in for one. That absence is
+  the design, not a gap waiting to be filled — the system is flat paper, and an entry is
+  its title, its notes and its place. Entries carry `source_url` as their only external
+  reference. Do not build upload affordances or design around future photos.
 - **Import from Instagram / TikTok / Maps links.** Paste a URL, title it yourself.
 - **Offline / PWA.**
 - **Transport routing and live times.** Transport is an Entry between two Entries with a
@@ -136,7 +138,7 @@ stops, not four.
 **The library is "no trip ancestor".** An idea taken into a trip leaves the library
 listing, and that is correct — the library *is* "kept, not yet in a trip". Nothing is
 discarded: the entry is untouched, reachable under its trip, and still linkable into
-further trips, since links are additive. "Take these somewhere" only ever POSTs links; it
+further trips, since links are additive. "Start a trip with these" only ever POSTs links; it
 never deletes, archives or detaches. `src/routes/Library.test.tsx` documents the
 disappearance from the `unassigned=true` listing explicitly rather than leaving it to
 prose. **↩ reversible cheaply** — to keep showing everything, change the `library` scope to
@@ -194,11 +196,23 @@ with `aria-pressed`; `Tag` is a `<span>` with no interaction — a static label 
 focusable and clickable but does nothing is an accessibility bug, not a style choice. Both
 share the same CSS module.
 
-**No error or red colour exists in the token set.** `colors.css` has no warning/error hue,
-and apricot is reserved for "where you are now". Form validation errors render in bold
-`--text-strong`, never colour-coded. `Toast`'s tone is carried by a left accent bar only,
-reusing existing meanings (`success` → leaf/`--stop-decided`, `error` →
-plum/`--stop-destination`) rather than inventing a hue.
+**There is one error hue, and it fills exactly one control.** This used to read "no error or
+red colour exists in the token set" — the bundle had none, so `Toast` borrowed
+leaf/`--stop-decided` for success and plum/`--stop-destination` for errors. Design system
+v2.3 ends the borrowing: `--wend-jade` and `--wend-rust` are a feedback family kept
+deliberately outside the brand palette, and the brand's own red is retired so that red can
+mean a problem and nothing else — the old plum `#8A4A61` was a red-family plum, and its
+"destination" pip beside a rust "this failed" pip read as two warnings. Destinations kept
+the name and changed the hue: murasaki plum `#754E75` is a violet, off the red axis
+entirely. Bister `#55402F` held the role in between and was dropped for weight, not hue — at
+9.4:1 it was indistinguishable from deep leaf (9.5), where murasaki sits at 6.6:1 on card.
+Rust may fill only `Button variant="destructive"` (in this product, exactly one button:
+taking someone off a trip); everywhere else rust is a border, an icon or text, and jade
+never fills anything, so that "saved" and "save" are never the same object on screen.
+Apricot is still reserved for "where you are now". Colour still never carries the meaning
+alone: `Toast`'s tone is a left accent bar (`success` → `--feedback-success`, `error` →
+`--feedback-error`) with the sentence saying what happened, and a field's error leads with
+words in bold — any colour on it is reinforcement, not the message.
 
 **Modal and Drawer overlays are a solid fill, not a translucent scrim.** The only
 translucent value in the system is `--focus-ring-wash`, so the overlay is

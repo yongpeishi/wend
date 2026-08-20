@@ -60,8 +60,10 @@ is the workaround for this specific duplicate-package case.
 ```
 src/
   design/            The ported design system — treat as the single source of
-    tokens/*.css      truth for color/type/space/shape/motion. Copied verbatim
-    styles.css         from wend-design/project/tokens.
+    tokens/*.css      truth for color/type/space/shape/motion. Copied from
+    styles.css         wend-design-v2.3/project/_ds/wend-design-system-current-
+                       c7e2ae4a-f365-4374-94ae-0d7e8c85279d/tokens/, then kept
+                       in step with it by hand.
     global.css        Base element styles (not in the original bundle).
     components/
       core/            Button, Chip, Tag, Input — ported from components/core/*.jsx
@@ -100,10 +102,13 @@ src/
    `--surface-page` tone only. Apricot (`--wend-apricot` / `--stop-open` /
    `--focus-ring`) is never a text colour. Hover/press are opacity changes
    only — never lighten/darken a colour. Nothing is struck through to mean
-   "rejected". Imagery is `<HatchPlaceholder>`, never a grey box or an
-   `<img>` fallback.
+   "rejected". There is no imagery treatment, because entries carry no
+   imagery: no image slot, no thumbnail, and no placeholder standing in for
+   one. That absence is a decision, not a gap — `doc/init/decisions.md` cuts
+   photo upload rather than deferring it, so don't add a grey box, an `<img>`
+   fallback or a decorative stand-in when a row looks bare.
 5. **Focus is handled by real `:focus-visible` CSS**, not a `focused` boolean
-   prop — the ported components differ from the `wend-design/` prototypes
+   prop — the ported components differ from the `wend-design-v2.3/` prototypes
    here on purpose (see architecture.md §5's brief for why). Tab through
    `/design` to check it rather than passing a prop.
 
@@ -113,11 +118,11 @@ src/
 
 | Component | Props | Notes |
 | --- | --- | --- |
-| `Button` | `variant?: 'primary'\|'secondary'\|'quiet'\|'onDark'`, plus every native `<button>` prop (`onClick`, `disabled`, `type`, `aria-*`), forwards `ref` | `type` defaults to `"button"` so it never accidentally submits a form. |
+| `Button` | `variant?: 'primary'\|'secondary'\|'quiet'\|'onDark'\|'destructive'`, plus every native `<button>` prop (`onClick`, `disabled`, `type`, `aria-*`), forwards `ref` | `type` defaults to `"button"` so it never accidentally submits a form. `destructive` is filled rust (`--action-destructive`) — the only filled error hue in the product, for a click that destroys something, never for merely "important". |
 | `Chip` | `selected?`, `tone?: 'default'\|'saved'`, native `<button>` props, forwards `ref` | Real `<button>` with `aria-pressed` for the default tone. |
 | `Tag` | `tone?`, native `<span>` props, forwards `ref` | Non-interactive sibling of `Chip` for static labels like "Saved · 12" — see "Invented" below. |
 | `Input` | `hint?`, `error?`, native `<input>` props, forwards `ref` | A real `<input>`; the prototype was a static styled `<div>`. Focus ring comes from the wrapper's `:focus-within`. |
-| `Logo` | `variant?: 'primary'\|'reversed'`, `size?`, `showWordmark?` | Path data identical to `wend-design/project/assets/michikusa-mark*.svg`. |
+| `Logo` | `variant?: 'primary'\|'reversed'`, `size?`, `showWordmark?` | Path data identical to `frontend/public/brand/michikusa-mark*.svg`. Those four marks are the only copy that survives: the v2.3 export ships no `assets/` directory, though its `readme.md` index still lists one. |
 | `Trail` | `stops?`, `labels?`, `onDark?`, `height?`, `onSelectStop?: (index) => void` | `onSelectStop` makes labels real buttons; a `'waiting'` stop is never clickable even if supplied. |
 
 ### New app components (`src/components/`)
@@ -126,14 +131,13 @@ src/
 | --- | --- | --- |
 | `Card` | `padding? (4px-scale token)`, `bordered?`, native `<div>` props | The only elevation primitive — card tone vs page tone. |
 | `Stack` / `Row` | `gap?`, `align?`, `justify?`, `wrap?`, native `<div>` props | Column / row flex layout on the spacing scale. |
-| `HatchPlaceholder` | `size?` | The diagonal hatch, `aria-hidden`. |
 | `EntryRow` | `title`, `metadata?: string[]`, `kept`, `onToggleKeep?`, `onSelect?` | Generalised "Place row" specimen. Two sibling buttons (main row + keep toggle), never nested. Toggle's tap target is 48×48 even though the dot is 28px. |
 | `VoteControl` | `value: number\|null`, `onChange`, `onClear?`, `disabled?`, `average?`, `count?` | Five `role="radio"` stops, `-2..2`. Reads without a legend — dot size encodes strength of feeling, fill marks your vote. Never apricot. |
 | `Field` | `label`, `description?`, `error?`, plus `Input` props (minus `id`/`error` collision, resolved) | Labelled wrapper around `Input`. |
 | `Modal` | `open`, `onClose`, `title`, `children`, `actions?` | Centered dialog. See "Invented" below for the solid (non-translucent) overlay. |
 | `Drawer` | `open`, `onClose`, `title`, `children` | Same overlay approach, slides from the right. Used for `/entries/:id`. |
 | `EmptyState` | `message`, `action?` | Renders the architecture.md §5 voice copy verbatim — pass it in, don't rephrase. |
-| `Toast`, `ToastProvider`, `useToast()` | `message`, `tone?: 'neutral'\|'success'\|'error'`, `onDismiss?` | See "Invented" below for how tone is carried without a red/error colour. |
+| `Toast`, `ToastProvider`, `useToast()` | `message`, `tone?: 'neutral'\|'success'\|'error'`, `onDismiss?` | Tone is a left accent bar only — jade, rust or `--border-strong`. See "Invented" below. |
 | `Spinner` | `label?` | Three dots, staggered 160ms opacity fades — no rotation/bounce. |
 | `PageHeader` | `title`, `description?`, `onBack?`, `actions?` | |
 | `TabBar` | `tabs: {key,label}[]`, `activeKey`, `onChange`, `aria-label` | Segmented control, full roving-tabindex arrow-key support. |
@@ -169,8 +173,9 @@ attribute, both authored by us. Vite keeps the source name inside the hash
 
 The design bundle's own README says application components were deliberately
 removed so the app UX could be designed fresh — so several decisions below
-aren't "in the spec," they're derived from its stated rules plus the closest
-specimen in `Wend Design System.dc.html` §06. Flagging them so the next agent
+aren't "in the spec," they're derived from its stated rules (the bundle's
+`_ds/…-c7e2ae4a-…/readme.md`) plus the closest specimen in
+`wend-design-v2.3/project/Wend MVP.dc.html`. Flagging them so the next agent
 can revisit if a screen needs something different:
 
 - **Chip vs. Tag split.** The prototype's `Chip.jsx` handles both an
@@ -189,20 +194,43 @@ can revisit if a screen needs something different:
   carry meaning) — dot size grows with distance from neutral (strength of
   feeling), fill marks the current vote, and the accessible name per stop
   (e.g. "Really want this") carries the meaning for screen readers. Colour is
-  a single leaf-green fill regardless of sign, since inventing a second
-  "negative" hue isn't in the palette.
+  a single leaf-green fill regardless of sign. Rust is not the escape hatch
+  here: it means *error*, and not wanting a place isn't a mistake to correct —
+  colouring a downvote red would score the vote instead of recording it.
 - **Modal/Drawer overlay is a solid fill, not a translucent scrim.**
   `readme.md` states plainly: "the only translucent value in the system is
   `--focus-ring-wash`." A typical dimmed backdrop would introduce a second
   translucent value, so the overlay is `background: var(--surface-page)` at
   full opacity — separation from the page underneath comes entirely from
   card tone plus a drawn border, not blur or alpha.
-- **No error/red colour exists in the token set.** `colors.css` has no red or
-  warning hue. `Field`'s error text and the sign-in error banner render in
-  bold `--text-strong`, not colour-coded. `Toast`'s tone is carried by a left
-  accent bar only (`success` → `--stop-decided`/leaf, `error` →
-  `--stop-destination`/plum, reusing existing brand meanings rather than
-  adding a new colour) — the message text itself is always `--text-strong`.
+- **Feedback colour sits outside the brand palette.** Rust `#A6432B`
+  (`--feedback-error`, `--border-error`, `--text-error`,
+  `--action-destructive`) carries errors; jade `#0F7A5A`
+  (`--feedback-success`, `--border-success`, `--text-success`) carries
+  success. Neither is a brand hue — the brand's two greens, apricot and
+  murasaki plum keep their own meanings, and the red family is kept out of the
+  brand so it can mean exactly one thing. Plum is a violet `#754E75`, not the
+  red-family plum it is named after; that one was retired precisely because it
+  collided with rust. Two rules bound the pair: **jade never fills a
+  control** (it borders, ticks and writes — it is cooler and brighter than
+  action leaf precisely so a confirmation never reads as a button), and **rust
+  fills exactly one**, `Button variant="destructive"`. Everywhere else rust is
+  a border, an icon or text. Above all, **colour never carries meaning
+  alone**: the hue reinforces words that already say what happened, so an
+  error message must name the fix on its own.
+
+  What that looks like today: `Field` renders its validation message in bold
+  `--text-error` beside `Input`'s `--border-error` edge, with `role="alert"`.
+  `Toast`'s tone is a left accent bar only (`success` → `--feedback-success`,
+  `error` → `--feedback-error`, `neutral` → `--border-strong`); the message
+  text is always `--text-strong`. Success moved off `--stop-decided` when jade
+  arrived: leaf is also `--action-primary`, so a leaf-edged "Saved" sitting
+  beside a leaf Save button read as a second button rather than a
+  confirmation. The sign-in error banner and `FeedbackComposer`'s submit
+  failure are still bold `--text-strong` — they are form-level failures, and
+  the rust message is specified as half of the *field* error state (rust
+  border + rust message together). The form-level `FormBanner` the design
+  system calls for isn't built yet.
 - **Spinner is three dots with staggered 160ms opacity fades**, not a
   rotating spinner. The brief is explicit that motion is "the trail draws
   forward… everything else is a 160ms opacity change. No bounces, no scale,

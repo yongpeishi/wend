@@ -114,8 +114,11 @@ export function TimeEditor({ startsAtMinutes, endsAtMinutes, onSave, onCancel, t
   const suffix = title ? ` for ${title}` : '';
 
   // The message hangs off the field it is about, through <Field error>, rather
-  // than sitting loose under both: that is what puts the plum border on the box
-  // at fault and ties the text to the input with aria-describedby. DatesGate
+  // than sitting loose under both: that is what puts the rust error border
+  // (--border-error) on the box at fault and ties the text to the input with
+  // aria-describedby. This is a refusal, not a saved thing — the one border on
+  // this screen that is allowed to be red is the one saying a time cannot be
+  // read or ends before it starts. DatesGate
   // says "The last day comes before the first." the same way.
   const problem = findProblem(start, end);
   const showing = problem && (tried || problem.live) ? problem : null;

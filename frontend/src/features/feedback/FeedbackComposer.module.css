@@ -33,8 +33,13 @@
   outline-offset: var(--focus-offset);
 }
 
-/* No red exists in the token set; errors read as bold strong-text, matching
-   Field.module.css rather than inventing a colour. */
+/* Rust (--text-error) now exists, and Field.module.css uses it for field-level
+   validation. This one stays bold strong-text on purpose: it is the composer's
+   submit-failure line, not a field state, and the design system reserves the
+   rust message for the `error` field state (rust border, bold rust message,
+   role="alert"). A form-level failure belongs in FormBanner, which isn't built
+   yet — until it is, this reads as bold body text rather than borrowing the
+   field treatment without the border that completes it. */
 .error {
   margin: var(--space-2) 0 0;
   font-family: var(--font-sans);

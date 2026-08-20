@@ -7,8 +7,8 @@ import styles from './Button.module.css';
 describe('Button', () => {
   it('renders its label and responds to a click', async () => {
     const onClick = vi.fn();
-    render(<Button onClick={onClick}>Take the long way</Button>);
-    const button = screen.getByRole('button', { name: 'Take the long way' });
+    render(<Button onClick={onClick}>Save trip</Button>);
+    const button = screen.getByRole('button', { name: 'Save trip' });
     await userEvent.click(button);
     expect(onClick).toHaveBeenCalledOnce();
   });
@@ -25,6 +25,23 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toHaveClass(styles.quiet);
   });
 
+  it('renders the destructive variant, the one control the error hue may fill', () => {
+    render(<Button variant="destructive">Delete</Button>);
+    const button = screen.getByRole('button', { name: 'Delete' });
+    expect(button).toHaveClass(styles.destructive);
+    expect(button).not.toHaveClass(styles.primary);
+  });
+
+  it('disables the destructive variant like any other button', () => {
+    const onClick = vi.fn();
+    render(
+      <Button variant="destructive" disabled onClick={onClick}>
+        Delete
+      </Button>,
+    );
+    expect(screen.getByRole('button')).toBeDisabled();
+  });
+
   it('defaults to the medium size and switches with the size prop', () => {
     const { rerender } = render(<Button>Go</Button>);
     expect(screen.getByRole('button')).toHaveClass(styles.medium);
@@ -39,7 +56,7 @@ describe('Button', () => {
     const onClick = vi.fn();
     render(
       <Button disabled onClick={onClick}>
-        Take the long way
+        Save trip
       </Button>,
     );
     const button = screen.getByRole('button');

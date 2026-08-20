@@ -1,7 +1,8 @@
 import * as React from 'react';
 
 /**
- * The circular keep control. Kept fills plum; unkept is an open ring — nothing is ever struck through.
+ * The circular keep control. Kept fills indigo; unkept is an open ring. Unkeeping sets something
+ * aside, it does not delete it — deleting is a separate, explicit action with its own confirmation.
  */
 export interface KeepToggleProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   kept?: boolean;

@@ -77,8 +77,9 @@
   cursor: pointer;
 }
 
-/* Solid, not a white veil: --focus-ring-wash is the only translucent value the
-   system defines, so hover states are a tone change instead. */
+/* Solid, not a white veil: the system defines exactly two translucent values,
+   --focus-ring-wash and --overlay-scrim, and neither is a hover tint — so hover
+   states are a tone change instead. */
 .cancel:hover {
   background: var(--action-primary);
 }

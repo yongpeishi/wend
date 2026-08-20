@@ -1,6 +1,9 @@
-/* Generalised from the "Place row" specimen in Wend Design System.dc.html §06.
-   Row gap (14px), row padding (8px) and the 28px/3px keep-toggle ring are taken
-   literally from that specimen — they aren't named tokens, just its own geometry. */
+/* Generalised from the "Place row" specimen. Row gap (14px), row padding (8px)
+   and the 28px/3px keep-toggle ring are taken literally from that specimen —
+   they aren't named tokens, just its own geometry. The specimen lived in
+   `Wend Design System.dc.html` §06, deleted from the tree in 730f840, so these
+   numbers are now the only surviving record of it. Don't "tidy" them onto the
+   4px scale. */
 
 .row {
   display: flex;

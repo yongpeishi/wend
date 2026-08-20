@@ -15,7 +15,7 @@
 .error {
   font-size: var(--text-small-size);
   font-weight: var(--weight-bold);
-  color: var(--text-strong);
+  color: var(--text-error);
 }
 
 .hintText {

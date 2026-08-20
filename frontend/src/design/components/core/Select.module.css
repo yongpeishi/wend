@@ -65,7 +65,7 @@
 }
 
 .select.error {
-  border-color: var(--stop-destination);
+  border-color: var(--border-error);
 }
 
 .select:disabled {

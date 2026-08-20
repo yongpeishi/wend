@@ -3,17 +3,52 @@
   --wend-deep-leaf: #2F4A36;
   --wend-leaf: #3F6B4A;
   --wend-leaf-soft: #8FAE93;
+
+  /* Accents. The red family is retired from the brand palette in v2.3, so that
+     red can mean exactly one thing in this product: a problem. A brand red and
+     an error red in the same view cannot be told apart at a glance; hue is the
+     only channel either one has, and the old plum #8A4A61 — a red-family plum —
+     put a "destination" pip beside a rust "this failed" pip and made the user
+     read both as warnings.
+
+     The name survives the fix; the hue does not. Murasaki plum #754E75 is a
+     violet, far enough off the red axis that nothing about it reads as a
+     warning, so it can go on meaning what plum always meant here: destinations
+     and saved things. Its predecessor as destination colour, bister #55402F,
+     was rejected for weight rather than hue — at 9.4:1 it landed on top of
+     deep leaf (9.5) and the two stopped being distinguishable as roles. Murasaki
+     sits at 6.6:1 on card: text-safe, and spaced between rust (5.9) and body
+     (7.6) so it reads as its own thing.
+
+     The dusk pair carries the brand meaning between them: apricot means "you
+     are here" (open stops, the focus ring), plum marks the destination. Red
+     survives only under the feedback hues below. */
   --wend-apricot: #E89A5E;
-  --wend-plum: #8A4A61;
-  --wend-plum-tint: #E4B5C4;
-  --wend-plum-wash: #F3E3EA;
+  --wend-apricot-wash: rgba(232, 154, 94, 0.3);
+  --wend-plum: #754E75;
+  --wend-plum-tint: #B497B4;
+  --wend-plum-wash: #EFE7EF;
+
+  /* Feedback hues. Jade is deliberately cooler and brighter than --wend-leaf so
+     that a confirmation never reads as a button; see --feedback-success below
+     for the rules that keep the two greens apart. */
+  --wend-jade: #0F7A5A;
+  --wend-jade-wash: #E4F0EA;
+  --wend-rust: #A6432B;
+  --wend-rust-wash: #F7EAE6;
+
   --wend-paper: #F0F3EE;
   --wend-card: #FBFCFA;
   --wend-line: #D2DACD;
   --wend-line-strong: #C3CCBF;
   --wend-muted: #6A7565;
   --wend-body: #4B5548;
-  --wend-hatch-a: #DCE4D9;
+
+  /* Not a leftover from a removed pair: --wend-hatch-b is used as a flat
+     background tone by UnplacedRail and BundleBand, which want a surface one
+     step off paper without inventing a colour. Its partner --wend-hatch-a is
+     gone because the hatch gradient it striped is gone (4ece8b3 deleted the
+     imagery placeholder), and --wend-hatch-a had no other consumer. */
   --wend-hatch-b: #E9EFE6;
 
   /* Semantic */
@@ -32,9 +67,50 @@
   --action-primary: var(--wend-leaf);
   --action-primary-text: var(--wend-paper);
   --action-disabled-text: var(--wend-muted);
+  /* Rust fills exactly one control in the whole system: `Button
+     variant="destructive"`. Nothing else gets a rust background — not a warning
+     banner, not a chip, not a hover state. A filled red rectangle is the single
+     strongest thing on a page, so it is reserved for the one place a click
+     destroys something. Its text is plain white rather than --wend-paper:
+     paper is a green-cast off-white and goes muddy on rust. */
+  --action-destructive: var(--wend-rust);
+  --action-destructive-text: #FFFFFF;
 
   --border-subtle: var(--wend-line);
   --border-strong: var(--wend-line-strong);
+
+  /* Feedback semantics. Two rules constrain everything here, and they are the
+     reason the palette has two greens and only one filled red:
+
+     1. Jade never fills a control. It borders, it ticks, and it writes — that
+        is the whole list. It is deliberately cooler and brighter than
+        --action-primary (leaf) precisely so a confirmation never reads as a
+        button; if jade were ever allowed a filled rectangle, "saved" and "save"
+        would be the same object on screen.
+     2. Rust fills exactly one control, `Button variant="destructive"` (see
+        --action-destructive above). Everywhere else rust is a border, an icon
+        or text.
+
+     Consumed today: --feedback-success and --feedback-error (Toast's success
+     and error accent rules), --border-error (the Input and Select error
+     borders), --text-error (Field's validation message) and
+     --action-destructive (the destructive Button).
+
+     Not yet consumed: --feedback-success-wash, --feedback-error-wash,
+     --feedback-pending, --border-success and --text-success.
+     Nothing in the product waits visibly, no surface tints itself with a
+     feedback wash, and no success state is drawn anywhere yet. They are defined
+     now so that the first screen to need one does not invent a colour, and so
+     anyone grepping for dead tokens finds this note instead of deleting them. */
+  --feedback-success: var(--wend-jade);
+  --feedback-success-wash: var(--wend-jade-wash);
+  --feedback-error: var(--wend-rust);
+  --feedback-error-wash: var(--wend-rust-wash);
+  --feedback-pending: var(--wend-muted);
+  --border-success: var(--wend-jade);
+  --border-error: var(--wend-rust);
+  --text-success: var(--wend-jade);
+  --text-error: var(--wend-rust);
 
   /* Trail states — the one place the brand carries meaning */
   --stop-decided: var(--wend-leaf);
@@ -45,7 +121,7 @@
   --trail-line-on-dark: var(--wend-leaf-soft);
 
   --focus-ring: var(--wend-apricot);
-  --focus-ring-wash: rgba(232, 154, 94, 0.28);
+  --focus-ring-wash: var(--wend-apricot-wash);
 
   /* The one other translucent value, and the second deliberate exception to
      "no blur/transparency": the paper tone (--wend-paper) at 0.92, laid over the

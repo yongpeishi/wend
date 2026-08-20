@@ -2,9 +2,11 @@
    its bottom-left corner, the way the zoom pair floats over the top-right.
 
    --radius-media is re-pointed at --radius-card for this pane only. MapView's
-   own frame reads --radius-media (14px, the design bundle's value for imagery),
+   own frame reads --radius-media (10px, the design bundle's value for imagery),
    and on this screen the map sits in a row of cards and buttons that are all
-   --radius-card — a single 14px corner among them reads as a mistake, and the
+   --radius-card (12px). Two radii two pixels apart, sitting side by side, do
+   not read as a distinction — nobody sees "this one is imagery" in a 10px
+   corner beside a 12px one, they just see corners that fail to agree. The
    house rule is that a card's radius IS a button's radius. Doing it as a
    variable rather than by reaching into MapView's class keeps the override
    scoped to the board: /library and /trips/:id/map, where the map IS the page

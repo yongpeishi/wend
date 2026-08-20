@@ -14,7 +14,7 @@ export interface LodgingPillProps {
  * running order (itinerary-decisions.md, option 4c).
  *
  * One of the two places plum is allowed to mean something: lodging and
- * archived. Set, it is the saved-plum chip; unset, a dashed outline of the same
+ * archived. Set, it is the saved chip in plum; unset, a dashed outline of the same
  * shape, so the day header keeps its rhythm either way. A true chip, so this is
  * one of the two things on the screen that keeps --radius-pill.
  */

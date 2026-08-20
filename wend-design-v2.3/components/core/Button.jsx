@@ -5,6 +5,7 @@ const PADDING = {
   secondary: { small: '5px 14px', medium: '12px 24px', large: '16px 32px' },
   quiet: { small: '6px 2px', medium: '12px 4px', large: '15px 4px' },
   onDark: { small: '5px 14px', medium: '12px 24px', large: '16px 32px' },
+  destructive: { small: '7px 16px', medium: '14px 26px', large: '18px 34px' },
 };
 const FONT_SIZE = { small: 'var(--text-small-size)', medium: 'var(--text-small-size)', large: 'var(--text-body-size)' };
 const MIN_HEIGHT = { small: '36px', medium: 'var(--tap-min)', large: '56px' };
@@ -43,6 +44,11 @@ export function Button({ variant = 'primary', size = 'medium', disabled = false,
       color: 'var(--action-primary)',
       borderRadius: 0,
       borderBottom: 'var(--border-width-strong) solid var(--action-primary)',
+    },
+    destructive: {
+      background: disabled ? 'var(--surface-disabled)' : 'var(--action-destructive)',
+      color: disabled ? 'var(--action-disabled-text)' : 'var(--action-destructive-text)',
+      borderRadius: 'var(--radius-card)',
     },
     onDark: {
       background: 'transparent',

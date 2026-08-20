@@ -178,7 +178,7 @@ describe('Library', () => {
     await user.click(screen.getByLabelText(`Select Fushimi Inari at dawn`));
     expect(screen.getByText('1 selected')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Take these somewhere' }));
+    await user.click(screen.getByRole('button', { name: 'Start a trip with these' }));
     await user.type(screen.getByLabelText("What's this trip called?"), 'Kyoto in autumn');
     await user.click(screen.getByRole('button', { name: 'Start the trip' }));
 

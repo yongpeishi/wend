@@ -48,9 +48,12 @@ const AMBIGUOUS_ADD =
 
 const ALONE = 'Just you on this so far.';
 
-const REMOVE = 'Take them off';
+/* Button labels, so they are literal: each one names what the click does and
+ * nothing else. The warmth lives in confirmLine() below, which sits beside the
+ * button rather than on it and is free to sound like a person. */
+const REMOVE = 'Remove them';
 const LEAVE = 'Leave this trip';
-const HAND_OVER = 'Hand the trip to them';
+const HAND_OVER = 'Make them the owner';
 
 const FALLBACK_ERROR = "That didn't go through. Try again in a moment.";
 const LOAD_ERROR = "That list didn't load. Close this and open it again.";
@@ -178,7 +181,18 @@ export function SharePanel({ open, onClose, tripId }: SharePanelProps) {
         <div className={styles.confirm}>
           <p className={styles.confirmText}>{confirmLine(pending)}</p>
           <div className={styles.confirmActions}>
-            <Button variant="secondary" onClick={runPending} disabled={working}>
+            {/* The click that actually takes someone off is the one that
+                destroys something, so it carries the rust the row's button
+                promised. Leaving and handing on are not destruction: one is
+                your own door out, the other passes the trip along intact. Only
+                one of these is ever on screen — the confirmation replaces the
+                row's actions — so the system's "rust fills exactly one control"
+                holds literally, not just in spirit. */}
+            <Button
+              variant={pending.kind === 'remove' ? 'destructive' : 'secondary'}
+              onClick={runPending}
+              disabled={working}
+            >
               {confirmLabel(pending.kind)}
             </Button>
             <Button variant="quiet" onClick={() => setPending(null)} disabled={working}>
@@ -200,10 +214,13 @@ export function SharePanel({ open, onClose, tripId }: SharePanelProps) {
         >
           {HAND_OVER}
         </Button>,
+        // No styles.action here, unlike its neighbours: that class strips the
+        // side padding so a quiet text button's underline stops where the words
+        // do. A filled button has no underline and needs its padding — without
+        // it the rust rectangle would clamp to the text.
         <Button
           key="remove"
-          variant="quiet"
-          className={styles.action}
+          variant="destructive"
           onClick={() => setPending({ kind: 'remove', userId: person.user_id, name: person.name })}
         >
           {REMOVE}

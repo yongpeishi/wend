@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"WendDesignSystem_c7e2ae","components":[{"name":"Logo","sourcePath":"components/brand/Logo.jsx"},{"name":"Trail","sourcePath":"components/brand/Trail.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"Chip","sourcePath":"components/core/Chip.jsx"},{"name":"Input","sourcePath":"components/core/Input.jsx"},{"name":"KeepToggle","sourcePath":"components/core/KeepToggle.jsx"},{"name":"Label","sourcePath":"components/core/Label.jsx"},{"name":"PlaceCard","sourcePath":"components/travel/PlaceCard.jsx"},{"name":"TimeRow","sourcePath":"components/travel/TimeRow.jsx"}],"sourceHashes":{"components/brand/Logo.jsx":"3394972ce4c0","components/brand/Trail.jsx":"e04f68718bfb","components/core/Button.jsx":"898e066ba020","components/core/Card.jsx":"930daaead110","components/core/Chip.jsx":"0b725f140c89","components/core/Input.jsx":"2c91f21d837f","components/core/KeepToggle.jsx":"c3b9ac845fe5","components/core/Label.jsx":"0ef89fe0b1b1","components/travel/PlaceCard.jsx":"fdf8bdccb4f1","components/travel/TimeRow.jsx":"d0602ffe9fdd","ui_kits/roadbook/DaysScreen.jsx":"59fb8c6d2bb6","ui_kits/roadbook/KeptScreen.jsx":"97f5c3f9d740","ui_kits/roadbook/Phone.jsx":"42bf724d45b0","ui_kits/roadbook/TodayScreen.jsx":"5d1fd81f1c2b","ui_kits/roadbook/data.js":"daf089a1a6ef"},"inlinedExternals":[],"unexposedExports":[]} */
+/* @ds-bundle: {"format":4,"namespace":"WendDesignSystem_c7e2ae","components":[{"name":"Logo","sourcePath":"components/brand/Logo.jsx"},{"name":"Trail","sourcePath":"components/brand/Trail.jsx"},{"name":"Button","sourcePath":"components/core/Button.jsx"},{"name":"Card","sourcePath":"components/core/Card.jsx"},{"name":"Chip","sourcePath":"components/core/Chip.jsx"},{"name":"FormBanner","sourcePath":"components/core/FormBanner.jsx"},{"name":"Input","sourcePath":"components/core/Input.jsx"},{"name":"KeepToggle","sourcePath":"components/core/KeepToggle.jsx"},{"name":"Label","sourcePath":"components/core/Label.jsx"},{"name":"PlaceCard","sourcePath":"components/travel/PlaceCard.jsx"},{"name":"TimeRow","sourcePath":"components/travel/TimeRow.jsx"}],"sourceHashes":{"components/brand/Logo.jsx":"3394972ce4c0","components/brand/Trail.jsx":"e04f68718bfb","components/core/Button.jsx":"dd7e118e96f6","components/core/Card.jsx":"930daaead110","components/core/Chip.jsx":"0b725f140c89","components/core/FormBanner.jsx":"fa4db2dbf318","components/core/Input.jsx":"db0935afddce","components/core/KeepToggle.jsx":"c3b9ac845fe5","components/core/Label.jsx":"0ef89fe0b1b1","components/travel/PlaceCard.jsx":"fdf8bdccb4f1","components/travel/TimeRow.jsx":"d0602ffe9fdd","ui_kits/roadbook/DaysScreen.jsx":"59fb8c6d2bb6","ui_kits/roadbook/KeptScreen.jsx":"97f5c3f9d740","ui_kits/roadbook/Phone.jsx":"42bf724d45b0","ui_kits/roadbook/TodayScreen.jsx":"5d1fd81f1c2b","ui_kits/roadbook/data.js":"daf089a1a6ef"},"inlinedExternals":[],"unexposedExports":[]} */
 
 (() => {
 
@@ -78,6 +78,7 @@ function Logo({
 }
 Object.assign(__ds_scope, { Logo });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/brand/Logo.jsx", error: String((e && e.message) || e) }); }
+
 
 // components/brand/Trail.jsx
 try { (() => {
@@ -208,6 +209,11 @@ const PADDING = {
     small: '5px 14px',
     medium: '12px 24px',
     large: '16px 32px'
+  },
+  destructive: {
+    small: '7px 16px',
+    medium: '14px 26px',
+    large: '18px 34px'
   }
 };
 const FONT_SIZE = {
@@ -261,6 +267,11 @@ function Button({
       color: 'var(--action-primary)',
       borderRadius: 0,
       borderBottom: 'var(--border-width-strong) solid var(--action-primary)'
+    },
+    destructive: {
+      background: disabled ? 'var(--surface-disabled)' : 'var(--action-destructive)',
+      color: disabled ? 'var(--action-disabled-text)' : 'var(--action-destructive-text)',
+      borderRadius: 'var(--radius-card)'
     },
     onDark: {
       background: 'transparent',
@@ -357,29 +368,125 @@ function Chip({
 Object.assign(__ds_scope, { Chip });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/core/Chip.jsx", error: String((e && e.message) || e) }); }
 
+// components/core/FormBanner.jsx
+try { (() => {
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+const TONE = {
+  error: {
+    border: 'var(--border-error)',
+    wash: 'var(--feedback-error-wash)',
+    text: 'var(--text-error)'
+  },
+  success: {
+    border: 'var(--border-success)',
+    wash: 'var(--feedback-success-wash)',
+    text: 'var(--text-success)'
+  }
+};
+function FormBanner({
+  tone = 'error',
+  title,
+  items = [],
+  children,
+  ...rest
+}) {
+  const t = TONE[tone] ?? TONE.error;
+  return /*#__PURE__*/React.createElement("div", _extends({
+    role: tone === 'error' ? 'alert' : 'status',
+    style: {
+      border: `var(--border-width) solid ${t.border}`,
+      background: t.wash,
+      borderRadius: 'var(--radius-card)',
+      padding: '14px 16px',
+      display: 'grid',
+      gap: 'var(--space-2)',
+      fontFamily: 'var(--font-sans)'
+    }
+  }, rest), title && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 'var(--text-small-size)',
+      fontWeight: 'var(--weight-bold)',
+      color: t.text
+    }
+  }, title), items.length > 0 && /*#__PURE__*/React.createElement("ul", {
+    style: {
+      margin: 0,
+      paddingLeft: '18px',
+      display: 'grid',
+      gap: '4px'
+    }
+  }, items.map((it, i) => /*#__PURE__*/React.createElement("li", {
+    key: i,
+    style: {
+      fontSize: 'var(--text-small-size)',
+      lineHeight: 1.5,
+      color: 'var(--text-body)'
+    }
+  }, it))), children && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 'var(--text-small-size)',
+      lineHeight: 1.5,
+      color: 'var(--text-body)'
+    }
+  }, children));
+}
+Object.assign(__ds_scope, { FormBanner });
+})(); } catch (e) { __ds_ns.__errors.push({ path: "components/core/FormBanner.jsx", error: String((e && e.message) || e) }); }
+
 // components/core/Input.jsx
 try { (() => {
 function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+const BORDER = {
+  success: 'var(--border-success)',
+  error: 'var(--border-error)'
+};
+const MSG_COLOR = {
+  success: 'var(--text-success)',
+  error: 'var(--text-error)',
+  pending: 'var(--feedback-pending)',
+  default: 'var(--text-muted)'
+};
 function Input({
   value,
   placeholder,
+  label,
+  state = 'default',
+  message,
   focused = false,
   leading,
   trailing,
   hint,
   ...rest
 }) {
+  const mono = {
+    fontFamily: 'var(--font-mono)',
+    fontSize: 'var(--text-code-size)'
+  };
+  let auto = null;
+  if (state === 'success') auto = /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...mono,
+      color: 'var(--feedback-success)'
+    },
+    "aria-hidden": "true"
+  }, "\u2713");
+  if (state === 'pending') auto = /*#__PURE__*/React.createElement("span", {
+    style: {
+      ...mono,
+      color: 'var(--feedback-pending)'
+    }
+  }, "checking\u2026");
   const trail = trailing ?? (hint ? /*#__PURE__*/React.createElement("span", {
     style: {
-      fontFamily: 'var(--font-mono)',
-      fontSize: 'var(--text-code-size)',
+      ...mono,
       color: 'var(--text-muted)'
     }
-  }, hint) : null);
-  return /*#__PURE__*/React.createElement("div", _extends({
+  }, hint) : auto);
+  const border = BORDER[state] ?? (focused ? 'var(--focus-ring)' : 'var(--border-strong)');
+  const field = /*#__PURE__*/React.createElement("div", _extends({
     style: {
       background: 'var(--surface-card)',
-      border: `var(--border-width) solid ${focused ? 'var(--focus-ring)' : 'var(--border-strong)'}`,
+      border: `var(--border-width) solid ${border}`,
       borderRadius: 'var(--radius-card)',
       padding: '14px 16px',
       minHeight: 'var(--tap-min)',
@@ -409,6 +516,30 @@ function Input({
       flexShrink: 0
     }
   }, trail));
+  if (!label && !message) return field;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gap: 'var(--space-2)',
+      fontFamily: 'var(--font-sans)'
+    }
+  }, label && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 'var(--text-label-size)',
+      letterSpacing: 'var(--text-label-tracking)',
+      textTransform: 'uppercase',
+      fontWeight: 'var(--weight-bold)',
+      color: 'var(--text-muted)'
+    }
+  }, label), field, message && /*#__PURE__*/React.createElement("span", {
+    role: state === 'error' ? 'alert' : undefined,
+    style: {
+      fontSize: 'var(--text-small-size)',
+      lineHeight: 1.5,
+      color: MSG_COLOR[state] ?? MSG_COLOR.default,
+      fontWeight: state === 'error' ? 'var(--weight-bold)' : 'var(--weight-regular)'
+    }
+  }, message));
 }
 Object.assign(__ds_scope, { Input });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "components/core/Input.jsx", error: String((e && e.message) || e) }); }
@@ -981,6 +1112,7 @@ window.WEND_ROAD = {
 
 __ds_ns.Logo = __ds_scope.Logo;
 
+
 __ds_ns.Trail = __ds_scope.Trail;
 
 __ds_ns.Button = __ds_scope.Button;
@@ -988,6 +1120,8 @@ __ds_ns.Button = __ds_scope.Button;
 __ds_ns.Card = __ds_scope.Card;
 
 __ds_ns.Chip = __ds_scope.Chip;
+
+__ds_ns.FormBanner = __ds_scope.FormBanner;
 
 __ds_ns.Input = __ds_scope.Input;
 

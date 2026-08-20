@@ -108,7 +108,7 @@ Leaflet, OSM tiles. Pins for every entry in the trip with coordinates.
 - **Cluster** dense pins with simple grid clustering — no extra dependency; clicking a
   cluster zooms.
 - Bounds fit to the trip's entries on load.
-- Leaflet's own popup shadow and radius are overridden: no shadows anywhere, 6px card
+- Leaflet's own popup shadow and radius are overridden: no shadows anywhere, 12px card
   radius. Markers are custom SVG stop-circles, which also sidesteps the bundler marker-icon
   problem.
 
@@ -178,7 +178,7 @@ Desktop-first. All ideas with no trip ancestor — "I saw something cool and wan
   highlights its pin, panning the map filters the list.
 - **Zoom to a cluster → "Start a trip from these nine".** This is the inspiration→trip flow
   and the screen's reason to exist. Selecting entries (by map region, by chip filter, or by
-  hand) enables one button: **"Take these somewhere"** → creates a trip with the selected
+  hand) enables one button: **"Start a trip with these"** → creates a trip with the selected
   ideas linked into it.
 - Those ideas then leave the library listing, which is correct: the library *is* "kept, not
   yet in a trip". Nothing is discarded — see `decisions.md` §5.
@@ -203,7 +203,8 @@ These rules hold on every screen.
 There is no destroy path in the UI.
 
 **Filters hide, never remove.** Any narrowing renders its own escape next to it:
-`Showing 9 of 31 · widen again`, where "widen again" clears the filters.
+`Showing 9 of 31 · See all`, where "See all" clears the filters. (The escape used to read
+"widen again"; it names its outcome now — see **Voice** below.)
 
 **Voting.** `VoteControl` shows the current user's own vote plainly and the party's tally
 quietly beside it (`+3 · 2 voices`). Never rank a list by score automatically — this is a
@@ -214,7 +215,11 @@ is ever wanted, it should be an explicit user action, never a default.
 Never hand-roll: house style is 24-hour times, en-dash ranges, middot metadata.
 
 **Voice.** Second person, short, plain, sentence case. No exclamation marks, no emoji.
-Buttons are verbs of movement.
+Buttons name the outcome in ordinary words — "Save trip", "Remove them", "Start a trip with
+these". Movement verbs are the counter-example, not the rule: "Take the long way", "Widen
+again" and "Keep both for now" are headings and confirmations, never labels, because nobody
+should have to press a button to find out what it does. Copy sitting *on* a control is
+literal; copy sitting *beside* one may wander.
 
 **Loading and errors.** 160ms opacity fades. No skeletons that shift layout. Errors are plain
 and forgiving: "That didn't save. It's still here — try again."

@@ -45,8 +45,8 @@
         "message": "<Button> doesn't accept that prop. Declared props: variant, size, disabled, focused."
       },
       {
-        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|secondary|quiet|onDark)$/]",
-        "message": "<Button> variant must be one of 'primary' | 'secondary' | 'quiet' | 'onDark'."
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:primary|secondary|quiet|destructive|onDark)$/]",
+        "message": "<Button> variant must be one of 'primary' | 'secondary' | 'quiet' | 'destructive' | 'onDark'."
       },
       {
         "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:small|medium|large)$/]",
@@ -69,8 +69,20 @@
         "message": "<Chip> doesn't accept that prop. Declared props: selected."
       },
       {
-        "selector": "JSXOpeningElement[name.name='Input'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|placeholder|focused|leading|trailing|hint|key|ref|className|style|children)$/]",
-        "message": "<Input> doesn't accept that prop. Declared props: value, placeholder, focused, leading, trailing, hint."
+        "selector": "JSXOpeningElement[name.name='FormBanner'] > JSXAttribute > JSXIdentifier[name!=/^(?:tone|title|items|children|key|ref|className|style|children)$/]",
+        "message": "<FormBanner> doesn't accept that prop. Declared props: tone, title, items, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='FormBanner'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:error|success)$/]",
+        "message": "<FormBanner> tone must be one of 'error' | 'success'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Input'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|placeholder|label|state|message|focused|leading|trailing|hint|key|ref|className|style|children)$/]",
+        "message": "<Input> doesn't accept that prop. Declared props: value, placeholder, label, state, message, focused, leading, trailing, hint."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Input'] > JSXAttribute[name.name='state'] > Literal[value!=/^(?:default|success|error|pending)$/]",
+        "message": "<Input> state must be one of 'default' | 'success' | 'error' | 'pending'."
       },
       {
         "selector": "JSXOpeningElement[name.name='KeepToggle'] > JSXAttribute > JSXIdentifier[name!=/^(?:kept|size|label|onToggle|key|ref|className|style|children)$/]",
@@ -131,6 +143,9 @@
       "Chip": {
         "replaces": []
       },
+      "FormBanner": {
+        "replaces": []
+      },
       "Input": {
         "replaces": []
       },
@@ -154,13 +169,22 @@
       }
     },
     "tokens": [
+      "--action-destructive",
+      "--action-destructive-text",
       "--action-disabled-text",
       "--action-primary",
       "--action-primary-text",
+      "--border-error",
       "--border-strong",
       "--border-subtle",
+      "--border-success",
       "--border-width",
       "--border-width-strong",
+      "--feedback-error",
+      "--feedback-error-wash",
+      "--feedback-pending",
+      "--feedback-success",
+      "--feedback-success-wash",
       "--focus-offset",
       "--focus-ring",
       "--focus-ring-wash",
@@ -205,6 +229,7 @@
       "--text-data-tracking",
       "--text-display-line",
       "--text-display-size",
+      "--text-error",
       "--text-inverse",
       "--text-label-size",
       "--text-label-tracking",
@@ -217,6 +242,7 @@
       "--text-strong",
       "--text-subtitle-line",
       "--text-subtitle-size",
+      "--text-success",
       "--text-title-line",
       "--text-title-size",
       "--trail-dash",
@@ -230,11 +256,14 @@
       "--weight-bold",
       "--weight-regular",
       "--wend-apricot",
+      "--wend-apricot-wash",
       "--wend-body",
       "--wend-card",
       "--wend-deep-leaf",
       "--wend-hatch-a",
       "--wend-hatch-b",
+      "--wend-jade",
+      "--wend-jade-wash",
       "--wend-leaf",
       "--wend-leaf-soft",
       "--wend-line",
@@ -244,6 +273,8 @@
       "--wend-plum",
       "--wend-plum-tint",
       "--wend-plum-wash",
+      "--wend-rust",
+      "--wend-rust-wash",
       "--wordmark-tracking"
     ],
     "tokenKinds": {
@@ -251,9 +282,14 @@
       "--wend-leaf": "color",
       "--wend-leaf-soft": "color",
       "--wend-apricot": "color",
+      "--wend-apricot-wash": "color",
       "--wend-plum": "color",
       "--wend-plum-tint": "color",
       "--wend-plum-wash": "color",
+      "--wend-jade": "color",
+      "--wend-jade-wash": "color",
+      "--wend-rust": "color",
+      "--wend-rust-wash": "color",
       "--wend-paper": "color",
       "--wend-card": "color",
       "--wend-line": "color",
@@ -275,8 +311,19 @@
       "--action-primary": "color",
       "--action-primary-text": "font",
       "--action-disabled-text": "font",
+      "--action-destructive": "color",
+      "--action-destructive-text": "font",
       "--border-subtle": "color",
       "--border-strong": "color",
+      "--feedback-success": "color",
+      "--feedback-success-wash": "color",
+      "--feedback-error": "color",
+      "--feedback-error-wash": "color",
+      "--feedback-pending": "color",
+      "--border-success": "color",
+      "--border-error": "color",
+      "--text-success": "font",
+      "--text-error": "font",
       "--stop-decided": "color",
       "--stop-open": "color",
       "--stop-destination": "color",

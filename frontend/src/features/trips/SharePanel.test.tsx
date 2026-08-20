@@ -147,7 +147,7 @@ describe('SharePanel', () => {
     await screen.findByText('Sarah');
 
     const user = userEvent.setup();
-    await user.click(within(rowFor('Sarah')).getByRole('button', { name: 'Take them off' }));
+    await user.click(within(rowFor('Sarah')).getByRole('button', { name: 'Remove them' }));
 
     expect(
       screen.getByText('Take Sarah off this trip? Everything they added stays.'),
@@ -159,8 +159,8 @@ describe('SharePanel', () => {
     expect(screen.queryByText('Take Sarah off this trip? Everything they added stays.')).not.toBeInTheDocument();
     expect(screen.getByText('Sarah')).toBeInTheDocument();
 
-    await user.click(within(rowFor('Sarah')).getByRole('button', { name: 'Take them off' }));
-    await user.click(screen.getByRole('button', { name: 'Take them off' }));
+    await user.click(within(rowFor('Sarah')).getByRole('button', { name: 'Remove them' }));
+    await user.click(screen.getByRole('button', { name: 'Remove them' }));
 
     await waitFor(() => expect(screen.queryByText('Sarah')).not.toBeInTheDocument());
   });
@@ -171,12 +171,12 @@ describe('SharePanel', () => {
     await screen.findByText('Sarah');
 
     const user = userEvent.setup();
-    await user.click(within(rowFor('Sarah')).getByRole('button', { name: 'Hand the trip to them' }));
+    await user.click(within(rowFor('Sarah')).getByRole('button', { name: 'Make them the owner' }));
     expect(
       screen.getByText("Hand this trip to Sarah? You'll stay on as someone who can edit."),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Hand the trip to them' }));
+    await user.click(screen.getByRole('button', { name: 'Make them the owner' }));
 
     await waitFor(() =>
       expect(
@@ -211,8 +211,8 @@ describe('SharePanel', () => {
     renderPanel();
     await screen.findByText('Demo Traveler');
 
-    expect(screen.queryByRole('button', { name: 'Take them off' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Hand the trip to them' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove them' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Make them the owner' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('What Demo Traveler can do')).not.toBeInTheDocument();
 
     expect(within(rowFor('Sarah')).getByRole('button', { name: 'Leave this trip' })).toBeInTheDocument();
@@ -226,8 +226,8 @@ describe('SharePanel', () => {
     renderPanel();
     await screen.findByText('Demo Traveler');
 
-    expect(screen.queryByRole('button', { name: 'Take them off' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Hand the trip to them' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove them' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Make them the owner' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Add someone by email')).not.toBeInTheDocument();
     expect(within(rowFor('Sarah')).getByRole('button', { name: 'Leave this trip' })).toBeInTheDocument();
   });
@@ -258,8 +258,8 @@ describe('SharePanel', () => {
     await screen.findByText('Sarah');
 
     const user = userEvent.setup();
-    await user.click(within(rowFor('Sarah')).getByRole('button', { name: 'Take them off' }));
-    await user.click(screen.getByRole('button', { name: 'Take them off' }));
+    await user.click(within(rowFor('Sarah')).getByRole('button', { name: 'Remove them' }));
+    await user.click(screen.getByRole('button', { name: 'Remove them' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'You started this trip, so it needs you until someone else takes it on.',

@@ -1,0 +1,26 @@
+<!-- @dsCard group="Brand" viewport="900x420" name="Set aside vs delete" subtitle="Nothing is discarded by accident — but deleting is allowed" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;background:var(--surface-page);font-family:var(--font-sans);padding:20px;color:var(--text-strong)}
+a{color:var(--wend-leaf)}a:hover{opacity:.7}
+.lb{margin:8px 0 0;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);line-height:1.5}
+.sw{height:56px;border-radius:3px}
+.h{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;margin:0 0 10px}
+.row{display:grid;gap:12px}</style></head><body>
+<p style="font-size:15px;line-height:1.6;color:var(--text-body);margin:0 0 20px;max-width:78ch">Narrowing still hides rather than deletes. But when a user asks to delete, the system deletes, says what went, and offers one way back.</p>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px">
+<div><p class="h">Set aside · default</p><p style="margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--text-body)">Filtering, narrowing, “not this trip”. No confirmation, reversible from the wider view.</p>
+<div style="background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:6px;padding:16px;display:grid;gap:12px">
+<span style="border:1.5px solid var(--border-strong);border-radius:999px;padding:11px 20px;font-weight:700;font-size:15px;text-align:center">Set aside</span>
+<span style="font-size:14px;color:var(--text-body)">Set aside. It’s still in your shortlist.</span></div></div>
+<div><p class="h">Delete · explicit</p><p style="margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--text-body)">One confirmation naming the thing and the consequence, then an undo for the session.</p>
+<div style="background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:6px;padding:16px;display:grid;gap:12px">
+<span style="font-size:15px;line-height:1.5"><b>Delete “Fushimi Inari”?</b><br><span style="color:var(--text-body)">It will be removed from day 3 and your shortlist.</span></span>
+<div style="display:flex;gap:10px"><span style="background:var(--action-destructive);color:var(--action-destructive-text);border-radius:999px;padding:11px 20px;font-weight:700;font-size:15px">Delete</span><span style="border:1.5px solid var(--border-strong);border-radius:999px;padding:11px 20px;font-weight:700;font-size:15px">Cancel</span></div>
+<span style="font-size:14px;color:var(--text-body)">Deleted. <a href="#">Undo</a></span></div></div>
+<div><p class="h">Guarded delete</p><p style="margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--text-body)">Whole trips and shared plans only. A typed confirmation, and it says it can’t be undone.</p>
+<div style="background:var(--surface-card);border:1.5px solid var(--border-subtle);border-radius:6px;padding:16px;display:grid;gap:12px">
+<span style="font-size:15px;line-height:1.5"><b>Delete the Kyoto trip?</b><br><span style="color:var(--text-body)">Six days and 31 saved places go with it. This can’t be undone.</span></span>
+<span style="background:#fff;border:1.5px solid var(--border-strong);border-radius:6px;padding:12px 14px;font-size:15px;color:var(--text-muted)">Type “Kyoto” to confirm</span>
+<span style="background:var(--action-destructive);color:var(--action-destructive-text);border-radius:999px;padding:11px 20px;font-weight:700;font-size:15px;text-align:center">Delete trip</span></div></div>
+</div></body></html>

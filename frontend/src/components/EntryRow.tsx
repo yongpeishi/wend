@@ -21,9 +21,12 @@ export interface EntryRowProps {
 }
 
 /**
- * The "Place row" specimen (Wend Design System.dc.html §06), generalised into a
- * real row: title + middot metadata, and a keep toggle whose tap target is
- * 48x48 even though the visible dot is 28px.
+ * Generalised from the "Place row" specimen into a real row: title + middot
+ * metadata, and a keep toggle whose tap target is 48x48 even though the visible
+ * dot is 28px. The specimen itself came from `Wend Design System.dc.html` §06,
+ * which no longer exists in the tree (removed with wend-design-v2/ in 730f840);
+ * its successor is the `PlaceCard` unit named in the current bundle's
+ * `_ds/.../readme.md`, which this export does not ship either.
  */
 export function EntryRow({
   title,

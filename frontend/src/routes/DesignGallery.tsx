@@ -50,7 +50,11 @@ const COLOR_SWATCHES: Array<{ name: string; token: string; bg: string; fg: strin
   { name: 'Deep leaf', token: '--wend-deep-leaf', bg: 'var(--wend-deep-leaf)', fg: 'var(--text-on-dark)' },
   { name: 'Leaf green', token: '--wend-leaf', bg: 'var(--wend-leaf)', fg: 'var(--text-on-dark)' },
   { name: 'Apricot (non-text)', token: '--wend-apricot', bg: 'var(--wend-apricot)', fg: 'var(--wend-deep-leaf)' },
-  { name: 'Plum', token: '--wend-plum', bg: 'var(--wend-plum)', fg: 'var(--text-on-dark)' },
+  { name: 'Murasaki plum (destinations)', token: '--wend-plum', bg: 'var(--wend-plum)', fg: 'var(--text-on-dark)' },
+  // Outside the brand palette: feedback only. Paper reads muddy on rust, so the
+  // rust caption uses the white the destructive button's text token already is.
+  { name: 'Jade (success)', token: '--wend-jade', bg: 'var(--wend-jade)', fg: 'var(--text-on-dark)' },
+  { name: 'Rust (error)', token: '--wend-rust', bg: 'var(--wend-rust)', fg: 'var(--action-destructive-text)' },
   { name: 'Paper', token: '--wend-paper', bg: 'var(--wend-paper)', fg: 'var(--text-strong)' },
   { name: 'Card', token: '--wend-card', bg: 'var(--wend-card)', fg: 'var(--text-strong)' },
 ];
@@ -96,6 +100,10 @@ export function DesignGallery() {
             </div>
           ))}
         </div>
+        <p className={styles.specimenNote}>
+          Jade and rust are feedback hues, not brand colours: jade never fills a control, and rust fills exactly one —
+          Button variant=&quot;destructive&quot;. Everywhere else they are a border, an icon or text.
+        </p>
       </Section>
 
       <Section index="02" label="Type" title="Scale">
@@ -200,26 +208,41 @@ export function DesignGallery() {
       </Section>
 
       <Section index="06" label="Core" title="Buttons">
-        <Specimen label="Variants">
+        {/* Every label here names an outcome, because this page is where the
+            rule gets read off the screen rather than out of the readme. The
+            personality goes in the specimen notes beside them, which is exactly
+            where the system says to put it. */}
+        <Specimen label="Variants" note="Labels name the outcome; the softening goes in helper text beside the button.">
           <Row wrap>
-            <Button variant="primary">Take the long way</Button>
-            <Button variant="secondary">Widen again</Button>
+            <Button variant="primary">Save trip</Button>
+            <Button variant="secondary">Add scenic route</Button>
             <Button variant="quiet">Skip</Button>
+          </Row>
+        </Specimen>
+        <Specimen
+          label="Destructive"
+          note="The only control the error hue fills — a click that destroys something, never one that is merely important. In the product it is exactly one button: taking someone off a trip."
+        >
+          <Row wrap>
+            <Button variant="destructive">Remove them</Button>
           </Row>
         </Specimen>
         <Specimen label="Disabled" note="Fills with --surface-disabled + muted text, never struck through">
           <Row wrap>
             <Button variant="primary" disabled>
-              Take the long way
+              Save trip
             </Button>
             <Button variant="secondary" disabled>
-              Widen again
+              Add scenic route
+            </Button>
+            <Button variant="destructive" disabled>
+              Remove them
             </Button>
           </Row>
         </Specimen>
         <Specimen label="On dark">
           <div className={styles.darkPanel}>
-            <Button variant="onDark">Keep exploring</Button>
+            <Button variant="onDark">Save trip</Button>
           </div>
         </Specimen>
         <Specimen label="Focus" note="Tab to this button — :focus-visible renders the real 3px apricot outline, 3px offset">
@@ -369,8 +392,11 @@ export function DesignGallery() {
               <Button variant="quiet" onClick={() => setModalOpen(false)}>
                 Never mind
               </Button>
+              {/* The title may wander ("Fork this bundle?"); the button may not.
+                  "Keep both for now" is the readme's own example of a heading
+                  wearing a button's clothes. */}
               <Button variant="primary" onClick={() => setModalOpen(false)}>
-                Keep both for now
+                Save both
               </Button>
             </>
           }
