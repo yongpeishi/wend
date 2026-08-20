@@ -4,20 +4,30 @@
   --wend-leaf: #3F6B4A;
   --wend-leaf-soft: #8FAE93;
 
-  /* Accents. The red family — plum, and its tint and wash — is retired from the
-     brand palette in v2.3, so that red can mean exactly one thing in this
-     product: a problem. A brand red and an error red in the same view cannot be
-     told apart at a glance; hue is the only channel either one has, and a plum
-     "destination" pip sitting beside a rust "this failed" pip made the user read
-     both as warnings. Nothing about the brand needed red badly enough to pay for
-     that. So the warm pair carries the brand meaning instead: apricot means "you
-     are here" (open stops, the focus ring), and bister marks destinations and
-     saved things. Red survives only under the feedback hues below. */
+  /* Accents. The red family is retired from the brand palette in v2.3, so that
+     red can mean exactly one thing in this product: a problem. A brand red and
+     an error red in the same view cannot be told apart at a glance; hue is the
+     only channel either one has, and the old plum #8A4A61 — a red-family plum —
+     put a "destination" pip beside a rust "this failed" pip and made the user
+     read both as warnings.
+
+     The name survives the fix; the hue does not. Murasaki plum #754E75 is a
+     violet, far enough off the red axis that nothing about it reads as a
+     warning, so it can go on meaning what plum always meant here: destinations
+     and saved things. Its predecessor as destination colour, bister #55402F,
+     was rejected for weight rather than hue — at 9.4:1 it landed on top of
+     deep leaf (9.5) and the two stopped being distinguishable as roles. Murasaki
+     sits at 6.6:1 on card: text-safe, and spaced between rust (5.9) and body
+     (7.6) so it reads as its own thing.
+
+     The dusk pair carries the brand meaning between them: apricot means "you
+     are here" (open stops, the focus ring), plum marks the destination. Red
+     survives only under the feedback hues below. */
   --wend-apricot: #E89A5E;
   --wend-apricot-wash: rgba(232, 154, 94, 0.3);
-  --wend-bister: #55402F;
-  --wend-bister-tint: #B79E8E;
-  --wend-bister-wash: #EFE8E3;
+  --wend-plum: #754E75;
+  --wend-plum-tint: #B497B4;
+  --wend-plum-wash: #EFE7EF;
 
   /* Feedback hues. Jade is deliberately cooler and brighter than --wend-leaf so
      that a confirmation never reads as a button; see --feedback-success below
@@ -105,7 +115,7 @@
   /* Trail states — the one place the brand carries meaning */
   --stop-decided: var(--wend-leaf);
   --stop-open: var(--wend-apricot);
-  --stop-destination: var(--wend-bister);
+  --stop-destination: var(--wend-plum);
   --stop-waiting: #D6DED3;
   --trail-line: #B9C7B7;
   --trail-line-on-dark: var(--wend-leaf-soft);

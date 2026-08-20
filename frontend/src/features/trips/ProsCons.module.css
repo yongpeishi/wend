@@ -1,7 +1,7 @@
 /* The two-column reason list on a trip card. Sizes come from the design import;
    every colour, radius and border is a token. The pro wash is the leaf token at
    10% (color-mix, so no new colour value enters the system); the con wash is
-   --wend-bister-wash, which already exists. */
+   --wend-plum-wash, which already exists. */
 
 .columns {
   display: flex;
@@ -24,13 +24,13 @@
   font-weight: var(--weight-bold);
 }
 
-/* Leaf and bister carry the two sides. Apricot stays out of it: it is never text. */
+/* Leaf and plum carry the two sides. Apricot stays out of it: it is never text. */
 .prosLabel {
   color: var(--wend-leaf);
 }
 
 .consLabel {
-  color: var(--wend-bister);
+  color: var(--wend-plum);
 }
 
 .list {
@@ -59,7 +59,7 @@
 }
 
 .conRow {
-  background: var(--wend-bister-wash);
+  background: var(--wend-plum-wash);
 }
 
 .text {

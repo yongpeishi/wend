@@ -108,7 +108,7 @@
 }
 
 /* The split tag and the lodging pill are the two true chips on this screen —
-   the only two things that keep --radius-pill. The tag is bister: unsettled work
+   the only two things that keep --radius-pill. The tag is plum: unsettled work
    is signalled once, in words, and never nagged about. */
 .status {
   flex: none;
@@ -130,12 +130,12 @@
   max-width: 180px;
   padding: 4px 12px;
   border-radius: var(--radius-pill);
-  background: var(--wend-bister-wash);
+  background: var(--wend-plum-wash);
 }
 
 .bed {
   flex: none;
-  color: var(--wend-bister);
+  color: var(--wend-plum);
 }
 
 /* Raised from the design's 13px to --text-min-size, the readable floor. */

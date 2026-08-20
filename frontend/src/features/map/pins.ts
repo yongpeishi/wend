@@ -2,7 +2,7 @@ import type { Entry } from '../../api/types';
 import type { MapPin, PinState } from './types';
 
 /**
- * Which trail colour a pin takes. Lodging reads as the trip's anchor (bister) —
+ * Which trail colour a pin takes. Lodging reads as the trip's anchor (plum) —
  * screens.md's "destination/lodging anchor" — ahead of scheduled/potential,
  * since a home base stays the anchor whether or not it has a schedule_item.
  * Everything else is leaf (scheduled) or pale (potential).

@@ -211,11 +211,11 @@
   opacity: 0.8;
 }
 
-/* Already in a bundle — the trip's own colour, the same bister a bundle card carries. */
+/* Already in a bundle — the trip's own colour, the same plum a bundle card carries. */
 :global(.wend-pin-label--bundled) {
-  --pin-label-bg: var(--wend-bister);
+  --pin-label-bg: var(--wend-plum);
   --pin-label-text: var(--wend-paper);
-  --pin-label-border: var(--wend-bister);
+  --pin-label-border: var(--wend-plum);
 }
 
 /* In the list you can currently see. */

@@ -207,9 +207,11 @@ can revisit if a screen needs something different:
   (`--feedback-error`, `--border-error`, `--text-error`,
   `--action-destructive`) carries errors; jade `#0F7A5A`
   (`--feedback-success`, `--border-success`, `--text-success`) carries
-  success. Neither is a brand hue — the brand's two greens, apricot and bister
-  keep their own meanings, and the red family is kept out of the brand so it
-  can mean exactly one thing. Two rules bound the pair: **jade never fills a
+  success. Neither is a brand hue — the brand's two greens, apricot and
+  murasaki plum keep their own meanings, and the red family is kept out of the
+  brand so it can mean exactly one thing. Plum is a violet `#754E75`, not the
+  red-family plum it is named after; that one was retired precisely because it
+  collided with rust. Two rules bound the pair: **jade never fills a
   control** (it borders, ticks and writes — it is cooler and brighter than
   action leaf precisely so a confirmation never reads as a button), and **rust
   fills exactly one**, `Button variant="destructive"`. Everywhere else rust is

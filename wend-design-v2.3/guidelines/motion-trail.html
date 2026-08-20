@@ -1,0 +1,22 @@
+<!-- @dsCard group="Brand" viewport="700x170" name="Motion" subtitle="One gesture: the trail draws forward, 420ms ease-out. Everything else fades 160ms" -->
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>body{margin:0;background:var(--surface-page);font-family:var(--font-sans);padding:20px}
+.lb{margin:8px 0 0;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);line-height:1.5}
+.trail{position:relative;height:70px;width:100%;overflow:hidden}
+.trail svg{display:block}
+.dot{position:absolute;border-radius:50%;transform:translate(-50%,-50%);box-sizing:border-box}
+@keyframes reveal{from{width:0}to{width:100%}}
+.wipe{position:absolute;inset:0;animation:reveal var(--motion-trail-duration) var(--motion-trail-ease) infinite alternate;overflow:hidden}
+.wipe>*{width:660px}</style></head><body>
+<div class="trail"><div class="wipe"><div style="position:relative;height:70px">
+<svg width="660" height="70" viewBox="0 0 300 46" preserveAspectRatio="none" fill="none">
+<path d="M18 34 C 18 12, 100 30, 100 16 C 100 2, 190 6, 190 26 C 190 42, 250 36, 282 22" stroke="var(--trail-line)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="1 7" vector-effect="non-scaling-stroke"></path>
+</svg>
+<span class="dot" style="left:6%;top:52px;width:14px;height:14px;background:var(--stop-decided)"></span>
+<span class="dot" style="left:33.3%;top:24px;width:14px;height:14px;background:var(--stop-decided)"></span>
+<span class="dot" style="left:63.3%;top:40px;width:16px;height:16px;background:var(--surface-page);border:3.5px solid var(--stop-open)"></span>
+<span class="dot" style="left:94%;top:34px;width:12px;height:12px;background:var(--stop-destination)"></span>
+</div></div></div>
+<p class="lb">420ms cubic-bezier(.22,.61,.36,1) forward and back · no bounce, no scale, no spring · reduced-motion collapses to 0ms</p>
+</body></html>

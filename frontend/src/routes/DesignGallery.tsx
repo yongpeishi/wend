@@ -50,7 +50,7 @@ const COLOR_SWATCHES: Array<{ name: string; token: string; bg: string; fg: strin
   { name: 'Deep leaf', token: '--wend-deep-leaf', bg: 'var(--wend-deep-leaf)', fg: 'var(--text-on-dark)' },
   { name: 'Leaf green', token: '--wend-leaf', bg: 'var(--wend-leaf)', fg: 'var(--text-on-dark)' },
   { name: 'Apricot (non-text)', token: '--wend-apricot', bg: 'var(--wend-apricot)', fg: 'var(--wend-deep-leaf)' },
-  { name: 'Bister (destinations)', token: '--wend-bister', bg: 'var(--wend-bister)', fg: 'var(--text-on-dark)' },
+  { name: 'Murasaki plum (destinations)', token: '--wend-plum', bg: 'var(--wend-plum)', fg: 'var(--text-on-dark)' },
   // Outside the brand palette: feedback only. Paper reads muddy on rust, so the
   // rust caption uses the white the destructive button's text token already is.
   { name: 'Jade (success)', token: '--wend-jade', bg: 'var(--wend-jade)', fg: 'var(--text-on-dark)' },

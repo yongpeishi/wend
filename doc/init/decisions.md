@@ -196,20 +196,23 @@ with `aria-pressed`; `Tag` is a `<span>` with no interaction — a static label 
 focusable and clickable but does nothing is an accessibility bug, not a style choice. Both
 share the same CSS module.
 
-**There is one error hue, and it fills exactly one control.** This used to read "no error
-or red colour exists in the token set" — the bundle had none, so `Toast` borrowed
+**There is one error hue, and it fills exactly one control.** This used to read "no error or
+red colour exists in the token set" — the bundle had none, so `Toast` borrowed
 leaf/`--stop-decided` for success and plum/`--stop-destination` for errors. Design system
 v2.3 ends the borrowing: `--wend-jade` and `--wend-rust` are a feedback family kept
-deliberately outside the brand palette, and the brand's own red (plum) is retired so that
-red can mean a problem and nothing else — a plum "destination" pip beside a rust "this
-failed" pip read as two warnings. Destinations are bister now. Rust may fill only
-`Button variant="destructive"` (in this product, exactly one button: taking someone off a
-trip); everywhere else rust is a border, an icon or text, and jade never fills anything, so
-that "saved" and "save" are never the same object on screen. Apricot is still reserved for
-"where you are now". Colour still never carries the meaning alone: `Toast`'s tone is a left
-accent bar (`success` → `--feedback-success`, `error` → `--feedback-error`) with the
-sentence saying what happened, and a field's error leads with words in bold — any colour on
-it is reinforcement, not the message.
+deliberately outside the brand palette, and the brand's own red is retired so that red can
+mean a problem and nothing else — the old plum `#8A4A61` was a red-family plum, and its
+"destination" pip beside a rust "this failed" pip read as two warnings. Destinations kept
+the name and changed the hue: murasaki plum `#754E75` is a violet, off the red axis
+entirely. Bister `#55402F` held the role in between and was dropped for weight, not hue — at
+9.4:1 it was indistinguishable from deep leaf (9.5), where murasaki sits at 6.6:1 on card.
+Rust may fill only `Button variant="destructive"` (in this product, exactly one button:
+taking someone off a trip); everywhere else rust is a border, an icon or text, and jade
+never fills anything, so that "saved" and "save" are never the same object on screen.
+Apricot is still reserved for "where you are now". Colour still never carries the meaning
+alone: `Toast`'s tone is a left accent bar (`success` → `--feedback-success`, `error` →
+`--feedback-error`) with the sentence saying what happened, and a field's error leads with
+words in bold — any colour on it is reinforcement, not the message.
 
 **Modal and Drawer overlays are a solid fill, not a translucent scrim.** The only
 translucent value in the system is `--focus-ring-wash`, so the overlay is
