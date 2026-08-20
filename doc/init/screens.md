@@ -99,7 +99,7 @@ per-user breakdown, todo list, and the actions **Lift out of trip** and **Set as
 Leaflet, OSM tiles. Pins for every entry in the trip with coordinates.
 
 - Pin state uses the trail vocabulary: **solid leaf green** = scheduled, **pale** =
-  potential, **bister** = a destination/lodging anchor. An apricot ring marks the selected pin
+  potential, **plum** = a destination/lodging anchor. An apricot ring marks the selected pin
   only — "where you are deciding". The status is also stated in the popover text, because
   colour never carries meaning alone.
 - Filter chips: scheduled · potential · by category.
@@ -108,7 +108,7 @@ Leaflet, OSM tiles. Pins for every entry in the trip with coordinates.
 - **Cluster** dense pins with simple grid clustering — no extra dependency; clicking a
   cluster zooms.
 - Bounds fit to the trip's entries on load.
-- Leaflet's own popup shadow and radius are overridden: no shadows anywhere, 6px card
+- Leaflet's own popup shadow and radius are overridden: no shadows anywhere, 12px card
   radius. Markers are custom SVG stop-circles, which also sidesteps the bundler marker-icon
   problem.
 
