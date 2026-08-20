@@ -1,155 +1,52 @@
-/* Two columns: the ideas (the working surface) and the bundle rail. Planning
-   is a desk activity, so this is desktop-first and holds both side by side.
-   The entry-tree column that used to sit on the left is gone — see the doc
-   comment on TripBoard.tsx.
+/* One row under the trip header, three columns: the map on the left (when it
+   is up), the ideas in the middle, the plans rail on the right. Planning is a
+   desk activity, so this is desktop-first and holds all three side by side.
 
-   The rail is a proportion of the board — 40% — rather than the fixed 376px it
-   used to be. Both columns are the same job at two scales, so a wider desk
-   should widen both; a fixed rail turned into a sliver next to a 1300px idea
-   list. The clamp is what makes a proportion safe at the two ends.
+   The proportions are the redesign's own: the map takes a fixed 29% share —
+   flex-none, so widening the window widens the map and the ideas together
+   rather than letting the pair renegotiate — and the plans rail a fixed 320px,
+   which is a list of named cards and gains nothing from a wider desk. The
+   ideas column is the flexible middle because it is the thing being read;
+   min-width: 0 is what lets it actually shrink instead of overflowing the row
+   when the window closes in.
 
-   The 336px floor is the bundle card's own arithmetic. A member row spends
-   about 224px on chrome that never shrinks: the panel's 24px sides, the card's
-   12px sides and its hairline, the row's own 12/8 padding, the status dot and
-   three 32px icon buttons. 336px is the narrowest rail that still leaves an
-   idea's title roughly 15 characters before the ellipsis — below that a member
-   row is icons and a truncation, which is not a readable list.
+   Gaps are the 20px screen gutter, so the seams between columns read at the
+   same weight as the page's own edges.
 
-   The 480px ceiling is the same arithmetic from the other side: none of that
-   chrome grows, so every pixel past it lands on one line of title text in an
-   increasingly empty card. The ceiling matters more now that the board takes
-   the full body width — 34% of a 2300px board is 780px, wide enough to read as
-   a second page instead of a rail, which is exactly what the fixed width was
-   protecting against.
+   The board takes the full body width and none of the shell's gutter.
+   TripLayout pads every screen by --gutter-screen and caps it at 1360px; the
+   board wants neither — the cap is why a wider desk never used to reach the
+   map, and the rail's card ground and hairline are an EDGE of the page, not a
+   panel floating 20px in from one. --screen-measure is TripLayout's opt-out;
+   the negative margin cancels its gutter exactly, and the left side takes the
+   gutter back as padding so the board's first column starts on the same
+   vertical as the trip title above it.
 
-   The gap is zero on purpose. BundlePanel draws the design's rail itself: a
-   hairline border-left, the card ground behind it and its own 24px inner
-   padding. A grid gap here would leave a strip of paper between the ideas and
-   that hairline, which reads as a floating box rather than a rail, so the
-   breathing room goes on the ideas column as padding instead.
-
-   The items stretch rather than sitting at the start of the row, and the row
-   has a floor of about a screen. Both are for the rail: `align-items: start`
-   left it exactly as tall as the bundles it held, so its hairline stopped a
-   third of the way down beside a long idea list and it read as a floating box
-   rather than an edge of the board. Stretching alone is not enough either — on
-   a nearly empty trip both columns are short and the rail would be a stub.
-
-   --board-rail-height is that floor, and it is a variable rather than a literal
-   because BundlePanel needs the same number: the rail resolves it into a
-   definite height of its own so that its internal scroller has something to
-   resolve against. Two copies of this arithmetic in two files would drift the
-   first time the title block changed. It inherits, so the rail just reads it.
-
-   The rail taking a DEFINITE height from this, rather than stretching to the
-   row, is what keeps the page honest. A stretched rail is sized by its own
-   content, and a grid row is sized by its tallest item — so every bundle card
-   grew the row even though the rail clipped them, and the page gained a couple
-   of hundred pixels of scroll with nothing in it. Sized against the viewport
-   instead, the rail contributes exactly this floor and no more, and the length
-   of the page is once again the length of the ideas.
-
-   240px is the chrome above and below the board on the way to the window
-   edges: TripLayout's 32px top padding, its title block (a 40px/1.2 display
-   line, then 8px and a 17px/1.7 date line — about 85px), the 48px
-   --gap-section under it, and the 64px bottom padding. That is 229px, measured
-   in the browser at 165px above and 64px below; rounding UP is the safe
-   direction, because it asks for slightly less height than there is and so
-   never introduces a page scrollbar that was not already earned by the ideas.
-
-   34%, from the design's own aside, down from the 48% this last sat at. The
-   ideas column has a second occupant now — the map opens BESIDE the list rather
-   than over it — so the percentage has to leave room for two things where it
-   used to size one. At 1360px that is a 462px rail (still capped at 480) and a
-   ~880px ideas column, which is the map's 380 and the list's 440 with room to
-   spare; at 48% the two would have wrapped onto separate rows on a window wide
-   enough to hold them side by side.
-
-   The floor stays 336px rather than the design's 240px. That number is this
-   file's own arithmetic, spelled out above, and it is about a member row
-   remaining readable — the design's aside carries no member rows at all, so
-   240px is a number about a different drawing. Report: this is a deliberate
-   departure from the handoff. */
-
-/* Full body width, and none of the shell's gutter. TripLayout pads every screen
-   by --gutter-screen and caps it at 1360px; the board wants neither. The cap
-   was the whole reason a wider desk never reached the map — the rail is a
-   percentage, so the two columns split a frozen 1320px between them and the map
-   stayed near its 380px basis even on a 2560px monitor. The gutter goes because
-   the bundle rail's card ground and hairline are an EDGE of the page, not a
-   panel floating 20px in from one; it comes back on .ideas alone, which is the
-   only part of the board that is read rather than framed.
-
-   --screen-measure is TripLayout's opt-out; the negative margin cancels its
-   gutter exactly, so the grid fills the shell's border box and no more. */
-.grid {
+   --board-rail-height is the row's floor — a screen's worth, minus the 240px
+   of chrome above and below the board on the way to the window edges (see the
+   history of this file for the arithmetic). It is a variable rather than a
+   literal because BundlePanel reads the same number to resolve its internal
+   scroller; two copies would drift the first time the title block changed. */
+.board {
   --screen-measure: none;
   margin-inline: calc(var(--gutter-screen) * -1);
+  padding-left: var(--gutter-screen);
   --board-rail-height: calc(100vh - 240px);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(336px, 34%, 480px);
-  gap: 0;
+  display: flex;
   align-items: stretch;
+  gap: var(--gutter-screen);
   min-height: var(--board-rail-height);
 }
 
-/* The left gutter is the shell's own --gutter-screen, so the filter row and the
-   ideas start on the same vertical as the trip title above them. The right side
-   keeps the wider --space-8: that edge is not the window, it is the strip of
-   paper before the rail's hairline, and it does the job a grid gap cannot. */
-.ideas {
+/* Sticky, so panning stays possible while reading down a long list — the map
+   is a companion to the list beside it, and a companion that scrolls away
+   stops being one. The height is a viewport calculation rather than a match
+   to the list: 190px is the board chrome above the map plus the breathing
+   room under it, and a percentage would resolve against a row sized by the
+   list and give the map an accordion. */
+.mapCol {
+  flex: 0 0 29%;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding-left: var(--gutter-screen);
-  padding-right: var(--space-8);
-}
-
-/* Touch grows the member row's three icon buttons from 32px to --tap-min, which
-   is 48px more chrome in a row that has none to spare — at the 336px floor a
-   member title would be down to about eight characters, the exact failure the
-   floor exists to prevent. The floor moves by that same 48px so the promise
-   holds for both pointers. A landscape tablet is the case: 1024px wide leaves
-   a 738px board, so 384px still lets the ideas keep 322px. */
-@media (pointer: coarse) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr) clamp(384px, 34%, 480px);
-  }
-}
-
-/* The map and the list, side by side inside the ideas column.
-
-   No breakpoints, on purpose: the flex basis and the min-width do the whole
-   job, exactly as the design prototype does it. Below about 740px of column the
-   pair simply wraps and the map sits above the list, without anyone having to
-   pick a magic width at which that should happen — and it stays correct when the
-   rail's own clamp changes what this column is given, which a hard-coded
-   viewport breakpoint would not.
-
-   The map is first in source order because it is first in the design, and
-   because wrapping should put the map ABOVE the list: a map underneath a long
-   list is a map nobody scrolls to. */
-.body {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--space-4);
-  min-height: 0;
-}
-
-/* Sticky, so panning stays possible while reading down a long list — the map is
-   a control for the list beside it, and a control that scrolls away stops being
-   one.
-
-   The height is a viewport calculation rather than a match to the list, because
-   the two are not the same length and never will be: 190px is the board chrome
-   above the map (the trip title block, the filter row) plus the breathing room
-   under it, measured against the design. A percentage height would resolve
-   against a row sized by the list and give the map an accordion. */
-.mapCell {
-  flex: 1 1 380px;
-  min-width: 300px;
   align-self: flex-start;
   position: sticky;
   top: var(--gutter-screen);
@@ -157,59 +54,111 @@
   min-height: 0;
 }
 
-/* The wider basis of the two: this is the column being read, so when there is
-   not enough room for both preferences the list keeps more of what there is.
-
-   The ceiling is the other half of that bargain, and it is conditional: it
-   applies only while the map is up, which is what [data-map='open'] on .body
-   asks. An idea row is a title, a couple of meta chips and a state dot — a line
-   of text — so past a reading measure the extra width lands on white space
-   inside the card and the row gets HARDER to scan, not easier. Without a
-   ceiling the two cells share every surplus pixel evenly, which is why widening
-   the window used to widen the list and the map in lockstep and the map never
-   actually gained anything. Capped, the list stops at its measure and the whole
-   surplus goes to the map: at 1920px that is a ~566px map instead of ~380px,
-   and at 2560px a ~1200px one.
-
-   With the map hidden there is no second cell, so there is nothing for the
-   surplus to go to and the cap stopped being a bargain: it just left a dead
-   strip of paper between the last idea card and the bundle rail's hairline,
-   wide enough on a large screen to read as a missing column. Uncapped, the list
-   grows into the room the map is not using — wider than its ideal measure, but
-   the alternative is a hole, and a hole is the more obvious mistake. This is
-   the same reasoning the @media block at the foot of this file already applies
-   for the same reason, and that rule is written at this selector's specificity
-   so it still wins there.
-
-   560px, written out rather than taken from --measure-body. This used to read
-   `max-width: var(--measure-body)` under a comment calling that "66ch, ~560px
-   at the 17px body size" — the arithmetic was wrong by 30%. A ch in this face
-   is about 11px, not 8.5, so 66ch computes to 727px in the browser, and the two
-   numbers above were both written against the 560px the author believed they
-   were getting: at 1920px a 727px list leaves the map 399px, nineteen pixels
-   over its own flex basis, which is not "the whole surplus goes to the map" and
-   does not answer the request this cap came from. At 560px the map gets the
-   566px and the ~1200px the paragraph promises.
-
-   The token stays as it is — six other files read --measure-body for actual
-   prose, where 727px is a defensible measure and not this file's business. An
-   idea row is not prose: it is one line of title plus a couple of meta chips,
-   with about 26px of its own chrome, so it wants the tighter number. .noneInView
-   below is a real sentence and keeps the shared token. */
-.listCell {
-  flex: 1 1 440px;
-  min-width: 320px;
+/* The flexible middle. min-width: 0 is load-bearing — a flex item defaults to
+   its content's minimum width, and one long idea title would otherwise push
+   the plans rail off the window instead of ellipsising. */
+.ideas {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
 }
 
-[data-map='open'] .listCell {
-  max-width: 560px;
+/* The plans rail's track: 320px, surrendered to nobody. The rail's own chrome
+   — the 1.5px --wend-line hairline down its leading edge and its inner
+   padding — is BundlePanel's, drawn inside this track; drawing a second
+   border here would double the line. min-width: 0 for the same reason as
+   .ideas: the track, not a long plan name, decides the width. */
+.plans {
+  flex: 0 0 320px;
+  min-width: 0;
 }
 
-/* Nothing survived the narrowing. Same voice and same measure as /library's own
-   "nothing in view" line. */
+/* The scope line above the list: "All ideas", or the trail down into the idea
+   being read. One row, baseline-aligned, wrapping when a deep path or a long
+   title asks it to. */
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-height: 28px;
+}
+
+/* Where you are: the current level's own title, at the weight of a heading —
+   this row IS the list's heading, which is why it is a real element and not
+   decoration. 20px/700 deep leaf, per the redesign. */
+.crumbHere {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-subtitle-size);
+  line-height: var(--text-subtitle-line);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+/* The way back: every ancestor, clickable and quiet. Muted 15px against the
+   current title's 20px/700, so the eye lands on where you are and the path
+   back reads as the smaller fact it is. The › travels inside the button —
+   it is part of "this leads somewhere", not punctuation between elements. */
+.crumbBack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.crumbBack:hover {
+  color: var(--text-strong);
+}
+
+.crumbBack:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The two facts a drilled level carries on its heading row, as quiet pills:
+   how much is inside, and how the votes stand. Bordered, never filled — they
+   are readings, not controls. */
+.insidePill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-3);
+  border: var(--border-width) solid var(--wend-leaf);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  font-weight: var(--weight-bold);
+  color: var(--wend-leaf);
+}
+
+/* Plum is the saved/destination family, which is what a standing vote total
+   is: a fact about where the group's weight already sits. Tint border, full
+   plum text — the pill stays readable while its edge stays quiet. */
+.votePill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-3);
+  border: var(--border-width) solid var(--wend-plum-tint);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  font-weight: var(--weight-bold);
+  color: var(--wend-plum);
+}
+
+/* Nothing survived the narrowing — or a drilled level is genuinely empty.
+   Same voice and same measure as /library's own "nothing in view" line. */
 .noneInView {
   margin: 0;
   font-family: var(--font-sans);
@@ -219,47 +168,31 @@
   max-width: var(--measure-body);
 }
 
-/* The floor cannot push the board sideways on the way down to this
-   breakpoint. At 901px — the last viewport width that still gets two columns —
-   the shell has already spent 246px on the sidebar, leaving a 655px grid — the
-   board cancels TripLayout's 40px of gutters, so it is 40px wider here than it
-   used to be. The rail takes its floor — 336px, or 384px on touch — and the
-   ideas column, sized minmax(0, 1fr) and carrying min-width: 0, absorbs the
-   rest rather than refusing to shrink. Neither floor is close to 655px, so the
-   board never gains a horizontal scrollbar on the way down here; raising a
-   floor past ~600px, or giving the ideas column a min-width, is what would
-   bring one back. */
+/* One column on a narrow window: map above ideas above plans. The map stops
+   being sticky (there is nothing beside it to stay abreast of) and takes a
+   fixed working height instead of a share of a row that no longer exists.
+   BundlePanel handles its own stacked look at this same width — hairline to
+   the top edge, no full-height treatment — so the rail floor goes with it,
+   and the right side takes the plain screen gutter back so the cards do not
+   sit against the window edge. */
 @media (max-width: 900px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-8);
-    /* One column, so the floor no longer protects a rail from ending early —
-       it would just stretch two stacked auto rows to fill a screen they have
-       no content for. BundlePanel drops its own full-height treatment at this
-       same width; the variable goes with it so the two cannot disagree. */
+  .board {
+    flex-direction: column;
+    padding-right: var(--gutter-screen);
     --board-rail-height: auto;
     min-height: 0;
   }
 
-  /* Stacked, the rail is no longer beside anything, so the reserved strip
-     would just be a ragged right edge. BundlePanel moves its own hairline to
-     its top edge at this width. The right side takes the plain screen gutter
-     instead of nothing: the grid cancels TripLayout's padding, so zero here
-     would put the idea cards against the window edge. */
-  .ideas {
-    padding-right: var(--gutter-screen);
+  .mapCol {
+    flex: none;
+    width: 100%;
+    position: static;
+    height: 360px;
   }
 
-  /* One column means the map is stacked above the list rather than beside it,
-     so the ceiling has nothing to hand its surplus to — it would just leave a
-     strip of empty paper down the right of the list, under a full-width map.
-
-     Written with the same [data-map='open'] prefix as the rule it is overruling
-     rather than as a bare .listCell: that one is two selectors' worth of
-     specificity and would otherwise beat a plain class here however late it
-     came. Matching it and arriving later is what makes this win. */
-  [data-map='open'] .listCell {
-    max-width: none;
+  .plans {
+    flex: none;
+    width: 100%;
   }
 }
 
@@ -273,11 +206,11 @@
    tell what you were moving.
 
    300px is the width that makes the title readable and still reads as the same
-   object the drag came from: it is just inside the 336px floor of the bundle
-   rail the drag is usually headed for, so the card in the air is never wider
-   than its destination, and the itinerary's overlay takes the same number —
-   the two screens drag the same card and it should not change size between
-   them. Explicit, because there is nothing intrinsic here to size from. */
+   object the drag came from: it is just inside the plans rail the drag is
+   usually headed for, so the card in the air is never wider than its
+   destination, and the itinerary's overlay takes the same number — the two
+   screens drag the same card and it should not change size between them.
+   Explicit, because there is nothing intrinsic here to size from. */
 .dragOverlayCard {
   width: 300px;
 }

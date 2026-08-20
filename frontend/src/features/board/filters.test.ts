@@ -247,6 +247,50 @@ describe('applyFilters — categories are a union, not a choice', () => {
   });
 });
 
+// The search box is a filter, not a mode: it stacks with the chips and clears
+// like them. Substring on the title only, case folded — nothing cleverer.
+describe('applyFilters — text', () => {
+  const entries = [
+    makeEntry({ id: 1, title: 'Nanzen-ji' }),
+    makeEntry({ id: 2, title: 'Kiyamachi at night', category: 'activity' }),
+    makeEntry({ id: 3, title: 'Ramen alley', category: 'food' }),
+  ];
+
+  function idsFor(text: string) {
+    return applyFilters(entries, { ...EMPTY_FILTERS, text }).map((e) => e.id);
+  }
+
+  it('narrows to titles containing the text', () => {
+    expect(idsFor('ramen')).toEqual([3]);
+  });
+
+  it('matches without caring about case, in either direction', () => {
+    expect(idsFor('KIYAMACHI')).toEqual([2]);
+    expect(idsFor('nanzen')).toEqual([1]);
+  });
+
+  it('matches anywhere in the title, not just the start', () => {
+    expect(idsFor('night')).toEqual([2]);
+  });
+
+  it('treats empty and whitespace-only text as no narrowing at all', () => {
+    expect(idsFor('')).toEqual([1, 2, 3]);
+    expect(idsFor('   ')).toEqual([1, 2, 3]);
+  });
+
+  it('ignores surrounding whitespace around a real query', () => {
+    expect(idsFor('  ramen  ')).toEqual([3]);
+  });
+
+  it('stacks with the category chips rather than replacing them', () => {
+    const mixed = applyFilters(entries, { ...EMPTY_FILTERS, categories: ['food'], text: 'alley' });
+    expect(mixed.map((e) => e.id)).toEqual([3]);
+
+    const conflict = applyFilters(entries, { ...EMPTY_FILTERS, categories: ['food'], text: 'nanzen' });
+    expect(conflict).toEqual([]);
+  });
+});
+
 describe('toggleCategory', () => {
   it('adds a category that is off and removes one that is on', () => {
     expect(toggleCategory([], 'food')).toEqual(['food']);
@@ -288,5 +332,10 @@ describe('isNarrowed', () => {
   it('still notices the non-category narrowings on their own', () => {
     expect(isNarrowed({ ...EMPTY_FILTERS, hasLocation: true })).toBe(true);
     expect(isNarrowed({ ...EMPTY_FILTERS, scheduleState: 'scheduled' })).toBe(true);
+  });
+
+  it('counts search text as a narrowing, but not a whitespace-only one', () => {
+    expect(isNarrowed({ ...EMPTY_FILTERS, text: 'ramen' })).toBe(true);
+    expect(isNarrowed({ ...EMPTY_FILTERS, text: '   ' })).toBe(false);
   });
 });

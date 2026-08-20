@@ -4,68 +4,37 @@
   gap: var(--space-3);
 }
 
-/* One row, two ends: the controls that shape the list on the left, the action
-   that adds to it on the right. It still wraps — on a narrow desk the button
-   drops under the controls rather than crushing them — but there is no longer
-   anything here that can be squeezed to nothing, because the chips that used to
-   fill this row are behind the Filter button now. */
+/* One row: the way back to the map (only while it is hidden), the search box,
+   the Filter button, the grouping pill. The search box is the flexible middle
+   — see .search — so the row has no space-between to manage; everything else
+   is content-sized and the input soaks up the rest. It still wraps on a narrow
+   desk rather than crushing anything. */
 .controlRow {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-/* Filter, rule, grouping, and — once there is a map — the follow switch. One
-   cluster: they travel together when the row wraps, because the rule between
-   them only means anything while both sides of it are on the same line. It
-   wraps within itself too, since the switch adds a fourth control to a row
-   that was already full on a narrow desk. */
-.leftGroup {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-/* "Show map" and "+ New idea": the two controls that are not about narrowing. */
-.rightGroup {
-  display: flex;
   align-items: center;
   gap: var(--space-3);
 }
 
 /* The popover is positioned against this, not against the row, so it opens
-   under the button's own left edge wherever the row has pushed it. */
+   under the button's own edge wherever the row has pushed it. */
 .filterWrap {
   position: relative;
 }
 
-/* Outlined, 12px corners: the same box as a `small` secondary Button, because it
-   sits on a row with one. It is not a Button component — Button's variants are
-   about how much an action wants to be taken, and this one opens a panel rather
-   than doing anything, so it borrows the geometry and keeps a quieter fill.
+/* Outlined, 12px corners: the same box as a `small` secondary Button, because
+   it sits on a row with controls that shape. Not a Button component — Button's
+   variants are about how much an action wants to be taken, and these open a
+   pane or flip a mode rather than doing anything to the data.
 
-   "Borrows the geometry" has to include the border width, not just the padding.
-   --border-width-strong is what `small`'s 5px padding is cut for: Button's size
-   block sets padding per variant precisely so the bordered ones absorb their own
-   2px edge and still land level with the filled ones. Pairing that padding with
-   a 1.5px hairline made this button 1px shorter than everything beside it, which
-   is exactly the kind of gap the eye reads as a wobble without being able to name
-   it. The quietness comes from --border-strong being a neutral rather than the
-   action green, not from drawing a thinner line.
+   The border width is --border-width-strong to match Button's geometry — the
+   `small` padding is cut for a 2px edge, and pairing it with a 1.5px hairline
+   left this 1px shorter than everything beside it. The quietness comes from
+   --border-strong being a neutral, not from a thinner line.
 
-   The corners stay --radius-card while the grouping control beside it is a pill.
-   That is the intended split, not an oversight: a button is a button shape, and
-   the capsule is reserved for the one control that is a set of choices.
-
-   Three controls wear this now — Filter, Show/Hide map, and Select — hence the
-   name. They are the same kind of thing: a quiet control that turns something
-   on and reports whether it is on. Giving them one class rather than three
-   near-identical ones is what keeps them from drifting apart a pixel at a time,
-   and it is why the "on" state below is spelled `toggleButtonOn` rather than
-   naming any one of them. */
+   The corners stay --radius-card while the search box and the grouping control
+   beside it are pills: a button is a button shape, and the capsule is reserved
+   for the box you type into and the one control that is a set of choices. */
 .toggleButton {
   display: inline-flex;
   align-items: center;
@@ -96,21 +65,22 @@
   outline-offset: var(--focus-offset);
 }
 
-/* 36px is the drawn height, which is above the 32px pointer floor and below the
-   48px a finger needs. Rather than a pseudo-element trick, these just grow —
-   they sit on a row that wraps anyway, so a taller control costs nothing. */
+/* 36px is the drawn height, above the 32px pointer floor and below the 48px a
+   finger needs. These sit on a row that wraps anyway, so growing costs nothing. */
 @media (pointer: coarse) {
   .toggleButton {
     min-height: var(--tap-min);
   }
+
+  .search {
+    min-height: var(--tap-min);
+  }
 }
 
-/* This one is on: something is hidden behind Filter, the map is up, or the list
-   is in select mode. The edge stops being a neutral hairline and picks up the
-   action green. Never the only signal — Filter carries a badge and says the
-   count in its accessible name, and the other two change their own label
-   ("Show map" -> "Hide map", "Select" -> "Done selecting"), which is a signal
-   that survives having no colour vision at all. */
+/* This one is on: something is hidden behind Filter, or the list is in select
+   mode. The edge picks up the action green. Never the only signal — Filter
+   carries a badge and says the count in its accessible name, and the select
+   toggle changes its own label, which survives having no colour vision. */
 .toggleButtonOn {
   border-color: var(--action-primary);
 }
@@ -125,14 +95,39 @@
   background: currentColor;
 }
 
-/* A selected chip in miniature: the same green-on-paper as every other "this is
-   on" state in the app, so the badge needs no learning.
+/* The round search box, and the row's flexible middle. A pill rather than the
+   card-cornered box the buttons wear: it is the one thing on the row you type
+   into, and the capsule is what says so. The 120px floor is what it refuses to
+   shrink past before the row wraps instead — a search box narrower than its
+   own placeholder is a control that cannot say what it is. */
+.search {
+  flex: 1 1 120px;
+  min-width: 120px;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 5px var(--space-4);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+}
 
-   The design pairs --wend-leaf-soft with --wend-leaf here, which is about 2.5:1
-   — well under the 4.5 a 13px numeral needs, and this system does not ship text
-   you have to squint at. Inverting it to the action pair keeps the same family
-   of greens at 5.5:1. It stays a pill, unlike the button around it: a count is a
-   badge, not a control, and the shape is what says so. */
+.search::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.search:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* A selected chip in miniature: the same green-on-paper as every other "this
+   is on" state in the app, so the badge needs no learning. It stays a pill,
+   unlike the button around it: a count is a badge, not a control, and the
+   shape is what says so. */
 .count {
   display: inline-flex;
   align-items: center;
@@ -149,17 +144,17 @@
 /* Card tone on page tone with a drawn edge — the panel is lifted the only way
    this system lifts anything. No shadow.
 
-   360px is two rows of category chips, which is the width that stops "Has
-   location" from being orphaned on a line of its own. It caps against the
-   viewport so the panel cannot hang off the edge of a narrow window; the button
-   it hangs from is near the left edge of the board, so a left-aligned panel has
-   room to be this wide. */
+   Anchored to the RIGHT edge of the trigger, per the redesign: the Filter
+   button now sits toward the right end of its row, so a left-hung 250px panel
+   would open across the search box instead of into the free space below it.
+   250px is the design's own width — the chips wrap into two and three per
+   line, which reads as the checklist it is. */
 .popover {
   position: absolute;
   top: calc(100% + var(--space-2));
-  left: 0;
+  right: 0;
   z-index: 20;
-  width: 360px;
+  width: 250px;
   max-width: calc(100vw - var(--space-8));
   display: flex;
   flex-direction: column;
@@ -192,20 +187,62 @@
   gap: var(--space-2);
 }
 
-/* Two jobs, one row. The rule is what keeps "narrow the list" and "section the
-   list" from reading as one six-control strip. Thin and subtle on purpose: it
-   separates, it does not divide. */
-.divider {
-  flex: none;
-  width: var(--border-width);
-  height: var(--space-6);
-  background: var(--border-subtle);
-  border-radius: var(--radius-pill);
-}
-
 .groupControl {
   flex: none;
   white-space: nowrap;
+}
+
+/* The lit filters, echoed under the row as their own undo — see the component
+   comment. Chips first, sentence after, wrapping as one stream so the
+   sentence tucks beside the chips while there is room and drops below them
+   when there is not. */
+.activeRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.activeChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* A lit chip with its ✕ on board: selected-chip colours (leaf on paper), pill
+   shape, and the whole thing is the remove button — a separate tiny ✕ target
+   would be a 12px control pretending to be tappable. */
+.activeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px var(--space-3);
+  background: transparent;
+  border: var(--border-width) solid var(--wend-leaf);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  font-weight: var(--weight-bold);
+  color: var(--wend-leaf);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.activeChip:hover {
+  opacity: 0.7;
+}
+
+.activeChip:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.activeNote {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  color: var(--text-muted);
 }
 
 /* The count on the left, the select-mode toggle on the right. It wraps rather
@@ -225,28 +262,4 @@
   font-size: var(--text-small-size);
   letter-spacing: var(--text-data-tracking);
   color: var(--text-muted);
-}
-
-.widen {
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-small-size);
-  color: var(--text-strong);
-  text-decoration: underline;
-  text-decoration-color: var(--wend-apricot);
-  cursor: pointer;
-}
-
-/* No disabled state to style: the button is only rendered while something is
-   narrowed, so it is always live when it is on screen. */
-.widen:hover {
-  opacity: 0.7;
-}
-
-.widen:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
 }
