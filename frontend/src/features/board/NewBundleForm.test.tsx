@@ -46,7 +46,7 @@ describe('NewBundleForm — naming a bundle in the rail', () => {
   // to type are the same event.
   it('takes focus as soon as it appears', () => {
     renderForm();
-    expect(screen.getByLabelText('Name a new bundle')).toHaveFocus();
+    expect(screen.getByLabelText('Name a new plan')).toHaveFocus();
   });
 
   // Dragging is an accelerator for filling a bundle, never for making one. The
@@ -54,7 +54,7 @@ describe('NewBundleForm — naming a bundle in the rail', () => {
   // not a placeholder pretending to be a label.
   it('labels the name field with a real label, not just a placeholder', () => {
     renderForm();
-    expect(screen.getByLabelText('Name a new bundle')).toBeInTheDocument();
+    expect(screen.getByLabelText('Name a new plan')).toBeInTheDocument();
   });
 
   it('creates an empty bundle from a typed name, on Enter', async () => {
@@ -64,7 +64,7 @@ describe('NewBundleForm — naming a bundle in the rail', () => {
     const user = userEvent.setup();
     renderForm({ onToast, onClose });
 
-    await user.type(screen.getByLabelText('Name a new bundle'), 'Day one dinner{Enter}');
+    await user.type(screen.getByLabelText('Name a new plan'), 'Day one dinner{Enter}');
 
     await waitFor(() => expect(post).toHaveBeenCalled());
     const [path, body] = post.mock.calls[0] as [string, unknown];
@@ -73,7 +73,9 @@ describe('NewBundleForm — naming a bundle in the rail', () => {
     // alongside it, and nothing blocks the create for want of contents.
     expect(body).toEqual({ entry: { kind: 'bundle', title: 'Day one dinner' }, parent_id: TRIP_ID });
     expect(post).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(onToast).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(onToast).toHaveBeenCalledWith('Made "Day one dinner". Drop ideas in whenever.'),
+    );
     // The form has done its job and asks to be put away.
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     post.mockRestore();
@@ -85,7 +87,7 @@ describe('NewBundleForm — naming a bundle in the rail', () => {
     const user = userEvent.setup();
     renderForm({ onClose });
 
-    await user.type(screen.getByLabelText('Name a new bundle'), 'Half a thought{Escape}');
+    await user.type(screen.getByLabelText('Name a new plan'), 'Half a thought{Escape}');
 
     expect(onClose).toHaveBeenCalled();
     expect(post).not.toHaveBeenCalled();
@@ -97,9 +99,10 @@ describe('NewBundleForm — naming a bundle in the rail', () => {
     const user = userEvent.setup();
     renderForm();
 
-    await user.type(screen.getByLabelText('Name a new bundle'), '   ');
-    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
+    await user.type(screen.getByLabelText('Name a new plan'), '   ');
 
+    // There is no Create button any more — Enter is the way in, and Enter on
+    // a blank refuses quietly.
     await user.keyboard('{Enter}');
     expect(post).not.toHaveBeenCalled();
     post.mockRestore();
@@ -115,7 +118,7 @@ describe('NewBundleForm — naming a bundle in the rail', () => {
       { wrapper: makeWrapper() },
     );
 
-    expect(screen.queryByLabelText('Name a new bundle')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Create' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Name a new plan')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 });

@@ -48,16 +48,48 @@
   gap: var(--space-4);
 }
 
-.cta {
-  display: flex;
-  align-items: baseline;
-  justify-content: end;
+/* "+ New plan", full width under the label. It is styled as a bordered
+   button-look rather than <Button>: the design asks for the 2px leaf border on
+   card radius — the same radius as the cards it starts, never a button-radius
+   of its own — and deep-leaf 15px/700 text. Centered because it is the whole
+   width of the rail and a left-hung label in a full-width outline reads as a
+   field, not an action. */
+.newPlan {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--wend-deep-leaf);
+  background: none;
+  border: var(--border-width-strong) solid var(--wend-leaf);
+  border-radius: var(--radius-card);
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+@media (pointer: coarse) {
+  .newPlan {
+    min-height: var(--tap-min);
+  }
+}
+
+.newPlan:hover {
+  opacity: 0.7;
+}
+
+.newPlan:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /* The design's uppercase rail label — the same token pairing every section
    heading in the product uses (see TripsList's .sectionLabel). Quiet on
    purpose: it names the region for anyone scanning, and then gets out of the
-   way of the bundles, which are the content. */
+   way of the plans, which are the content. */
 .heading {
   margin: 0;
   font-family: var(--font-sans);
@@ -98,14 +130,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-.intro {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-small-size);
-  line-height: var(--text-small-line);
-  color: var(--text-body);
 }
 
 .empty {

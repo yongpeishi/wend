@@ -1,8 +1,8 @@
-/* A rail card: 1.5px hairline, 6px radius, tight padding (Card's padding={3}
-   is 12px against the design's 14px — the scale step rather than a fourth
-   one-off literal in this file). Vertical rhythm is set by each block's own
-   margin, not a flex gap, because the design deliberately pulls the meta line
-   up close under the name and then opens up before the members. */
+/* A rail card: card tone, 1.5px line hairline, var(--radius-card) — all three
+   from the Card primitive — with the design's 14px 16px inset passed inline
+   where Card is used. Vertical rhythm is set by each block's own margin, not a
+   flex gap, because the design opens up between the header and the members
+   and then pulls the foot hint in close. */
 .card {
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
@@ -16,21 +16,20 @@
   border-color: var(--focus-ring);
 }
 
-/* The name, then the X that removes the bundle — nothing else. The X trails so
-   it lands in the top right corner, which `justify-content: space-between`
-   plus a `flex: 1` name gives without a spacer element. It sits on the same
-   32px icon button as the member rows, so the card has one icon-button size,
-   not two. */
+/* The header row: name, right-aligned meta, then the X that removes the plan.
+   The X keeps the top right corner and sits on the same 32px icon button as
+   the member rows, so the card has one icon-button size, not two. */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 
-/* The bundle name — 17px bold in the design, which is --text-body-size, not
-   the 20px subtitle this used to borrow. In a 376px rail the name is the
-   card's anchor, not a section heading. */
+/* The plan name — 17px bold deep-leaf in the design, which is
+   --text-body-size on --text-strong. In a narrow rail the name is the card's
+   anchor, not a section heading. */
 .title {
   flex: 1;
   min-width: 0;
@@ -81,27 +80,34 @@
   min-width: 0;
 }
 
-/* The bundle's open-to-do line, set exactly like FilterBar's `.summary`: the
-   idea list and the bundle rail now both answer "how much is in front of me"
-   in the same voice, and a reader moving between the two columns should not
-   have to notice a change of typeface to know they are reading the same kind
-   of sentence. That retires the design's 12px letterspaced caps here — caps
-   are a heading treatment, and this is prose about the card's contents, which
-   is also why it is no longer bold. Only the margin is local, keeping the
-   design's rhythm: pulled up close under the name, then opening out before
-   the members. */
+/* The header meta — "3 ideas", or "Empty so far". Muted 13px against the
+   17px name, right-aligned by the header's space-between. `flex: none` plus
+   nowrap keeps the count whole while a long name beside it ellipsises: a
+   clipped name is still recognisable from its first half, a clipped count is
+   not a count. */
 .meta {
-  margin: var(--space-1) 0 var(--space-2);
+  flex: none;
+  white-space: nowrap;
+  text-align: right;
   font-family: var(--font-sans);
-  font-size: var(--text-small-size);
-  letter-spacing: var(--text-data-tracking);
+  font-size: var(--text-code-size);
   color: var(--text-muted);
 }
 
+/* What a viewer reads inside an empty plan — editors get .hint instead. */
 .emptyDrop {
   margin: var(--space-2) 0 0;
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
+  color: var(--text-muted);
+}
+
+/* The foot hint under the members — muted 13px, plain text on purpose (see
+   the JSX comment: there is no add-member control here for it to be). */
+.hint {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
   color: var(--text-muted);
 }
 
@@ -114,17 +120,13 @@
   gap: var(--space-2);
 }
 
-/* Members sit on paper tone inside a card-tone card — the same one-step tone
-   change the whole product uses instead of elevation. */
+/* Member rows are quiet lines now, not paper-toned pills: the approved mockup
+   draws each member as a dot and a name on the card itself, and the card's
+   own border is the only box in sight. */
 .member {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  background: var(--surface-page);
-  /* The design nests items at a tighter radius than the 6px card; no token
-     sits at 4px, and adding one for a single inner row is not worth it. */
-  border-radius: 4px;
-  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
@@ -136,22 +138,27 @@
   outline-offset: 0;
 }
 
-/* 7px, from the design. Below the smallest space-scale step by design — it is
-   a status mark, not spacing. Colour is a redundant cue only; the row also
-   carries a visually-hidden phrase saying the same thing. */
+/* 9px, from the design — a status mark, not spacing, so it sits off the space
+   scale. Colour is a redundant cue only; the row also carries a
+   visually-hidden phrase saying the same thing. box-sizing keeps the placed
+   and bare dots the same 9px outside whether the ring is border or fill. */
 .dot {
-  width: 7px;
-  height: 7px;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex: none;
 }
 
-.dotScheduled {
-  background: var(--stop-decided);
+/* The member has an address — a real place. Solid leaf. */
+.dotPlaced {
+  background: var(--wend-leaf);
 }
 
-.dotWaiting {
-  background: var(--stop-waiting);
+/* No address yet: hollow, the line-strong ring around nothing. */
+.dotBare {
+  background: transparent;
+  border: var(--border-width) solid var(--wend-line-strong);
 }
 
 .memberTitle {

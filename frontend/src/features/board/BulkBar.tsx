@@ -197,7 +197,7 @@ export function BulkBar({
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((value) => !value)}
         >
-          Add to a bundle
+          Add to a plan
         </button>
       </div>
 
@@ -246,11 +246,11 @@ export function BulkBar({
                   setNamingOpen(true);
                 }}
               >
-                A new bundle
+                A new plan
               </button>
             )}
 
-            {bundles.length === 0 && tripId === undefined && <p className={styles.empty}>No bundles yet.</p>}
+            {bundles.length === 0 && tripId === undefined && <p className={styles.empty}>No plans yet.</p>}
           </div>
         </>
       )}

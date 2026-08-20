@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
@@ -66,38 +66,25 @@ export interface BundleCardProps {
  * that looks like metadata is derived from a real serialized field rather than
  * invented:
  *
- *   The meta line. The design shows an uppercase caption above the members;
- *   Entry has no bundle-level metadata at all. It reports the outstanding
- *   work: every member's `todos_open_count` plus the bundle's own, because a
- *   bundle can carry a "book this before the 3rd" that belongs to no single
- *   idea in it. That total is the one thing worth a glance when you are
- *   picking which bundle to open — it is what stands between this group of
- *   ideas and being a plan. It replaces the "N of M on the schedule" line that
- *   sat here before, which answered a question the schedule itself already
- *   answers, and it is prose rather than the design's letterspaced caps: this
- *   is a sentence about the contents, not a heading over them, so it borrows
- *   FilterBar's `.summary` treatment and the two counts across the board read
- *   alike. Zero renders too, as "0 open to-dos". In a rail where some cards
- *   speak and some stay silent the reader has to work out which kind of
- *   nothing they are looking at; "nothing outstanding" is a real answer about
- *   a bundle, not an absence, and it is the answer you most want to see.
- *
- *   Exactly one to-do number per card. The design's right-hand header slot
- *   held an idea count, which the backlog dropped as noise (the members are
- *   right there to be counted); it then carried this same to-do total, which
- *   meant the card stated one figure twice the moment the meta line took the
- *   job. The header is now the name and the X and nothing else, and the count
- *   is said once, immediately beneath.
+ *   The header meta. The approved mockup's right-hand header slot holds the
+ *   idea count — "3 ideas", right-aligned and muted beside the name. An empty
+ *   plan says "Empty so far" rather than "0 ideas": in a rail where every card
+ *   speaks, a zero is a tally and this is a state, and it is the state the
+ *   hint below exists to fix. This retires the "N open to-dos" line that sat
+ *   under the name; the plum per-member labels below keep the outstanding work
+ *   visible on the ideas that own it.
  *
  *   The member dot. The design colours a dot per item from a state enum we
- *   don't have. It uses the `scheduled` flag: leaf for on the schedule, the
- *   pale waiting tone for not yet. Colour is never the only carrier — each
+ *   don't have. It uses `address`: solid leaf for a member that has one,
+ *   hollow (line-strong ring) for one that doesn't — the same "is this a real
+ *   place yet" question the map asks. Colour is never the only carrier — each
  *   dot ships a visually-hidden phrase so the state is readable without it.
  *
- *   The member to-do label. The same field one level down: a member holding
- *   open to-dos says "2 to-dos" in plum just left of its row actions, so the
- *   total above can be traced to the ideas that own it without opening
- *   anything. Members with nothing outstanding carry no label at all — here a
+ *   The member to-do label. A member holding open to-dos says "2 to-dos" in
+ *   plum just left of its row actions, so the outstanding work is visible on
+ *   the ideas that own it without opening anything — it is the one to-do
+ *   signal the card keeps now the header meta counts ideas instead. Members
+ *   with nothing outstanding carry no label at all — here a
  *   mark on the exceptions beats a column of zeroes, because the reader is
  *   scanning for which row to deal with, not tallying. It is the only coloured
  *   text in the row, which is what makes it read as an annotation on the idea
@@ -154,14 +141,9 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
     }
   }, [editingName]);
 
-  // The bundle's own to-dos count too — a bundle can carry a "book this before
-  // the 3rd" that belongs to no single idea in it. Built as one string rather
-  // than assembled in JSX so the line is a single text node: "0 open to-dos"
-  // is one phrase to a screen reader, and one thing to assert on in a test.
-  const meta = useMemo(() => {
-    const open = members.reduce((total, member) => total + member.todos_open_count, 0) + bundle.todos_open_count;
-    return `${open} open ${open === 1 ? 'to-do' : 'to-dos'}`;
-  }, [members, bundle.todos_open_count]);
+  // One string rather than assembled in JSX, so the meta is a single text node:
+  // one phrase to a screen reader, and one thing to assert on in a test.
+  const meta = members.length === 0 ? 'Empty so far' : `${members.length} idea${members.length === 1 ? '' : 's'}`;
 
   function startEditingName() {
     setNameDraft(bundle.title);
@@ -269,7 +251,10 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
     <Card
       ref={setNodeRef}
       bordered
-      padding={3}
+      /* 14px 16px from the design — off the 4px scale, so it rides the style
+         escape hatch Card spreads after its own padding rather than minting a
+         SpaceToken for one card. */
+      style={{ padding: '14px 16px' }}
       className={[styles.card, isOver ? styles.over : ''].filter(Boolean).join(' ')}
     >
       <div className={styles.header}>
@@ -281,7 +266,7 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
           <p className={styles.titleReading}>{bundle.title}</p>
         ) : editingName ? (
           <Input
-            aria-label="Bundle name"
+            aria-label="Plan name"
             autoFocus
             value={nameDraft}
             wrapperClassName={styles.titleInput}
@@ -316,16 +301,21 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
           </button>
         )}
 
+        {/* Right-aligned, muted: the design's header meta. It sits between the
+            name and the X so the X keeps the corner and stays last in the tab
+            order. */}
+        <span className={styles.meta}>{meta}</span>
+
         {/* Top right, after the name — last in the header and last in the
             card's tab order, so nothing has to be Tabbed past a delete to
-            reach the bundle. The label names the bundle because a rail of
-            these otherwise offers a column of identical "Remove" buttons to
-            anyone reading by label. */}
+            reach the plan. The label names the plan because a rail of these
+            otherwise offers a column of identical "Remove" buttons to anyone
+            reading by label. */}
         {canEdit && (
           <button
             type="button"
             className={styles.iconButton}
-            aria-label={`Remove bundle ${bundle.title}`}
+            aria-label={`Remove plan ${bundle.title}`}
             onClick={removeBundle}
           >
             <X size={16} strokeWidth={1.5} aria-hidden="true" />
@@ -333,15 +323,11 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
         )}
       </div>
 
-      <p className={styles.meta}>{meta}</p>
-
       {members.length === 0 ? (
-        /* An empty bundle still says it is empty for a viewer — but not by
-           naming two gestures they do not have. The sentence reports the state
-           instead of instructing. */
-        <p className={styles.emptyDrop}>
-          {canEdit ? 'Drag ideas here, or use "Add to bundle" on a row.' : 'Nothing in here yet.'}
-        </p>
+        /* An empty plan still says it is empty for a viewer — but without the
+           hint below, which names gestures they do not have. The sentence
+           reports the state instead of instructing. */
+        !canEdit && <p className={styles.emptyDrop}>Nothing in here yet.</p>
       ) : (
         <ul className={styles.memberList}>
           {members.map((member, index) => (
@@ -368,12 +354,10 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
               onDragEnd={canEdit ? () => setDraggedId(null) : undefined}
             >
               <span
-                className={[styles.dot, member.scheduled ? styles.dotScheduled : styles.dotWaiting].join(' ')}
+                className={[styles.dot, member.address ? styles.dotPlaced : styles.dotBare].join(' ')}
                 aria-hidden="true"
               />
-              <span className={styles.srOnly}>
-                {member.scheduled ? 'On the schedule:' : 'Not on the schedule yet:'}
-              </span>
+              <span className={styles.srOnly}>{member.address ? 'Has an address:' : 'No address yet:'}</span>
               <button type="button" className={styles.memberTitle} onClick={() => openMember(member)}>
                 {member.title}
               </button>
@@ -418,6 +402,13 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
           ))}
         </ul>
       )}
+
+      {/* The design's foot line. Plain text rather than a control: the card
+          has no add-member affordance of its own — ideas arrive by drag or
+          from the idea row's "Add to plan" — so a hint that named itself a
+          button would promise a click it cannot honour. Editors only; the
+          gestures it points at are theirs. */}
+      {canEdit && <p className={styles.hint}>+ add idea — or send one over from the list</p>}
     </Card>
   );
 }

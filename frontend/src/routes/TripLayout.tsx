@@ -122,12 +122,17 @@ export function TripLayout() {
     <TripRoleProvider role={role}>
       <div className={styles.wrap}>
         <div className={styles.head}>
-          <h1 className={styles.title}>{trip.title}</h1>
-          {dates ? (
-            <p className={styles.dates}>{dates}</p>
-          ) : (
-            <p className={styles.noDates}>No dates yet</p>
-          )}
+          {/* One baseline row: the title with its dates beside it, per the
+              slimmed header design. The dates are the title's annotation, not
+              a line of their own — sharing the baseline is what says so. */}
+          <div className={styles.headRow}>
+            <h1 className={styles.title}>{trip.title}</h1>
+            {dates ? (
+              <p className={styles.dates}>{dates}</p>
+            ) : (
+              <p className={styles.noDates}>No dates yet</p>
+            )}
+          </div>
 
           {role === 'viewer' && <p className={styles.viewerNote}>{viewerLine(ownerName)}</p>}
         </div>

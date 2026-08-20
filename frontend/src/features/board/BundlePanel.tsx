@@ -1,7 +1,6 @@
 import { useId, useMemo, useState } from 'react';
 import { QueryGate } from '../../components/QueryGate';
 import type { QueryGateSource } from '../../components/QueryGate';
-import { Button } from '../../design/components/core/Button';
 import { useCanEdit } from '../../auth/TripRoleContext';
 import { useRestoreEntry } from '../../api';
 import type { Entry } from '../../api/types';
@@ -32,37 +31,30 @@ export interface BundlePanelProps {
 }
 
 /**
- * The right-hand rail: bundles, and only bundles.
+ * The right-hand rail: plans (kind: 'bundle'), and only plans.
  *
- * The design mockup put a three-tab pill at the top of this rail — Bundles |
- * Map | This idea. The product owner scoped map and "this idea" out, so that
- * strip is deliberately absent rather than stubbed: a tab bar with one tab is
- * chrome that promises somewhere to go and then has nowhere. What the rail does
- * have now is a header of its own — the design's uppercase "Bundles" label, and
- * the one action the rail owns pinned to the far end of it. A region with a
- * hairline down its edge and no title read as an overflow of the idea list; a
- * named header is what makes it a place. It is a real `<h2>`, so `aria-label`
- * on the landmark would now be a second, competing name for the same region —
+ * The design mockup put a three-tab pill at the top of this rail — the product
+ * owner scoped map and "this idea" out, so that strip is deliberately absent
+ * rather than stubbed: a tab bar with one tab is chrome that promises
+ * somewhere to go and then has nowhere. What the rail does have is a header of
+ * its own — the design-system Label text "Plans". A region with a hairline
+ * down its edge and no title read as an overflow of the idea list; a named
+ * header is what makes it a place. It is a real `<h2>`, so `aria-label` on the
+ * landmark would now be a second, competing name for the same region —
  * `aria-labelledby` points at the visible heading instead, and the two can
  * never drift apart.
  *
- * "+ New bundle" is secondary, not primary: the primary act of this whole
- * screen is adding an idea, and the rail is where you organise the ideas you
- * already have. It is medium rather than the small size the header rhythm would
- * suggest, because it is now the ONLY route to a new bundle — the dashed drop
- * target that used to be the other one is gone, see NewBundleForm — and Button
- * is explicit that `small` sits under the 48px tap minimum and must never be
- * the only way to reach an action. Clicking it while the form is already open
- * does nothing, by design: the form is right there, and it took focus when it
- * arrived.
+ * "+ New plan" sits directly under the label, full width, per the approved
+ * mockup: it is the ONLY route to a new plan — the dashed drop target that
+ * used to be the other one is gone, see NewBundleForm. Clicking it swaps it in
+ * place for the naming input (NewBundleForm), which takes focus on mount, so
+ * the swap and being ready to type are the same event; Escape puts the button
+ * back.
  *
- * Order is the reading order of the job: what this rail is, what a bundle IS,
- * then the ones you have, then the ones you set aside. Starting a bundle is no
- * longer a step in that sequence — it is an action in the header, and the row
- * it opens lands at the TOP of the list, where the bundle it creates will also
- * appear. Anything you just made should be the first thing you see; the list is
- * sorted newest-first here rather than in the API, because `/entries` orders by
- * id for every kind on the board and ideas are deliberately oldest-first.
+ * The new plan lands at the TOP of the list, where the input that made it sat.
+ * Anything you just made should be the first thing you see; the list is sorted
+ * newest-first here rather than in the API, because `/entries` orders by id
+ * for every kind on the board and ideas are deliberately oldest-first.
  *
  * The set-aside disclosure stays at the foot and now carries more weight than
  * it did: removing a bundle from a card archives it, so this disclosure is the
@@ -103,34 +95,31 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, query, 
   return (
     <aside className={styles.panel} aria-labelledby={headingId}>
       <h2 id={headingId} className={styles.heading}>
-        Bundles
+        Plans
       </h2>
 
-      <p className={styles.intro}>
-        A bundle is a group of things that go well together. Bundles can be used to form your itinerary.
-      </p>
+      {/* The rail keeps its name and every plan in it for a viewer — this is
+          where a trip's thinking is grouped, and reading it is the point. Only
+          the one action the rail owns goes.
 
-      {/* The rail keeps its name, its intro and every bundle in it for a
-          viewer — this is where a trip's thinking is grouped, and reading it is
-          the point. Only the one action the header owns goes. */}
-      {canEdit && (
-        <div className={styles.cta}>
-          <Button variant="secondary" size="small" onClick={() => setNaming(true)}>
-            + New bundle
-          </Button>
-        </div>
-      )}
+          The button and the naming input trade the same slot, outside the gate:
+          naming a new plan needs nothing from the list below it, and taking the
+          way forward away because a read failed would turn one problem into
+          two. */}
+      {canEdit &&
+        (naming ? (
+          <NewBundleForm tripId={tripId} onToast={onToast} onClose={() => setNaming(false)} />
+        ) : (
+          <button type="button" className={styles.newPlan} onClick={() => setNaming(true)}>
+            + New plan
+          </button>
+        ))}
 
       <div className={styles.stack}>
-        {/* The form stays outside the gate: naming a new bundle needs nothing
-            from the list below it, and taking the way forward away because a
-            read failed would turn one problem into two. */}
-        {naming && <NewBundleForm tripId={tripId} onToast={onToast} onClose={() => setNaming(false)} />}
-
         <QueryGate
           query={query}
-          loadingLabel="Finding your bundles"
-          errorMessage="Your bundles didn't load. Nothing is lost — every group you've made is still here."
+          loadingLabel="Finding your plans"
+          errorMessage="Your plans didn't load. Nothing is lost — every group you've made is still here."
         >
           {newestFirst.length === 0 ? (
             // An editor's empty rail is a prompt: the header's action is right
@@ -140,8 +129,8 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, query, 
             // alone. Same treatment as the schedule's empty day.
             <p className={styles.empty}>
               {canEdit
-                ? 'No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.'
-                : 'No bundles on this trip yet.'}
+                ? 'No plans yet. Start one from the top of this rail — an empty plan is a fine place to start.'
+                : 'No plans on this trip yet.'}
             </p>
           ) : (
             newestFirst.map((bundle) => (
