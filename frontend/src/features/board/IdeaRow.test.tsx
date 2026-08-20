@@ -138,7 +138,7 @@ async function expandRow() {
   return user;
 }
 
-/** Opens the ⋯ menu — which lives in the open row's actions row now. */
+/** Opens the ⋯ menu — which sits at the open row's top right now. */
 async function openActions() {
   const user = await expandRow();
   await user.click(screen.getByRole('button', { name: 'Actions for Fushimi Inari' }));
@@ -315,12 +315,20 @@ describe('IdeaRow — opening the row', () => {
     expect(screen.getByText('Go before eight.')).toBeInTheDocument();
   });
 
-  it('shows the address and the category, which left the closed row', async () => {
+  it('shows the address once it is open, which left the closed row', async () => {
     renderRow({ entry: makeEntry({ address: '68 Fukakusa Yabunouchicho' }) });
     await expandRow();
 
     expect(screen.getByText('68 Fukakusa Yabunouchicho')).toBeInTheDocument();
-    expect(screen.getByText('Place')).toBeInTheDocument();
+  });
+
+  // The chip qualifies the name, so it sits in the title line rather than
+  // being filed lower down in the panel with the other facts.
+  it('puts the category beside the title once it is open', async () => {
+    renderRow();
+    await expandRow();
+
+    expect(rowToggle()).toHaveTextContent('Place');
   });
 
   // The panel is a sibling of the toggle, not a child of it. If that ever
@@ -573,8 +581,8 @@ describe('IdeaRow — the interactions that must survive', () => {
   });
 });
 
-// The ⋯ menu moved into the open row's actions row: every verb the row owns
-// is inside the row, and the closed one stays a thing you read, drag or pick.
+// The ⋯ menu sits at the open row's top right: every verb the row owns
+// arrives with the panel, and the closed row stays a thing you read, drag or pick.
 describe('IdeaRow — the ⋯ actions menu', () => {
   it('keeps every verb off the closed row', () => {
     renderRow();
@@ -588,6 +596,17 @@ describe('IdeaRow — the ⋯ actions menu', () => {
     await expandRow();
     const trigger = screen.getByRole('button', { name: 'Actions for Fushimi Inari' });
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  // Top right means the header, not the panel: the trigger lives outside the
+  // element the disclosure controls, up with the title and the pills.
+  it('keeps the ⋯ at the top right, outside the panel it acts on', async () => {
+    renderRow();
+    await expandRow();
+
+    const trigger = screen.getByRole('button', { name: 'Actions for Fushimi Inari' });
+    const panelId = rowToggle().getAttribute('aria-controls') as string;
+    expect(trigger.closest(`#${CSS.escape(panelId)}`)).toBeNull();
   });
 
   // "Move to Set aside", not "Set aside": the menu is too tight for a line of

@@ -278,7 +278,9 @@
 .panel {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  /* Children stretch to the card's full width — the vote bar's tally and the
+     to-do row's Add button belong to the right edge, not to where their
+     content happens to stop. */
   gap: var(--space-4);
   margin-top: var(--space-3);
   padding-top: var(--space-3);
@@ -294,7 +296,6 @@
   line-height: var(--text-small-line);
   color: var(--text-strong);
   max-width: 60ch;
-  align-self: stretch;
 }
 
 /* Notes are the aside to the description's pitch, so they read quieter. */
@@ -311,8 +312,8 @@
   color: var(--text-body);
 }
 
-/* The category, as a chip now that it is inside the panel rather than a slot
-   beside the title. The word carries it; the hue (below) is decoration. */
+/* The category, as a chip beside the open row's title — it qualifies the name,
+   so it stays with it. The word carries it; the hue (below) is decoration. */
 .categoryChip {
   font-size: 13px;
   font-weight: var(--weight-bold);

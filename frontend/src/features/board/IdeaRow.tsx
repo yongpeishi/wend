@@ -72,7 +72,7 @@ export interface IdeaRowProps {
 }
 
 /**
- * Category colour — decoration on the expanded panel's category chip. The
+ * Category colour — decoration on the open row's category chip. The
  * mapping is lifted verbatim from the design prototype's `CAT_COLOR` table,
  * which reaches for existing brand tokens rather than new hexes — so nothing
  * is invented here either. Two categories deliberately share a colour (place
@@ -123,9 +123,9 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
  *     the plan list inside the ⋯ menu — every drag in Wend has one.
  *   - Multi-select, which is what `BulkBar` acts on — as a mode, taking the
  *     left slot. See the comment on the slot.
- *   - Set aside and Edit, in the ⋯ menu, which now sits in the panel's actions
- *     row: every verb the row owns is inside the row once it is open, and the
- *     closed row stays a thing you read, drag, or pick.
+ *   - Set aside and Edit, in the ⋯ menu, which sits at the open row's top
+ *     right: every verb the row owns arrives with the panel, and the closed
+ *     row stays a thing you read, drag, or pick.
  *   - The plan chips, twice — behind the panel's "Add to plan" button and in
  *     the ⋯ menu. Both were asked for; they toggle the same links through the
  *     same mutations.
@@ -329,6 +329,15 @@ export function IdeaRow({
         >
           <span className={styles.titleLine}>
             <span className={styles.title}>{entry.title}</span>
+            {/* The category stays beside the title while the row is open — it
+                qualifies the name, so it reads as part of it rather than as a
+                fact filed lower down. The closed row still says nothing
+                descriptive, so the chip arrives with the panel. */}
+            {expanded && entry.category && (
+              <span className={[styles.categoryChip, CATEGORY_CLASS[entry.category]].join(' ')}>
+                {CATEGORY_LABELS[entry.category]}
+              </span>
+            )}
             {/* Jade writes, it never fills: "on a day" is a confirmation, so it
                 takes the feedback green as words, not as a box. */}
             {entry.scheduled && <span className={styles.onDay}>✓ on a day</span>}
@@ -362,6 +371,21 @@ export function IdeaRow({
             {insideCount} inside ›
           </button>
         )}
+
+        {/* The ⋯ menu holds the open row's verbs, at the card's top right —
+            the corner every card in this product keeps its overflow in. It is
+            a sibling of the disclosure, so opening it never also closes the
+            row, and its popup is already right-anchored. Arrives with the
+            panel: the closed row stays a thing you read, drag, or pick. */}
+        {expanded && canEdit && (
+          <IdeaActionsMenu
+            entry={entry}
+            bundles={bundles}
+            members={members}
+            onEdit={edit}
+            onToast={onToast}
+          />
+        )}
       </div>
 
       {/*
@@ -383,12 +407,6 @@ export function IdeaRow({
 
           {/* Data tracking, because an address is read character by character. */}
           {entry.address && <p className={styles.address}>{entry.address}</p>}
-
-          {entry.category && (
-            <span className={[styles.categoryChip, CATEGORY_CLASS[entry.category]].join(' ')}>
-              {CATEGORY_LABELS[entry.category]}
-            </span>
-          )}
 
           <VoteBar
             myVote={entry.my_vote}
@@ -456,14 +474,6 @@ export function IdeaRow({
                   Open {insideCount} inside
                 </Button>
               )}
-
-              <IdeaActionsMenu
-                entry={entry}
-                bundles={bundles}
-                members={members}
-                onEdit={edit}
-                onToast={onToast}
-              />
             </div>
           ) : (
             bundleNames.length > 0 && (
