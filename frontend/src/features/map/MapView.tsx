@@ -5,13 +5,13 @@ import { MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap, useMapEven
 import 'leaflet/dist/leaflet.css';
 import { boundsTupleForPoints } from './bounds';
 import { cellSizeForZoom, clusterPoints, isMultiPointCluster } from './clustering';
+import { fitAndReport, readBounds } from './fit';
 import { chipIcon, clusterIcon, dotIcon, labelIcon, pendingIcon, pinIcon } from './markerIcon';
 import type { Bounds, Cluster, ClusterPoint, MapPin } from './types';
 import styles from './MapView.module.css';
 
 const WORLD_CENTER: [number, number] = [20, 0];
 const WORLD_ZOOM = 2;
-const FIT_PADDING: [number, number] = [32, 32];
 /** Not an entry id, and cannot be mistaken for one: only the fit ever sees it. */
 const YOU_ARE_HERE_ID = -1;
 
@@ -54,9 +54,18 @@ export interface MapViewProps {
   'aria-label'?: string;
 }
 
-function FitToPins({ pins, enabled }: { pins: ClusterPoint[]; enabled: boolean }) {
+function FitToPins({
+  pins,
+  enabled,
+  onBoundsChange,
+}: {
+  pins: ClusterPoint[];
+  enabled: boolean;
+  onBoundsChange?: (bounds: Bounds) => void;
+}) {
   const map = useMap();
   const fitted = useRef(false);
+
   const idsKey = pins
     .map((p) => p.id)
     .sort((a, b) => a - b)
@@ -64,11 +73,14 @@ function FitToPins({ pins, enabled }: { pins: ClusterPoint[]; enabled: boolean }
 
   useEffect(() => {
     if (!enabled || fitted.current || pins.length === 0) return;
-    const bounds = boundsTupleForPoints(pins);
-    if (!bounds) return;
-    map.fitBounds(bounds, { padding: FIT_PADDING });
+    // Through the fit-and-report seam, not a bare fitBounds: on a cold mount
+    // this effect beats both the ResizeObserver's invalidateSize and
+    // ViewportBridge's event listeners, so a silent fit here would leave the
+    // parent holding bounds nothing ever corrects — see fit.ts.
+    fitAndReport(map, pins, onBoundsChange);
     fitted.current = true;
-    // idsKey is the real dependency (identity-stable across re-renders of the same set); map/enabled are stable too.
+    // idsKey is the real dependency (identity-stable across re-renders of the same set);
+    // map/enabled are stable too, and onBoundsChange is a state setter at every call site.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idsKey, enabled]);
 
@@ -88,17 +100,27 @@ function FitToPins({ pins, enabled }: { pins: ClusterPoint[]; enabled: boolean }
  * re-run of this effect (StrictMode, or a new `pins` array) sees no change and
  * does nothing. Only an actually different number moves the map.
  */
-function RefitOnRequest({ pins, fitRequest }: { pins: ClusterPoint[]; fitRequest: number | undefined }) {
+function RefitOnRequest({
+  pins,
+  fitRequest,
+  onBoundsChange,
+}: {
+  pins: ClusterPoint[];
+  fitRequest: number | undefined;
+  onBoundsChange?: (bounds: Bounds) => void;
+}) {
   const map = useMap();
   const handled = useRef(fitRequest);
 
   useEffect(() => {
     if (fitRequest === handled.current) return;
     handled.current = fitRequest;
-    const bounds = boundsTupleForPoints(pins);
-    if (!bounds) return;
-    map.fitBounds(bounds, { padding: FIT_PADDING });
-  }, [fitRequest, pins, map]);
+    // The seam, so "Widen" always leaves correct bounds behind — even when the
+    // fit resolves to the view the map is already on and no moveend fires.
+    // That silent case is exactly how a Widen used to look broken: pressed
+    // against stale bounds, it moved nothing and corrected nothing.
+    fitAndReport(map, pins, onBoundsChange);
+  }, [fitRequest, pins, map, onBoundsChange]);
 
   return null;
 }
@@ -154,16 +176,28 @@ function ViewportBridge({
       onZoomChange(map.getZoom());
       reportBounds();
     },
+    // invalidateSize announces itself here, not through moveend: when the
+    // container goes from unmeasured to its real size the view need not move
+    // at all, and without this the parent would keep the bounds of a map
+    // Leaflet thought was a different shape.
+    resize() {
+      reportBounds();
+    },
   });
 
   function reportBounds() {
-    const b = map.getBounds();
-    onBoundsChange?.({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() });
+    onBoundsChange?.(readBounds(map));
   }
 
   useEffect(() => {
-    onZoomChange(map.getZoom());
-    reportBounds();
+    // Behind whenReady rather than read immediately: the starting viewport is
+    // only worth reporting once Leaflet considers the view set. It is still
+    // just the starting value — the fit and the resize that follow on a cold
+    // mount each re-report through their own paths above and in fit.ts.
+    map.whenReady(() => {
+      onZoomChange(map.getZoom());
+      reportBounds();
+    });
     // Report the starting viewport once on mount; every change after that comes through the map events above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -248,8 +282,12 @@ function ClusterMarker({ cluster, onSelectCluster }: { cluster: Cluster<MapPin>;
  * Not covered by an automated render test: jsdom has no real layout engine,
  * so a mounted <MapContainer> can't be asserted against meaningfully here.
  * The logic it depends on (clustering, bounds, pin state) is unit-tested in
- * this same folder; route tests mock this component and exercise the wiring
- * (selection, filtering, the "take these somewhere" flow) through its props.
+ * this same folder — including the fit-and-report seam in fit.ts, which is
+ * exercised against a stub map because the cold-mount defect it closes
+ * (bounds seeded from an unsized container, then never corrected because the
+ * fit fired no moveend) is exactly the kind jsdom cannot reproduce. Route
+ * tests mock this component and exercise the wiring (selection, filtering,
+ * the "take these somewhere" flow) through its props.
  */
 export function MapView({
   pins,
@@ -289,8 +327,8 @@ export function MapView({
             handles keyboard focus and disables itself at min/max zoom; a
             hand-rolled pair of buttons would have to re-earn both. */}
         <ZoomControl position="topright" />
-        <FitToPins pins={fitPoints} enabled={fitToPins} />
-        <RefitOnRequest pins={fitPoints} fitRequest={fitRequest} />
+        <FitToPins pins={fitPoints} enabled={fitToPins} onBoundsChange={onBoundsChange} />
+        <RefitOnRequest pins={fitPoints} fitRequest={fitRequest} onBoundsChange={onBoundsChange} />
         <ResizeBridge />
         <ViewportBridge onMapClick={onMapClick} onBoundsChange={onBoundsChange} onZoomChange={setZoom} />
 

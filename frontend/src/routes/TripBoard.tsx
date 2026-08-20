@@ -29,6 +29,7 @@ import { SetAsideSection } from '../features/board/SetAsideSection';
 import { useBundleMembers } from '../features/board/useBundleMembers';
 import { useLinkMutations } from '../features/board/useLinkMutations';
 import type { BundleDropData } from '../features/board/bundleDrop';
+import { BOARD_DRAG_ANNOUNCEMENTS, BOARD_DRAG_INSTRUCTIONS } from '../features/board/dragAnnouncements';
 import { EMPTY_FILTERS, applyFilters, groupEntries } from '../features/board/filters';
 import type { GroupMode, IdeaFilters } from '../features/board/filters';
 import { ideaChildrenOf, otherParentTitles, rootIdeas, subtreeCount } from '../features/board/tree';
@@ -432,7 +433,15 @@ export function TripBoard() {
   }
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDrag(null)}>
+    <DndContext
+      sensors={sensors}
+      // The board's own words for the live region, in place of dnd-kit's
+      // "Draggable item idea-1022…" defaults — see dragAnnouncements.ts.
+      accessibility={{ announcements: BOARD_DRAG_ANNOUNCEMENTS, screenReaderInstructions: BOARD_DRAG_INSTRUCTIONS }}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveDrag(null)}
+    >
       <div className={styles.board}>
         {/* Rendered only while open, never merely hidden. See toggleMap. */}
         {mapOpen && (

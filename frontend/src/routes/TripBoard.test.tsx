@@ -772,6 +772,64 @@ describe('TripBoard — when the load fails', () => {
   });
 });
 
+/** What a screen reader is being told about the drag, right now. */
+function announcement(): string {
+  return document.querySelector('[role="status"][aria-live="assertive"]')?.textContent ?? '';
+}
+
+/**
+ * The live region speaks the board's words, not dnd-kit's — whose defaults
+ * announce "Draggable item idea-1022 was dropped over droppable area
+ * bundle-1030", internal ids nobody outside the codebase should ever hear.
+ *
+ * Only the sentences a drag can reach in jsdom are asserted through the live
+ * region: with no layout engine every droppable measures 0×0, so the keyboard
+ * sensor can never carry the idea OVER a plan here. The over-a-plan and
+ * added-to-a-plan sentences are unit-tested in dragAnnouncements.test.ts
+ * instead, and the wiring proven here covers them too — one `accessibility`
+ * prop carries all five.
+ */
+describe('TripBoard — what a drag says out loud', () => {
+  it('announces the lift and the cancel by title, in plan vocabulary', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+
+    const grip = screen.getByRole('button', { name: /^Drag Nanzen-ji/ });
+    grip.focus();
+    await user.keyboard('[Space]');
+
+    await waitFor(() => expect(announcement()).toBe('Picked up Nanzen-ji.'));
+
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(announcement()).toBe('Moving Nanzen-ji was cancelled.'));
+  });
+
+  it('says a drop that landed on nothing changed nothing', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+
+    const grip = screen.getByRole('button', { name: /^Drag Nanzen-ji/ });
+    grip.focus();
+    await user.keyboard('[Space]');
+    await waitFor(() => expect(announcement()).toBe('Picked up Nanzen-ji.'));
+
+    // Dropped without moving: nothing is under it, so over is null.
+    await user.keyboard('[Space]');
+
+    await waitFor(() => expect(announcement()).toBe('Nanzen-ji was dropped. Nothing changed.'));
+  });
+
+  it('hands the keyboard path its instructions in the same words', async () => {
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+
+    expect(screen.getByText(/Press space to lift the idea/)).toBeInTheDocument();
+  });
+});
+
 /**
  * The card that follows the cursor while an idea is being dragged.
  *
