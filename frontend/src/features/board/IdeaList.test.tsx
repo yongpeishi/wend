@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -49,11 +49,18 @@ const ENTRIES = [
   makeEntry({ id: 4, title: 'Somewhere unplaced', category: 'other' }),
 ];
 
-function renderList(
-  groupMode: GroupMode,
-  entries = ENTRIES,
-  extra: { selectMode?: boolean; selectedIds?: number[]; canEdit?: boolean } = {},
-) {
+interface ListExtras {
+  selectMode?: boolean;
+  selectedIds?: number[];
+  canEdit?: boolean;
+  insideCounts?: ReadonlyMap<number, number>;
+  otherParents?: ReadonlyMap<number, string[]>;
+  onDrill?: (id: number) => void;
+  expandedId?: number | null;
+  onToggleExpand?: (id: number) => void;
+}
+
+function renderList(groupMode: GroupMode, entries = ENTRIES, extra: ListExtras = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -69,6 +76,11 @@ function renderList(
               selectedIds={extra.selectedIds ?? []}
               onToggleSelect={() => {}}
               canEdit={extra.canEdit}
+              insideCounts={extra.insideCounts ?? new Map()}
+              otherParents={extra.otherParents ?? new Map()}
+              onDrill={extra.onDrill ?? (() => {})}
+              expandedId={extra.expandedId ?? null}
+              onToggleExpand={extra.onToggleExpand ?? (() => {})}
             />
           </DndContext>
         </ToastProvider>
@@ -199,6 +211,65 @@ describe('IdeaList', () => {
   it('leaves the rows their affordances by default, so nothing outside a trip changes', () => {
     renderList('none');
     expect(screen.getAllByRole('button', { name: /^Drag / })).toHaveLength(ENTRIES.length);
-    expect(screen.getAllByRole('button', { name: /^Actions for / })).toHaveLength(ENTRIES.length);
+  });
+
+  /**
+   * The per-entry maps and the drill/expand pair are the board's, and the list
+   * only threads them — but the threading is exactly what can silently break,
+   * so each leg is pinned at the rows.
+   */
+  describe('threading the board state to the rows', () => {
+    it('gives each row its own inside count, and no pill where the map is silent', () => {
+      renderList('none', ENTRIES, { insideCounts: new Map([[1, 3]]) });
+
+      expect(screen.getByRole('button', { name: '3 inside ›' })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: /inside ›$/ })).toHaveLength(1);
+    });
+
+    it('gives each row its own "also in" names', () => {
+      renderList('none', ENTRIES, { otherParents: new Map([[2, ['Food crawl']]]) });
+
+      expect(screen.getByText('also in: Food crawl')).toBeInTheDocument();
+      expect(screen.getAllByText(/^also in:/)).toHaveLength(1);
+    });
+
+    it('opens exactly the row the board names, in grouped modes too', () => {
+      renderList('category', ENTRIES, { expandedId: 3 });
+
+      expect(screen.getByRole('button', { name: /^Kinkaku-ji/ })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('opens nothing when the board names nothing', () => {
+      renderList('none', ENTRIES, { expandedId: null });
+      for (const entry of ENTRIES) {
+        expect(screen.getByRole('button', { name: new RegExp(`^${entry.title}`) })).toHaveAttribute(
+          'aria-expanded',
+          'false',
+        );
+      }
+    });
+
+    it('reports which row was clicked, and decides nothing itself', async () => {
+      const user = userEvent.setup();
+      const onToggleExpand = vi.fn();
+      renderList('none', ENTRIES, { onToggleExpand });
+
+      await user.click(screen.getByRole('button', { name: /^Nishiki Market/ }));
+
+      expect(onToggleExpand).toHaveBeenCalledWith(2);
+      expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('passes a drill straight up with the row it came from', async () => {
+      const user = userEvent.setup();
+      const onDrill = vi.fn();
+      renderList('none', ENTRIES, { insideCounts: new Map([[4, 2]]), onDrill });
+
+      await user.click(screen.getByRole('button', { name: '2 inside ›' }));
+
+      expect(onDrill).toHaveBeenCalledWith(4);
+    });
   });
 });

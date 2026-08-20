@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -44,8 +45,7 @@ function makeEntry(overrides: Partial<Entry>): Entry {
   };
 }
 
-const BUNDLE = makeEntry({ id: 90, kind: 'bundle', title: 'Tuesday south', category: null, location_name: null });
-const OTHER_BUNDLE = makeEntry({ id: 91, kind: 'bundle', title: 'Travel day', category: null, location_name: null });
+const PLAN = makeEntry({ id: 90, kind: 'bundle', title: 'Tuesday south', category: null, location_name: null });
 
 interface RowOptions {
   entry?: Entry;
@@ -57,6 +57,46 @@ interface RowOptions {
   onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
   canEdit?: boolean;
+  insideCount?: number;
+  otherParents?: string[];
+  onDrill?: (id: number) => void;
+  /** Pins the CONTROLLED expanded prop. With `onToggleExpand`, turns the
+      harness's stand-in board off entirely. */
+  expanded?: boolean;
+  onToggleExpand?: (id: number) => void;
+}
+
+/**
+ * Expansion is controlled from the board now, so the row alone cannot open on
+ * a click. This harness is the two lines of board the row needs to be usable
+ * in a test: it holds `expandedId` and flips it on toggle — unless the test
+ * pins `expanded`/`onToggleExpand` itself to prove the row obeys rather than
+ * remembers.
+ */
+function HarnessRow({ options }: { options: RowOptions }) {
+  const entry = options.entry ?? makeEntry({});
+  const [openId, setOpenId] = useState<number | null>(options.expanded ? entry.id : null);
+  const controlled = options.expanded !== undefined || options.onToggleExpand !== undefined;
+  return (
+    <IdeaRow
+      entry={entry}
+      bundles={options.bundles ?? []}
+      members={options.members ?? new Map()}
+      selectMode={options.selectMode ?? false}
+      selected={options.selected ?? false}
+      onToggleSelect={options.onToggleSelect ?? (() => {})}
+      onEdit={options.onEdit}
+      onToast={options.onToast}
+      canEdit={options.canEdit}
+      insideCount={options.insideCount ?? 0}
+      otherParents={options.otherParents ?? []}
+      onDrill={options.onDrill ?? (() => {})}
+      expanded={controlled ? (options.expanded ?? false) : openId === entry.id}
+      onToggleExpand={
+        options.onToggleExpand ?? ((id) => setOpenId((current) => (current === id ? null : id)))
+      }
+    />
+  );
 }
 
 function rowTree(options: RowOptions, queryClient: QueryClient) {
@@ -66,22 +106,7 @@ function rowTree(options: RowOptions, queryClient: QueryClient) {
         <ToastProvider>
           <DndContext>
             <Routes>
-              <Route
-                path="/board"
-                element={
-                  <IdeaRow
-                    entry={options.entry ?? makeEntry({})}
-                    bundles={options.bundles ?? []}
-                    members={options.members ?? new Map()}
-                    selectMode={options.selectMode ?? false}
-                    selected={options.selected ?? false}
-                    onToggleSelect={options.onToggleSelect ?? (() => {})}
-                    onEdit={options.onEdit}
-                    onToast={options.onToast}
-                    canEdit={options.canEdit}
-                  />
-                }
-              />
+              <Route path="/board" element={<HarnessRow options={options} />} />
               <Route path="/entries/:id" element={<p>Entry detail screen</p>} />
             </Routes>
           </DndContext>
@@ -101,14 +126,7 @@ function renderRow(options: RowOptions = {}) {
   };
 }
 
-/** Opens the row's ⋯ menu and hands back the user-event session. */
-async function openActions() {
-  const user = userEvent.setup();
-  await user.click(screen.getByRole('button', { name: 'Actions for Fushimi Inari' }));
-  return user;
-}
-
-/** The row's own disclosure button — title, score and chevron in one target. */
+/** The row's own disclosure button — the title and its words in one target. */
 function rowToggle() {
   return screen.getByRole('button', { name: /^Fushimi Inari/ });
 }
@@ -120,65 +138,133 @@ async function expandRow() {
   return user;
 }
 
-describe('IdeaRow — what the board shows', () => {
-  it('shows the title, its category and the meta line', () => {
+/** Opens the ⋯ menu — which lives in the open row's actions row now. */
+async function openActions() {
+  const user = await expandRow();
+  await user.click(screen.getByRole('button', { name: 'Actions for Fushimi Inari' }));
+  return user;
+}
+
+describe('IdeaRow — what the closed row says', () => {
+  it('shows the title and nothing descriptive — the pitch lives inside now', () => {
     renderRow();
-    const row = screen.getByRole('button', { name: /^Fushimi Inari/ });
+    const row = rowToggle();
     expect(row).toHaveTextContent('Fushimi Inari');
-    expect(row).toHaveTextContent('Place');
-    expect(row).toHaveTextContent('Kyoto south · 2 hr');
+    // The old meta line (place · duration) and the category word moved into
+    // the panel; the closed row is title, tick and pills only.
+    expect(row.textContent).not.toContain('2 hr');
+    expect(row.textContent).not.toContain('Kyoto south');
+    expect(row.textContent).not.toContain('Place');
   });
 
-  it('keeps the category out of the meta line, since it has its own slot', () => {
+  it('says "✓ on a day" once the idea is scheduled, and nothing before', () => {
+    const view = renderRow();
+    expect(screen.queryByText('✓ on a day')).not.toBeInTheDocument();
+
+    view.update({ entry: makeEntry({ scheduled: true }) });
+    expect(screen.getByText('✓ on a day')).toBeInTheDocument();
+  });
+
+  it('carries the tally as a "▲ N" pill when anyone is keen', () => {
+    renderRow({ entry: makeEntry({ vote_tally: { total: 5, count: 3, average: 1.67 } }) });
+    expect(screen.getByText('▲ 5')).toBeInTheDocument();
+  });
+
+  it('spells the scale out for anyone who wonders what the number is', () => {
     renderRow();
-    expect(screen.getByRole('button', { name: /^Fushimi Inari/ }).textContent).not.toMatch(/Place · /);
+    expect(screen.getByTitle("Everyone's votes added up, from +2 to -2 each")).toBeInTheDocument();
   });
 
-  it('spells out open todos rather than leaving the dot to carry it alone', () => {
-    renderRow({ entry: makeEntry({ todos_open_count: 2 }) });
-    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveTextContent('2 open');
+  it('draws no scoreboard on an idea nobody has judged — zero or worse', () => {
+    const view = renderRow({ entry: makeEntry({ vote_tally: { total: 0, count: 0, average: 0 } }) });
+    expect(screen.queryByText(/^▲/)).not.toBeInTheDocument();
+
+    view.update({ entry: makeEntry({ vote_tally: { total: -2, count: 2, average: -1 } }) });
+    expect(screen.queryByText(/^▲/)).not.toBeInTheDocument();
   });
 
-  it('names the bundles the idea is already in', () => {
-    renderRow({ bundles: [BUNDLE], members: new Map([[90, [makeEntry({})]]]) });
-    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveTextContent('in Tuesday south');
+  it('names the other levels the idea also lives in, as one muted chip', () => {
+    renderRow({ otherParents: ['Kyoto day', 'Food crawl'] });
+    expect(screen.getByText('also in: Kyoto day · Food crawl')).toBeInTheDocument();
   });
 
-  it('lists several bundles on one line, comma-separated, in one lowercase sentence', () => {
-    renderRow({
-      bundles: [BUNDLE, OTHER_BUNDLE],
-      members: new Map([
-        [90, [makeEntry({})]],
-        [91, [makeEntry({})]],
-      ]),
-    });
-    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveTextContent(
-      'in Tuesday south, Travel day',
-    );
-  });
-
-  it('says nothing about bundles when the idea is in none', () => {
-    renderRow({ bundles: [BUNDLE], members: new Map([[90, []]]) });
-    expect(screen.getByRole('button', { name: /^Fushimi Inari/ }).textContent).not.toMatch(/^in /m);
-  });
-
-  it('names a bundle the moment the idea is added to it', () => {
-    const view = renderRow({ bundles: [BUNDLE], members: new Map([[90, []]]) });
-    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).not.toHaveTextContent('in Tuesday south');
-
-    view.update({ bundles: [BUNDLE], members: new Map([[90, [makeEntry({})]]]) });
-
-    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveTextContent('in Tuesday south');
+  it('says nothing about elsewhere when there is no elsewhere', () => {
+    renderRow({ otherParents: [] });
+    expect(screen.queryByText(/^also in:/)).not.toBeInTheDocument();
   });
 });
 
 /**
- * Clicking a row used to throw the edit drawer over the board. It now opens the
- * row itself, which is the smaller and reversible thing to do to someone who
- * clicked a line of text — and editing keeps its named button in the ⋯ menu.
+ * "N inside ›" is the one click on the closed row that goes somewhere else —
+ * down into the idea's own list — so it is its own button, outside the
+ * disclosure, and it must never also unfold the row it is leaving.
+ */
+describe('IdeaRow — drilling in', () => {
+  it('offers the way down as a pill once anything lives inside', () => {
+    renderRow({ insideCount: 3 });
+    expect(screen.getByRole('button', { name: '3 inside ›' })).toBeInTheDocument();
+  });
+
+  it('offers no way down from a leaf', () => {
+    renderRow({ insideCount: 0 });
+    expect(screen.queryByRole('button', { name: /inside/ })).not.toBeInTheDocument();
+  });
+
+  it('drills on click, and does not open the row it is leaving', async () => {
+    const user = userEvent.setup();
+    const onDrill = vi.fn();
+    const onToggleExpand = vi.fn();
+    renderRow({ insideCount: 3, onDrill, onToggleExpand });
+
+    await user.click(screen.getByRole('button', { name: '3 inside ›' }));
+
+    expect(onDrill).toHaveBeenCalledWith(42);
+    expect(onToggleExpand).not.toHaveBeenCalled();
+  });
+
+  it('offers the same descent from inside the open row', async () => {
+    const onDrill = vi.fn();
+    renderRow({ insideCount: 3, onDrill });
+    const user = await expandRow();
+
+    await user.click(screen.getByRole('button', { name: 'Open 3 inside' }));
+
+    expect(onDrill).toHaveBeenCalledWith(42);
+  });
+
+  it('keeps the panel free of a descent that leads nowhere', async () => {
+    renderRow({ insideCount: 0 });
+    await expandRow();
+
+    expect(screen.queryByRole('button', { name: /^Open .* inside$/ })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Clicking a row used to throw the edit drawer over the board, then to flip
+ * local state. It now ASKS — expansion is controlled, because the board opens
+ * one row at a time and closes it when the level changes.
  */
 describe('IdeaRow — opening the row', () => {
-  it('opens on a click and closes on the next one', async () => {
+  it('reports the click and obeys the prop, rather than remembering', async () => {
+    const user = userEvent.setup();
+    const onToggleExpand = vi.fn();
+    renderRow({ expanded: false, onToggleExpand });
+
+    await user.click(rowToggle());
+
+    expect(onToggleExpand).toHaveBeenCalledWith(42);
+    // The prop still says closed, so the row stays closed — no shadow state.
+    expect(rowToggle()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('is open exactly when the board says so', () => {
+    renderRow({ expanded: true });
+    expect(rowToggle()).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('To-do')).toBeInTheDocument();
+  });
+
+  it('opens on a click and closes on the next one, under a board that listens', async () => {
     renderRow();
     const user = await expandRow();
 
@@ -219,16 +305,6 @@ describe('IdeaRow — opening the row', () => {
     expect(rowToggle()).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('still edits from the ⋯ menu, which is the only way in now', async () => {
-    const onEdit = vi.fn();
-    renderRow({ onEdit });
-    const user = await openActions();
-
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
-
-    expect(onEdit).toHaveBeenCalledWith(42);
-  });
-
   it('shows the idea’s own words once it is open, description and notes both', async () => {
     renderRow({
       entry: makeEntry({ description: 'Thousand torii gates up the hill.', notes: 'Go before eight.' }),
@@ -237,6 +313,14 @@ describe('IdeaRow — opening the row', () => {
 
     expect(screen.getByText('Thousand torii gates up the hill.')).toBeInTheDocument();
     expect(screen.getByText('Go before eight.')).toBeInTheDocument();
+  });
+
+  it('shows the address and the category, which left the closed row', async () => {
+    renderRow({ entry: makeEntry({ address: '68 Fukakusa Yabunouchicho' }) });
+    await expandRow();
+
+    expect(screen.getByText('68 Fukakusa Yabunouchicho')).toBeInTheDocument();
+    expect(screen.getByText('Place')).toBeInTheDocument();
   });
 
   // The panel is a sibling of the toggle, not a child of it. If that ever
@@ -248,42 +332,6 @@ describe('IdeaRow — opening the row', () => {
     await user.click(screen.getByRole('radio', { name: 'Keen' }));
 
     expect(rowToggle()).toHaveAttribute('aria-expanded', 'true');
-  });
-});
-
-/**
- * The tally is a fact about the group's appetite, not one of the idea's own
- * fields — so it reads on the closed row and is voted on inside the open one.
- */
-describe('IdeaRow — the group score', () => {
-  it('signs a positive total, so it reads as a score rather than a headcount', () => {
-    renderRow({ entry: makeEntry({ vote_tally: { total: 5, count: 3, average: 1.67 } }) });
-
-    expect(screen.getByText('+5')).toBeInTheDocument();
-    expect(screen.getByText('group score')).toBeInTheDocument();
-  });
-
-  it('leaves a negative total its own sign and zero none', () => {
-    const view = renderRow({ entry: makeEntry({ vote_tally: { total: -2, count: 2, average: -1 } }) });
-    expect(screen.getByText('-2')).toBeInTheDocument();
-
-    view.update({ entry: makeEntry({ vote_tally: { total: 0, count: 2, average: 0 } }) });
-    expect(screen.getByText('0')).toBeInTheDocument();
-  });
-
-  it('stays on the row whether it is open or shut', async () => {
-    renderRow();
-    const user = await expandRow();
-    expect(screen.getByText('+4')).toBeInTheDocument();
-
-    await user.click(rowToggle());
-
-    expect(screen.getByText('+4')).toBeInTheDocument();
-  });
-
-  it('spells the scale out for anyone who wonders what the number is', () => {
-    renderRow();
-    expect(screen.getByTitle("Everyone's votes added up, from +2 to -2 each")).toBeInTheDocument();
   });
 });
 
@@ -301,7 +349,7 @@ const VOTED = makeEntry({
 });
 
 /**
- * The signed-in user votes from the open row, sees who else has, and the score
+ * The signed-in user votes from the open row, sees who else has, and the pill
  * moves under their hand — `useVote` writes `my_vote` optimistically, so the
  * stop fills before the request has landed.
  */
@@ -389,7 +437,6 @@ describe('IdeaRow — voting from the open row', () => {
   });
 });
 
-/** The count on the closed row ("2 open") is what this panel opens up. */
 describe('IdeaRow — the to-dos inside', () => {
   it('lists the idea’s to-dos and offers a way to add one', async () => {
     server.use(
@@ -406,15 +453,30 @@ describe('IdeaRow — the to-dos inside', () => {
 });
 
 /**
- * The panel's bundle chips and the ⋯ menu's are the same act reached from two
- * places — the requirements asked for both, and both toggle the same link.
+ * "Add to plan" is the actions row's named button now, and the chips live in
+ * its popover. The ⋯ menu keeps its own copy — the drag's pointer-free
+ * equivalent — and both toggle the same links through the same mutations.
  */
-describe('IdeaRow — bundles from the open row', () => {
-  it('adds the idea to a bundle it is not in yet', async () => {
+describe('IdeaRow — plans from the open row', () => {
+  async function openPlans(options: RowOptions) {
+    renderRow(options);
+    const user = await expandRow();
+    await user.click(screen.getByRole('button', { name: 'Add to plan' }));
+    return user;
+  }
+
+  it('keeps the chips behind the button until they are asked for', async () => {
+    renderRow({ bundles: [PLAN] });
+    await expandRow();
+
+    expect(screen.getByRole('button', { name: 'Add to plan' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Tuesday south' })).not.toBeInTheDocument();
+  });
+
+  it('adds the idea to a plan it is not in yet', async () => {
     const post = vi.spyOn(api, 'post').mockResolvedValue({ link: {} });
     const onToast = vi.fn();
-    renderRow({ bundles: [BUNDLE], members: new Map([[90, []]]), onToast });
-    const user = await expandRow();
+    const user = await openPlans({ bundles: [PLAN], members: new Map([[90, []]]), onToast });
 
     const chip = screen.getByRole('button', { name: 'Tuesday south' });
     expect(chip).toHaveAttribute('aria-pressed', 'false');
@@ -428,8 +490,7 @@ describe('IdeaRow — bundles from the open row', () => {
   it('takes it out again, and says it is still kept', async () => {
     const del = vi.spyOn(api, 'delete').mockResolvedValue({ ok: true });
     const onToast = vi.fn();
-    renderRow({ bundles: [BUNDLE], members: new Map([[90, [makeEntry({})]]]), onToast });
-    const user = await expandRow();
+    const user = await openPlans({ bundles: [PLAN], members: new Map([[90, [makeEntry({})]]]), onToast });
 
     const chip = screen.getByRole('button', { name: 'Tuesday south' });
     expect(chip).toHaveAttribute('aria-pressed', 'true');
@@ -440,26 +501,34 @@ describe('IdeaRow — bundles from the open row', () => {
     del.mockRestore();
   });
 
-  it('says plainly when there is no bundle to add to yet', async () => {
-    renderRow({ bundles: [] });
-    await expandRow();
+  it('says plainly when there is no plan to add to yet', async () => {
+    await openPlans({ bundles: [] });
 
-    expect(screen.getByText('No bundles yet. Start one in the bundles column.')).toBeInTheDocument();
+    expect(screen.getByText('No plans yet. Start one in the plans column.')).toBeInTheDocument();
+  });
+
+  it('closes on Escape, handing focus back to the button', async () => {
+    const user = await openPlans({ bundles: [PLAN] });
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByRole('button', { name: 'Tuesday south' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add to plan' })).toHaveFocus();
   });
 });
 
 describe('IdeaRow — the interactions that must survive', () => {
-  // Dragging an idea onto a bundle is the core board gesture; the bundle drop
+  // Dragging an idea onto a plan is the core board gesture; the plan drop
   // targets read `{ entryId, title }` off exactly this handle.
   it('keeps a labelled drag handle', () => {
     renderRow();
-    expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a plan to add it there' })).toBeInTheDocument();
   });
 
-  // Every drag in Wend has a pointer-free equivalent. This is the row's, and it
-  // moved inside the ⋯ menu with the rest of the row's verbs.
-  it('keeps a pointer-free way into a bundle', async () => {
-    renderRow({ bundles: [BUNDLE] });
+  // Every drag in Wend has a pointer-free equivalent. This is the row's, and
+  // it lives inside the ⋯ menu with the rest of the row's verbs.
+  it('keeps a pointer-free way into a plan', async () => {
+    renderRow({ bundles: [PLAN] });
     await openActions();
 
     expect(screen.getByRole('button', { name: 'Tuesday south' })).toBeInTheDocument();
@@ -470,10 +539,8 @@ describe('IdeaRow — the interactions that must survive', () => {
     expect(screen.getByRole('checkbox', { name: 'Select Fushimi Inari' })).toBeChecked();
   });
 
-  // Was: "opens the entry when the row is clicked". The row is the disclosure
-  // now, so the shortcut it used to be is gone on purpose — the assertion is
-  // rewritten to the new intent rather than dropped, because "no navigation"
-  // must stay pinned down somewhere.
+  // The row is the disclosure; the navigation it used to be is gone on
+  // purpose, and "no navigation" must stay pinned down somewhere.
   it('opens the row rather than the entry screen when it is clicked', async () => {
     renderRow();
     await expandRow();
@@ -506,33 +573,34 @@ describe('IdeaRow — the interactions that must survive', () => {
   });
 });
 
-// The feedback: editing arrived unasked-for, as a drawer over a page that had
-// gone blank. It now has a named button, and the row's actions are in one place
-// rather than strewn along its right-hand edge.
+// The ⋯ menu moved into the open row's actions row: every verb the row owns
+// is inside the row, and the closed one stays a thing you read, drag or pick.
 describe('IdeaRow — the ⋯ actions menu', () => {
-  it('says whose actions they are', () => {
+  it('keeps every verb off the closed row', () => {
     renderRow();
-    const trigger = screen.getByRole('button', { name: 'Actions for Fushimi Inari' });
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('keeps the actions out of the way until they are asked for', () => {
-    renderRow();
+    expect(screen.queryByRole('button', { name: 'Actions for Fushimi Inari' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Move to Set aside' })).not.toBeInTheDocument();
+  });
+
+  it('says whose actions they are, once the row is open', async () => {
+    renderRow();
+    await expandRow();
+    const trigger = screen.getByRole('button', { name: 'Actions for Fushimi Inari' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
 
   // "Move to Set aside", not "Set aside": the menu is too tight for a line of
   // explanation, so the label names the list at the foot of the board that the
   // idea is going to — which is also the way back.
-  it('offers Edit, both ways of moving the idea, and the bundles together', async () => {
-    renderRow({ bundles: [BUNDLE] });
+  it('offers Edit, both ways of moving the idea, and the plans together', async () => {
+    renderRow({ bundles: [PLAN] });
     await openActions();
 
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Make it a trip of its own' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Move to Set aside' })).toBeInTheDocument();
-    expect(screen.getByText('Add to bundle')).toBeInTheDocument();
+    expect(screen.getAllByText('Add to plan').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Tuesday south' })).toBeInTheDocument();
   });
 
@@ -555,8 +623,8 @@ describe('IdeaRow — the ⋯ actions menu', () => {
     post.mockRestore();
   });
 
-  /** A bundle already is a container; there is nothing to lift it out of. */
-  it('does not offer to make a trip out of a bundle', async () => {
+  /** A plan already is a container; there is nothing to lift it out of. */
+  it('does not offer to make a trip out of a plan', async () => {
     renderRow({ entry: makeEntry({ kind: 'bundle' }) });
     await openActions();
 
@@ -573,24 +641,6 @@ describe('IdeaRow — the ⋯ actions menu', () => {
 
     expect(onEdit).toHaveBeenCalledWith(42);
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-  });
-
-  it('shows which bundles the idea is already in, and takes it out again', async () => {
-    const post = vi.spyOn(api, 'post').mockResolvedValue({ link: {} });
-    const del = vi.spyOn(api, 'delete').mockResolvedValue({ ok: true });
-    const onToast = vi.fn();
-    renderRow({ bundles: [BUNDLE], members: new Map([[90, [makeEntry({})]]]), onToast });
-    const user = await openActions();
-
-    const chip = screen.getByRole('button', { name: 'Tuesday south' });
-    expect(chip).toHaveAttribute('aria-pressed', 'true');
-
-    await user.click(chip);
-
-    await waitFor(() => expect(del).toHaveBeenCalled());
-    expect(post).not.toHaveBeenCalled();
-    post.mockRestore();
-    del.mockRestore();
   });
 
   it('closes on Escape and gives focus back to the button that opened it', async () => {
@@ -612,34 +662,14 @@ describe('IdeaRow — the ⋯ actions menu', () => {
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
   });
-
-  it('says so plainly when there is no bundle to add to yet', async () => {
-    renderRow({ bundles: [] });
-    await openActions();
-
-    expect(screen.getByText(/No bundles yet/)).toBeInTheDocument();
-  });
 });
 
-// The state dot is gone from the row's left edge — the two facts it stood for
-// are already words on the row. What the slot holds now is the drag handle, and
-// nothing at all for someone who may not edit.
+// What the left slot holds: the drag handle, and nothing at all for someone
+// who may not edit.
 describe('IdeaRow — the left slot', () => {
   it('holds the drag handle while the board is not selecting', () => {
     renderRow();
-    expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' })).toBeInTheDocument();
-  });
-
-  it('no longer paints the idea state as a dot beside the title', () => {
-    renderRow({ entry: makeEntry({ scheduled: true }) });
-    expect(screen.queryByRole('img')).not.toBeInTheDocument();
-  });
-
-  // The count is the half of the old dot's meaning that was worth keeping, and
-  // it was always in words as well as colour. It must stay in words.
-  it('still says how much is open, in the meta line', () => {
-    renderRow({ entry: makeEntry({ scheduled: false, todos_open_count: 2 }) });
-    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveTextContent('2 open');
+    expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a plan to add it there' })).toBeInTheDocument();
   });
 
   it('offers nothing to check while the board is not selecting', () => {
@@ -661,11 +691,11 @@ describe('IdeaRow — select mode', () => {
 
   // A press-and-drag and a shift-click both start the same way. Leaving the
   // handle within reach of someone picking their way down a list is how an
-  // idea lands on a bundle by accident, so picking takes the slot outright.
+  // idea lands on a plan by accident, so picking takes the slot outright.
   it('takes the drag handle away entirely while picking', () => {
     renderRow({ selectMode: true });
 
-    expect(screen.queryByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Drag Fushimi Inari onto a plan to add it there' })).not.toBeInTheDocument();
   });
 
   it('reports a picked idea as checked rather than leaving colour to say it', () => {
@@ -678,7 +708,7 @@ describe('IdeaRow — select mode', () => {
 
   it('gives the drag handle back the moment select mode ends', () => {
     renderRow({ selectMode: false });
-    expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a plan to add it there' })).toBeInTheDocument();
   });
 
   it('can be picked from the keyboard, since it is a button underneath', async () => {
@@ -714,14 +744,14 @@ describe('IdeaRow — select mode', () => {
     expect(onToggleSelect).toHaveBeenCalledWith(42, false);
   });
 
-  it('never opens the idea when the pick circle is clicked', async () => {
+  it('never opens the row when the pick circle is clicked', async () => {
     const user = userEvent.setup();
-    const onEdit = vi.fn();
-    renderRow({ selectMode: true, onEdit });
+    const onToggleExpand = vi.fn();
+    renderRow({ selectMode: true, onToggleExpand });
 
     await user.click(screen.getByRole('checkbox', { name: 'Select Fushimi Inari' }));
 
-    expect(onEdit).not.toHaveBeenCalled();
+    expect(onToggleExpand).not.toHaveBeenCalled();
   });
 });
 
@@ -731,27 +761,37 @@ describe('IdeaRow — select mode', () => {
  * "no buttons" is equally true of a row that never rendered.
  */
 describe('IdeaRow — reading along', () => {
-  it('takes the grip and the ⋯ menu away entirely, rather than greying them', () => {
-    renderRow({ canEdit: false, bundles: [BUNDLE] });
+  it('takes the grip away entirely, rather than greying it', () => {
+    renderRow({ canEdit: false, bundles: [PLAN] });
 
     expect(
-      screen.queryByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' }),
+      screen.queryByRole('button', { name: 'Drag Fushimi Inari onto a plan to add it there' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Actions for Fushimi Inari' })).not.toBeInTheDocument();
   });
 
-  it('still says everything it said before — title, category, meta and its bundles', () => {
+  it('still says everything the closed row says — title, tick and pills', () => {
     renderRow({
       canEdit: false,
-      bundles: [BUNDLE],
-      members: new Map([[90, [makeEntry({})]]]),
+      entry: makeEntry({ scheduled: true }),
+      insideCount: 2,
+      otherParents: ['Kyoto day'],
     });
 
-    const row = screen.getByRole('button', { name: /^Fushimi Inari/ });
-    expect(row).toHaveTextContent('Fushimi Inari');
-    expect(row).toHaveTextContent('Place');
-    expect(row).toHaveTextContent('Kyoto south · 2 hr');
-    expect(row).toHaveTextContent('in Tuesday south');
+    expect(rowToggle()).toHaveTextContent('Fushimi Inari');
+    expect(screen.getByText('✓ on a day')).toBeInTheDocument();
+    expect(screen.getByText('▲ 4')).toBeInTheDocument();
+    expect(screen.getByText('also in: Kyoto day')).toBeInTheDocument();
+  });
+
+  // Descending is reading, not editing — a viewer keeps the way down.
+  it('still lets a viewer drill into what is inside', async () => {
+    const user = userEvent.setup();
+    const onDrill = vi.fn();
+    renderRow({ canEdit: false, insideCount: 2, onDrill });
+
+    await user.click(screen.getByRole('button', { name: '2 inside ›' }));
+
+    expect(onDrill).toHaveBeenCalledWith(42);
   });
 
   // Nothing stands in for the grip a viewer does not get: the row simply starts
@@ -763,9 +803,8 @@ describe('IdeaRow — reading along', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
-  // Was: "still opens the idea". The row opens in place now, and a viewer keeps
-  // that — the canEdit guard wraps the ⋯ menu and the grip, and must never
-  // grow to cover the disclosure or the panel.
+  // The row opens in place, and a viewer keeps that — the canEdit guard wraps
+  // the verbs, and must never grow to cover the disclosure or the panel.
   it('still opens the row — reading it is not editing it', async () => {
     renderRow({ canEdit: false });
     await expandRow();
@@ -779,7 +818,7 @@ describe('IdeaRow — reading along', () => {
 
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Really keen: Demo Traveler' })).toBeInTheDocument();
-    expect(screen.getByText('+1 \u00b7 2 votes')).toBeInTheDocument();
+    expect(screen.getByText('+1 · 2 votes')).toBeInTheDocument();
   });
 
   it('gives a viewer the to-dos to read, without the tick or the add row', async () => {
@@ -796,31 +835,33 @@ describe('IdeaRow — reading along', () => {
     expect(screen.queryByLabelText('Add a to-do')).not.toBeInTheDocument();
   });
 
-  // No chips to press, but the answer to "which bundles?" survives as tags.
-  it('names the bundles without offering to change them', async () => {
-    renderRow({ canEdit: false, bundles: [BUNDLE], members: new Map([[90, [makeEntry({})]]]) });
+  // No chips to press, but the answer to "which plans?" survives as tags.
+  it('names the plans without offering to change them', async () => {
+    renderRow({ canEdit: false, bundles: [PLAN], members: new Map([[90, [makeEntry({})]]]) });
     await expandRow();
 
+    expect(screen.queryByRole('button', { name: 'Add to plan' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Tuesday south' })).not.toBeInTheDocument();
-    expect(screen.getAllByText('Tuesday south').length).toBeGreaterThan(0);
+    expect(screen.getByText('Tuesday south')).toBeInTheDocument();
   });
 
-  it('still has no ⋯ menu and no grip once the row is open', async () => {
-    renderRow({ canEdit: false, bundles: [BUNDLE] });
+  it('still has no ⋯ menu and no actions row once the row is open', async () => {
+    renderRow({ canEdit: false, bundles: [PLAN], insideCount: 3 });
     await expandRow();
 
     expect(screen.queryByRole('button', { name: 'Actions for Fushimi Inari' })).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' }),
-    ).not.toBeInTheDocument();
+    // The panel's descent button belongs to the actions row, so a viewer
+    // reaches what's inside by the pill on the closed row instead.
+    expect(screen.queryByRole('button', { name: 'Open 3 inside' })).not.toBeInTheDocument();
   });
 
-  it('keeps both affordances for anyone who can edit', () => {
+  it('keeps both affordances for anyone who can edit', async () => {
     renderRow({ canEdit: true });
 
     expect(
-      screen.getByRole('button', { name: 'Drag Fushimi Inari onto a bundle to add it there' }),
+      screen.getByRole('button', { name: 'Drag Fushimi Inari onto a plan to add it there' }),
     ).toBeInTheDocument();
+    await expandRow();
     expect(screen.getByRole('button', { name: 'Actions for Fushimi Inari' })).toBeInTheDocument();
   });
 });

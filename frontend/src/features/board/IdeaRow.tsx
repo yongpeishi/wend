@@ -1,10 +1,10 @@
-import { useId, useMemo, useState } from 'react';
-import { ChevronDown, GripVertical } from 'lucide-react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { GripVertical } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import { useNavigate } from 'react-router-dom';
 import type { Entry, EntryCategory } from '../../api/types';
 import { CATEGORY_LABELS } from './filters';
-import { formatDuration, joinMeta } from '../../lib/formatDates';
+import { Button } from '../../design/components/core/Button';
 import { Chip, Tag } from '../../design/components/core/Chip';
 import { useToast } from '../../components/Toast';
 import { useDeleteVote, useVote } from '../../api';
@@ -46,16 +46,39 @@ export interface IdeaRowProps {
    * yours, exactly as `tripRole.ts` reads a null role.
    */
   canEdit?: boolean;
+  /**
+   * How many ideas live inside this one — the subtree the board computed from
+   * `parent_ids`. Zero for a leaf, and zero draws no pill: "0 inside" is not a
+   * fact worth a control that goes nowhere.
+   */
+  insideCount: number;
+  /**
+   * The titles of this idea's OTHER parents — every parent except the level the
+   * list is currently showing. Names, not entries, because the row only says
+   * them ("also in: A · B"); the board is the one that knows which parent is
+   * "here" and so which ones are "also".
+   */
+  otherParents: string[];
+  /** Descend one level — show what lives inside this idea. */
+  onDrill: (id: number) => void;
+  /**
+   * Whether this row is the open one. Expansion used to be local state; it is
+   * controlled now because the board opens at most one row at a time, and only
+   * the board can know which one that is.
+   */
+  expanded: boolean;
+  /** The click's meaning: asks the board to open this row, or close it again. */
+  onToggleExpand: (id: number) => void;
 }
 
 /**
- * Category colour — the row's only colour signal now that the state dot is
- * gone. The mapping is lifted verbatim from the design prototype's `CAT_COLOR`
- * table, which reaches for existing brand tokens rather than new hexes — so
- * nothing is invented here either. Two categories deliberately share a colour
- * (place and activity are both leaf), and transport/other fall back to
- * `--text-muted`: the palette is three brand hues wide, not six, and stretching
- * it would mean minting colours the design system has never sanctioned.
+ * Category colour — decoration on the expanded panel's category chip. The
+ * mapping is lifted verbatim from the design prototype's `CAT_COLOR` table,
+ * which reaches for existing brand tokens rather than new hexes — so nothing
+ * is invented here either. Two categories deliberately share a colour (place
+ * and activity are both leaf), and transport/other fall back to `--text-muted`:
+ * the palette is three brand hues wide, not six, and stretching it would mean
+ * minting colours the design system has never sanctioned.
  *
  * The label itself is always the word, so the colour is decoration only.
  */
@@ -69,66 +92,47 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
 };
 
 /**
- * One idea on the board, as a flat bordered row rather than the old card: the
- * grip, title with its category, a middot meta line, and — when it is in one —
- * the bundles it belongs to. Clicking it opens the row downwards into a panel
- * where the idea can be acted on.
+ * One idea on the board: a card that carries its facts as pills while closed —
+ * "✓ on a day" when it is scheduled, "▲ N" when anyone has voted, "N inside ›"
+ * when other ideas nest under it — and opens downwards into a panel where the
+ * idea can be read in full and acted on.
  *
- * What used to sit at the left edge was a state dot, derived from `scheduled`
- * and `todos_open_count`. It is gone: the two facts it stood for are both
- * already words on this row — "N open" in the meta line, and the schedule
- * itself on the itinerary — so the dot was a colour restating text beside it,
- * spending the row's most valuable position on the least of its signals. The
- * grip took the position instead, because dragging is the thing you reach for
- * on this row without reading it.
+ * What the closed row no longer says: the meta line (place · duration · open
+ * count) and the category word. The redesign spends the closed row on the
+ * decisions the board is actually for — is it planned, is it wanted, is there
+ * more underneath — and everything descriptive moved into the panel one click
+ * away. The pills are words as well as colour, so nothing rides on hue alone.
  *
- * Where the vote lives, and why here.
- *   This row used to carry a comment saying there was deliberately no vote
- *   control on the board at all. That was true while rating had nowhere to go
- *   but the edit dialog, and it stopped being true the moment the row could
- *   open. The tally is not one of the idea's own fields — it is a fact about
- *   the group's appetite for it, which changes without the idea changing —
- *   so it does not belong in the dialog that edits what the idea IS. It
- *   belongs where you are already looking at the idea and deciding about it:
- *   in the expanded panel, beside the to-dos and the bundles, with the running
- *   total in the header so the answer is legible without opening anything.
+ * Expansion is CONTROLLED, not local. It used to be `useState` here, on the
+ * argument that a disclosure is a reading posture; the drill-down redesign
+ * changed the terms — the board opens at most one row at a time and closes it
+ * when the level changes, and only TripBoard knows either of those things. So
+ * the row reports the click (`onToggleExpand`) and obeys the prop (`expanded`),
+ * the same shape as `selected`/`onToggleSelect` beside it.
  *
- * What is still NOT here:
- *   - Not `EntryRow`. That row is the generic keep-toggle row; this one is
- *     scanned in a long list and carries the board's own verbs — grip,
- *     multi-select, ⋯ menu, expansion — so it stays its own component.
+ * Drilling ("N inside ›", and "Open N inside" in the panel) is the one click
+ * on this row that leaves it: it descends into the idea's own list. It lives
+ * on a pill rather than the row body so that the row's big target keeps the
+ * smaller, reversible meaning — a click on a line of text opens the line of
+ * text, never navigates.
  *
  * What is kept, and why:
- *   - The drag handle. Dragging an idea onto a bundle is the core board gesture
- *     (`data: { entryId, title }` is what the bundle drop targets read, and what
+ *   - The drag handle. Dragging an idea onto a plan is the core board gesture
+ *     (`data: { entryId, title }` is what the plan drop targets read, and what
  *     TripBoard's onDragEnd turns into a link). Its pointer-free equivalent is
- *     the bundle list inside the ⋯ menu — every drag in Wend has one.
- *   - Multi-select, which is what `BulkBar` acts on — but as a mode now rather
- *     than a permanent checkbox on every row. See the left slot below.
- *   - Set aside. Nothing on the board is ever deleted; the archive action
- *     soft-archives and `SetAsideSection` brings it back. It moved into the ⋯
- *     menu with the rest of the row's verbs.
- *
- * Editing is now named, and named only once: the ⋯ button on the right opens
- * Edit, so the drawer arrives because it was asked for. The row itself no
- * longer opens it — a click that used to throw a dialog over the board now
- * does the smaller, reversible thing instead.
- *
- * The bundle chips exist twice on purpose — in the ⋯ menu, which is the row's
- * list of verbs and the drag's pointer-free equivalent, and in the panel, where
- * they sit with the other things you do to an idea you have opened. Both were
- * asked for; they toggle the same links through the same mutations.
- *
- * Expansion is local state, not lifted. Which rows are open is a reading
- * posture rather than board state: nobody needs it after a reload, no other
- * component acts on it, and hoisting it would make TripBoard re-render every
- * row to remember one row's disclosure.
+ *     the plan list inside the ⋯ menu — every drag in Wend has one.
+ *   - Multi-select, which is what `BulkBar` acts on — as a mode, taking the
+ *     left slot. See the comment on the slot.
+ *   - Set aside and Edit, in the ⋯ menu, which now sits in the panel's actions
+ *     row: every verb the row owns is inside the row once it is open, and the
+ *     closed row stays a thing you read, drag, or pick.
+ *   - The plan chips, twice — behind the panel's "Add to plan" button and in
+ *     the ⋯ menu. Both were asked for; they toggle the same links through the
+ *     same mutations.
  *
  * Interaction: hover and press are opacity only, focus is the apricot ring,
- * there are no shadows. A selected row is bordered apricot — the same "this one"
- * accent the design uses for the row under the cursor's attention — and so is an
- * expanded one, which is the mockup's own choice and the same claim on
- * attention.
+ * there are no shadows. A selected row is bordered apricot; an open row takes
+ * the 2px leaf border — the design's "this card is active" edge.
  */
 export function IdeaRow({
   entry,
@@ -140,12 +144,16 @@ export function IdeaRow({
   onEdit,
   onToast,
   canEdit = true,
+  insideCount,
+  otherParents,
+  onDrill,
+  expanded,
+  onToggleExpand,
 }: IdeaRowProps) {
   const navigate = useNavigate();
   const { show } = useToast();
-  const [expanded, setExpanded] = useState(false);
   const panelId = useId();
-  const bundlesLabelId = useId();
+  const plansLabelId = useId();
   const vote = useVote(entry.id);
   const deleteVote = useDeleteVote(entry.id);
   const { addLink, removeLink } = useLinkMutations();
@@ -158,21 +166,44 @@ export function IdeaRow({
     disabled: !canEdit,
   });
 
+  // The "Add to plan" popover in the panel's actions row. Open/close state and
+  // the two listeners are the same shape as IdeaActionsMenu's, for the same
+  // reasons — see the comments there.
+  const [plansOpen, setPlansOpen] = useState(false);
+  const plansRef = useRef<HTMLDivElement>(null);
+  const plansTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!plansOpen) return;
+    function onDocPointerDown(event: MouseEvent) {
+      if (plansRef.current && !plansRef.current.contains(event.target as Node)) setPlansOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      setPlansOpen(false);
+      plansTriggerRef.current?.focus();
+    }
+    document.addEventListener('mousedown', onDocPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onDocPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [plansOpen]);
+
+  // A closed row cannot keep a popover; without this, closing the panel with
+  // the popover up would reopen the panel with the popover already showing.
+  useEffect(() => {
+    if (!expanded) setPlansOpen(false);
+  }, [expanded]);
+
   function edit() {
     if (onEdit) onEdit(entry.id);
     else navigate(`/entries/${entry.id}`);
   }
 
-  // Category has its own slot beside the title now, so it is out of the meta
-  // line — which leaves place, how long it takes, and what is still open.
-  const meta = joinMeta(
-    entry.location_name,
-    formatDuration(entry.duration_minutes),
-    entry.todos_open_count > 0 ? `${entry.todos_open_count} open` : null,
-  );
-
-  // The optional plum "in <bundle>, <bundle>" line. Derived from the bundle
-  // membership TripBoard already loads for the drag targets — no extra request.
+  // The plan names for a viewer's tags. Derived from the plan membership
+  // TripBoard already loads for the drag targets — no extra request.
   const bundleNames = useMemo(
     () =>
       bundles
@@ -201,11 +232,6 @@ export function IdeaRow({
     }
   }
 
-  // The sign is explicit on the positive side too, and 0 keeps none: "+5" is a
-  // score where "5" could be a headcount, and "0" is genuinely the middle of
-  // this scale rather than an absence of one.
-  const score = `${entry.vote_tally.total > 0 ? '+' : ''}${entry.vote_tally.total}`;
-
   return (
     <div
       className={styles.row}
@@ -224,7 +250,7 @@ export function IdeaRow({
           the two gestures both start with a press on a row, and dnd-kit reads
           a press-and-move as the start of a drag. Leaving the handle in reach
           of someone shift-clicking their way down a list is an invitation to
-          drag an idea onto a bundle by accident, mid-selection. Picking is
+          drag an idea onto a plan by accident, mid-selection. Picking is
           also the mode's whole point, so it takes the mode's one slot.
 
           The two are different elements rather than one element wearing two
@@ -232,7 +258,7 @@ export function IdeaRow({
           Rendering a `role="checkbox"` that is not operable, or a handle that
           claims to be checkable, would be a lie in one direction or the other.
           Nothing is lost by the swap: the drag's pointer-free equivalent — the
-          bundle list in the ⋯ menu — is untouched while picking, and the
+          plan list in the ⋯ menu — is untouched while picking, and the
           handle returns the moment select mode ends.
 
           A <button role="checkbox"> rather than <input type="checkbox">: the
@@ -278,7 +304,7 @@ export function IdeaRow({
               {...listeners}
               {...attributes}
               className={[styles.gripSlot, styles.grip].join(' ')}
-              aria-label={`Drag ${entry.title} onto a bundle to add it there`}
+              aria-label={`Drag ${entry.title} onto a plan to add it there`}
             >
               <GripVertical size={18} strokeWidth={1.5} aria-hidden="true" />
             </button>
@@ -286,70 +312,55 @@ export function IdeaRow({
         )}
 
         {/*
-          The big click target. It used to raise the edit drawer; it now opens the
-          row, which is the smaller and reversible thing to do to someone who
-          clicked a line of text. The score and the chevron ride inside it rather
-          than beside it, so the whole width of the row is the disclosure — the
-          number is what you came to read, and reaching for it should not be a
-          different gesture from opening the thing it summarises.
+          The big click target: the title, the schedule tick, and — when the
+          idea belongs elsewhere too — the "also in" chip. Clicking it opens
+          the row, which is the smaller and reversible thing to do to someone
+          who clicked a line of text; the pills that go somewhere else sit
+          OUTSIDE this button, because a button inside a button is invalid and
+          a click that leaves the row must never share a target with one that
+          only unfolds it.
         */}
         <button
           type="button"
           className={styles.main}
           aria-expanded={expanded}
           aria-controls={panelId}
-          onClick={() => setExpanded((open) => !open)}
+          onClick={() => onToggleExpand(entry.id)}
         >
-          <span className={styles.text}>
-            <span className={styles.headline}>
-              <span className={styles.title}>{entry.title}</span>
-              {entry.category && (
-                <span className={[styles.category, CATEGORY_CLASS[entry.category]].join(' ')}>
-                  {CATEGORY_LABELS[entry.category]}
-                </span>
-              )}
-            </span>
-            {meta && <span className={styles.meta}>{meta}</span>}
-            {bundleNames.length > 0 && <span className={styles.bundleLine}>in {bundleNames.join(', ')}</span>}
+          <span className={styles.titleLine}>
+            <span className={styles.title}>{entry.title}</span>
+            {/* Jade writes, it never fills: "on a day" is a confirmation, so it
+                takes the feedback green as words, not as a box. */}
+            {entry.scheduled && <span className={styles.onDay}>✓ on a day</span>}
           </span>
-
-          {/* The running total, closed or open. A tally nobody can see without
-              opening five rows is not a group decision aid, so it stays in the
-              header; the ballot that produced it is inside. The title attribute
-              is the mockup's own gloss, and the only place the scale is spelled
-              out on the closed row. */}
-          <span className={styles.score} title="Everyone's votes added up, from +2 to -2 each">
-            <span className={styles.scoreValue}>{score}</span>
-            <span className={styles.scoreLabel}>group score</span>
-          </span>
-
-          {/* Decorative: aria-expanded above carries the state in words. Same
-              rotation language as IdeaList's group headers. */}
-          <ChevronDown
-            size={18}
-            strokeWidth={1.5}
-            aria-hidden="true"
-            className={[styles.chevron, expanded ? styles.chevronOpen : ''].filter(Boolean).join(' ')}
-          />
+          {otherParents.length > 0 && (
+            <span className={styles.alsoIn}>also in: {otherParents.join(' · ')}</span>
+          )}
         </button>
 
-        {/*
-          A viewer gets the row's words and none of its verbs — not a greyed ⋯,
-          just no ⋯. This guard deliberately stops here: the toggle above and
-          the panel below are reading, not editing, and a viewer keeps both.
-          What they find inside answers for itself — VoteBar prints the result
-          instead of the ballot, IdeaTodos the list instead of the checkboxes.
-        */}
-        {canEdit && (
-          <div className={styles.actions}>
-            <IdeaActionsMenu
-              entry={entry}
-              bundles={bundles}
-              members={members}
-              onEdit={edit}
-              onToast={onToast}
-            />
-          </div>
+        {/* The tally, when there is one. Plum because a vote marks appetite for
+            a destination, and a pill of words rather than a bare number so the
+            closed row can be scanned without a legend. Zero draws nothing:
+            "▲ 0" would put a scoreboard on ideas nobody has judged yet. */}
+        {entry.vote_tally.total > 0 && (
+          <span className={styles.votePill} title="Everyone's votes added up, from +2 to -2 each">
+            ▲ {entry.vote_tally.total}
+          </span>
+        )}
+
+        {/* The one click on the closed row that goes somewhere else. Stops its
+            own propagation so descending never also unfolds the row it leaves. */}
+        {insideCount > 0 && (
+          <button
+            type="button"
+            className={styles.insidePill}
+            onClick={(event) => {
+              event.stopPropagation();
+              onDrill(entry.id);
+            }}
+          >
+            {insideCount} inside ›
+          </button>
         )}
       </div>
 
@@ -370,6 +381,15 @@ export function IdeaRow({
           {entry.description && <p className={styles.body}>{entry.description}</p>}
           {entry.notes && <p className={[styles.body, styles.notes].join(' ')}>{entry.notes}</p>}
 
+          {/* Data tracking, because an address is read character by character. */}
+          {entry.address && <p className={styles.address}>{entry.address}</p>}
+
+          {entry.category && (
+            <span className={[styles.categoryChip, CATEGORY_CLASS[entry.category]].join(' ')}>
+              {CATEGORY_LABELS[entry.category]}
+            </span>
+          )}
+
           <VoteBar
             myVote={entry.my_vote}
             tally={entry.vote_tally}
@@ -385,27 +405,67 @@ export function IdeaRow({
 
           <IdeaTodos entryId={entry.id} canEdit={canEdit} />
 
+          {/*
+            The verbs, gathered on one line now that the row has an inside to
+            keep them in. A viewer gets the row's words and none of its verbs —
+            not a greyed row, just no row — and keeps the answer to "which
+            plans?" as tags, the same plum the plan names are written in
+            everywhere else.
+          */}
           {canEdit ? (
-            <div className={styles.section}>
-              <p className={styles.sectionLabel} id={bundlesLabelId}>
-                Add to bundle
-              </p>
-              {bundles.length === 0 ? (
-                <p className={styles.empty}>No bundles yet. Start one in the bundles column.</p>
-              ) : (
-                <div className={styles.chips} aria-labelledby={bundlesLabelId}>
-                  {bundles.map((bundle) => (
-                    <Chip key={bundle.id} selected={isMember(bundle.id)} onClick={() => toggleBundle(bundle)}>
-                      {bundle.title}
-                    </Chip>
-                  ))}
-                </div>
+            <div className={styles.actionsRow}>
+              <div className={styles.plansWrap} ref={plansRef}>
+                <Button
+                  ref={plansTriggerRef}
+                  size="small"
+                  aria-haspopup="true"
+                  aria-expanded={plansOpen}
+                  onClick={() => setPlansOpen((value) => !value)}
+                >
+                  Add to plan
+                </Button>
+                {plansOpen && (
+                  <div className={styles.plansMenu} role="group" aria-labelledby={plansLabelId}>
+                    <p className={styles.sectionLabel} id={plansLabelId}>
+                      Add to plan
+                    </p>
+                    {bundles.length === 0 ? (
+                      <p className={styles.empty}>No plans yet. Start one in the plans column.</p>
+                    ) : (
+                      <div className={styles.chips}>
+                        {bundles.map((bundle) => (
+                          <Chip
+                            key={bundle.id}
+                            selected={isMember(bundle.id)}
+                            onClick={() => toggleBundle(bundle)}
+                          >
+                            {bundle.title}
+                          </Chip>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* The panel's road down, beside the pill's — same destination,
+                  reachable once the row is already open and the pill is a
+                  scroll away. */}
+              {insideCount > 0 && (
+                <Button variant="quiet" size="small" onClick={() => onDrill(entry.id)}>
+                  Open {insideCount} inside
+                </Button>
               )}
+
+              <IdeaActionsMenu
+                entry={entry}
+                bundles={bundles}
+                members={members}
+                onEdit={edit}
+                onToast={onToast}
+              />
             </div>
           ) : (
-            // A viewer gets the answer to "which bundles?" without a toggle
-            // that would only refuse. The plum tag is the same one the header's
-            // bundle line is written in, so the two agree at a glance.
             bundleNames.length > 0 && (
               <div className={styles.tags}>
                 {bundleNames.map((name) => (

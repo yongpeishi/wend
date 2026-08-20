@@ -30,6 +30,28 @@ export interface IdeaListProps {
    * for the same reason `IdeaRow`'s does.
    */
   canEdit?: boolean;
+  /**
+   * Subtree size per entry id — what each row's "N inside ›" pill says. The
+   * board computes these once over the whole trip (see tree.ts) rather than
+   * every row walking `parent_ids` for itself; an id with no entry here simply
+   * has nothing inside, so rows read it as `?? 0`.
+   */
+  insideCounts: ReadonlyMap<number, number>;
+  /**
+   * Titles of each entry's OTHER parents — the levels it also lives in, beside
+   * the one this list is showing. Missing id = nowhere else (`?? []`).
+   */
+  otherParents: ReadonlyMap<number, string[]>;
+  /** Descend into an idea — forwarded untouched to every row. */
+  onDrill: (id: number) => void;
+  /**
+   * Which row is open, or none. Expansion is controlled from the board now —
+   * it opens at most one row and closes it when the level changes, neither of
+   * which a row (or this list) can know on its own.
+   */
+  expandedId: number | null;
+  /** A row was clicked — the board decides what that does to `expandedId`. */
+  onToggleExpand: (id: number) => void;
 }
 
 /**
@@ -58,6 +80,11 @@ export function IdeaList({
   onEdit,
   onToast,
   canEdit = true,
+  insideCounts,
+  otherParents,
+  onDrill,
+  expandedId,
+  onToggleExpand,
 }: IdeaListProps) {
   const idBase = useId();
   const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(() => new Set());
@@ -86,6 +113,11 @@ export function IdeaList({
         onEdit={onEdit}
         onToast={onToast}
         canEdit={canEdit}
+        insideCount={insideCounts.get(entry.id) ?? 0}
+        otherParents={otherParents.get(entry.id) ?? []}
+        onDrill={onDrill}
+        expanded={expandedId === entry.id}
+        onToggleExpand={onToggleExpand}
       />
     ));
   }

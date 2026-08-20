@@ -1,0 +1,63 @@
+/* Anchors the hint over the input's right end. */
+.bar {
+  position: relative;
+}
+
+/*
+ * The capture line. The 2px leaf border is the design's "this is where you
+ * act" edge — the same weight the composer card and an open idea row wear —
+ * and 56px matches the large button height, because this input IS the board's
+ * primary action.
+ */
+.input {
+  width: 100%;
+  height: 56px;
+  background: var(--surface-card);
+  border: var(--border-width-strong) solid var(--wend-leaf);
+  border-radius: var(--radius-card);
+  padding: 0 var(--space-4);
+  /* Room for the hint, so long titles slide under their own ellipsis rather
+     than under the legend. 200px covers the hint's widest render at 13px. */
+  padding-right: 200px;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  color: var(--text-strong);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* The leaf border already says "here"; focus adds the house apricot ring on
+   top rather than swapping the border out — the bar must not stop being the
+   capture bar the moment someone uses it. */
+.input:focus,
+.input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* 13px: a keyboard legend, scanned not read — the same size the idea rows use
+   for their pills, below the 15px running-text floor on the same bargain. */
+.hint {
+  position: absolute;
+  top: 50%;
+  right: var(--space-4);
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* On a narrow board the legend would sit under half the words someone is
+   typing; the keys still work, so the reminder goes before the input does. */
+@media (max-width: 640px) {
+  .hint {
+    display: none;
+  }
+
+  .input {
+    padding-right: var(--space-4);
+  }
+}

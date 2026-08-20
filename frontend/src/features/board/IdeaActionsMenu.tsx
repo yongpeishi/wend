@@ -20,19 +20,19 @@ export interface IdeaActionsMenuProps {
  * Everything you can do to one idea from the board, behind one ⋯ button on the
  * right of its row.
  *
- * The row used to wear its actions on its sleeve — an "Add to bundle" pill, a
+ * The row used to wear its actions on its sleeve — an "Add to plan" pill, a
  * set-aside icon, a drag handle — and editing had no button at all: you clicked
  * the row and a drawer appeared, which read as something that had happened to
  * you rather than something you asked for. So the actions are gathered here and
  * editing is named among them.
  *
  * The drag handle deliberately stays outside: you cannot drag a thing out of a
- * menu, and dragging an idea onto a bundle is the board's core gesture. Its
- * pointer-free equivalent is in here, as the bundle chips.
+ * menu, and dragging an idea onto a plan is the board's core gesture. Its
+ * pointer-free equivalent is in here, as the plan chips.
  *
  * Not `role="menu"`. That role promises arrow-key traversal and a single tab
  * stop, and half of this popup is a set of toggles rather than commands
- * (selecting a bundle chip adds the idea to it; selecting it again takes it out
+ * (selecting a plan chip adds the idea to it; selecting it again takes it out
  * — ungrouping is as cheap as grouping). A labelled group of ordinary buttons
  * is what this actually is, and Tab already walks it in order.
  */
@@ -158,10 +158,10 @@ export function IdeaActionsMenu({ entry, bundles, members, onEdit, onToast }: Id
 
           <div className={styles.section}>
             <p className={styles.sectionLabel} id={bundlesLabelId}>
-              Add to bundle
+              Add to plan
             </p>
             {bundles.length === 0 ? (
-              <p className={styles.empty}>No bundles yet. Start one in the bundles column.</p>
+              <p className={styles.empty}>No plans yet. Start one in the plans column.</p>
             ) : (
               <div className={styles.chips} aria-labelledby={bundlesLabelId}>
                 {bundles.map((bundle) => (

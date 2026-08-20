@@ -1,39 +1,46 @@
 /*
  * The idea row. Card tone on page tone with a hairline border — elevation is
- * tone, never shadow. Radius, border width and the 16px gap are straight token
- * hits; the handful of literals below are commented where the scale has no stop.
+ * tone, never shadow. Radius and border widths are straight token hits; the
+ * handful of literals below are commented where the scale has no stop.
  */
 .row {
-  /* A column now: the header line, and under it the panel when the row is
-     open. The header keeps the row layout the card always had. */
+  /* A column: the header line, and under it the panel when the row is open. */
   display: flex;
   flex-direction: column;
   background: var(--surface-card);
   border: var(--border-width) solid var(--border-subtle);
   border-radius: var(--radius-card);
-  /* 14px: the vertical rhythm sits between --space-3 (12) and --space-4 (16). */
-  padding: 14px var(--space-4);
+  padding: var(--space-3) var(--space-4);
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
+/* Multi-selected rows take the apricot accent — the same "this one" signal the
+   design uses for the row currently under attention. */
+.row[data-selected] {
+  border-color: var(--wend-apricot);
 }
 
-/* Multi-selected rows take the apricot accent — the same "this one" signal the
-   design uses for the row currently under attention. An open row takes the same
-   border: the mockup's own choice, and the same claim on attention. The two can
-   coincide, which the design accepts. */
-.row[data-selected],
+/* An open row takes the 2px leaf edge instead — the design's "this card is
+   active" border, the same weight the capture bar and the composer wear. It
+   deliberately outranks the apricot when the two coincide: open is the louder
+   claim, and two hues on one border is not a thing a border can do. */
 .row[data-expanded] {
-  border-color: var(--wend-apricot);
+  border-width: var(--border-width-strong);
+  border-color: var(--wend-leaf);
+  /* Half a px each side, so open rows do not sit visibly fatter than closed
+     ones: the extra border eats the padding rather than growing the card. */
+  padding: calc(var(--space-3) - 0.5px) calc(var(--space-4) - 0.5px);
 }
 
 /* The row is mid-drag; its stand-in is following the pointer in the overlay. */
 .row[data-dragging] {
   opacity: 0.4;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 /*
@@ -63,8 +70,8 @@
 /*
  * The 22px box is the visual; the target is bigger than the visual, for the
  * pick circle and the grip alike. 32px is the pointer floor from
- * architecture.md and fits inside the row's 16px gap without stealing clicks
- * from the title; touch gets the full 48px, which overlaps a little but is the
+ * architecture.md and fits inside the row's gap without stealing clicks from
+ * the title; touch gets the full 48px, which overlaps a little but is the
  * rule that is not negotiable on a phone.
  */
 .pick::before,
@@ -120,11 +127,9 @@
 }
 
 /*
- * The drag handle in its new home at the head of the row. It used to ride in
- * `.actions` at 48px square; on the left that width would push every title a
- * thumb's breadth inwards for a control that is grabbed, not read. So it takes
- * the pick circle's 22px box and the same invisible target around it — the
- * pointer floor is met by `::before` above, not by the visible glyph.
+ * The drag handle at the head of the row: the pick circle's 22px box and the
+ * same invisible target around it — the pointer floor is met by `::before`
+ * above, not by the visible glyph.
  */
 .gripSlot {
   position: relative;
@@ -142,19 +147,21 @@
 }
 
 /*
- * The click target — now the disclosure: title, meta and bundles on the left,
- * the group score and the chevron on the right, all inside the one button. The
- * design dims the whole row on hover; here the dimming is scoped to this
- * button, because the row also holds its own controls and each of those already
- * answers the pointer on its own. Opacity only — this design system has no
- * hover fills and no shadows.
+ * The click target — the disclosure. It holds the words (title, schedule tick,
+ * the "also in" chip) and nothing that goes anywhere else: the pills that
+ * leave the row are its siblings, because a button cannot hold a button. The
+ * spacer the design draws between title and pills is this button's flex: 1.
+ * Opacity only on hover — this design system has no hover fills and no shadows.
  */
 .main {
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
+  flex-direction: column;
+  align-items: flex-start;
+  /* 6px: between --space-1 (4) and --space-2 (8); the chip hangs close under
+     the title it qualifies. */
+  gap: 6px;
   text-align: left;
   background: none;
   border: none;
@@ -164,17 +171,6 @@
   color: inherit;
   cursor: pointer;
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-/* The words, stacked, as .main itself used to be. */
-.text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  /* 3px: tighter than --space-1 (4). The three lines read as one block. */
-  gap: 3px;
-  align-items: flex-start;
 }
 
 .main:hover {
@@ -190,28 +186,141 @@
   outline-offset: var(--focus-offset);
 }
 
-.headline {
+.titleLine {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  /* 10px: between --space-2 (8) and --space-3 (12); the category rides close
-     to the title it belongs to. */
+  /* 10px: between --space-2 (8) and --space-3 (12); the tick rides close to
+     the title it confirms. */
   gap: 10px;
+  min-width: 0;
 }
 
-/* 18px: the type scale steps 17 -> 20, and neither carries this row. */
 .title {
-  font-size: 18px;
+  font-size: var(--text-body-size);
   line-height: 1.35;
   font-weight: var(--weight-bold);
   color: var(--text-strong);
 }
 
-.category {
-  font-size: var(--text-label-size);
+/* 13px: pill-and-chip size on this row, below the 15px running-text floor on
+   purpose — these are scanned as marks, never read as prose, the same bargain
+   the 12px label token strikes. Jade as words: a confirmation never fills. */
+.onDay {
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--wend-jade);
+  white-space: nowrap;
+}
+
+/* "also in: A · B" — the idea belongs to other levels too. Muted and bordered
+   like a fact, not coloured like a verb: it is context, and the way INTO those
+   other levels is the breadcrumb, not this chip. */
+.alsoIn {
+  align-self: flex-start;
+  font-size: 13px;
+  color: var(--text-muted);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  /* 3px 10px: a 13px chip; the spacing scale's 4px floor is a hair too tall
+     for it to read as a mark rather than a button. */
+  padding: 3px 10px;
+}
+
+/* The tally pill. Plum — appetite for a destination — as tint-bordered words,
+   never a fill. */
+.votePill {
+  flex: none;
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--wend-plum);
+  border: var(--border-width) solid var(--wend-plum-tint);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* "N inside ›" — the one control on the closed row that goes somewhere else,
+   so it is the one pill that is a button. Leaf, the acting colour. */
+.insidePill {
+  flex: none;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--wend-leaf);
+  background: none;
+  border: var(--border-width) solid var(--wend-leaf);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.insidePill:hover {
+  opacity: 0.85;
+}
+
+.insidePill:active {
+  opacity: 0.7;
+}
+
+.insidePill:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/*
+ * The panel. One surface with the header above it, separated by a rule rather
+ * than by a box — nesting a card inside a card would make the idea look like
+ * two things.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--border-subtle);
+}
+
+/* Running text, at the product's readable floor. 60ch is the design's own
+   measure for this panel — a shade narrower than --measure-body (66ch), which
+   is sized for full reading pages rather than a card. */
+.body {
+  margin: 0;
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-strong);
+  max-width: 60ch;
+  align-self: stretch;
+}
+
+/* Notes are the aside to the description's pitch, so they read quieter. */
+.notes {
+  color: var(--text-muted);
+}
+
+/* An address is data — read character by character — so it takes the data
+   tracking rather than prose spacing. */
+.address {
+  margin: 0;
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-body);
+}
+
+/* The category, as a chip now that it is inside the panel rather than a slot
+   beside the title. The word carries it; the hue (below) is decoration. */
+.categoryChip {
+  font-size: 13px;
+  font-weight: var(--weight-bold);
   letter-spacing: var(--text-label-tracking);
   text-transform: uppercase;
-  font-weight: var(--weight-bold);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
   white-space: nowrap;
 }
 
@@ -236,104 +345,38 @@
   color: var(--text-muted);
 }
 
-/*
- * The design sets the meta line at 14px and the bundle line at 13px, but
- * architecture.md fixes 15px as the readable floor for this product and
- * --text-min-size encodes it. Both lines are pulled up to the floor and keep
- * the design's data tracking, which is what actually distinguishes them.
- */
-.meta {
-  font-size: var(--text-min-size);
-  letter-spacing: var(--text-data-tracking);
-  color: var(--text-muted);
-}
-
-.bundleLine {
-  font-size: var(--text-min-size);
-  letter-spacing: var(--text-data-tracking);
-  color: var(--wend-plum);
-}
-
-/*
- * The group score: the number, and under it what the number is. Right-aligned
- * and fixed-width-ish so a column of rows lines its totals up rather than
- * letting "+12" shove the chevron about.
- */
-.score {
-  flex: none;
+/* The verbs, on one line at the foot of the panel. */
+.actionsRow {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  /* 2px: half of --space-1. The word is a caption on the number, not a line
-     under it. */
-  gap: 2px;
-  white-space: nowrap;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
-/* 19px: the mockup's own size. The type scale steps 17 -> 20 and neither is
-   this — the same reason the title below carries an 18px literal. */
-.scoreValue {
-  font-family: var(--font-mono);
-  font-size: 19px;
-  line-height: 1.1;
-  font-weight: var(--weight-bold);
-  color: var(--text-strong);
+/* Anchors the plans popover to its button, exactly as IdeaActionsMenu's .wrap
+   anchors the ⋯ menu. */
+.plansWrap {
+  position: relative;
 }
 
-.scoreLabel {
-  font-size: var(--text-label-size);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.chevron {
-  flex: none;
-  color: var(--text-muted);
-  transition: transform var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-/* Pointing at the panel it opened. aria-expanded carries the real state. */
-.chevronOpen {
-  transform: rotate(180deg);
-}
-
-/*
- * The panel. One surface with the header above it, separated by a rule rather
- * than by a box — nesting a card inside a card would make the idea look like
- * two things.
- */
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  /* 14px each side of the rule, matching the row's own 14px vertical rhythm —
-     the panel hangs off the header at the same interval the header hangs off
-     the card edge. */
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: var(--border-width) solid var(--border-subtle);
-}
-
-/* Running text, at the product's readable floor. --measure-body keeps a long
-   description from running the full width of the board. */
-.body {
-  margin: 0;
-  font-size: var(--text-min-size);
-  line-height: var(--text-small-line);
-  color: var(--text-strong);
-  max-width: var(--measure-body);
-}
-
-/* Notes are the aside to the description's pitch, so they read quieter. */
-.notes {
-  color: var(--text-muted);
-}
-
-.section {
+/* Card tone on page tone with a drawn edge — the popup is lifted the only way
+   this system lifts anything. No shadow. Left-anchored, because its trigger
+   sits at the head of the actions row and a right-anchored menu would hang
+   out of the card. */
+.plansMenu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 20;
+  min-width: 240px;
+  max-width: 320px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
 }
 
 /* Same heading voice as the to-do block's and the vote bar's, so the panel
@@ -358,13 +401,6 @@
   margin: 0;
   font-size: var(--text-min-size);
   color: var(--text-muted);
-}
-
-.actions {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
 }
 
 /* Cursor and touch handling, kept apart from the box so either could move. */
