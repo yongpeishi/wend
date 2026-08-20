@@ -1,13 +1,14 @@
 /*
- * The composer card. Same 2px leaf edge as the capture bar it grew out of —
- * the board's "this is where you act" border — on card tone, no shadow.
+ * The composer card. Same 2px weight as the capture bar it grew out of, but
+ * apricot — the brand's "you are here" hue — because when the card is open it,
+ * not the bar above it, is where the typing continues. On card tone, no shadow.
  */
 .card {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   background: var(--surface-card);
-  border: var(--border-width-strong) solid var(--wend-leaf);
+  border: var(--border-width-strong) solid var(--wend-apricot);
   border-radius: var(--radius-card);
   padding: var(--space-4);
 }

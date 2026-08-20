@@ -32,9 +32,11 @@ export interface IdeaComposerProps {
 /**
  * The capture bar's "tab for details": the same act of keeping an idea, with
  * room to say what kind of thing it is and where it lives. It renders inline
- * where the capture bar sits rather than as a modal, because it is a
+ * directly under the capture bar rather than as a modal, because it is a
  * continuation of typing, not an interruption of it — the name arrives
  * already filled in from the bar, and focus lands on it to carry straight on.
+ * The card wears the apricot "you are here" border while open, so the eye
+ * follows the promotion from the bar down into the details.
  *
  * Pure and controlled from above: no fetching, no mutations, no toast. The
  * board owns what "submit" means (a create plus zero or more links), so this

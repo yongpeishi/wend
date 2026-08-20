@@ -5,9 +5,9 @@
 
 /*
  * The capture line. The 2px leaf border is the design's "this is where you
- * act" edge — the same weight the composer card and an open idea row wear —
- * and 56px matches the large button height, because this input IS the board's
- * primary action.
+ * act" edge — the same weight the composer card (apricot, once it opens) and
+ * an open idea row wear — and 56px matches the large button height, because
+ * this input IS the board's primary action.
  */
 .input {
   width: 100%;

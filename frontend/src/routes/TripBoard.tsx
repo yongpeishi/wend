@@ -479,6 +479,24 @@ export function TripBoard() {
             />
           )}
 
+          {/* Directly under the bar that opened it: Tab is a continuation of
+              typing, so the details unfold where the typing was, not somewhere
+              the eye has to go find. Editors only, like the bar — there is no
+              second way in, so nothing is left listening for an Escape that
+              will never come. Parent choices are every live idea on the trip:
+              the composer is the one place an idea can be filed somewhere
+              other than the level on screen. */}
+          {canEdit && (
+            <IdeaComposer
+              open={composer.open}
+              initialTitle={composer.initialTitle}
+              initialParentIds={currentId !== null ? [currentId] : []}
+              parentChoices={allIdeas}
+              onSubmit={handleComposerSubmit}
+              onCancel={closeComposer}
+            />
+          )}
+
           <FilterBar
             filters={filters}
             onChange={setFilters}
@@ -595,22 +613,6 @@ export function TripBoard() {
           />
         </div>
       </div>
-
-      {/* Mounted for editors only, like the bar that opens it — there is no
-          second way in, so nothing is left listening for an Escape that will
-          never come. Parent choices are every live idea on the trip: the
-          composer is the one place an idea can be filed somewhere other than
-          the level on screen. */}
-      {canEdit && (
-        <IdeaComposer
-          open={composer.open}
-          initialTitle={composer.initialTitle}
-          initialParentIds={currentId !== null ? [currentId] : []}
-          parentChoices={allIdeas}
-          onSubmit={handleComposerSubmit}
-          onCancel={closeComposer}
-        />
-      )}
 
       {editingId !== null && <EntryDetailModal entryId={editingId} onClose={closeEditing} />}
 
