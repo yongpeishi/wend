@@ -498,7 +498,7 @@ describe('TripItinerary — the day list', () => {
 
     expect(screen.getAllByRole('heading', { name: /^Day \d · / })).toHaveLength(1);
     // The open day draws its running order, and the hole in the middle of it.
-    expect(screen.getByText('Bundle · Nishiki market crawl')).toBeInTheDocument();
+    expect(screen.getByText('Plan · Nishiki market crawl')).toBeInTheDocument();
     expect(screen.getByText('Nothing planned · 1 hr 20')).toBeInTheDocument();
   });
 });
@@ -782,7 +782,7 @@ describe('TripItinerary — as a viewer', () => {
     // Day 1 in full: what is on it, in the hours it is on it, with the hole
     // between the two things drawn in and the night spoken for.
     const day1 = dayBox('2026-11-02');
-    expect(within(day1).getByText('Bundle · Nishiki market crawl')).toBeInTheDocument();
+    expect(within(day1).getByText('Plan · Nishiki market crawl')).toBeInTheDocument();
     expect(within(day1).getByText('09:00–09:40')).toBeInTheDocument();
     expect(within(day1).getByText('Nothing planned · 1 hr 20')).toBeInTheDocument();
     expect(within(day1).getByText('Machiya near Gion')).toBeInTheDocument();

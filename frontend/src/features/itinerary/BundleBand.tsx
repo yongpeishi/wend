@@ -17,7 +17,7 @@ export interface BundleBandProps {
 
 /**
  * A bundle on a day: a tinted band wrapping its members' lines, labelled
- * `BUNDLE · NAME`. The tint is deliberately quiet — grouping is
+ * `PLAN · NAME`. The tint is deliberately quiet — grouping is
  * sub-information, not hierarchy, so the band adds no border, no heavier type
  * and no shadow, and each member line is drawn exactly like a loose idea.
  *
@@ -32,7 +32,7 @@ export interface BundleBandProps {
 export function BundleBand({ item, onEditTime, onRemove, readOnly = false }: BundleBandProps) {
   const [editing, setEditing] = useState(false);
 
-  const title = item.entry?.title ?? 'Bundle';
+  const title = item.entry?.title ?? 'Plan';
   const span = formatSpan(item.starts_at_minutes, item.ends_at_minutes);
   const canEditTime = Boolean(onEditTime) && !readOnly;
   const memberSpans = bundleMemberSpans(item);
@@ -40,7 +40,7 @@ export function BundleBand({ item, onEditTime, onRemove, readOnly = false }: Bun
   return (
     <div className={styles.band}>
       <div className={styles.head}>
-        <span className={styles.label}>Bundle · {title}</span>
+        <span className={styles.label}>Plan · {title}</span>
 
         {canEditTime ? (
           <button

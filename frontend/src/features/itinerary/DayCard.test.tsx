@@ -93,7 +93,7 @@ describe('DayCard — the open day', () => {
     renderCard();
 
     expect(screen.getByRole('heading', { name: 'Day 2 · Tue 13' })).toBeInTheDocument();
-    expect(screen.getByText('Bundle · Tuesday south')).toBeInTheDocument();
+    expect(screen.getByText('Plan · Tuesday south')).toBeInTheDocument();
     expect(screen.getByText('Daiso, Kyoto Station')).toBeInTheDocument();
     expect(screen.getByText('Nishiki Market')).toBeInTheDocument();
   });
@@ -366,7 +366,7 @@ describe('DayCard — read only', () => {
     // Still the day: its name, what is on it, the derived member hours, the
     // hole in the middle and where the night is spent.
     expect(screen.getByRole('heading', { name: 'Day 2 · Tue 13' })).toBeInTheDocument();
-    expect(screen.getByText('Bundle · Tuesday south')).toBeInTheDocument();
+    expect(screen.getByText('Plan · Tuesday south')).toBeInTheDocument();
     expect(screen.getByText('Daiso, Kyoto Station')).toBeInTheDocument();
     expect(screen.getByText('Nishiki Market')).toBeInTheDocument();
     expect(screen.getByText('08:00–10:15')).toBeInTheDocument();

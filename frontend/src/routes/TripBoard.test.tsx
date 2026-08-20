@@ -745,7 +745,7 @@ describe('TripBoard — when the load fails', () => {
     expect(screen.queryByText(/Showing \d+ of \d+/)).not.toBeInTheDocument();
     // The map pane's pill would otherwise claim things about ideas that never
     // arrived — same countKnown gate, same silence.
-    expect(screen.queryByText(/outside this view/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/off view/)).not.toBeInTheDocument();
   });
 
   it('the rail says the plans failed instead of "No plans yet", and leaves the ideas alone', async () => {

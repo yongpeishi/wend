@@ -93,15 +93,51 @@ describe('BoardMapPane', () => {
     });
   });
 
-  describe('existing chrome', () => {
+  describe('status pill in labeled mode', () => {
+    it('says how many pins are off view, and still offers Widen', async () => {
+      const user = userEvent.setup();
+      const onWiden = vi.fn();
+      renderPane({ offCount: 3, onWiden, labeledIds: new Set([1]), following: false });
+
+      expect(screen.getByText('3 off view')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Widen' }));
+      expect(onWiden).toHaveBeenCalledTimes(1);
+    });
+
+    it('never uses following vocabulary — the list no longer follows the map', () => {
+      renderPane({ offCount: 3, labeledIds: new Set([1]), following: false });
+      expect(screen.queryByText('The list is not following the map')).not.toBeInTheDocument();
+      expect(screen.queryByText(/following/)).not.toBeInTheDocument();
+    });
+
+    it('draws no status pill at all when nothing is off view', () => {
+      renderPane({ offCount: 0, labeledIds: new Set([1]), following: false });
+      expect(screen.queryByText('The list is not following the map')).not.toBeInTheDocument();
+      expect(screen.queryByText('Everything kept is in view')).not.toBeInTheDocument();
+      expect(screen.queryByText(/off view/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Widen' })).not.toBeInTheDocument();
+    });
+
+    it('holds its tongue while the counts are not facts yet', () => {
+      renderPane({ offCount: 3, labeledIds: new Set([1]), following: false, countKnown: false });
+      expect(screen.queryByText(/off view/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('status pill in legacy mode (no labeledIds)', () => {
     it('still says how many ideas the view cut, and still offers Widen', async () => {
       const user = userEvent.setup();
       const onWiden = vi.fn();
-      renderPane({ offCount: 3, onWiden, labeledIds: new Set([1]) });
+      renderPane({ offCount: 3, onWiden });
 
       expect(screen.getByText('3 ideas outside this view')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Widen' }));
       expect(onWiden).toHaveBeenCalledTimes(1);
+    });
+
+    it('still says everything is in view when nothing is cut', () => {
+      renderPane({ offCount: 0 });
+      expect(screen.getByText('Everything kept is in view')).toBeInTheDocument();
     });
 
     it('still explains itself while the list is not following the map', () => {

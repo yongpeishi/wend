@@ -19,6 +19,6 @@ describe('DesignGallery', () => {
     const { default: userEvent } = await import('@testing-library/user-event');
     render(<DesignGallery />);
     await userEvent.click(screen.getByRole('button', { name: 'Open modal' }));
-    expect(screen.getByRole('dialog', { name: 'Fork this bundle?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Fork this plan?' })).toBeInTheDocument();
   });
 });

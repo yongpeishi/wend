@@ -80,7 +80,7 @@ export function UnplacedRail({
 
       {children}
 
-      <p className={styles.note}>Nothing here is used up. A bundle can sit in two days at once until you decide.</p>
+      <p className={styles.note}>Nothing here is used up. A plan can sit in two days at once until you decide.</p>
     </aside>
   );
 }
@@ -150,7 +150,7 @@ function RailItem({ item, days, onAddToDay, readOnly = false }: RailItemProps) {
   }, [open]);
 
   const meta = joinMeta(
-    item.kind === 'bundle' ? 'Bundle' : null,
+    item.kind === 'bundle' ? 'Plan' : null,
     item.location_name,
     formatDuration(item.duration_minutes),
   );
