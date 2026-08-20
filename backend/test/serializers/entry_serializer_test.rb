@@ -53,13 +53,44 @@ class EntrySerializerTest < ActiveSupport::TestCase
                  rows[b.id].dig("vote_tally", "voters")
   end
 
+  test "parent_ids lists every parent link ascending, and [] with none" do
+    trip = create_trip(created_by: @user)
+    bundle = create_bundle(created_by: @user)
+    idea = create_idea(created_by: @user)
+    # Linked highest-id parent first on purpose: the ordering is by id, not by
+    # when the link was made.
+    link!(parent: bundle, child: idea)
+    link!(parent: trip, child: idea, position: 1)
+
+    rows = EntrySerializer.list([idea, bundle], current_user: @user).index_by { |r| r["id"] }
+
+    assert_equal [trip.id, bundle.id].sort, rows[idea.id]["parent_ids"]
+    assert_equal [], rows[bundle.id]["parent_ids"]
+  end
+
+  # An id the viewer cannot resolve is deliberately left in: bare integers
+  # reveal nothing usable, and the client intersects them with the entries it
+  # already fetched. Pins the "unfiltered by visibility" half of the contract.
+  test "parent_ids is not filtered by what the current user can see" do
+    stranger = create_user(name: "Stranger")
+    their_trip = create_trip(title: "Not yours", created_by: stranger)
+    idea = create_idea(created_by: @user)
+    link!(parent: their_trip, child: idea)
+
+    row = EntrySerializer.one(idea, current_user: @user)
+
+    assert_equal [their_trip.id], row["parent_ids"]
+  end
+
   # The constraint in this serializer's header comment: fixed, small query count
-  # regardless of how many entries are passed. `voters` must be one more bulk
-  # query, never one per entry.
+  # regardless of how many entries are passed. `voters` and `parent_ids` must
+  # each be one more bulk query, never one per entry.
   test "list issues the same number of queries for three voted entries as for one" do
     voters = 3.times.map { |i| create_user(name: "Voter #{i}") }
+    trip = create_trip(created_by: @user)
     entries = 3.times.map do |i|
       idea = create_idea(title: "Idea #{i}", created_by: @user)
+      link!(parent: trip, child: idea, position: i)
       voters.each { |v| Vote.create!(entry: idea, user: v, score: 1) }
       idea
     end

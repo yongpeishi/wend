@@ -236,6 +236,9 @@ export function toEntry(entry: StoredEntry, currentUserId: number | null): Entry
     archived_at: entry.archived_at,
     created_at: entry.created_at,
     updated_at: entry.updated_at,
+    // Ascending by id, the serializer's guarantee — not link order, and not
+    // filtered by visibility (the client intersects with what it has fetched).
+    parent_ids: parentIdsOf(entry.id).sort((a, b) => a - b),
     children_count: childIdsOf(entry.id).length,
     todos_open_count: db.todos.filter((t) => t.entry_id === entry.id && !t.done_at).length,
     vote_tally: voteTallyFor(entry.id),

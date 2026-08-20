@@ -71,6 +71,12 @@ export interface Entry {
   archived_at: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Every EntryLink parent of this entry, ids ascending, [] when unlinked.
+   * Deliberately NOT filtered by visibility — a bare id reveals nothing usable —
+   * so intersect with entries you already fetched before treating one as real.
+   */
+  parent_ids: number[];
   children_count: number;
   todos_open_count: number;
   vote_tally: VoteTally;

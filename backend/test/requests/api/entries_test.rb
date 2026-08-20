@@ -47,7 +47,25 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     assert_equal 2, row["my_vote"]
     assert_equal 1, row["todos_open_count"]
     assert_equal 0, row["children_count"]
+    # Always an array, [] when unlinked — the client builds the idea tree from it.
+    assert_equal [], row["parent_ids"]
     assert_equal false, row["scheduled"]
+  end
+
+  test "GET /api/entries rows carry parent_ids for every parent link, ascending" do
+    trip = create_trip(created_by: @user)
+    bundle = create_bundle(created_by: @user)
+    idea = create_idea(created_by: @user)
+    link!(parent: trip, child: bundle)
+    link!(parent: bundle, child: idea)
+    link!(parent: trip, child: idea, position: 1)
+
+    get "/api/entries", params: { trip_id: trip.id }
+    assert_response :success
+    rows = JSON.parse(response.body)["entries"].index_by { |e| e["id"] }
+
+    assert_equal [trip.id, bundle.id].sort, rows[idea.id]["parent_ids"]
+    assert_equal [trip.id], rows[bundle.id]["parent_ids"]
   end
 
   test "GET /api/entries list endpoint does not N+1 per entry" do

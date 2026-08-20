@@ -26,6 +26,7 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     archived_at: null,
     created_at: '',
     updated_at: '',
+    parent_ids: [],
     children_count: 0,
     todos_open_count: 0,
     vote_tally: { total: 0, count: 0, average: 0 },
