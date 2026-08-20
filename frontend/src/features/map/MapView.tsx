@@ -5,7 +5,7 @@ import { MapContainer, Marker, Popup, TileLayer, ZoomControl, useMap, useMapEven
 import 'leaflet/dist/leaflet.css';
 import { boundsTupleForPoints } from './bounds';
 import { cellSizeForZoom, clusterPoints, isMultiPointCluster } from './clustering';
-import { clusterIcon, labelIcon, pendingIcon, pinIcon } from './markerIcon';
+import { chipIcon, clusterIcon, dotIcon, labelIcon, pendingIcon, pinIcon } from './markerIcon';
 import type { Bounds, Cluster, ClusterPoint, MapPin } from './types';
 import styles from './MapView.module.css';
 
@@ -184,10 +184,14 @@ function PinMarker({
   onSelectPin?: (id: number) => void;
   renderPopup?: (id: number) => ReactNode;
 }) {
-  const icon = useMemo(
-    () => (variant === 'label' ? labelIcon(pin.title, pin.tone, selected) : pinIcon(pin.state, selected, pin.title)),
-    [variant, pin.state, pin.tone, selected, pin.title],
-  );
+  // A per-pin mark beats the per-map variant: the board sets `mark` exactly
+  // when it wants the chip/dot split, and pins without one keep drawing the
+  // way the variant says — so a caller that never sets it sees no change.
+  const icon = useMemo(() => {
+    if (pin.mark === 'chip') return chipIcon(pin.title, selected);
+    if (pin.mark === 'dot') return dotIcon(pin.title, selected);
+    return variant === 'label' ? labelIcon(pin.title, pin.tone, selected) : pinIcon(pin.state, selected, pin.title);
+  }, [variant, pin.mark, pin.state, pin.tone, selected, pin.title]);
   return (
     <Marker
       position={[pin.lat, pin.lng]}

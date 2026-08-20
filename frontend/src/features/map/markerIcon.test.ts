@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DivIcon } from 'leaflet';
-import { clusterIcon, labelIcon, pinIcon } from './markerIcon';
+import { chipIcon, clusterIcon, dotIcon, labelIcon, pinIcon } from './markerIcon';
 
 // The icons are HTML strings handed to Leaflet, so the only thing worth
 // asserting is the contract that string carries: which classes the stylesheet
@@ -49,6 +49,62 @@ describe('labelIcon', () => {
     const marker = html(pinIcon('scheduled', false, 'Fushimi Inari'));
     expect(marker).toContain('wend-pin');
     expect(marker).not.toContain('wend-pin-label');
+  });
+});
+
+describe('chipIcon', () => {
+  it('shows the entry title as the chip text', () => {
+    expect(html(chipIcon('Fushimi Inari', false))).toContain('>Fushimi Inari<');
+  });
+
+  it('escapes a title that contains markup rather than rendering it', () => {
+    const markup = html(chipIcon('<script>alert(1)</script>', false));
+    expect(markup).not.toContain('<script>');
+    expect(markup).toContain('&lt;script&gt;');
+  });
+
+  it('carries no tone modifier — the chip/dot split is the whole message', () => {
+    expect(html(chipIcon('A', false))).not.toContain('wend-pin-label--');
+  });
+
+  it('marks the selected chip, and only the selected chip, as selected', () => {
+    expect(html(chipIcon('A', true))).toContain('is-selected');
+    expect(html(chipIcon('A', false))).not.toContain('is-selected');
+  });
+
+  it('anchors at a point rather than a box, since the chip is as wide as its title', () => {
+    const icon = chipIcon('A somewhat long place name', false);
+    expect(icon.options.iconSize).toEqual([0, 0]);
+    expect(icon.options.iconAnchor).toEqual([0, 0]);
+  });
+});
+
+describe('dotIcon', () => {
+  it('names the place for a screen reader without drawing the name', () => {
+    const markup = html(dotIcon('Fushimi Inari', false));
+    expect(markup).toContain('aria-label="Fushimi Inari"');
+    expect(markup).not.toContain('>Fushimi Inari<');
+  });
+
+  it('escapes a title that contains markup rather than rendering it', () => {
+    const markup = html(dotIcon('<script>alert(1)</script>', false));
+    expect(markup).not.toContain('<script>');
+    expect(markup).toContain('&lt;script&gt;');
+  });
+
+  it('is a real button — dots stay clickable like every other pin', () => {
+    expect(html(dotIcon('A', false))).toContain('<button type="button"');
+  });
+
+  it('keeps the 32px hit area even though the drawn mark is 12px', () => {
+    const icon = dotIcon('A', false);
+    expect(icon.options.iconSize).toEqual([32, 32]);
+    expect(icon.options.iconAnchor).toEqual([16, 16]);
+  });
+
+  it('marks the selected dot, and only the selected dot, as selected', () => {
+    expect(html(dotIcon('A', true))).toContain('is-selected');
+    expect(html(dotIcon('A', false))).not.toContain('is-selected');
   });
 });
 

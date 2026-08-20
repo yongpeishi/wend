@@ -16,6 +16,15 @@ export type PinState = 'scheduled' | 'potential' | 'destination';
  */
 export type PinTone = 'bundled' | 'inView' | 'offView';
 
+/**
+ * A stronger split than tone: 'chip' draws the labelled leaf pill (this idea
+ * is in the list beside the map), 'dot' draws a small neutral circle (located,
+ * but not in what you're reading). Like `tone`, it is board vocabulary the
+ * board computes and hands down — the map only draws it. When set it wins over
+ * tone/variant for that pin; absent means the variant/tone rendering decides.
+ */
+export type PinMark = 'chip' | 'dot';
+
 export interface MapPin {
   id: number;
   lat: number;
@@ -24,6 +33,8 @@ export interface MapPin {
   state: PinState;
   /** Optional. Absent means "no opinion" — the pin draws in its neutral resting tone. */
   tone?: PinTone;
+  /** Optional. Absent means the map's `pinVariant` (and `tone`) decide — see PinMark. */
+  mark?: PinMark;
 }
 
 /** A plain lat/lng box — the provider-agnostic stand-in for LatLngBounds. */

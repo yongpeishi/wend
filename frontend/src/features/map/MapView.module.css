@@ -240,6 +240,92 @@
   outline-offset: var(--focus-offset);
 }
 
+/* The labelled chip pin (MapPin.mark='chip') — the board's "in the list you
+   are viewing" mark. Same 0x0 anchor + self-centring as the name pill above.
+   13px/700 is the slice contract's own size, not a drift from the 15px floor
+   note on .wend-pin-label: the chip never stands alone — the same title is
+   readable at full size in the list right beside the map. */
+:global(.wend-pin-chip-icon) {
+  background: transparent;
+  border: none;
+  width: 0;
+  height: 0;
+}
+
+:global(.wend-pin-chip) {
+  display: block;
+  width: max-content;
+  transform: translate(-50%, -50%);
+  /* 4px vertical padding keeps the rendered height at the 24px
+     markerIcon.ts's CHIP_HEIGHT assumes when it lifts the popup clear. */
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--wend-leaf);
+  color: var(--wend-paper);
+  border: var(--border-width) solid var(--wend-leaf);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+:global(.wend-pin-chip:hover) {
+  opacity: 0.8;
+}
+
+/* Same selection message as the name pill: apricot, 3px at 3px. */
+:global(.wend-pin-chip.is-selected),
+:global(.wend-pin-chip:focus-visible) {
+  outline: var(--focus-width) solid var(--wend-apricot);
+  outline-offset: var(--focus-offset);
+}
+
+/* The neutral dot pin (MapPin.mark='dot') — located, but not in the list on
+   screen. The drawn mark is the 12px inner span; the button keeps the 32px
+   target the way .wend-pin does. */
+:global(.wend-pin-dot-icon) {
+  background: transparent;
+  border: none;
+}
+
+:global(.wend-pin-dot) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+:global(.wend-pin-dot span) {
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+}
+
+:global(.wend-pin-dot:hover) {
+  opacity: 0.8;
+}
+
+/* The ring hugs the 12px mark, not the invisible 32px hit box — a ring around
+   empty space would read as a bigger, different pin. */
+:global(.wend-pin-dot.is-selected span),
+:global(.wend-pin-dot:focus-visible span) {
+  outline: var(--focus-width) solid var(--wend-apricot);
+  outline-offset: var(--focus-offset);
+}
+
 /* A cluster mark: card tone, a count, no shadow — "zooms" on click, per screens.md. */
 :global(.wend-cluster-icon) {
   background: transparent;
