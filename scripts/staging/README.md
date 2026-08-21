@@ -43,8 +43,26 @@ A push is refused if the other person deployed something you haven't fetched. Re
 `deploy` fixes it: it fetches first, so the second attempt merges on top of their work.
 
 The database is **not** reset by a deploy. It lives in `/srv/wend/app/backend/storage/`,
-untracked, and survives every deploy — so demo data you set up by hand stays put. To start
-clean, ssh in and run `scripts/db-reset` in `/srv/wend/app`.
+untracked, and survives every deploy — so demo data you set up by hand stays put.
+
+## Working on the Pi itself
+
+`ssh <you>@logpi.local`, then `cd /srv/wend/app`. Ruby and node are on your `PATH`, and
+the shared gems are found through a `backend/.bundle/config` the deploy writes, so the
+project's own scripts work as they do at home.
+
+Anything that *writes* has to run as the `wend` user, because the database and the logs
+belong to the service, not to you:
+
+```sh
+sudo -u wend scripts/db-reset     # start clean — drops, migrates, seeds
+sudo -u wend scripts/console      # rails console
+scripts/test                      # read-only, so no sudo needed
+git log                           # /srv/wend/app is a real checkout
+```
+
+That `sudo -u wend` grants nothing you don't already have: deploying *is* running your
+code as `wend`. It cannot become root, and it owns nothing outside `/srv/wend`.
 
 ## On the Pi
 

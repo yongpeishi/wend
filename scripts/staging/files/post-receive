@@ -54,6 +54,13 @@ changed() {  # changed <name> <file> -- true if the file differs from last deplo
   return 0
 }
 
+# Bundler config that belongs to the directory rather than to whoever is
+# standing in it, so `bin/rails`, `scripts/test` and `scripts/console` find the
+# shared gems when a person runs them here -- not just when systemd does.
+# backend/.gitignore ignores /.bundle, so the checkout above leaves it alone.
+mkdir -p "$APP/backend/.bundle"
+printf 'BUNDLE_PATH: "%s"\n' "$BUNDLE_PATH" > "$APP/backend/.bundle/config"
+
 cd "$APP/backend"
 if changed gemfile-lock Gemfile.lock || ! bundle check >/dev/null 2>&1; then
   say "installing gems"
@@ -81,7 +88,7 @@ sudo -n systemctl restart wend-frontend.service
 wait_for() {  # wait_for <label> <url> -- poll until it answers, or give up
   local label="$1" url="$2" i
   for i in $(seq 1 60); do
-    if curl -fsS -o /dev/null --max-time 2 "$url"; then
+    if curl -fs -o /dev/null --max-time 2 "$url"; then
       ok "$label is up ($url)"
       return 0
     fi

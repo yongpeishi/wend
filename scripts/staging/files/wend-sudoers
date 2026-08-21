@@ -11,3 +11,13 @@ Cmnd_Alias WEND_SERVICES = \
   /usr/bin/systemctl restart wend-frontend.service
 
 %wend ALL=(root) NOPASSWD: WEND_SERVICES
+
+# The database, the logs and the tmp files belong to the `wend` user, so
+# resetting the database or opening a console has to happen as `wend`:
+#
+#   cd /srv/wend/app && sudo -u wend scripts/db-reset
+#
+# This grants nothing new. Anyone in this group can already push code that the
+# services then run as `wend` -- that is what deploying is. `wend` owns nothing
+# outside /srv/wend and cannot become root.
+%wend ALL=(wend) NOPASSWD: ALL
