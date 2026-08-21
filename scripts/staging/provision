@@ -96,8 +96,32 @@ else
   git --git-dir="$ROOT/repo.git" symbolic-ref HEAD refs/heads/staging
 fi
 install -o "$SVC_USER" -g "$SVC_GROUP" -m 0775 "$SRC/files/post-receive" "$ROOT/repo.git/hooks/post-receive"
-chown -R "$SVC_USER:$SVC_GROUP" "$ROOT/repo.git"
 ok "post-receive hook installed"
+
+# The repo is also the git directory for /srv/wend/app, so `git log`, `git
+# status` and `git diff` work when you're standing in the deployed tree
+# wondering what's actually running. denyCurrentBranch=ignore because pushing
+# the checked-out branch is exactly what a deploy is -- the hook updates the
+# working tree straight afterwards.
+git --git-dir="$ROOT/repo.git" config core.bare false
+git --git-dir="$ROOT/repo.git" config core.worktree "$ROOT/app"
+git --git-dir="$ROOT/repo.git" config receive.denyCurrentBranch ignore
+printf 'gitdir: %s\n' "$ROOT/repo.git" > "$ROOT/app/.git"
+
+chown -R "$SVC_USER:$SVC_GROUP" "$ROOT/repo.git" "$ROOT/app/.git"
+chmod 0664 "$ROOT/app/.git"
+
+# Neither person owns the repo they're both pushing into, and git calls that
+# dubious ownership and refuses. Vouch for these two paths machine-wide --
+# per-user config would have to be repeated for every collaborator.
+for d in "$ROOT/repo.git" "$ROOT/app"; do
+  if git config --system --get-all safe.directory 2>/dev/null | grep -qx "$d"; then
+    ok "git trusts $d"
+  else
+    info "marking $d as a safe.directory"
+    git config --system --add safe.directory "$d"
+  fi
+done
 
 # --- environment shared by the hook and both services -----------------------
 
