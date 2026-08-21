@@ -29,11 +29,20 @@
 
 /* Says in words what position no longer says: which idea this lands in. The
    label wears the section voice, the host name is set at the card's floor
-   size and full weight, because it is the answer, not a caption. */
+   size and full weight, because it is the answer, not a caption.
+
+   The two are ONE heading read straight through — "new idea inside, THIS one" —
+   so they run along a row and sit on a shared baseline: stacked, or centred
+   across two different sizes, they would read as a caption and a title rather
+   than a single sentence. The wrap is for the long titles ideas actually
+   carry: a name that outruns the line drops whole rather than crushing the
+   label or pushing past the card's edge. */
 .heading {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .hostName {
