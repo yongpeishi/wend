@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
@@ -58,6 +58,8 @@ interface ListExtras {
   onDrill?: (id: number) => void;
   expandedIds?: ReadonlySet<number>;
   onToggleExpand?: (id: number) => void;
+  focusedId?: number | null;
+  onFocusRow?: (id: number) => void;
 }
 
 function renderList(groupMode: GroupMode, entries = ENTRIES, extra: ListExtras = {}) {
@@ -82,6 +84,8 @@ function renderList(groupMode: GroupMode, entries = ENTRIES, extra: ListExtras =
               onDrill={extra.onDrill ?? (() => {})}
               expandedIds={extra.expandedIds ?? new Set()}
               onToggleExpand={extra.onToggleExpand ?? (() => {})}
+              focusedId={extra.focusedId ?? null}
+              onFocusRow={extra.onFocusRow ?? (() => {})}
             />
           </DndContext>
         </ToastProvider>
@@ -268,6 +272,30 @@ describe('IdeaList', () => {
 
       expect(onToggleExpand).toHaveBeenCalledWith(2);
       expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('marks exactly the row the board names as focused, among several open ones', () => {
+      renderList('none', ENTRIES, { expandedIds: new Set([1, 3]), focusedId: 3 });
+
+      const focusedRow = screen.getByRole('button', { name: /^Kinkaku-ji/ }).closest('[data-expanded]');
+      const otherRow = screen.getByRole('button', { name: /^Fushimi Inari/ }).closest('[data-expanded]');
+      expect(focusedRow).toHaveAttribute('data-focused');
+      expect(otherRow).not.toHaveAttribute('data-focused');
+    });
+
+    it('marks nothing as focused when the named row is not open', () => {
+      renderList('none', ENTRIES, { expandedIds: new Set([1]), focusedId: 2 });
+
+      expect(document.querySelector('[data-focused]')).toBeNull();
+    });
+
+    it('hands onFocusRow to the rows, so a press inside an open row reports up', () => {
+      const onFocusRow = vi.fn();
+      renderList('none', ENTRIES, { expandedIds: new Set([2]), onFocusRow });
+
+      fireEvent.pointerDown(screen.getByRole('button', { name: /^Nishiki Market/ }));
+
+      expect(onFocusRow).toHaveBeenCalledWith(2);
     });
 
     it('passes a drill straight up with the row it came from', async () => {

@@ -117,6 +117,12 @@ export function TripBoard() {
   // them all back: expansions left open across a level change would belong to
   // rows that are no longer on screen.
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<number>>(() => new Set());
+  // Of the open rows, the one under attention — the last one opened or touched.
+  // Several rows can be open at once, but only one wears the apricot "I'm
+  // here" edge, and only the board can arbitrate which: a row knows it was
+  // touched, never that some other row was touched more recently. Cleared when
+  // its row closes and on every drill, alongside the expansions it qualifies.
+  const [focusedId, setFocusedId] = useState<number | null>(null);
   // The composer, and the words already typed when it was asked for: opening
   // it must not cost the reader the title they started in the capture bar.
   const [composer, setComposer] = useState<{ open: boolean; initialTitle: string }>({
@@ -216,6 +222,8 @@ export function TripBoard() {
   function drillInto(id: number) {
     setPath([...path, id]);
     setExpandedIds(new Set());
+    // The focus belonged to one of the rows just folded — it goes with them.
+    setFocusedId(null);
     setFilters((previous) => ({ ...previous, text: '' }));
   }
 
@@ -515,14 +523,19 @@ export function TripBoard() {
           />
 
           {/* The scope line: where in the tree the list below is standing.
-              At root it is a plain heading; drilled, it is the way back plus
-              the current idea's own two facts (what is inside it, how the
-              votes stand). Clicking any crumb truncates the path to it. */}
+              At root it is a plain heading; drilled, the current idea's own
+              title leads, then the way back, then its two facts (what is
+              inside it, how the votes stand). Clicking any crumb truncates
+              the path to it. */}
           <nav className={styles.breadcrumbs} aria-label="Idea path">
             {currentIdea === undefined ? (
               <h2 className={styles.crumbHere}>All ideas</h2>
             ) : (
               <>
+                {/* Where you are comes FIRST, per the redesign: the heading
+                    leads the row, and the way back trails it — root, then each
+                    ancestor — as the smaller fact it is. */}
+                <h2 className={styles.crumbHere}>{currentIdea.title}</h2>
                 <button type="button" className={styles.crumbBack} onClick={() => setPath([])}>
                   All ideas <span aria-hidden="true">›</span>
                 </button>
@@ -536,7 +549,6 @@ export function TripBoard() {
                     {ideaById.get(id)?.title} <span aria-hidden="true">›</span>
                   </button>
                 ))}
-                <h2 className={styles.crumbHere}>{currentIdea.title}</h2>
                 {currentInsideCount > 0 && (
                   <span className={styles.insidePill}>{currentInsideCount} inside</span>
                 )}
@@ -600,14 +612,22 @@ export function TripBoard() {
                 allIdeas={allIdeas}
                 onDrill={drillInto}
                 expandedIds={expandedIds}
-                onToggleExpand={(id) =>
+                onToggleExpand={(id) => {
+                  const closing = expandedIds.has(id);
                   setExpandedIds((previous) => {
                     const next = new Set(previous);
-                    if (next.has(id)) next.delete(id);
+                    if (closing) next.delete(id);
                     else next.add(id);
                     return next;
-                  })
-                }
+                  });
+                  // Opening a row makes it the focused one; closing the
+                  // focused row leaves nothing focused rather than promoting
+                  // some other open row nobody pointed at.
+                  if (closing) setFocusedId((current) => (current === id ? null : current));
+                  else setFocusedId(id);
+                }}
+                focusedId={focusedId}
+                onFocusRow={setFocusedId}
               />
             )}
           </QueryGate>

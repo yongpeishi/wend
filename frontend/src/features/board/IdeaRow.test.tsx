@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
@@ -65,6 +65,9 @@ interface RowOptions {
       harness's stand-in board off entirely. */
   expanded?: boolean;
   onToggleExpand?: (id: number) => void;
+  /** Whether the board names this row as the focused open one. */
+  focused?: boolean;
+  onFocusRow?: (id: number) => void;
 }
 
 /**
@@ -96,6 +99,8 @@ function HarnessRow({ options }: { options: RowOptions }) {
       onToggleExpand={
         options.onToggleExpand ?? ((id) => setOpenId((current) => (current === id ? null : id)))
       }
+      focused={options.focused ?? false}
+      onFocusRow={options.onFocusRow ?? (() => {})}
     />
   );
 }
@@ -359,6 +364,74 @@ describe('IdeaRow — opening the row', () => {
     await user.click(screen.getByRole('radio', { name: 'Keen' }));
 
     expect(rowToggle()).toHaveAttribute('aria-expanded', 'true');
+  });
+});
+
+/**
+ * Of the open rows the board names at most one as focused, and only that row
+ * wears `data-focused` — the apricot edge moved off "open" (any number of rows
+ * can be open now) onto "the open row under attention". The row's half of the
+ * bargain: wear the mark only while open, and report a press or a focus
+ * landing inside it so the board can move the mark — but never re-report a
+ * focus it already has, which is what keeps the loop from closing.
+ */
+describe('IdeaRow — the focused row', () => {
+  /** The row's root card — the element that carries the data-* styling hooks. */
+  function rowCard(): HTMLElement {
+    const card = document.querySelector<HTMLElement>('[data-expanded]') ?? rowToggle().closest('div');
+    if (!card) throw new Error('no row card on screen');
+    return card as HTMLElement;
+  }
+
+  it('wears data-focused only while open AND named as focused', () => {
+    const view = renderRow({ expanded: true, focused: true });
+    expect(document.querySelector('[data-focused]')).not.toBeNull();
+
+    // Open but not focused: another open row holds the attention.
+    view.update({ expanded: true, focused: false });
+    expect(document.querySelector('[data-focused]')).toBeNull();
+  });
+
+  it('never wears data-focused while closed, whatever the board says', () => {
+    renderRow({ expanded: false, focused: true });
+    expect(document.querySelector('[data-focused]')).toBeNull();
+  });
+
+  it('claims focus on a press anywhere inside the open row', () => {
+    const onFocusRow = vi.fn();
+    renderRow({ expanded: true, focused: false, onFocusRow });
+
+    fireEvent.pointerDown(rowToggle());
+
+    expect(onFocusRow).toHaveBeenCalledWith(42);
+  });
+
+  it('claims focus when keyboard focus lands inside the open row', () => {
+    const onFocusRow = vi.fn();
+    renderRow({ expanded: true, focused: false, onFocusRow });
+
+    screen.getByRole('button', { name: 'Edit' }).focus();
+
+    expect(onFocusRow).toHaveBeenCalledWith(42);
+  });
+
+  it('reports nothing from a closed row — there is no attention to claim', () => {
+    const onFocusRow = vi.fn();
+    renderRow({ expanded: false, focused: false, onFocusRow });
+
+    fireEvent.pointerDown(rowToggle());
+
+    expect(onFocusRow).not.toHaveBeenCalled();
+  });
+
+  it('never re-reports a focus it already holds', () => {
+    const onFocusRow = vi.fn();
+    renderRow({ expanded: true, focused: true, onFocusRow });
+
+    fireEvent.pointerDown(rowCard());
+    screen.getByRole('button', { name: 'Edit' }).focus();
+
+    expect(onFocusRow).not.toHaveBeenCalled();
   });
 });
 

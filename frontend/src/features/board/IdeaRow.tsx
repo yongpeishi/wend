@@ -63,13 +63,27 @@ export interface IdeaRowProps {
   /** Descend one level — show what lives inside this idea. */
   onDrill: (id: number) => void;
   /**
-   * Whether this row is the open one. Expansion used to be local state; it is
-   * controlled now because the board opens at most one row at a time, and only
-   * the board can know which one that is.
+   * Whether this row is open. Expansion used to be local state; it is
+   * controlled now because the board holds the open rows as a set — any number
+   * can be open at once — and folds them all when the level changes, which no
+   * single row can know on its own.
    */
   expanded: boolean;
   /** The click's meaning: asks the board to open this row, or close it again. */
   onToggleExpand: (id: number) => void;
+  /**
+   * Whether this row is the one under attention — the last open row the reader
+   * opened or touched. Several rows can be `expanded`; at most one is
+   * `focused`, and only the board can arbitrate which. Meaningless while
+   * closed: the row only wears it (`data-focused`) when it is also open.
+   */
+  focused: boolean;
+  /**
+   * A press or a focus landed inside this row — asks the board to make it the
+   * focused one. The row reports it only while open and not already focused,
+   * so the board is never asked to restate what it already holds.
+   */
+  onFocusRow: (id: number) => void;
 }
 
 /**
@@ -89,10 +103,15 @@ export interface IdeaRowProps {
  *
  * Expansion is CONTROLLED, not local. It used to be `useState` here, on the
  * argument that a disclosure is a reading posture; the drill-down redesign
- * changed the terms — the board opens at most one row at a time and closes it
- * when the level changes, and only TripBoard knows either of those things. So
- * the row reports the click (`onToggleExpand`) and obeys the prop (`expanded`),
- * the same shape as `selected`/`onToggleSelect` beside it.
+ * changed the terms — the board holds the open rows as a set (any number can
+ * be open at once, because reading two ideas side by side is the point of
+ * unfolding in place) and folds them all when the level changes, and only
+ * TripBoard knows either of those things. So the row reports the click
+ * (`onToggleExpand`) and obeys the prop (`expanded`), the same shape as
+ * `selected`/`onToggleSelect` beside it. Focus follows the same shape: of the
+ * open rows, the board names at most one as the FOCUSED one (`focused`), and
+ * the row reports a press or a focus landing inside it (`onFocusRow`) so the
+ * board can move that title to whichever open row the reader turns to.
  *
  * Drilling ("N inside ›") is the one click on this row that leaves it: it
  * descends into the idea's own list. The pill sits at the card's top right,
@@ -120,9 +139,12 @@ export interface IdeaRowProps {
  *     drag writes, through the same mutations.
  *
  * Interaction: hover and press are opacity only, focus is the apricot ring,
- * there are no shadows. A selected row is bordered apricot, and so is an open
- * one — apricot is the design's "I'm here" edge, the same border the capture
- * bar and the composer wear, so attention reads as one hue everywhere.
+ * there are no shadows. An open row thickens its border to the strong line so
+ * open still reads as open, but with several rows open at once apricot cannot
+ * mark them all — it is the design's "I'm here" edge, the same border the
+ * capture bar and the composer wear, and "here" is one place. So only the
+ * FOCUSED open row wears it (`data-focused`), and a selected row is bordered
+ * apricot regardless: in select mode the picks are the attention.
  */
 export function IdeaRow({
   entry,
@@ -139,6 +161,8 @@ export function IdeaRow({
   onDrill,
   expanded,
   onToggleExpand,
+  focused,
+  onFocusRow,
 }: IdeaRowProps) {
   const { show } = useToast();
   const panelId = useId();
@@ -288,12 +312,25 @@ export function IdeaRow({
     );
   }
 
+  // Any press or focus landing anywhere in an open row claims the apricot
+  // edge for it. Capture-phase, so a click on a vote stop or a to-do tick
+  // counts as turning to this row without any child needing to know. Guarded
+  // on `!focused` so an already-focused row never re-reports itself — the
+  // board is only ever told something it does not already hold, which is also
+  // what keeps this from looping.
+  const claimFocus = () => {
+    if (expanded && !focused) onFocusRow(entry.id);
+  };
+
   return (
     <div
       className={styles.row}
       data-selected={selected || undefined}
       data-expanded={expanded || undefined}
+      data-focused={(expanded && focused) || undefined}
       data-dragging={isDragging || undefined}
+      onPointerDownCapture={claimFocus}
+      onFocusCapture={claimFocus}
     >
       <div className={styles.header}>
         {/*

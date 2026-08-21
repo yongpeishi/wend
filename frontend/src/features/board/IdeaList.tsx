@@ -57,6 +57,13 @@ export interface IdeaListProps {
   expandedIds: ReadonlySet<number>;
   /** A row was clicked — the board decides what that does to `expandedIds`. */
   onToggleExpand: (id: number) => void;
+  /**
+   * Of the open rows, the one under attention — at most one, held on the board
+   * beside `expandedIds`. The list only translates it per row into `focused`.
+   */
+  focusedId: number | null;
+  /** A row was touched — the board decides whether that moves `focusedId`. */
+  onFocusRow: (id: number) => void;
 }
 
 /**
@@ -90,6 +97,8 @@ export function IdeaList({
   onDrill,
   expandedIds,
   onToggleExpand,
+  focusedId,
+  onFocusRow,
 }: IdeaListProps) {
   const idBase = useId();
   const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(() => new Set());
@@ -123,6 +132,8 @@ export function IdeaList({
         onDrill={onDrill}
         expanded={expandedIds.has(entry.id)}
         onToggleExpand={onToggleExpand}
+        focused={entry.id === focusedId}
+        onFocusRow={onFocusRow}
       />
     ));
   }

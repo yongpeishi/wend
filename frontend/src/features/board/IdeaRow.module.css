@@ -14,22 +14,30 @@
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-/* Multi-selected rows take the apricot accent — the same "this one" signal the
-   design uses for the row currently under attention. */
-.row[data-selected] {
-  border-color: var(--wend-apricot);
-}
-
-/* An open row takes the 2px apricot edge — the "I'm here" highlight, the same
-   border the capture bar and the composer wear, so the card under attention is
-   one hue everywhere on the board. Selection and expansion agree on it, which
-   is exactly why they can share a border when the two coincide. */
+/* An open row thickens its border to the strong line — open must still read as
+   open, but with several rows open at once the apricot "I'm here" edge cannot
+   mark them all, so plain openness is weight without the hue. */
 .row[data-expanded] {
   border-width: var(--border-width-strong);
-  border-color: var(--wend-apricot);
+  border-color: var(--wend-line-strong);
   /* Half a px each side, so open rows do not sit visibly fatter than closed
      ones: the extra border eats the padding rather than growing the card. */
   padding: calc(var(--space-3) - 0.5px) calc(var(--space-4) - 0.5px);
+}
+
+/* The FOCUSED open row — the one the reader last opened or touched — is where
+   the apricot edge lives now: the same "I'm here" border the capture bar and
+   the composer wear, on exactly one card at a time. */
+.row[data-expanded][data-focused] {
+  border-color: var(--wend-apricot);
+}
+
+/* Multi-selected rows take the apricot accent — in select mode the picks ARE
+   the attention. After the expanded rules on purpose: a row both open and
+   selected must read as selected, and the focused rule above (which this one
+   loses to on specificity) agrees on the hue, so apricot wins every overlap. */
+.row[data-selected] {
+  border-color: var(--wend-apricot);
 }
 
 /* The row is mid-drag; its stand-in is following the pointer in the overlay. */

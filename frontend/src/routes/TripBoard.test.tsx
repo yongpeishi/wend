@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { TripRoleProvider } from '../auth/TripRoleContext';
 import { setRole } from '../mocks/db';
 import { TripBoard } from './TripBoard';
 import styles from './TripBoard.module.css';
+import rowStyles from '../features/board/IdeaRow.module.css';
 import type { Entry, TripRole } from '../api/types';
 import type { MapViewProps } from '../features/map/MapView';
 
@@ -345,14 +346,17 @@ describe('TripBoard — drilling down', () => {
     expect(screen.getByText(/Showing 7 of 7/)).toBeInTheDocument();
   });
 
-  it('draws the way back and the current idea\'s own facts on the breadcrumb', async () => {
+  it('draws the current idea first, then the way back and its own facts, on the breadcrumb', async () => {
     await addIdea({ title: 'Temple garden' }, NANZENJI_ID);
     renderBoard({ url: `/trips/1?path=${NANZENJI_ID}` });
     await within(ideas()).findByText('Temple garden');
 
     const crumbs = screen.getByRole('navigation', { name: 'Idea path' });
-    expect(within(crumbs).getByRole('button', { name: /All ideas/ })).toBeInTheDocument();
-    expect(within(crumbs).getByRole('heading', { name: 'Nanzen-ji' })).toBeInTheDocument();
+    const heading = within(crumbs).getByRole('heading', { name: 'Nanzen-ji' });
+    const back = within(crumbs).getByRole('button', { name: /All ideas/ });
+    expect(back).toBeInTheDocument();
+    // Where you are LEADS the row now; the way back trails it.
+    expect(heading.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(within(crumbs).getByText('1 inside')).toBeInTheDocument();
     // Nanzen-ji's seeded votes sum to +1, so the tally pill is up. The thumb
     // beside the number is aria-hidden SVG, so the pill's only text is the
@@ -395,6 +399,25 @@ describe('TripBoard — drilling down', () => {
     expect(await within(ideas()).findByText('Temple garden')).toBeInTheDocument();
     expect(within(ideas()).queryByText('A bench to read on')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Nanzen-ji' })).toBeInTheDocument();
+  });
+
+  it('orders a deep breadcrumb: current idea, then the root crumb, then each ancestor', async () => {
+    // Two levels: garden inside Nanzen-ji, bench inside the garden.
+    await addIdea({ title: 'Temple garden' }, NANZENJI_ID);
+    const { entries } = await api.get<{ entries: Entry[] }>('/entries', {
+      params: { trip_id: TRIP_ID, kind: 'idea' },
+    });
+    const garden = entries.find((e) => e.title === 'Temple garden') as Entry;
+    await addIdea({ title: 'A bench to read on' }, garden.id);
+
+    renderBoard({ url: `/trips/1?path=${NANZENJI_ID},${garden.id}` });
+    await within(ideas()).findByText('A bench to read on');
+
+    // The whole row, in DOM order: the heading leads, then the way back —
+    // root first, then the ancestors down — then the level's own facts.
+    const crumbs = screen.getByRole('navigation', { name: 'Idea path' });
+    const texts = Array.from(crumbs.children).map((el) => (el.textContent ?? '').replace(/\s+/g, ' ').trim());
+    expect(texts).toEqual(['Temple garden', 'All ideas ›', 'Nanzen-ji ›', '1 inside']);
   });
 
   it('ignores path ids the idea set cannot vouch for, falling back to root', async () => {
@@ -476,6 +499,63 @@ describe('TripBoard — expanding rows', () => {
     await within(ideas()).findByText('Kiyamachi');
 
     expect(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ })).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
+/**
+ * Several rows can be open, but the apricot "I'm here" edge belongs to ONE of
+ * them — the focused row, worn as `data-focused` on the row's card. The board
+ * moves it: opening a row focuses it, a press inside another open row claims
+ * it, and closing the focused row retires it rather than promoting a row
+ * nobody pointed at.
+ */
+describe('TripBoard — the focused open row', () => {
+  /** The row's card element — where the data-expanded/data-focused hooks live. */
+  function rowCard(name: RegExp): HTMLElement {
+    const card = within(ideas()).getByRole('button', { name }).closest(`.${rowStyles.row}`);
+    if (!card) throw new Error(`no row card for ${name}`);
+    return card as HTMLElement;
+  }
+
+  /** Opens Nanzen-ji then Kiyamachi, leaving both open and Kiyamachi focused. */
+  async function openBoth() {
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+    await user.click(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ }));
+    await user.click(within(ideas()).getByRole('button', { name: /^Kiyamachi/ }));
+    return user;
+  }
+
+  it('with two rows open, only the last-opened one is focused', async () => {
+    await openBoth();
+
+    expect(rowCard(/^Kiyamachi/)).toHaveAttribute('data-focused');
+    expect(rowCard(/^Nanzen-ji/)).not.toHaveAttribute('data-focused');
+    // Both stay open — focus narrows the apricot, never the expansion.
+    expect(rowCard(/^Nanzen-ji/)).toHaveAttribute('data-expanded');
+    expect(rowCard(/^Kiyamachi/)).toHaveAttribute('data-expanded');
+  });
+
+  it('a pointerdown inside the other open row moves the focus to it', async () => {
+    await openBoth();
+
+    // A press on anything in Nanzen-ji's open card — here its own toggle,
+    // pressed but not clicked, so the row is turned to without being folded.
+    fireEvent.pointerDown(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ }));
+
+    expect(rowCard(/^Nanzen-ji/)).toHaveAttribute('data-focused');
+    expect(rowCard(/^Kiyamachi/)).not.toHaveAttribute('data-focused');
+  });
+
+  it('closing the focused row leaves no row focused', async () => {
+    const user = await openBoth();
+
+    await user.click(within(ideas()).getByRole('button', { name: /^Kiyamachi/ }));
+
+    expect(ideas().querySelector('[data-focused]')).toBeNull();
+    // The survivor is still open; it just was not promoted to focused.
+    expect(rowCard(/^Nanzen-ji/)).toHaveAttribute('data-expanded');
   });
 });
 
