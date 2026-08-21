@@ -17,6 +17,15 @@ One script per thing you'd run. They all work from any directory — no `cd` fir
 | `scripts/lint` | RuboCop, Sorbet, oxlint, tsc. `--fix` autocorrects RuboCop. |
 | `scripts/build` | Production frontend build into `frontend/dist` (`--preview` to serve it) |
 
+Deploying to the shared Pi has its own folder — see [`staging/README.md`](staging/README.md):
+
+| Command | What it does |
+| --- | --- |
+| `scripts/staging/deploy` | Merge your branch into `staging`, push it to the Pi, restart it there |
+| `scripts/staging/logs` | Follow the Pi's Rails and Vite logs |
+| `scripts/staging/restart` | Bounce the Pi's services without deploying |
+| `scripts/staging/setup` | Provision (or re-provision) the Pi. Idempotent. |
+
 Seeded logins after a reset: `peter@example.com` / `sarah@example.com`, password
 `password123`.
 

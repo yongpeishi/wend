@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+# Deploy to the Pi: put your work on the staging branch, push it, let the Pi
+# restart itself.
+#
+#   scripts/staging/deploy              # deploy the branch you're on
+#   scripts/staging/deploy some-branch  # deploy another branch
+#   scripts/staging/deploy --yes        # don't ask about the merge
+#
+# The Pi only ever runs the `staging` branch. If you're on anything else this
+# offers to merge it into staging first -- your own branch is left untouched
+# and you end up back on it.
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+branch=""
+for arg in "$@"; do
+  case "$arg" in
+    --yes|-y) ASSUME_YES=true ;;
+    -*)       die "unknown option $arg" ;;
+    *)        branch="$arg" ;;
+  esac
+done
+
+cd "$(git_root)"
+require_pi_remote
+
+current="$(git symbolic-ref --quiet --short HEAD || true)"
+[ -n "$current" ] || die "you're on a detached HEAD -- check out a branch first"
+branch="${branch:-$current}"
+git rev-parse --verify --quiet "refs/heads/$branch" >/dev/null || die "no local branch '$branch'"
+
+info "fetching $PI_REMOTE"
+run git fetch --quiet "$PI_REMOTE"
+
+remote_deploy_ref="refs/remotes/$PI_REMOTE/$DEPLOY_BRANCH"
+have_remote_deploy=false
+git rev-parse --verify --quiet "$remote_deploy_ref" >/dev/null && have_remote_deploy=true
+
+# --- get $DEPLOY_BRANCH to the commit we want deployed ----------------------
+
+if [ "$branch" != "$DEPLOY_BRANCH" ]; then
+  echo
+  warn "the Pi runs '$DEPLOY_BRANCH', and you're deploying '$branch'"
+  confirm "  merge $branch into $DEPLOY_BRANCH and deploy that?" \
+    || die "nothing deployed (push $branch to the Pi by hand if you only meant to store it)"
+
+  git diff --quiet && git diff --cached --quiet \
+    || die "you have uncommitted changes -- commit or stash them, the merge needs a clean tree"
+
+  # Whatever happens below, put the user back on the branch they started on.
+  trap 'git checkout --quiet "$current" 2>/dev/null || true' EXIT
+
+  if git rev-parse --verify --quiet "refs/heads/$DEPLOY_BRANCH" >/dev/null; then
+    run git checkout --quiet "$DEPLOY_BRANCH"
+    # The Pi is the shared truth for staging: take its commits before adding
+    # ours. --ff-only because a diverged local staging means someone else
+    # deployed something you haven't seen, and quietly merging it is a trap.
+    if [ "$have_remote_deploy" = true ]; then
+      git merge --ff-only --quiet "$remote_deploy_ref" 2>/dev/null || die \
+        "your local $DEPLOY_BRANCH has diverged from the Pi's -- reset it with:
+    git checkout $DEPLOY_BRANCH && git reset --hard $PI_REMOTE/$DEPLOY_BRANCH"
+    fi
+  elif [ "$have_remote_deploy" = true ]; then
+    run git checkout --quiet -b "$DEPLOY_BRANCH" "$remote_deploy_ref"
+  else
+    info "no $DEPLOY_BRANCH branch anywhere yet -- starting one from $branch"
+    run git checkout --quiet -b "$DEPLOY_BRANCH" "$branch"
+  fi
+
+  info "merging $branch into $DEPLOY_BRANCH"
+  if ! git merge --no-edit "$branch"; then
+    git merge --abort || true
+    die "the merge conflicts -- resolve it on $DEPLOY_BRANCH yourself, then re-run this"
+  fi
+
+  run git checkout --quiet "$current"
+  trap - EXIT
+fi
+
+# --- push, and let the Pi's hook do the rest --------------------------------
+
+echo
+info "pushing $DEPLOY_BRANCH to $(pi_ssh)"
+if ! git push "$PI_REMOTE" "$DEPLOY_BRANCH:$DEPLOY_BRANCH"; then
+  die "push rejected -- someone else deployed in the meantime. Re-run this script:
+    it fetches first, so the second attempt picks their work up."
+fi
+
+echo
+ok "deployed -- http://$PI_HOST:$FRONTEND_PORT"
+info "logs: scripts/staging/logs"

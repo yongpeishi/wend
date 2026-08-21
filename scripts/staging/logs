@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Follow the staging services' logs.
+#
+#   scripts/staging/logs             # both, following
+#   scripts/staging/logs backend     # just Rails
+#   scripts/staging/logs frontend    # just Vite
+#   scripts/staging/logs -n 200      # more history, no following
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+units=(-u wend-backend.service -u wend-frontend.service)
+follow=(-f)
+lines=(-n 50)
+
+for arg in "$@"; do
+  case "$arg" in
+    backend)  units=(-u wend-backend.service) ;;
+    frontend) units=(-u wend-frontend.service) ;;
+    -n)       ;;                      # handled below
+    [0-9]*)   lines=(-n "$arg"); follow=() ;;
+    *)        die "unknown argument $arg" ;;
+  esac
+done
+
+pi_ssh_tty journalctl "${units[@]}" "${lines[@]}" "${follow[@]}"

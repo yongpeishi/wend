@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+# Set the Pi up to host wend. Runs ON the Pi, as root, and is safe to re-run --
+# every step checks before it acts.
+#
+#   sudo scripts/staging/provision
+#
+# From your own machine `scripts/staging/setup` copies this over and runs it for
+# you, which is the normal way in.
+#
+# What it makes:
+#   /srv/wend/repo.git   bare repo -- the git remote you push to
+#   /srv/wend/app        working tree the services run from, updated by the hook
+#   /srv/wend/bundle     shared gem install
+#   /srv/wend/env        ruby + node, built by nix from ./env/flake.nix
+#   /srv/wend/deploy.env environment shared by the hook and both services
+#   wend-backend.service, wend-frontend.service
+#
+# Deliberately not here: user accounts. Those belong to whatever provisions the
+# machine (for logpi that's cloud-init) -- this only adds existing users to the
+# `wend` group.
+
+set -euo pipefail
+
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+ROOT=/srv/wend
+SVC_USER=wend
+SVC_GROUP=wend
+MEMBERS="${WEND_MEMBERS:-logan peishi}"
+BUILD_USER="${SUDO_USER:-logan}"
+FRONTEND_PORT=5173
+
+C_RESET=$'\033[0m'; C_BLUE=$'\033[34m'; C_GREEN=$'\033[32m'; C_YELLOW=$'\033[33m'; C_RED=$'\033[31m'
+info() { printf '%s==>%s %s\n' "$C_BLUE" "$C_RESET" "$*"; }
+ok()   { printf '%s ok%s %s\n' "$C_GREEN" "$C_RESET" "$*"; }
+warn() { printf '%s  ! %s %s\n' "$C_YELLOW" "$C_RESET" "$*" >&2; }
+die()  { printf '%serror%s %s\n' "$C_RED" "$C_RESET" "$*" >&2; exit 1; }
+
+[ "$(id -u)" -eq 0 ] || die "run me with sudo"
+[ -d "$SRC/files" ] || die "can't find $SRC/files -- run this from a wend checkout"
+
+# --- group, service user, group membership ----------------------------------
+
+if getent group "$SVC_GROUP" >/dev/null; then
+  ok "group $SVC_GROUP exists"
+else
+  info "creating group $SVC_GROUP"
+  groupadd --system "$SVC_GROUP"
+fi
+
+if id -u "$SVC_USER" >/dev/null 2>&1; then
+  ok "user $SVC_USER exists"
+else
+  info "creating service user $SVC_USER"
+  useradd --system --gid "$SVC_GROUP" --home-dir "$ROOT" \
+          --no-create-home --shell /usr/sbin/nologin "$SVC_USER"
+fi
+
+# Membership is what lets a person push, and the shared setgid directories are
+# what make their files readable by the service. Everything else on the Pi
+# stays private to its owner.
+for m in $MEMBERS; do
+  if ! id -u "$m" >/dev/null 2>&1; then
+    warn "no user '$m' on this machine -- skipping (create the account, then re-run)"
+    continue
+  fi
+  if id -nG "$m" | tr ' ' '\n' | grep -qx "$SVC_GROUP"; then
+    ok "$m is in $SVC_GROUP"
+  else
+    info "adding $m to $SVC_GROUP"
+    usermod -aG "$SVC_GROUP" "$m"
+    warn "$m must log out and back in before the new group takes effect"
+  fi
+done
+
+# --- the shared tree --------------------------------------------------------
+# 2775: group-writable, and setgid so everything created underneath belongs to
+# the wend group no matter which of the two people made it.
+
+info "creating $ROOT"
+for d in "$ROOT" "$ROOT/app" "$ROOT/bundle" "$ROOT/state"; do
+  mkdir -p "$d"
+  chown "$SVC_USER:$SVC_GROUP" "$d"
+  chmod 2775 "$d"
+done
+ok "$ROOT ready"
+
+# --- bare repo and its hook -------------------------------------------------
+
+if [ -d "$ROOT/repo.git" ]; then
+  ok "bare repo exists"
+else
+  info "creating the bare repo at $ROOT/repo.git"
+  git init --bare --shared=group "$ROOT/repo.git" >/dev/null
+  # So `git clone` and `git log` on the Pi land on the branch that's deployed.
+  git --git-dir="$ROOT/repo.git" symbolic-ref HEAD refs/heads/staging
+fi
+install -o "$SVC_USER" -g "$SVC_GROUP" -m 0775 "$SRC/files/post-receive" "$ROOT/repo.git/hooks/post-receive"
+chown -R "$SVC_USER:$SVC_GROUP" "$ROOT/repo.git"
+ok "post-receive hook installed"
+
+# --- environment shared by the hook and both services -----------------------
+
+cat > "$ROOT/deploy.env" <<EOF
+# Written by scripts/staging/provision -- edit there, not here.
+PATH=/srv/wend/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+HOME=$ROOT
+RAILS_ENV=development
+RAILS_DEVELOPMENT_HOSTS=logpi.local
+BUNDLE_PATH=$ROOT/bundle
+BACKEND_PORT=3000
+FRONTEND_PORT=$FRONTEND_PORT
+EOF
+chown "$SVC_USER:$SVC_GROUP" "$ROOT/deploy.env"
+chmod 0664 "$ROOT/deploy.env"
+ok "wrote $ROOT/deploy.env"
+
+# --- ruby + node ------------------------------------------------------------
+# Built from ./env/flake.nix rather than taken from anyone's home directory:
+# the service user has no home to install into, and pinning it here keeps the
+# staging toolchain a reviewable file in this repo.
+
+NIX=/nix/var/nix/profiles/default/bin/nix
+[ -x "$NIX" ] || NIX="$(command -v nix || true)"
+if [ -z "$NIX" ] || [ ! -x "$NIX" ]; then
+  warn "nix not found -- skipping the toolchain build"
+  warn "install nix, then re-run, or point /srv/wend/env at a ruby+node bin dir yourself"
+else
+  info "building ruby + node (first run downloads a few hundred MB)"
+  sudo -H -u "$BUILD_USER" "$NIX" build --print-build-logs \
+    --out-link "$ROOT/env" "$SRC/env#wend-env"
+  ok "$(readlink -f "$ROOT/env")"
+  "$ROOT/env/bin/ruby" --version
+  "$ROOT/env/bin/node" --version
+fi
+
+# --- systemd units ----------------------------------------------------------
+
+install -m 0644 "$SRC/files/wend-backend.service"  /etc/systemd/system/wend-backend.service
+install -m 0644 "$SRC/files/wend-frontend.service" /etc/systemd/system/wend-frontend.service
+systemctl daemon-reload
+systemctl enable wend-backend.service wend-frontend.service >/dev/null
+ok "wend-backend.service and wend-frontend.service enabled"
+
+# --- let the group restart those two services, and nothing else -------------
+
+install -m 0440 "$SRC/files/wend-sudoers" /etc/sudoers.d/wend-staging
+if visudo -c -q -f /etc/sudoers.d/wend-staging; then
+  ok "sudoers rule installed"
+else
+  rm -f /etc/sudoers.d/wend-staging
+  die "the sudoers rule didn't validate -- removed it again"
+fi
+
+# --- ruby and node on everyone's PATH ---------------------------------------
+
+install -m 0644 "$SRC/files/wend-profile.sh" /etc/profile.d/wend.sh
+ok "/etc/profile.d/wend.sh installed"
+
+# --- firewall ---------------------------------------------------------------
+# Only the Vite port is opened, and only to the LAN. Rails stays closed: the
+# browser reaches it through Vite's /api proxy, from inside the Pi.
+
+if command -v ufw >/dev/null && ufw status | grep -q '^Status: active'; then
+  if ufw status | grep -q "^$FRONTEND_PORT/tcp"; then
+    ok "ufw already allows $FRONTEND_PORT/tcp"
+  else
+    lan="${WEND_LAN:-}"
+    if [ -z "$lan" ]; then
+      addr="$(ip -o -4 addr show scope global | awk '{print $4}' | head -1)"
+      IFS=. read -r a b c _ <<< "${addr%%/*}"
+      lan="$a.$b.$c.0/24"
+    fi
+    info "allowing $FRONTEND_PORT/tcp from $lan"
+    ufw allow from "$lan" to any port "$FRONTEND_PORT" proto tcp \
+      comment 'wend vite frontend (LAN only)'
+  fi
+else
+  warn "ufw not active -- no firewall rule added"
+fi
+
+# --- start, if there's anything to start ------------------------------------
+
+echo
+if [ -x "$ROOT/app/scripts/start-backend" ]; then
+  info "restarting the services"
+  systemctl restart wend-backend.service wend-frontend.service
+  ok "running -- http://logpi.local:$FRONTEND_PORT"
+else
+  ok "provisioned. Nothing deployed yet -- push the staging branch:"
+  echo "     scripts/staging/deploy"
+fi

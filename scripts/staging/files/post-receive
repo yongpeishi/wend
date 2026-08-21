@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Installed on the Pi as /srv/wend/repo.git/hooks/post-receive by
+# scripts/staging/provision. Runs as whoever pushed.
+#
+# Everything it prints comes back to the person pushing, prefixed "remote:".
+
+set -euo pipefail
+
+# New files must stay group-writable: the other collaborator will overwrite
+# them on their next deploy, and the `wend` service user has to read them.
+umask 002
+
+ROOT=/srv/wend
+APP=$ROOT/app
+STATE=$ROOT/state
+DEPLOY_BRANCH=staging
+
+set -a; source "$ROOT/deploy.env"; set +a
+export GIT_DIR="$ROOT/repo.git"
+unset GIT_QUARANTINE_PATH GIT_WORK_TREE
+
+say()  { printf '\n\033[34m==>\033[0m %s\n' "$*"; }
+ok()   { printf '\033[32m ok\033[0m %s\n' "$*"; }
+fail() { printf '\033[31merror\033[0m %s\n' "$*" >&2; exit 1; }
+
+# --- is this a deploy? ------------------------------------------------------
+
+deploying=false
+while read -r _old _new ref; do
+  [ "$ref" = "refs/heads/$DEPLOY_BRANCH" ] && deploying=true
+done
+
+if [ "$deploying" != true ]; then
+  say "stored, not deployed -- the Pi only runs '$DEPLOY_BRANCH'"
+  exit 0
+fi
+
+# --- check the pushed commit out into the live working tree -----------------
+
+say "checking out $DEPLOY_BRANCH into $APP"
+git --git-dir="$GIT_DIR" --work-tree="$APP" checkout -f "$DEPLOY_BRANCH"
+git --git-dir="$GIT_DIR" symbolic-ref HEAD "refs/heads/$DEPLOY_BRANCH"
+ok "$(git --git-dir="$GIT_DIR" log -1 --format='%h %s' "$DEPLOY_BRANCH")"
+
+# --- dependencies, only when the lockfiles actually moved -------------------
+
+mkdir -p "$STATE"
+
+changed() {  # changed <name> <file> -- true if the file differs from last deploy
+  local name="$1" file="$2" now stamp="$STATE/$1.sha"
+  now="$(sha256sum "$file" | cut -d' ' -f1)"
+  [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$now" ] && return 1
+  printf '%s\n' "$now" > "$stamp"
+  return 0
+}
+
+cd "$APP/backend"
+if changed gemfile-lock Gemfile.lock || ! bundle check >/dev/null 2>&1; then
+  say "installing gems"
+  bundle install
+else
+  ok "gems unchanged"
+fi
+
+cd "$APP/frontend"
+if changed package-lock package-lock.json || [ ! -d node_modules ]; then
+  say "installing npm packages"
+  npm ci
+else
+  ok "npm packages unchanged"
+fi
+
+# --- restart, then prove it came back ---------------------------------------
+# Migrations and seeds are not run here: scripts/start-backend runs
+# `bin/rails dev:prepare` on boot, so the restart below covers them.
+
+say "restarting services"
+sudo -n systemctl restart wend-backend.service
+sudo -n systemctl restart wend-frontend.service
+
+wait_for() {  # wait_for <label> <url> -- poll until it answers, or give up
+  local label="$1" url="$2" i
+  for i in $(seq 1 60); do
+    if curl -fsS -o /dev/null --max-time 2 "$url"; then
+      ok "$label is up ($url)"
+      return 0
+    fi
+    sleep 2
+  done
+  printf '\033[31merror\033[0m %s never came up -- see: journalctl -u %s -n 50\n' \
+    "$label" "$3" >&2
+  return 1
+}
+
+health=0
+wait_for "Rails"  "http://localhost:${BACKEND_PORT:-3000}/up" wend-backend.service  || health=1
+wait_for "Vite"   "http://localhost:${FRONTEND_PORT:-5173}/"  wend-frontend.service || health=1
+[ "$health" -eq 0 ] || fail "deployed, but the app is not answering"
+
+say "live at http://logpi.local:${FRONTEND_PORT:-5173}"

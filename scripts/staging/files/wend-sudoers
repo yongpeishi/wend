@@ -1,0 +1,13 @@
+# Installed to /etc/sudoers.d/wend-staging by scripts/staging/provision.
+#
+# Deploys run as the person pushing, so they need to bounce the two services --
+# and only those two. Nothing else here grants root.
+Cmnd_Alias WEND_SERVICES = \
+  /usr/bin/systemctl start wend-backend.service,   \
+  /usr/bin/systemctl stop wend-backend.service,    \
+  /usr/bin/systemctl restart wend-backend.service, \
+  /usr/bin/systemctl start wend-frontend.service,  \
+  /usr/bin/systemctl stop wend-frontend.service,   \
+  /usr/bin/systemctl restart wend-frontend.service
+
+%wend ALL=(root) NOPASSWD: WEND_SERVICES
