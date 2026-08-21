@@ -127,8 +127,8 @@
 }
 
 /* The two facts a drilled level carries on its heading row, as quiet pills:
-   how much is inside, and how the votes stand. Bordered, never filled — they
-   are readings, not controls. */
+   how much is inside (bordered leaf) and how the votes stand (plum on the
+   wash, below). Readings, not controls. */
 .insidePill {
   display: inline-flex;
   align-items: center;
@@ -142,19 +142,24 @@
 }
 
 /* Plum is the saved/destination family, which is what a standing vote total
-   is: a fact about where the group's weight already sits. Tint border, full
-   plum text — the pill stays readable while its edge stays quiet. */
+   is: a fact about where the group's weight already sits. The plum wash under
+   plum text — the same recipe as the idea cards' pill, so the tally reads as
+   one mark everywhere. Transparent border, not none: the box stays the same
+   size as its bordered neighbour. */
 .votePill {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  padding: 2px var(--space-3);
-  border: var(--border-width) solid var(--wend-plum-tint);
+  padding: 3px 10px;
+  background: var(--wend-plum-wash);
+  border: var(--border-width) solid transparent;
   border-radius: var(--radius-pill);
   font-family: var(--font-sans);
-  font-size: var(--text-code-size);
+  font-size: 13px;
   font-weight: var(--weight-bold);
   color: var(--wend-plum);
+  white-space: nowrap;
 }
 
 /* Nothing survived the narrowing — or a drilled level is genuinely empty.

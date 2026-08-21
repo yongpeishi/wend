@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
-import type { Entry, EntryCategory } from '../../api/types';
+import type { Entry } from '../../api/types';
 import { CATEGORY_LABELS } from './filters';
 import { Button } from '../../design/components/core/Button';
 import { Chip, Tag } from '../../design/components/core/Chip';
@@ -73,36 +73,19 @@ export interface IdeaRowProps {
 }
 
 /**
- * Category colour — decoration on the open row's category chip. The
- * mapping is lifted verbatim from the design prototype's `CAT_COLOR` table,
- * which reaches for existing brand tokens rather than new hexes — so nothing
- * is invented here either. Two categories deliberately share a colour (place
- * and activity are both leaf), and transport/other fall back to `--text-muted`:
- * the palette is three brand hues wide, not six, and stretching it would mean
- * minting colours the design system has never sanctioned.
- *
- * The label itself is always the word, so the colour is decoration only.
- */
-const CATEGORY_CLASS: Record<EntryCategory, string> = {
-  place: styles.catLeaf,
-  food: styles.catApricot,
-  activity: styles.catLeaf,
-  lodging: styles.catPlum,
-  transport: styles.catMuted,
-  other: styles.catMuted,
-};
-
-/**
- * One idea on the board: a card that carries its facts as pills while closed —
- * "✓ on a day" when it is scheduled, "▲ N" when anyone has voted, "N inside ›"
- * when other ideas nest under it — and opens downwards into a panel where the
- * idea can be read in full and acted on.
+ * One idea on the board: a card that carries its facts as pills — "✓ on a day"
+ * when it is scheduled, one plum-wash pill saying what kind of idea it is and
+ * how the votes stand ("Shopping · 👍 6"), "N inside ›" when other ideas nest
+ * under it — and opens downwards into a panel where the idea can be read in
+ * full and acted on.
  *
  * What the closed row no longer says: the meta line (place · duration · open
- * count) and the category word. The redesign spends the closed row on the
- * decisions the board is actually for — is it planned, is it wanted, is there
- * more underneath — and everything descriptive moved into the panel one click
- * away. The pills are words as well as colour, so nothing rides on hue alone.
+ * count). The redesign spends the closed row on the decisions the board is
+ * actually for — is it planned, is it wanted, is there more underneath — and
+ * everything descriptive moved into the panel one click away. The category is
+ * the one word that stays: it rides in the plum pill, open or closed, beside
+ * the tally it qualifies. The pills are words as well as colour, so nothing
+ * rides on hue alone.
  *
  * Expansion is CONTROLLED, not local. It used to be `useState` here, on the
  * argument that a disclosure is a reading posture; the drill-down redesign
@@ -402,15 +385,6 @@ export function IdeaRow({
         >
           <span className={styles.titleLine}>
             <span className={styles.title}>{entry.title}</span>
-            {/* The category stays beside the title while the row is open — it
-                qualifies the name, so it reads as part of it rather than as a
-                fact filed lower down. The closed row still says nothing
-                descriptive, so the chip arrives with the panel. */}
-            {expanded && entry.category && (
-              <span className={[styles.categoryChip, CATEGORY_CLASS[entry.category]].join(' ')}>
-                {CATEGORY_LABELS[entry.category]}
-              </span>
-            )}
             {/* Jade writes, it never fills: "on a day" is a confirmation, so it
                 takes the feedback green as words, not as a box. */}
             {entry.scheduled && <span className={styles.onDay}>✓ on a day</span>}
@@ -420,13 +394,27 @@ export function IdeaRow({
           )}
         </button>
 
-        {/* The tally, when there is one. Plum because a vote marks appetite for
-            a destination, and a pill of words rather than a bare number so the
-            closed row can be scanned without a legend. Zero draws nothing:
-            "▲ 0" would put a scoreboard on ideas nobody has judged yet. */}
-        {entry.vote_tally.total > 0 && (
+        {/* Category and appetite in one plum-wash pill — "Shopping · 👍 6" —
+            open or closed, so it meets the VoteBar's plum pills when the panel
+            unfolds. Plum because a vote marks appetite for a destination, and
+            words beside the number so the row can be scanned without a legend.
+            Zero votes draws no number (a scoreboard on an idea nobody has
+            judged), just the category word; no category and no votes draws no
+            pill at all. */}
+        {(entry.category !== null || entry.vote_tally.total !== 0) && (
           <span className={styles.votePill} title="Everyone's votes added up, from +2 to -2 each">
-            ▲ {entry.vote_tally.total}
+            {entry.category !== null && CATEGORY_LABELS[entry.category]}
+            {entry.vote_tally.total !== 0 && (
+              <>
+                {entry.category !== null && <span aria-hidden="true">·</span>}
+                {entry.vote_tally.total > 0 ? (
+                  <ThumbsUp size={14} strokeWidth={2} aria-hidden="true" />
+                ) : (
+                  <ThumbsDown size={14} strokeWidth={2} aria-hidden="true" />
+                )}
+                {entry.vote_tally.total}
+              </>
+            )}
           </span>
         )}
 

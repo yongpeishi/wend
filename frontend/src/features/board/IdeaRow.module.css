@@ -227,14 +227,19 @@
   padding: 3px 10px;
 }
 
-/* The tally pill. Plum — appetite for a destination — as tint-bordered words,
-   never a fill. */
+/* The category-and-tally pill. Plum — appetite for a destination — on the
+   plum wash, the same treatment the VoteBar's pills wear below. The border is
+   transparent rather than absent so the box matches its bordered siblings. */
 .votePill {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: 13px;
   font-weight: var(--weight-bold);
   color: var(--wend-plum);
-  border: var(--border-width) solid var(--wend-plum-tint);
+  background: var(--wend-plum-wash);
+  border: var(--border-width) solid transparent;
   border-radius: var(--radius-pill);
   padding: 3px 10px;
   white-space: nowrap;
@@ -311,40 +316,6 @@
   font-size: var(--text-min-size);
   letter-spacing: var(--text-data-tracking);
   color: var(--text-body);
-}
-
-/* The category, as a chip beside the open row's title — it qualifies the name,
-   so it stays with it. The word carries it; the hue (below) is decoration. */
-.categoryChip {
-  font-size: 13px;
-  font-weight: var(--weight-bold);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
-  border: var(--border-width) solid var(--border-subtle);
-  border-radius: var(--radius-pill);
-  padding: 3px 10px;
-  white-space: nowrap;
-}
-
-/*
- * Category colours, lifted from the design's own CAT_COLOR table — existing
- * brand tokens, no new hues. The colour is decoration: the category word is
- * always spelled out beside it.
- */
-.catLeaf {
-  color: var(--wend-leaf);
-}
-
-.catApricot {
-  color: var(--wend-apricot);
-}
-
-.catPlum {
-  color: var(--wend-plum);
-}
-
-.catMuted {
-  color: var(--text-muted);
 }
 
 /* The verbs, on one line at the foot of the panel. */

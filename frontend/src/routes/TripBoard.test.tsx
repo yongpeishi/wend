@@ -354,9 +354,11 @@ describe('TripBoard — drilling down', () => {
     expect(within(crumbs).getByRole('button', { name: /All ideas/ })).toBeInTheDocument();
     expect(within(crumbs).getByRole('heading', { name: 'Nanzen-ji' })).toBeInTheDocument();
     expect(within(crumbs).getByText('1 inside')).toBeInTheDocument();
-    // Nanzen-ji's seeded votes sum to +1, so the tally pill is up. Asserted
-    // on textContent because the ▲ sits in its own aria-hidden span.
-    expect(crumbs).toHaveTextContent('▲ 1');
+    // Nanzen-ji's seeded votes sum to +1, so the tally pill is up. The thumb
+    // beside the number is aria-hidden SVG, so the pill's only text is the
+    // total itself — found exactly, with the icon asserted as markup.
+    const tally = within(crumbs).getByText('1');
+    expect(tally.querySelector('svg')).not.toBeNull();
   });
 
   it('clicking "All ideas" climbs back to the root', async () => {

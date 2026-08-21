@@ -127,6 +127,11 @@ function renderRow(options: RowOptions = {}) {
   };
 }
 
+/** The plum category-and-tally pill, found by the scale it spells out. */
+function tallyPill() {
+  return screen.getByTitle("Everyone's votes added up, from +2 to -2 each");
+}
+
 /** The row's own disclosure button — the title and its words in one target. */
 function rowToggle() {
   return screen.getByRole('button', { name: /^Fushimi Inari/ });
@@ -166,9 +171,20 @@ describe('IdeaRow — what the closed row says', () => {
     expect(screen.getByText('✓ on a day')).toBeInTheDocument();
   });
 
-  it('carries the tally as a "▲ N" pill when anyone is keen', () => {
-    renderRow({ entry: makeEntry({ vote_tally: { total: 5, count: 3, average: 1.67 } }) });
-    expect(screen.getByText('▲ 5')).toBeInTheDocument();
+  it('carries category and tally together in one pill when anyone is keen', () => {
+    renderRow({
+      entry: makeEntry({ category: 'food', vote_tally: { total: 5, count: 3, average: 1.67 } }),
+    });
+    // The thumb between them is aria-hidden SVG, so the pill's words are the
+    // label and the number, side by side.
+    expect(tallyPill()).toHaveTextContent('Food·5');
+  });
+
+  it('lets a negative total carry its own minus sign', () => {
+    renderRow({
+      entry: makeEntry({ category: 'transport', vote_tally: { total: -2, count: 2, average: -1 } }),
+    });
+    expect(tallyPill()).toHaveTextContent('Transport·-2');
   });
 
   it('spells the scale out for anyone who wonders what the number is', () => {
@@ -176,12 +192,18 @@ describe('IdeaRow — what the closed row says', () => {
     expect(screen.getByTitle("Everyone's votes added up, from +2 to -2 each")).toBeInTheDocument();
   });
 
-  it('draws no scoreboard on an idea nobody has judged — zero or worse', () => {
-    const view = renderRow({ entry: makeEntry({ vote_tally: { total: 0, count: 0, average: 0 } }) });
-    expect(screen.queryByText(/^▲/)).not.toBeInTheDocument();
+  it('draws no scoreboard on an idea nobody has judged — the category stands alone', () => {
+    renderRow({ entry: makeEntry({ vote_tally: { total: 0, count: 0, average: 0 } }) });
+    expect(tallyPill()).toHaveTextContent(/^Place$/);
+  });
 
-    view.update({ entry: makeEntry({ vote_tally: { total: -2, count: 2, average: -1 } }) });
-    expect(screen.queryByText(/^▲/)).not.toBeInTheDocument();
+  it('draws no pill at all with no category and no votes', () => {
+    renderRow({
+      entry: makeEntry({ category: null, vote_tally: { total: 0, count: 0, average: 0 } }),
+    });
+    expect(
+      screen.queryByTitle("Everyone's votes added up, from +2 to -2 each"),
+    ).not.toBeInTheDocument();
   });
 
   it('names the other levels the idea also lives in, as one muted chip', () => {
@@ -318,13 +340,14 @@ describe('IdeaRow — opening the row', () => {
     expect(screen.getByText('68 Fukakusa Yabunouchicho')).toBeInTheDocument();
   });
 
-  // The chip qualifies the name, so it sits in the title line rather than
-  // being filed lower down in the panel with the other facts.
-  it('puts the category beside the title once it is open', async () => {
+  // The category lives in the header pill in both states — opening the row
+  // must not sprout a second copy beside the title.
+  it('keeps the category in the header pill once it is open, and says it once', async () => {
     renderRow();
     await expandRow();
 
-    expect(rowToggle()).toHaveTextContent('Place');
+    expect(tallyPill()).toHaveTextContent('Place');
+    expect(rowToggle()).not.toHaveTextContent('Place');
   });
 
   // The panel is a sibling of the toggle, not a child of it. If that ever
@@ -895,7 +918,7 @@ describe('IdeaRow — reading along', () => {
 
     expect(rowToggle()).toHaveTextContent('Fushimi Inari');
     expect(screen.getByText('✓ on a day')).toBeInTheDocument();
-    expect(screen.getByText('▲ 4')).toBeInTheDocument();
+    expect(tallyPill()).toHaveTextContent('Place·4');
     expect(screen.getByText('also in: Kyoto day')).toBeInTheDocument();
   });
 

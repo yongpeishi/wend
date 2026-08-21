@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   DndContext,
@@ -539,9 +540,17 @@ export function TripBoard() {
                 {currentInsideCount > 0 && (
                   <span className={styles.insidePill}>{currentInsideCount} inside</span>
                 )}
-                {currentIdea.vote_tally.total > 0 && (
+                {/* The tally alone — the crumb already names the idea, so no
+                    category word here. Thumb by sign, number as written:
+                    negatives carry their own minus. Zero draws no pill. */}
+                {currentIdea.vote_tally.total !== 0 && (
                   <span className={styles.votePill}>
-                    <span aria-hidden="true">▲</span> {currentIdea.vote_tally.total}
+                    {currentIdea.vote_tally.total > 0 ? (
+                      <ThumbsUp size={14} strokeWidth={2} aria-hidden="true" />
+                    ) : (
+                      <ThumbsDown size={14} strokeWidth={2} aria-hidden="true" />
+                    )}
+                    {currentIdea.vote_tally.total}
                   </span>
                 )}
               </>
