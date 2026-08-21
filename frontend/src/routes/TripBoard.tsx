@@ -110,10 +110,12 @@ export function TripBoard() {
   // board opens as the whole list, and sectioning it is something you ask for.
   const [groupMode, setGroupMode] = useState<GroupMode>('none');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  // The row currently unfolded in place, if any. Held here rather than in the
-  // list so drilling can fold it back: an expansion left open across a level
-  // change would belong to a row that is no longer on screen.
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  // The rows currently unfolded in place — a set, because opening one idea
+  // must never fold another; reading two ideas side by side is the point of
+  // unfolding in place. Held here rather than in the list so drilling can fold
+  // them all back: expansions left open across a level change would belong to
+  // rows that are no longer on screen.
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<number>>(() => new Set());
   // The composer, and the words already typed when it was asked for: opening
   // it must not cost the reader the title they started in the capture bar.
   const [composer, setComposer] = useState<{ open: boolean; initialTitle: string }>({
@@ -204,15 +206,15 @@ export function TripBoard() {
   );
 
   /**
-   * Down one level. Drilling clears the expansion (it belonged to a row that
-   * is about to leave the screen) and the search text (typed against the
-   * level you were reading, and carrying it down would greet the new level
-   * with a narrowing nobody asked of it). The chips survive on purpose:
+   * Down one level. Drilling clears every expansion (they belonged to rows
+   * that are about to leave the screen) and the search text (typed against
+   * the level you were reading, and carrying it down would greet the new
+   * level with a narrowing nobody asked of it). The chips survive on purpose:
    * "food only" is a way of reading the whole trip, not one level of it.
    */
   function drillInto(id: number) {
     setPath([...path, id]);
-    setExpandedId(null);
+    setExpandedIds(new Set());
     setFilters((previous) => ({ ...previous, text: '' }));
   }
 
@@ -588,8 +590,15 @@ export function TripBoard() {
                 otherParents={otherParents}
                 allIdeas={allIdeas}
                 onDrill={drillInto}
-                expandedId={expandedId}
-                onToggleExpand={(id) => setExpandedId((previous) => (previous === id ? null : id))}
+                expandedIds={expandedIds}
+                onToggleExpand={(id) =>
+                  setExpandedIds((previous) => {
+                    const next = new Set(previous);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                  })
+                }
               />
             )}
           </QueryGate>

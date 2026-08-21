@@ -72,22 +72,26 @@ function renderPanel(overrides: Partial<Parameters<typeof BundlePanel>[0]> = {})
 }
 
 describe('BundlePanel — the plans-only rail', () => {
-  it('names itself "Plans" and lists the plans, with no intro paragraph', () => {
+  it('names itself "Plans" and says in one line what the rail is for', () => {
     renderPanel();
     expect(screen.getByRole('heading', { name: 'Plans' })).toBeInTheDocument();
-    // The approved mockup's column is label, action, cards — the explainer
-    // sentence that used to sit between label and action is gone.
-    expect(screen.queryByText(/is a group of things that go well together/)).not.toBeInTheDocument();
+    // One sentence under the label, in the rail's own voice. It explains the
+    // region rather than acting on it, so it does not gate on canEdit.
+    expect(
+      screen.getByText(/A plan groups the ideas that go together — a dinner shortlist, a day's outing, a rainy-day fallback\./),
+    ).toBeInTheDocument();
     // The card's name is now the rename control itself, so it announces as one.
     expect(screen.getByRole('button', { name: 'Rename Kyoto dinner options' })).toBeInTheDocument();
   });
 
-  // The visible <h2> is the region's name. A hardcoded aria-label alongside it
-  // would be a second, competing one that nothing on screen can keep honest.
-  it('takes its landmark name from the visible heading', () => {
+  // The visible <h2> is the region's name, and the visible intro line is its
+  // description. Hardcoded aria-label/-description alongside them would be
+  // second, competing copies that nothing on screen can keep honest.
+  it('takes its landmark name and description from the visible words', () => {
     renderPanel();
     const rail = screen.getByRole('complementary', { name: 'Plans' });
     expect(rail).toHaveAttribute('aria-labelledby', screen.getByRole('heading', { name: 'Plans' }).id);
+    expect(rail).toHaveAttribute('aria-describedby', screen.getByText(/A plan groups the ideas/).id);
   });
 
   // The dashed target made a bundle out of a gesture that is easy to miss by
@@ -217,10 +221,12 @@ describe('BundlePanel — reading along', () => {
     );
   }
 
-  it('keeps the rail whole — its heading and every plan in it', () => {
+  it('keeps the rail whole — its heading, its intro line, and every plan in it', () => {
     renderAsViewer();
 
     expect(screen.getByRole('heading', { name: 'Plans' })).toBeInTheDocument();
+    // The intro explains the rail rather than acting on it, so it stays.
+    expect(screen.getByText(/A plan groups the ideas that go together/)).toBeInTheDocument();
     expect(screen.getByText(BUNDLE.title)).toBeInTheDocument();
     for (const member of MEMBERS) {
       expect(screen.getByRole('button', { name: member.title })).toBeInTheDocument();

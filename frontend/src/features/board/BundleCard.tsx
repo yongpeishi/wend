@@ -1,19 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { ChevronDown, ChevronUp, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, CircleDashed, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/layout/Card';
 import { Input } from '../../design/components/core/Input';
 import { useToast } from '../../components/Toast';
 import { useCanEdit } from '../../auth/TripRoleContext';
-import { useArchiveEntry, useDeleteLink, useReorderLinks, useUpdateEntry, useUpdateLinkPosition } from '../../api';
+import {
+  useArchiveEntry,
+  useCreateEntry,
+  useCreateLink,
+  useDeleteLink,
+  useReorderLinks,
+  useUpdateEntry,
+  useUpdateLinkPosition,
+} from '../../api';
 import type { Entry } from '../../api/types';
 import { useLinkMutations } from './useLinkMutations';
 import styles from './BundleCard.module.css';
 
 export interface BundleCardProps {
   bundle: Entry;
+  /**
+   * The trip this plan belongs to. The card needs it for exactly one write:
+   * an idea born from the foot's "+ add idea" field is created under the trip
+   * (like every idea) and only then linked into this bundle.
+   */
+  tripId: number;
   /** Bundle members in entry_links.position order — see useBundleMembers.ts. */
   members: Entry[];
   /** Open a member idea in place. Omitted, the card falls back to navigating. */
@@ -28,11 +42,11 @@ export interface BundleCardProps {
  *
  * The card is deliberately quiet content, not a toolbar. The row of five
  * bundle actions that used to sit at its foot — rename, fork, compare,
- * ungroup, set aside — is gone, and with it the "N kept" tag: in a 376px rail
+ * ungroup, set aside — is gone, and with it the "N kept" tag: in a 420px rail
  * five buttons per card meant the rail read as controls with some names
  * attached rather than as the bundles themselves. What survives is what the
- * card is FOR (the name, the members, their order) plus the two edits a
- * bundle actually needs, both reachable without leaving the card:
+ * card is FOR (the name, the members, their order) plus the edits a bundle
+ * actually needs, all reachable without leaving the card:
  *
  *   The name is the control. Click or focus it and it becomes a real input in
  *   place — Enter or blur commits, Escape reverts, and an empty or
@@ -54,6 +68,17 @@ export interface BundleCardProps {
  *   still holds its ideas, rather than an archived shell with orphaned links.
  *   Nothing in Wend is destroyed; the strongest verb here is still reversible.
  *
+ *   The "+ add idea" foot is a real control now. It started life as plain
+ *   text — a hint at the drag and "Add to plan" gestures — because the card
+ *   had no add-member write of its own; it has one today, so the text keeps
+ *   its promise: click it and it swaps in place for a name field, exactly the
+ *   bargain the rename above strikes. Enter creates the idea under the trip
+ *   and then links it into this plan; Escape puts the hint back; a blank name
+ *   is refused by simply closing the field, the same answer the rename field
+ *   gives one. The two writes are sequential and awaited — the link needs the
+ *   new idea's id — and a failure at either step keeps the field open with the
+ *   name still in it, so "It's still here — try again" stays literally true.
+ *
  * Members reorder two ways, per screens.md's "every drag interaction needs a
  * keyboard and pointer-free equivalent": native HTML5 drag-and-drop on each
  * row (an accelerator — useReorderLinks posts the whole new order at once),
@@ -70,9 +95,19 @@ export interface BundleCardProps {
  *   idea count — "3 ideas", right-aligned and muted beside the name. An empty
  *   plan says "Empty so far" rather than "0 ideas": in a rail where every card
  *   speaks, a zero is a tally and this is a state, and it is the state the
- *   hint below exists to fix. This retires the "N open to-dos" line that sat
- *   under the name; the plum per-member labels below keep the outstanding work
- *   visible on the ideas that own it.
+ *   hint below exists to fix.
+ *
+ *   The open-to-dos line. Under the name: the members' open to-dos summed, as
+ *   "N open to-dos" beside a small dashed-circle mark — an unfinished ring for
+ *   unfinished work. The line was retired once in favour of the per-member
+ *   labels alone, and the product owner has brought it back, so the card now
+ *   says both: the total up here, and which members own it below. Zero renders
+ *   too, as "0 open to-dos" — in a rail where some cards speak and some stay
+ *   silent, "nothing outstanding" is a real answer about a plan, not an
+ *   absence, and it is the answer you most want to see. The icon is
+ *   aria-hidden decoration on the phrase; the words are one text node, so the
+ *   line is one phrase to a screen reader and one thing to assert on in a
+ *   test.
  *
  *   The member dot. The design colours a dot per item from a state enum we
  *   don't have. It uses `address`: solid leaf for a member that has one,
@@ -81,9 +116,8 @@ export interface BundleCardProps {
  *   dot ships a visually-hidden phrase so the state is readable without it.
  *
  *   The member to-do label. A member holding open to-dos says "2 to-dos" in
- *   plum just left of its row actions, so the outstanding work is visible on
- *   the ideas that own it without opening anything — it is the one to-do
- *   signal the card keeps now the header meta counts ideas instead. Members
+ *   plum just left of its row actions, so the total in the line above can be
+ *   traced to the ideas that own it without opening anything. Members
  *   with nothing outstanding carry no label at all — here a
  *   mark on the exceptions beats a column of zeroes, because the reader is
  *   scanning for which row to deal with, not tallying. It is the only coloured
@@ -104,7 +138,7 @@ export interface BundleCardProps {
  * navigates, which is what a card outside a board — the design gallery, its own
  * tests — has to do, since there is no drawer there to open into.
  */
-export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps) {
+export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleCardProps) {
   const navigate = useNavigate();
   // The hook rather than a prop: unlike IdeaRow this card takes none of its
   // verbs from its caller — it owns its own mutations — so the capability comes
@@ -114,17 +148,24 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
   const archiveEntry = useArchiveEntry();
   const updateEntry = useUpdateEntry(bundle.id);
   const { removeLink } = useLinkMutations();
+  const createEntry = useCreateEntry();
+  const createLink = useCreateLink(bundle.id);
   const deleteLink = useDeleteLink(bundle.id);
   const reorderLinks = useReorderLinks(bundle.id);
   const updateLinkPosition = useUpdateLinkPosition(bundle.id);
   const [draggedId, setDraggedId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(bundle.title);
+  const [addingIdea, setAddingIdea] = useState(false);
+  const [ideaDraft, setIdeaDraft] = useState('');
   const nameButtonRef = useRef<HTMLButtonElement>(null);
+  const addIdeaButtonRef = useRef<HTMLButtonElement>(null);
   // Set only by the key paths (Enter/Escape), never by blur: a blur commit
   // means the user has already moved on — pulling focus back to the name
   // would trap anyone Tabbing out of the card.
   const returnFocus = useRef(false);
+  // The add-idea field strikes the same bargain for the "+ add idea" button.
+  const returnFocusToAdd = useRef(false);
   // A read-only card is not a drop target. Styling alone would not stop it:
   // dnd-kit resolves a drop against every registered droppable, so without this
   // a viewer could still land an idea here and watch the request be refused.
@@ -141,9 +182,21 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
     }
   }, [editingName]);
 
+  useEffect(() => {
+    if (!addingIdea && returnFocusToAdd.current) {
+      returnFocusToAdd.current = false;
+      addIdeaButtonRef.current?.focus();
+    }
+  }, [addingIdea]);
+
   // One string rather than assembled in JSX, so the meta is a single text node:
   // one phrase to a screen reader, and one thing to assert on in a test.
   const meta = members.length === 0 ? 'Empty so far' : `${members.length} idea${members.length === 1 ? '' : 's'}`;
+
+  // The members' outstanding work, summed for the line under the name. One
+  // string for the same reason as `meta`: one phrase, one assertion.
+  const openTodos = members.reduce((total, member) => total + member.todos_open_count, 0);
+  const todoLine = `${openTodos} open ${openTodos === 1 ? 'to-do' : 'to-dos'}`;
 
   function startEditingName() {
     setNameDraft(bundle.title);
@@ -226,6 +279,39 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
       onSuccess: () => onToast(`Removed ${member.title} from ${bundle.title}. Still kept.`),
       onError: () => show("That didn't save. It's still here — try again.", 'error'),
     });
+  }
+
+  function closeAddIdea() {
+    setIdeaDraft('');
+    setAddingIdea(false);
+  }
+
+  /**
+   * Two writes in a fixed order: make the idea (under the trip, where every
+   * idea lives), then link it into this bundle — the link cannot exist first,
+   * it needs the new id. On failure at either step the field stays open with
+   * the name still in it, so the error toast's "It's still here" is literal.
+   * The worst partial outcome — idea created, link refused — leaves a real
+   * idea safe in the trip's list, never a dangling link.
+   */
+  async function submitIdea() {
+    const trimmed = ideaDraft.trim();
+    // A blank is refused, not saved — the field simply closes, the same answer
+    // the rename field gives a blank name.
+    if (!trimmed) {
+      closeAddIdea();
+      return;
+    }
+    if (createEntry.isPending || createLink.isPending) return;
+    try {
+      const idea = await createEntry.mutateAsync({ entry: { kind: 'idea', title: trimmed }, parent_id: tripId });
+      await createLink.mutateAsync({ child_id: idea.id });
+    } catch {
+      show("That didn't save. It's still here — try again.", 'error');
+      return;
+    }
+    closeAddIdea();
+    onToast(`Added ${trimmed} to ${bundle.title}.`);
   }
 
   function handleDrop(targetId: number) {
@@ -323,6 +409,14 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
         )}
       </div>
 
+      {/* The open work, totalled — see the doc comment above. The icon
+          decorates the phrase and says nothing the words don't; the words stay
+          one text node. */}
+      <p className={styles.todoLine}>
+        <CircleDashed size={14} strokeWidth={1.5} aria-hidden="true" />
+        {todoLine}
+      </p>
+
       {members.length === 0 ? (
         /* An empty plan still says it is empty for a viewer — but without the
            hint below, which names gestures they do not have. The sentence
@@ -403,12 +497,40 @@ export function BundleCard({ bundle, members, onOpen, onToast }: BundleCardProps
         </ul>
       )}
 
-      {/* The design's foot line. Plain text rather than a control: the card
-          has no add-member affordance of its own — ideas arrive by drag or
-          from the idea row's "Add to plan" — so a hint that named itself a
-          button would promise a click it cannot honour. Editors only; the
-          gestures it points at are theirs. */}
-      {canEdit && <p className={styles.hint}>+ add idea — or send one over from the list</p>}
+      {/* The design's foot line, and a real control now: the card grew an
+          add-member write of its own, so the text finally honours the click it
+          always looked like it promised. The button and the name field trade
+          the same slot — see the add-idea section of the doc comment. Editors
+          only; both the button and the gestures it mentions are theirs. */}
+      {canEdit &&
+        (addingIdea ? (
+          <Input
+            aria-label="New idea name"
+            autoFocus
+            value={ideaDraft}
+            wrapperClassName={styles.addIdeaInput}
+            onChange={(event) => setIdeaDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== 'Escape') return;
+              // Same preventDefault bargain as the rename field: when the
+              // field closes, focus lands back on the button, and an
+              // un-prevented Enter would press it and spring the field open.
+              event.preventDefault();
+              returnFocusToAdd.current = true;
+              if (event.key === 'Enter') void submitIdea();
+              else closeAddIdea();
+            }}
+          />
+        ) : (
+          <button
+            ref={addIdeaButtonRef}
+            type="button"
+            className={styles.addIdea}
+            onClick={() => setAddingIdea(true)}
+          >
+            + add idea — or send one over from the list
+          </button>
+        ))}
     </Card>
   );
 }

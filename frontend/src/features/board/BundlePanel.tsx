@@ -44,7 +44,13 @@ export interface BundlePanelProps {
  * `aria-labelledby` points at the visible heading instead, and the two can
  * never drift apart.
  *
- * "+ New plan" sits directly under the label, full width, per the approved
+ * Under the label, one sentence says what plans are for. It renders for every
+ * role — it explains the rail rather than acting on it, so a viewer reads it
+ * too — and the aside's `aria-describedby` points at it on the same bargain as
+ * the heading: the region's accessible description is the visible words, and
+ * the two cannot drift.
+ *
+ * "+ New plan" sits directly under that line, full width, per the approved
  * mockup: it is the ONLY route to a new plan — the dashed drop target that
  * used to be the other one is gone, see NewBundleForm. Clicking it swaps it in
  * place for the naming input (NewBundleForm), which takes focus on mount, so
@@ -85,6 +91,7 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, query, 
   const canEdit = useCanEdit();
   const [naming, setNaming] = useState(false);
   const headingId = useId();
+  const introId = useId();
 
   // Newest first. Entry ids are the backend's own ordering key — `/entries`
   // sorts by id ascending — so reversing that is "most recently made" in the
@@ -93,10 +100,15 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, query, 
   const newestFirst = useMemo(() => [...bundles].sort((a, b) => b.id - a.id), [bundles]);
 
   return (
-    <aside className={styles.panel} aria-labelledby={headingId}>
+    <aside className={styles.panel} aria-labelledby={headingId} aria-describedby={introId}>
       <h2 id={headingId} className={styles.heading}>
         Plans
       </h2>
+
+      <p id={introId} className={styles.intro}>
+        A plan groups the ideas that go together — a dinner shortlist, a day's outing, a rainy-day
+        fallback.
+      </p>
 
       {/* The rail keeps its name and every plan in it for a viewer — this is
           where a trip's thinking is grouped, and reading it is the point. Only
@@ -137,6 +149,7 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, query, 
               <BundleCard
                 key={bundle.id}
                 bundle={bundle}
+                tripId={tripId}
                 members={members.get(bundle.id) ?? []}
                 onOpen={onOpen}
                 onToast={onToast}

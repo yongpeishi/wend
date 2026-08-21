@@ -49,12 +49,13 @@ export interface IdeaListProps {
   /** Descend into an idea — forwarded untouched to every row. */
   onDrill: (id: number) => void;
   /**
-   * Which row is open, or none. Expansion is controlled from the board now —
-   * it opens at most one row and closes it when the level changes, neither of
-   * which a row (or this list) can know on its own.
+   * Which rows are open — any number at once, so unfolding one idea never
+   * costs the reader another. Expansion is controlled from the board — it
+   * folds every row back when the level changes, which a row (or this list)
+   * cannot know on its own.
    */
-  expandedId: number | null;
-  /** A row was clicked — the board decides what that does to `expandedId`. */
+  expandedIds: ReadonlySet<number>;
+  /** A row was clicked — the board decides what that does to `expandedIds`. */
   onToggleExpand: (id: number) => void;
 }
 
@@ -87,7 +88,7 @@ export function IdeaList({
   otherParents,
   allIdeas,
   onDrill,
-  expandedId,
+  expandedIds,
   onToggleExpand,
 }: IdeaListProps) {
   const idBase = useId();
@@ -120,7 +121,7 @@ export function IdeaList({
         otherParents={otherParents.get(entry.id) ?? []}
         allIdeas={allIdeas}
         onDrill={onDrill}
-        expanded={expandedId === entry.id}
+        expanded={expandedIds.has(entry.id)}
         onToggleExpand={onToggleExpand}
       />
     ));

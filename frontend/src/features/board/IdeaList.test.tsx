@@ -56,7 +56,7 @@ interface ListExtras {
   insideCounts?: ReadonlyMap<number, number>;
   otherParents?: ReadonlyMap<number, string[]>;
   onDrill?: (id: number) => void;
-  expandedId?: number | null;
+  expandedIds?: ReadonlySet<number>;
   onToggleExpand?: (id: number) => void;
 }
 
@@ -80,7 +80,7 @@ function renderList(groupMode: GroupMode, entries = ENTRIES, extra: ListExtras =
               otherParents={extra.otherParents ?? new Map()}
               allIdeas={entries}
               onDrill={extra.onDrill ?? (() => {})}
-              expandedId={extra.expandedId ?? null}
+              expandedIds={extra.expandedIds ?? new Set()}
               onToggleExpand={extra.onToggleExpand ?? (() => {})}
             />
           </DndContext>
@@ -233,16 +233,24 @@ describe('IdeaList', () => {
       expect(screen.getAllByText(/^also in:/)).toHaveLength(1);
     });
 
-    it('opens exactly the row the board names, in grouped modes too', () => {
-      renderList('category', ENTRIES, { expandedId: 3 });
+    it('opens exactly the rows the board names, in grouped modes too', () => {
+      renderList('category', ENTRIES, { expandedIds: new Set([3]) });
 
       expect(screen.getByRole('button', { name: /^Kinkaku-ji/ })).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveAttribute('aria-expanded', 'false');
       expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toHaveAttribute('aria-expanded', 'false');
     });
 
+    it('holds several rows open at once when the board names several', () => {
+      renderList('none', ENTRIES, { expandedIds: new Set([1, 3]) });
+
+      expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: /^Kinkaku-ji/ })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
     it('opens nothing when the board names nothing', () => {
-      renderList('none', ENTRIES, { expandedId: null });
+      renderList('none', ENTRIES, { expandedIds: new Set() });
       for (const entry of ENTRIES) {
         expect(screen.getByRole('button', { name: new RegExp(`^${entry.title}`) })).toHaveAttribute(
           'aria-expanded',

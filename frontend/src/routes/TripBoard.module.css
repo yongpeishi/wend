@@ -4,7 +4,7 @@
 
    The proportions are the redesign's own: the map takes a fixed 29% share —
    flex-none, so widening the window widens the map and the ideas together
-   rather than letting the pair renegotiate — and the plans rail a fixed 320px,
+   rather than letting the pair renegotiate — and the plans rail a fixed 420px,
    which is a list of named cards and gains nothing from a wider desk. The
    ideas column is the flexible middle because it is the thing being read;
    min-width: 0 is what lets it actually shrink instead of overflowing the row
@@ -65,13 +65,13 @@
   gap: var(--space-4);
 }
 
-/* The plans rail's track: 320px, surrendered to nobody. The rail's own chrome
+/* The plans rail's track: 420px, surrendered to nobody. The rail's own chrome
    — the 1.5px --wend-line hairline down its leading edge and its inner
    padding — is BundlePanel's, drawn inside this track; drawing a second
    border here would double the line. min-width: 0 for the same reason as
    .ideas: the track, not a long plan name, decides the width. */
 .plans {
-  flex: 0 0 320px;
+  flex: 0 0 420px;
   min-width: 0;
 }
 
@@ -206,8 +206,8 @@
    tell what you were moving.
 
    300px is the width that makes the title readable and still reads as the same
-   object the drag came from: it is just inside the plans rail the drag is
-   usually headed for, so the card in the air is never wider than its
+   object the drag came from: it sits well inside the 420px plans rail the drag
+   is usually headed for, so the card in the air is never wider than its
    destination, and the itinerary's overlay takes the same number — the two
    screens drag the same card and it should not change size between them.
    Explicit, because there is nothing intrinsic here to size from. */

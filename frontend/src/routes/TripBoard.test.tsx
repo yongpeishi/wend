@@ -432,6 +432,51 @@ describe('TripBoard — drilling down', () => {
   });
 });
 
+describe('TripBoard — expanding rows', () => {
+  it('holds two ideas open at once — opening the second never folds the first', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await user.click(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ }));
+    expect(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ })).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(within(ideas()).getByRole('button', { name: /^Kiyamachi/ }));
+
+    expect(within(ideas()).getByRole('button', { name: /^Kiyamachi/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('a second click folds only its own row, leaving the other open', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await user.click(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ }));
+    await user.click(within(ideas()).getByRole('button', { name: /^Kiyamachi/ }));
+    await user.click(within(ideas()).getByRole('button', { name: /^Kiyamachi/ }));
+
+    expect(within(ideas()).getByRole('button', { name: /^Kiyamachi/ })).toHaveAttribute('aria-expanded', 'false');
+    expect(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('drilling folds every open row — coming back finds the level closed again', async () => {
+    await addIdea({ title: 'Temple garden' }, NANZENJI_ID);
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await user.click(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ }));
+    await user.click(within(ideas()).getByRole('button', { name: /1 inside/ }));
+    await within(ideas()).findByText('Temple garden');
+
+    await user.click(screen.getByRole('button', { name: /All ideas/ }));
+    await within(ideas()).findByText('Kiyamachi');
+
+    expect(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ })).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
 describe('TripBoard — capture', () => {
   it('quick add at root lands the idea under the trip', async () => {
     const user = userEvent.setup();

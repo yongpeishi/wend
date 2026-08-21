@@ -94,7 +94,20 @@
   color: var(--text-muted);
 }
 
-/* What a viewer reads inside an empty plan — editors get .hint instead. */
+/* The open-to-dos line under the name — muted 13px like the header meta, so
+   the two counts speak in one voice. Flex only to seat the aria-hidden icon
+   on the text's centre line; the phrase itself stays one text node. */
+.todoLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  color: var(--text-muted);
+}
+
+/* What a viewer reads inside an empty plan — editors get .addIdea instead. */
 .emptyDrop {
   margin: var(--space-2) 0 0;
   font-family: var(--font-sans);
@@ -102,13 +115,37 @@
   color: var(--text-muted);
 }
 
-/* The foot hint under the members — muted 13px, plain text on purpose (see
-   the JSX comment: there is no add-member control here for it to be). */
-.hint {
+/* The foot line under the members — a real button now (see the JSX comment),
+   but dressed as the muted 13px hint it used to be: the affordance this card
+   leads with is still the members, not another control. What being a button
+   adds is exactly the interactive kit: cursor, the hover fade, the focus
+   ring. */
+.addIdea {
   margin: var(--space-2) 0 0;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
   font-family: var(--font-sans);
   font-size: var(--text-code-size);
   color: var(--text-muted);
+  cursor: pointer;
+}
+
+.addIdea:hover {
+  opacity: 0.7;
+}
+
+.addIdea:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The name field the button swaps for. Same slot, same top margin, so the
+   card's foot does not jump when it opens; Input draws its own border and
+   focus wash. */
+.addIdeaInput {
+  margin-top: var(--space-2);
 }
 
 .memberList {
@@ -120,13 +157,19 @@
   gap: var(--space-2);
 }
 
-/* Member rows are quiet lines now, not paper-toned pills: the approved mockup
-   draws each member as a dot and a name on the card itself, and the card's
-   own border is the only box in sight. */
+/* Each member sits on a paper-toned chip, per the approved mockup: page tone
+   on the card's cream ground, enough contrast to read as a row without
+   drawing a line. The chip nests at a tighter radius than the 12px card; no
+   token sits at 4px, and minting one for a single inner row is not worth it.
+   The asymmetric padding leaves the extra left step for the dot and lets the
+   32px icon buttons on the right set the chip's height themselves. */
 .member {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  background: var(--surface-page);
+  border-radius: 4px;
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3);
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 

@@ -1,10 +1,8 @@
 /* The right-hand rail. Card tone against the board's paper tone, with a single
    hairline on the leading edge — that tone change IS the separation, per the
-   no-shadow rule. The rail no longer names its own width: the board's grid
-   sizes the column as a clamped 40% and this fills whatever track it is given.
-   Bundles are still read against the idea list rather than instead of it, but
-   that promise is now kept by the ceiling in TripBoard.module.css's clamp, so
-   the reasoning for the bounds lives there, next to the value. */
+   no-shadow rule. The rail does not name its own width: the board fixes the
+   track at 420px and this fills whatever track it is given, so the reasoning
+   for that number lives in TripBoard.module.css, next to the value. */
 .panel {
   /* Stretch to the track, in both axes. min-width is the load-bearing half of
      the horizontal story: a grid item defaults to min-width: auto, which is its
@@ -36,13 +34,14 @@
   top: 0;
   box-sizing: border-box;
   border-left: var(--border-width) solid var(--border-subtle);
-  /* Design: 26px 24px 60px. The sides land exactly on --space-6; top and bottom
-     round onto the nearest scale steps rather than carrying two more one-off
-     literals. The bottom used to be a deep --space-16 so the last bundle would
-     not sit on the fold; the rail no longer ends at the fold — the list scrolls
-     inside it and the set-aside disclosure is what sits at the bottom edge — so
-     it comes back level with the top. */
-  padding: var(--space-6);
+  /* Design: 26px 24px 60px. The sides land exactly on --space-6, and the bottom
+     rounds onto the same step rather than carrying another one-off literal (it
+     used to be a deep --space-16 so the last bundle would not sit on the fold;
+     the list scrolls inside the rail now, so it came back level with the sides).
+     The top is gone entirely: the heading below carries the rail's headroom as
+     its own 56px row, so "Plans" centers on the capture line across the gutter
+     instead of hanging 24px below it — see .heading. */
+  padding: 0 var(--space-6) var(--space-6);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -89,14 +88,37 @@
 /* The design's uppercase rail label — the same token pairing every section
    heading in the product uses (see TripsList's .sectionLabel). Quiet on
    purpose: it names the region for anyone scanning, and then gets out of the
-   way of the plans, which are the content. */
+   way of the plans, which are the content.
+
+   The 56px row is CaptureBar's capture-line height (itself the large button
+   height, see that file): the panel gives up its top padding and this heading
+   spans the input's full height instead, so the label sits centered on the
+   same line as "Add an idea…" across the gutter. One number, borrowed rather
+   than derived — if the capture line ever changes height, this row changes
+   with it or the two visibly drift, which is the honest failure mode. */
 .heading {
   margin: 0;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
   font-family: var(--font-sans);
   font-weight: var(--weight-bold);
   font-size: var(--text-label-size);
   letter-spacing: var(--text-label-tracking);
   text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* The one-line answer to "what goes here", directly under the label — the
+   empty state's muted small voice, and rendered for every role: it explains
+   the rail, it is not an editor action. The aside's aria-describedby points
+   at it, so the region's description is these visible words and nothing that
+   could drift from them (same bargain as the heading and aria-labelledby). */
+.intro {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
   color: var(--text-muted);
 }
 
@@ -166,5 +188,12 @@
   .stack {
     flex: initial;
     overflow: visible;
+  }
+
+  /* Stacked, there is no capture line beside the rail to sit level with — the
+     bar is a full column away above — so the heading hands back its 56px slot
+     and the panel's own top padding (restored just above) does the spacing. */
+  .heading {
+    min-height: 0;
   }
 }
