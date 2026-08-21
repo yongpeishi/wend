@@ -4,6 +4,7 @@ import type { Entry } from '../../api/types';
 import { groupEntries } from './filters';
 import type { GroupMode } from './filters';
 import { IdeaRow } from './IdeaRow';
+import type { IdeaComposerDraft } from './IdeaComposer';
 import styles from './IdeaList.module.css';
 
 export interface IdeaListProps {
@@ -64,6 +65,25 @@ export interface IdeaListProps {
   focusedId: number | null;
   /** A row was touched — the board decides whether that moves `focusedId`. */
   onFocusRow: (id: number) => void;
+  /**
+   * Which idea's card currently holds the composer; null = the top-of-list
+   * instance, above this list and none of its business. There is only one
+   * composer on the board, so at most one row can match this — the list does
+   * not check that, it only hands the number on and lets each row recognise
+   * itself.
+   */
+  composerAt: number | null;
+  /** "Add an idea inside" was pressed on a row — the board decides where the
+   * composer goes next. */
+  onOpenComposerInside: (id: number) => void;
+  /**
+   * The inline composer committed. The same handler the top-of-list composer
+   * submits to: an idea made inside a card is the same create as any other,
+   * and the draft's own parent chips say where it lands.
+   */
+  onComposerSubmit: (draft: IdeaComposerDraft) => void;
+  /** The inline composer was cancelled, or must be dismissed. */
+  onComposerCancel: () => void;
 }
 
 /**
@@ -99,6 +119,10 @@ export function IdeaList({
   onToggleExpand,
   focusedId,
   onFocusRow,
+  composerAt,
+  onOpenComposerInside,
+  onComposerSubmit,
+  onComposerCancel,
 }: IdeaListProps) {
   const idBase = useId();
   const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(() => new Set());
@@ -134,6 +158,10 @@ export function IdeaList({
         onToggleExpand={onToggleExpand}
         focused={entry.id === focusedId}
         onFocusRow={onFocusRow}
+        composerAt={composerAt}
+        onOpenComposerInside={onOpenComposerInside}
+        onComposerSubmit={onComposerSubmit}
+        onComposerCancel={onComposerCancel}
       />
     ));
   }

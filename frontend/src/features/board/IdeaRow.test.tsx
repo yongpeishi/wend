@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../../components/Toast';
 import { IdeaRow } from './IdeaRow';
+import type { IdeaComposerDraft } from './IdeaComposer';
 import { api } from '../../api';
 import { server } from '../../mocks/server';
 import type { Entry } from '../../api/types';
@@ -68,6 +69,11 @@ interface RowOptions {
   /** Whether the board names this row as the focused open one. */
   focused?: boolean;
   onFocusRow?: (id: number) => void;
+  /** Which card the board says holds the composer; null = the top of the list. */
+  composerAt?: number | null;
+  onOpenComposerInside?: (id: number) => void;
+  onComposerSubmit?: (draft: IdeaComposerDraft) => void;
+  onComposerCancel?: () => void;
 }
 
 /**
@@ -101,6 +107,10 @@ function HarnessRow({ options }: { options: RowOptions }) {
       }
       focused={options.focused ?? false}
       onFocusRow={options.onFocusRow ?? (() => {})}
+      composerAt={options.composerAt ?? null}
+      onOpenComposerInside={options.onOpenComposerInside ?? (() => {})}
+      onComposerSubmit={options.onComposerSubmit ?? (() => {})}
+      onComposerCancel={options.onComposerCancel ?? (() => {})}
     />
   );
 }
@@ -721,6 +731,151 @@ describe('IdeaRow — the actions row', () => {
     await user.click(screen.getByRole('button', { name: 'Move to Set aside' }));
 
     expect(await screen.findByText("That didn't save. It's still here — try again.")).toBeInTheDocument();
+  });
+});
+
+/**
+ * "Add an idea inside" is the only way into a childless idea — the "N inside ›"
+ * pill is derived from the subtree, so a dead end draws nothing to click. The
+ * row asks (`onOpenComposerInside`) and the board answers by naming the host
+ * card (`composerAt`), because there is one composer on the whole board and
+ * opening it here has to close it wherever it was.
+ */
+describe('IdeaRow — adding an idea inside', () => {
+  /** The composer, wherever it is: the name field is the thing it always has. */
+  function composerName() {
+    return screen.queryByRole('textbox', { name: 'Name' });
+  }
+
+  const INSIDE = 'Add an idea inside';
+
+  it('offers the way in on an idea with nothing inside it yet', async () => {
+    renderRow({ insideCount: 0 });
+    await expandRow();
+
+    expect(screen.getByRole('button', { name: INSIDE })).toBeInTheDocument();
+    // And no pill to reach it by — which is exactly why the verb has to exist.
+    expect(screen.queryByRole('button', { name: /inside ›/ })).not.toBeInTheDocument();
+  });
+
+  it('offers it on an idea that already holds some, too', async () => {
+    renderRow({ insideCount: 3 });
+    await expandRow();
+
+    expect(screen.getByRole('button', { name: INSIDE })).toBeInTheDocument();
+  });
+
+  // Between "Add to plan" and "Edit": the row reads outward-then-inward —
+  // where it belongs, what goes in it, then the two verbs about the card itself.
+  it('sits between Add to plan and Edit', async () => {
+    renderRow({ bundles: [PLAN] });
+    await expandRow();
+
+    const actions = screen.getByRole('button', { name: 'Edit' }).parentElement as HTMLElement;
+    expect(actions.textContent).toMatch(/Add to plan.*Add an idea inside.*Edit.*Move to Set aside/);
+  });
+
+  it('keeps the verb off the closed row, like every other verb', () => {
+    renderRow({ insideCount: 0 });
+    expect(screen.queryByRole('button', { name: INSIDE })).not.toBeInTheDocument();
+  });
+
+  it('asks the board to open the composer in THIS card', async () => {
+    const onOpenComposerInside = vi.fn();
+    renderRow({ onOpenComposerInside });
+    const user = await expandRow();
+
+    await user.click(screen.getByRole('button', { name: INSIDE }));
+
+    expect(onOpenComposerInside).toHaveBeenCalledWith(42);
+  });
+
+  // Pressing the button does not open anything by itself: the board decides
+  // which card is the host, the same bargain expansion and focus strike.
+  it('shows no composer until the board names this card as the host', async () => {
+    renderRow({ expanded: true, composerAt: null });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: INSIDE }));
+
+    expect(composerName()).not.toBeInTheDocument();
+  });
+
+  it('holds the composer once the board names this card', () => {
+    renderRow({ expanded: true, composerAt: 42 });
+
+    expect(composerName()).toBeInTheDocument();
+  });
+
+  it('holds nothing when the composer is in someone else’s card', () => {
+    renderRow({ expanded: true, composerAt: 7 });
+
+    expect(composerName()).not.toBeInTheDocument();
+  });
+
+  // Inside the card, not over the board: the panel keeps its own contents —
+  // the to-dos, the ballot, the verbs — while the new idea is being typed.
+  it('opens inside the card, leaving the panel standing', () => {
+    renderRow({ expanded: true, composerAt: 42 });
+
+    expect(screen.getByText('To-do')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move to Set aside' })).toBeInTheDocument();
+    expect(rowToggle()).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('hands the committed draft up, filed inside the host idea', async () => {
+    const onComposerSubmit = vi.fn();
+    renderRow({ expanded: true, composerAt: 42, onComposerSubmit });
+    const user = userEvent.setup();
+
+    await user.type(composerName() as HTMLElement, 'Torii tunnel');
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(onComposerSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Torii tunnel', parentIds: [42] }),
+    );
+  });
+
+  it('reports a cancelled composer rather than closing it itself', async () => {
+    const onComposerCancel = vi.fn();
+    renderRow({ expanded: true, composerAt: 42, onComposerCancel });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onComposerCancel).toHaveBeenCalled();
+  });
+
+  // Edit takes the whole card. Without the dismissal the composer would only
+  // be hidden — and would come back, half-typed, when the edit ended.
+  it('dismisses the composer when Edit takes the card', async () => {
+    const onComposerCancel = vi.fn();
+    renderRow({ expanded: true, composerAt: 42, onComposerCancel });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(onComposerCancel).toHaveBeenCalled();
+  });
+
+  it('says nothing to the board about a composer that was never here', async () => {
+    const onComposerCancel = vi.fn();
+    renderRow({ expanded: true, composerAt: 7, onComposerCancel });
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+
+    expect(onComposerCancel).not.toHaveBeenCalled();
+  });
+
+  // A viewer has no verbs at all, and a board that named their card anyway
+  // must not hand them a form they could not save.
+  it('gives a viewer neither the verb nor the composer', async () => {
+    renderRow({ canEdit: false, composerAt: 42 });
+    await expandRow();
+
+    expect(screen.queryByRole('button', { name: INSIDE })).not.toBeInTheDocument();
+    expect(composerName()).not.toBeInTheDocument();
   });
 });
 

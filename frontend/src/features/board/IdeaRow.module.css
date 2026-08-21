@@ -326,7 +326,13 @@
   color: var(--text-body);
 }
 
-/* The verbs, on one line at the foot of the panel. */
+/* The verbs, on one line at the foot of the panel — four of them since "Add an
+   idea inside" joined, which is why the wrap is load-bearing rather than
+   defensive: at a narrow card the line breaks and the last verb drops to a
+   second row, and nothing is ever pushed out of reach or clipped. Nothing here
+   may pin the row to one line. The composer that "Add an idea inside" opens is
+   NOT in this row — it is the panel's next child, so it lays itself out at the
+   card's full width instead of as a flex item beside three buttons. */
 .actionsRow {
   display: flex;
   align-items: center;
