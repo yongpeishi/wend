@@ -197,7 +197,7 @@ export function BulkBar({
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((value) => !value)}
         >
-          Add to a bundle
+          Add to a plan
         </button>
       </div>
 
@@ -214,8 +214,9 @@ export function BulkBar({
             onClick={() => setMenuOpen(false)}
           />
 
-          {/* Not role="menu": these are ordinary buttons and Tab already walks
-              them in order — see IdeaActionsMenu for the same reasoning. */}
+          {/* Not role="menu": that role promises arrow-key traversal and a
+              single tab stop, and these are ordinary buttons Tab already
+              walks in order. */}
           <div className={styles.panel} role="group" aria-labelledby={menuLabelId}>
             <p className={styles.panelLabel} id={menuLabelId}>
               Add to
@@ -246,11 +247,11 @@ export function BulkBar({
                   setNamingOpen(true);
                 }}
               >
-                A new bundle
+                A new plan
               </button>
             )}
 
-            {bundles.length === 0 && tripId === undefined && <p className={styles.empty}>No bundles yet.</p>}
+            {bundles.length === 0 && tripId === undefined && <p className={styles.empty}>No plans yet.</p>}
           </div>
         </>
       )}

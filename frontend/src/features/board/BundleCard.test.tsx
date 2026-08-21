@@ -16,6 +16,7 @@ function entry(
   kind: Entry['kind'] = 'idea',
   scheduled = false,
   todosOpen = 0,
+  address: string | null = null,
 ): Entry {
   return {
     id,
@@ -26,7 +27,7 @@ function entry(
     starts_on: null,
     ends_on: null,
     location_name: null,
-    address: null,
+    address,
     lat: null,
     lng: null,
     duration_minutes: null,
@@ -39,6 +40,7 @@ function entry(
     archived_at: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
+    parent_ids: [],
     children_count: 0,
     todos_open_count: todosOpen,
     vote_tally: { total: 0, count: 0, average: 0 },
@@ -49,6 +51,9 @@ function entry(
 
 const BUNDLE = entry(90, 'Kyoto dinner options', 'bundle');
 const MEMBERS = [entry(91, 'Ramen alley'), entry(92, 'Kaiseki counter'), entry(93, 'Standing sushi')];
+// The trip the card's plan nests under — where an idea made from the foot's
+// "+ add idea" field is created before it is linked in.
+const TRIP_ID = 7;
 
 function renderCard(
   members = MEMBERS,
@@ -65,7 +70,9 @@ function renderCard(
             <Routes>
               <Route
                 path="/board"
-                element={<BundleCard bundle={bundle} members={members} onOpen={onOpen} onToast={onToast} />}
+                element={
+                  <BundleCard bundle={bundle} tripId={TRIP_ID} members={members} onOpen={onOpen} onToast={onToast} />
+                }
               />
               {/* So a card that leaves the board can be seen leaving it. */}
               <Route path="/entries/:id" element={<p>Entry detail screen</p>} />
@@ -84,7 +91,7 @@ describe('BundleCard — naming a bundle in place', () => {
     renderCard();
 
     await user.click(screen.getByRole('button', { name: `Rename ${BUNDLE.title}` }));
-    const field = screen.getByRole('textbox', { name: 'Bundle name' });
+    const field = screen.getByRole('textbox', { name: 'Plan name' });
     await user.clear(field);
     await user.type(field, 'Dinner, decided{Enter}');
 
@@ -104,8 +111,8 @@ describe('BundleCard — naming a bundle in place', () => {
     renderCard();
 
     await user.click(screen.getByRole('button', { name: `Rename ${BUNDLE.title}` }));
-    await user.clear(screen.getByRole('textbox', { name: 'Bundle name' }));
-    await user.type(screen.getByRole('textbox', { name: 'Bundle name' }), 'Dinner, decided');
+    await user.clear(screen.getByRole('textbox', { name: 'Plan name' }));
+    await user.type(screen.getByRole('textbox', { name: 'Plan name' }), 'Dinner, decided');
     await user.tab();
 
     await waitFor(() => expect(patch).toHaveBeenCalled());
@@ -119,8 +126,8 @@ describe('BundleCard — naming a bundle in place', () => {
 
     const nameButton = screen.getByRole('button', { name: `Rename ${BUNDLE.title}` });
     await user.click(nameButton);
-    await user.clear(screen.getByRole('textbox', { name: 'Bundle name' }));
-    await user.type(screen.getByRole('textbox', { name: 'Bundle name' }), 'Something else{Escape}');
+    await user.clear(screen.getByRole('textbox', { name: 'Plan name' }));
+    await user.type(screen.getByRole('textbox', { name: 'Plan name' }), 'Something else{Escape}');
 
     expect(patch).not.toHaveBeenCalled();
     const restored = await screen.findByRole('button', { name: `Rename ${BUNDLE.title}` });
@@ -137,8 +144,8 @@ describe('BundleCard — naming a bundle in place', () => {
     renderCard();
 
     await user.click(screen.getByRole('button', { name: `Rename ${BUNDLE.title}` }));
-    await user.clear(screen.getByRole('textbox', { name: 'Bundle name' }));
-    await user.type(screen.getByRole('textbox', { name: 'Bundle name' }), '   {Enter}');
+    await user.clear(screen.getByRole('textbox', { name: 'Plan name' }));
+    await user.type(screen.getByRole('textbox', { name: 'Plan name' }), '   {Enter}');
 
     expect(patch).not.toHaveBeenCalled();
     expect(await screen.findByRole('button', { name: `Rename ${BUNDLE.title}` })).toBeInTheDocument();
@@ -155,7 +162,7 @@ describe('BundleCard — removing a bundle without destroying anything', () => {
     const onToast = vi.fn();
     renderCard(MEMBERS, BUNDLE, onToast);
 
-    await user.click(screen.getByRole('button', { name: `Remove bundle ${BUNDLE.title}` }));
+    await user.click(screen.getByRole('button', { name: `Remove plan ${BUNDLE.title}` }));
 
     await waitFor(() => expect(del).toHaveBeenCalledTimes(4));
     const paths = del.mock.calls.map((c) => c[0] as string);
@@ -178,7 +185,7 @@ describe('BundleCard — removing a bundle without destroying anything', () => {
     const del = vi.spyOn(api, 'delete').mockResolvedValue({ entry: { ...BUNDLE, archived_at: 'now' } });
     renderCard([]);
 
-    await user.click(screen.getByRole('button', { name: `Remove bundle ${BUNDLE.title}` }));
+    await user.click(screen.getByRole('button', { name: `Remove plan ${BUNDLE.title}` }));
 
     await waitFor(() => expect(del).toHaveBeenCalledWith(`/entries/${BUNDLE.id}`));
     expect(del).toHaveBeenCalledTimes(1);
@@ -240,6 +247,79 @@ describe('BundleCard — reordering and unlinking members', () => {
 });
 
 /**
+ * The foot's "+ add idea" is a real control: the button swaps in place for a
+ * name field, and a name makes two writes in a fixed order — the idea is
+ * created under the trip first, then linked into this bundle, because the
+ * link needs the new idea's id.
+ */
+describe('BundleCard — adding an idea from the foot', () => {
+  it('creates the idea under the trip, then links it into the plan, on Enter', async () => {
+    const user = userEvent.setup();
+    const created = entry(99, 'Izakaya crawl');
+    const post = vi
+      .spyOn(api, 'post')
+      .mockImplementation((path: string) =>
+        Promise.resolve(path === '/entries' ? { entry: created } : { link: {} }),
+      );
+    const onToast = vi.fn();
+    renderCard(MEMBERS, BUNDLE, onToast);
+
+    await user.click(screen.getByRole('button', { name: '+ add idea — or send one over from the list' }));
+    await user.type(screen.getByRole('textbox', { name: 'New idea name' }), 'Izakaya crawl{Enter}');
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith('/entries', {
+        entry: { kind: 'idea', title: 'Izakaya crawl' },
+        parent_id: TRIP_ID,
+      }),
+    );
+    await waitFor(() => expect(post).toHaveBeenCalledWith(`/entries/${BUNDLE.id}/links`, { child_id: 99 }));
+    // The entry exists before the link that needs its id.
+    expect(post.mock.calls[0]?.[0]).toBe('/entries');
+    await waitFor(() => expect(onToast).toHaveBeenCalledWith(`Added Izakaya crawl to ${BUNDLE.title}.`));
+    // The field has done its job and the button is back for the next idea.
+    expect(
+      await screen.findByRole('button', { name: '+ add idea — or send one over from the list' }),
+    ).toBeInTheDocument();
+    post.mockRestore();
+  });
+
+  it('puts the button back on Escape without writing anything', async () => {
+    const user = userEvent.setup();
+    const post = vi.spyOn(api, 'post').mockResolvedValue({ entry: {} });
+    renderCard();
+
+    await user.click(screen.getByRole('button', { name: '+ add idea — or send one over from the list' }));
+    await user.type(screen.getByRole('textbox', { name: 'New idea name' }), 'Half a thought{Escape}');
+
+    expect(post).not.toHaveBeenCalled();
+    const restored = await screen.findByRole('button', {
+      name: '+ add idea — or send one over from the list',
+    });
+    // A keyboard user is put back where they were, not at the top of the page.
+    await waitFor(() => expect(restored).toHaveFocus());
+    post.mockRestore();
+  });
+
+  // The same refusal as the rename field: a blank is not an idea, so the
+  // field simply closes and nothing needs explaining.
+  it('refuses a blank name rather than creating a nameless idea', async () => {
+    const user = userEvent.setup();
+    const post = vi.spyOn(api, 'post').mockResolvedValue({ entry: {} });
+    renderCard();
+
+    await user.click(screen.getByRole('button', { name: '+ add idea — or send one over from the list' }));
+    await user.type(screen.getByRole('textbox', { name: 'New idea name' }), '   {Enter}');
+
+    expect(post).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole('button', { name: '+ add idea — or send one over from the list' }),
+    ).toBeInTheDocument();
+    post.mockRestore();
+  });
+});
+
+/**
  * A member opens over the board when the board offers to take it. Leaving for
  * /entries/:id put the drawer on a page of its own — nothing under its scrim to
  * show through, and nothing above it holding the trip's role.
@@ -271,63 +351,71 @@ describe('BundleCard — opening a member', () => {
 });
 
 /**
- * The design's rail card shows a caption above the members, a count beside the
- * name and a coloured dot beside each item, all driven by state fields our
- * Entry does not have. Every one is derived from a real serialized field —
- * these tests pin that so nobody quietly swaps in an invented one later.
+ * The design's rail card shows a count beside the name, a coloured dot beside
+ * each item and a hint at the foot. Every one is derived from a real
+ * serialized field — these tests pin that so nobody quietly swaps in an
+ * invented one later.
  */
 describe('BundleCard — the design anatomy, on real fields only', () => {
-  it('sums the open to-dos across the members and the bundle itself', () => {
-    renderCard(
-      [entry(91, 'Ramen alley', 'idea', false, 2), entry(92, 'Kaiseki counter', 'idea', false, 0)],
-      entry(90, 'Kyoto dinner options', 'bundle', false, 1),
-    );
-    // The bundle's own to-do counts: it can hold a chore belonging to no single
-    // idea in it, and that chore is still work standing between this group and
-    // a plan.
-    expect(screen.getByText('3 open to-dos')).toBeInTheDocument();
+  it('counts its ideas in the header, right beside the name', () => {
+    renderCard([entry(91, 'Ramen alley'), entry(92, 'Kaiseki counter')]);
+    expect(screen.getByText('2 ideas')).toBeInTheDocument();
   });
 
-  it('counts a lone to-do in the singular', () => {
+  it('counts a lone idea in the singular', () => {
+    renderCard([entry(91, 'Ramen alley')]);
+    expect(screen.getByText('1 idea')).toBeInTheDocument();
+  });
+
+  // "Empty so far" is a state, not a tally: it is what the hint below the
+  // members exists to fix, and it reads as an invitation rather than a zero.
+  it('says an empty plan is empty so far, not "0 ideas"', () => {
+    renderCard([]);
+    expect(screen.getByText('Empty so far')).toBeInTheDocument();
+    expect(screen.queryByText('0 ideas')).not.toBeInTheDocument();
+  });
+
+  // The card-level total is back (the product owner reversed its retirement):
+  // the members' open to-dos summed, as one text node under the name, kept
+  // alongside the per-member labels that say which ideas own the work.
+  it('totals the members\' open to-dos in the line under the name', () => {
+    renderCard([entry(91, 'Ramen alley', 'idea', false, 3), entry(92, 'Kaiseki counter', 'idea', false, 2)]);
+    expect(screen.getByText('5 open to-dos')).toBeInTheDocument();
+  });
+
+  it('counts a lone open to-do in the singular', () => {
     renderCard([entry(91, 'Ramen alley', 'idea', false, 1)]);
     expect(screen.getByText('1 open to-do')).toBeInTheDocument();
   });
 
-  // Zero is an answer, not a silence: a rail where some cards speak and some
-  // say nothing makes the reader work out which kind of nothing they have.
-  it('still says zero when there is no open work, empty bundle included', () => {
-    const { unmount } = renderCard();
-    expect(screen.getByText('0 open to-dos')).toBeInTheDocument();
-    unmount();
-
-    renderCard([]);
+  // Zero renders too — in a rail where some cards speak and some stay silent,
+  // "nothing outstanding" is a real answer about a plan, not an absence.
+  it('says "0 open to-dos" rather than staying silent', () => {
+    renderCard([entry(91, 'Ramen alley')]);
     expect(screen.getByText('0 open to-dos')).toBeInTheDocument();
   });
 
   // The schedule answers this itself; the card's one line is worth more spent
-  // on the work outstanding.
+  // on what the plan holds.
   it('no longer reports how many members are on the schedule', () => {
     renderCard([entry(91, 'Ramen alley', 'idea', true), entry(92, 'Kaiseki counter')]);
     expect(screen.queryByText(/\d+ of \d+ on the schedule/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/none on the schedule yet/i)).not.toBeInTheDocument();
   });
 
-  // Exactly one to-do number per card: the header count that used to repeat it
-  // beside the name is gone, so the header is the name and the X and nothing
-  // else.
-  it('states the to-do total once, and only under the name', () => {
-    renderCard([entry(91, 'Ramen alley', 'idea', false, 3)]);
-    expect(screen.getAllByText(/open to-dos?/i)).toHaveLength(1);
-  });
-
   // Colour is never the only carrier of meaning: the dot's state is also text.
-  it('gives each member dot a text equivalent', () => {
-    renderCard([entry(91, 'Ramen alley', 'idea', true), entry(92, 'Kaiseki counter')]);
-    expect(screen.getByText('On the schedule:')).toBeInTheDocument();
-    expect(screen.getByText('Not on the schedule yet:')).toBeInTheDocument();
+  // The dot reads `address` — solid for a member that is a real place, hollow
+  // for one that is not yet — never an invented state enum.
+  it('gives each member dot a text equivalent, keyed to the address', () => {
+    renderCard([
+      entry(91, 'Ramen alley', 'idea', false, 0, '1 Ramen St, Kyoto'),
+      entry(92, 'Kaiseki counter'),
+    ]);
+    expect(screen.getByText('Has an address:')).toBeInTheDocument();
+    expect(screen.getByText('No address yet:')).toBeInTheDocument();
   });
 
-  // The total above is traceable to the ideas that own it without opening one.
+  // The open work is traceable to the ideas that own it without opening one.
   it('labels the members that carry the open to-dos', () => {
     renderCard([
       entry(91, 'Ramen alley', 'idea', false, 2),
@@ -336,7 +424,15 @@ describe('BundleCard — the design anatomy, on real fields only', () => {
     ]);
     expect(screen.getByText('2 to-dos')).toBeInTheDocument();
     expect(screen.getByText('1 to-do')).toBeInTheDocument();
-    expect(screen.getByText('3 open to-dos')).toBeInTheDocument();
+  });
+
+  // The design's foot line, on every editable card — a real button now,
+  // because the card grew an add-member write of its own.
+  it('offers the ways in at the foot of the card as a real button', () => {
+    renderCard();
+    expect(
+      screen.getByRole('button', { name: '+ add idea — or send one over from the list' }),
+    ).toBeInTheDocument();
   });
 
   // A mark on the exceptions, not a column of zeroes.
@@ -345,9 +441,9 @@ describe('BundleCard — the design anatomy, on real fields only', () => {
     expect(screen.queryByText(/^\d+ to-dos?$/)).not.toBeInTheDocument();
   });
 
-  // The card is content, not a toolbar: the whole bundle-level action row is
-  // gone, and so is the idea count that sat beside the name.
-  it('carries no action row and no idea count', () => {
+  // The card is content, not a toolbar: the whole plan-level action row is
+  // gone, and so is the "N kept" tag that once sat beside the name.
+  it('carries no action row and no "kept" tag', () => {
     renderCard();
     for (const label of [/^fork$/i, /^compare$/i, /^ungroup$/i, /^set aside$/i]) {
       expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
@@ -360,7 +456,7 @@ describe('BundleCard — the design anatomy, on real fields only', () => {
   it('puts the remove control after the name, not in front of it', () => {
     renderCard();
     const name = screen.getByRole('button', { name: `Rename ${BUNDLE.title}` });
-    const remove = screen.getByRole('button', { name: `Remove bundle ${BUNDLE.title}` });
+    const remove = screen.getByRole('button', { name: `Remove plan ${BUNDLE.title}` });
     expect(name.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });
@@ -379,7 +475,7 @@ describe('BundleCard — reading along', () => {
           <ToastProvider>
             <TripRoleProvider role="viewer">
               <DndContext>
-                <BundleCard bundle={BUNDLE} members={MEMBERS} onToast={() => {}} />
+                <BundleCard bundle={BUNDLE} tripId={TRIP_ID} members={MEMBERS} onToast={() => {}} />
               </DndContext>
             </TripRoleProvider>
           </ToastProvider>
@@ -388,21 +484,24 @@ describe('BundleCard — reading along', () => {
     );
   }
 
-  it('shows the bundle whole — its name, its count and every member in order', () => {
+  it('shows the plan whole — its name, its count and every member in order', () => {
     renderAsViewer();
 
     expect(screen.getByText(BUNDLE.title)).toBeInTheDocument();
-    expect(screen.getByText('0 open to-dos')).toBeInTheDocument();
+    expect(screen.getByText('3 ideas')).toBeInTheDocument();
     for (const member of MEMBERS) {
       expect(screen.getByRole('button', { name: member.title })).toBeInTheDocument();
     }
+    // The foot hint names an editor's gestures, so a viewer's card ends with
+    // the members.
+    expect(screen.queryByText(/\+ add idea/)).not.toBeInTheDocument();
   });
 
   it('drops the name field, the remove control and every member verb', () => {
     renderAsViewer();
 
     expect(screen.queryByRole('button', { name: `Rename ${BUNDLE.title}` })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: `Remove bundle ${BUNDLE.title}` })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Remove plan ${BUNDLE.title}` })).not.toBeInTheDocument();
     for (const member of MEMBERS) {
       expect(screen.queryByRole('button', { name: `Move ${member.title} up` })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: `Move ${member.title} down` })).not.toBeInTheDocument();
@@ -421,7 +520,7 @@ describe('BundleCard — reading along', () => {
     }
   });
 
-  it('says an empty bundle is empty without naming two gestures a viewer has not got', () => {
+  it('says an empty plan is empty without naming gestures a viewer has not got', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={queryClient}>
@@ -429,7 +528,7 @@ describe('BundleCard — reading along', () => {
           <ToastProvider>
             <TripRoleProvider role="viewer">
               <DndContext>
-                <BundleCard bundle={BUNDLE} members={[]} onToast={() => {}} />
+                <BundleCard bundle={BUNDLE} tripId={TRIP_ID} members={[]} onToast={() => {}} />
               </DndContext>
             </TripRoleProvider>
           </ToastProvider>
@@ -458,7 +557,7 @@ describe('BundleCard — reading along', () => {
                   <Route
                     path="/board"
                     element={
-                      <BundleCard bundle={BUNDLE} members={MEMBERS} onOpen={onOpen} onToast={() => {}} />
+                      <BundleCard bundle={BUNDLE} tripId={TRIP_ID} members={MEMBERS} onOpen={onOpen} onToast={() => {}} />
                     }
                   />
                   <Route path="/entries/:id" element={<p>Entry detail screen</p>} />
@@ -484,7 +583,7 @@ describe('BundleCard — reading along', () => {
           <ToastProvider>
             <TripRoleProvider role="member">
               <DndContext>
-                <BundleCard bundle={BUNDLE} members={MEMBERS} onToast={() => {}} />
+                <BundleCard bundle={BUNDLE} tripId={TRIP_ID} members={MEMBERS} onToast={() => {}} />
               </DndContext>
             </TripRoleProvider>
           </ToastProvider>
@@ -493,7 +592,7 @@ describe('BundleCard — reading along', () => {
     );
 
     expect(screen.getByRole('button', { name: `Rename ${BUNDLE.title}` })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: `Remove bundle ${BUNDLE.title}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Remove plan ${BUNDLE.title}` })).toBeInTheDocument();
     expect(screen.getAllByRole('listitem')[0]).toHaveAttribute('draggable', 'true');
   });
 });

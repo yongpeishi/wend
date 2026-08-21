@@ -137,7 +137,7 @@ describe('ArchivedPanel', () => {
     ]);
 
     expect(screen.queryByText(/Nothing planned/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^Bundle ·/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Plan ·/)).not.toBeInTheDocument();
     expect(screen.queryByText('Teramachi arcade')).not.toBeInTheDocument();
     expect(screen.getByText('Kinkaku-ji · Nishiki market crawl')).toBeInTheDocument();
   });

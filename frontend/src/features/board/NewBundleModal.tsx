@@ -83,7 +83,7 @@ export function NewBundleModal({ open, onClose, tripId, onCreated }: NewBundleMo
     <Modal
       open={open}
       onClose={close}
-      title="Start a bundle"
+      title="Start a plan"
       actions={
         <>
           <Button variant="quiet" onClick={close} disabled={createEntry.isPending}>

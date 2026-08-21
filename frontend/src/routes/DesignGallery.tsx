@@ -386,13 +386,13 @@ export function DesignGallery() {
         <Modal
           open={modalOpen}
           onClose={() => setModalOpen(false)}
-          title="Fork this bundle?"
+          title="Fork this plan?"
           actions={
             <>
               <Button variant="quiet" onClick={() => setModalOpen(false)}>
                 Never mind
               </Button>
-              {/* The title may wander ("Fork this bundle?"); the button may not.
+              {/* The title may wander ("Fork this plan?"); the button may not.
                   "Keep both for now" is the readme's own example of a heading
                   wearing a button's clothes. */}
               <Button variant="primary" onClick={() => setModalOpen(false)}>

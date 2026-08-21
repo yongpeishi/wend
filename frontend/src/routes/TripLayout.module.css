@@ -28,7 +28,14 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: var(--space-8) var(--gutter-screen) var(--floor-screen);
+  /* 20px on top rather than the old --space-8: the slimmed header design asks
+     for ~20px 24px 12px around the title row, and the wrap's top edge IS the
+     header's top padding. Off the space scale (there is no 20px step), so it
+     borrows the value the horizontal gutter already established for "the
+     page's breathing room". The sides stay --gutter-screen — a shared token
+     the full-bleed screens subtract by name, so the header cannot take a 24px
+     side of its own without breaking that arithmetic. */
+  padding: 20px var(--gutter-screen) var(--floor-screen);
 }
 
 /* The title block, and whatever the Outlet rendered. A full-bleed screen sets
@@ -46,7 +53,7 @@
 
    It KEEPS the 1360px measure that .wrap > * hands it, even on the two screens
    that decline it for themselves. Deliberate: the head is nothing but text — a
-   display-size <h1> and a date line — and text wants a reading measure whether
+   title-size <h1> with its date beside it — and text wants a reading measure whether
    or not a map is spread out underneath it. A trip title allowed to run the
    width of a 2500px window is one enormous line with no second line to relate
    to, and the wrap point of a long title should not depend on which tab you
@@ -60,35 +67,50 @@
    has to move out to the .wrap edge — a capped rule over a full-bleed board is
    the case this note exists to prevent. */
 .head {
-  margin-bottom: var(--gap-section);
+  /* ~12px under the header, per the slimmed design — the header is a labelled
+     edge now, not a landing zone, so it hands the page over quickly. */
+  margin-bottom: var(--space-3);
 }
 
+/* Title and dates on one shared baseline. Wrapping is the graceful failure: a
+   long title pushes the dates onto their own line rather than crushing either,
+   and baseline alignment keeps the pair reading as one sentence while they do
+   share a line. */
+.headRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+/* 26px/700 — --text-title-size, down from the display size the old two-line
+   header carried. The header is one row now, and a 40px line beside a 15px
+   date read as two different pages. */
 .title {
   margin: 0;
   font-family: var(--font-sans);
   font-weight: var(--weight-bold);
-  font-size: var(--text-display-size);
-  line-height: var(--text-display-line);
+  font-size: var(--text-title-size);
+  line-height: var(--text-title-line);
   color: var(--text-strong);
   text-wrap: pretty;
 }
 
-/* Dates read like an itinerary line: the data type, tracked, never mono. */
+/* Muted 15px beside the title — the annotation on the row, not a second line. */
 .dates {
-  margin: var(--space-2) 0 0;
+  margin: 0;
   font-family: var(--font-sans);
-  font-size: var(--text-data-size);
+  font-size: var(--text-small-size);
   letter-spacing: var(--text-data-tracking);
-  color: var(--text-body);
+  color: var(--text-muted);
 }
 
+/* The same slot when there are no dates yet: the copy stays, and it dresses
+   like the dates it stands in for so the row reads the same either way. */
 .noDates {
-  margin: var(--space-2) 0 0;
+  margin: 0;
   font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-label-size);
-  letter-spacing: var(--text-label-tracking);
-  text-transform: uppercase;
+  font-size: var(--text-small-size);
   color: var(--text-muted);
 }
 
@@ -97,7 +119,7 @@
    and is never text, so the line is told apart by its position under the title
    rather than by a colour. */
 .viewerNote {
-  margin: var(--space-4) 0 0;
+  margin: var(--space-2) 0 0;
   font-family: var(--font-sans);
   font-size: var(--text-body-size);
   line-height: var(--text-body-line);
@@ -107,14 +129,11 @@
 
 @media (max-width: 720px) {
   /* A shallower floor on a phone. Set as the token rather than as a literal in
-     the padding, so a screen that cancels the floor cancels this one too. */
+     the padding, so a screen that cancels the floor cancels this one too. The
+     title needs no override any more — it is already the 26px it used to
+     shrink to here. */
   .wrap {
     --floor-screen: var(--space-12);
-    padding: var(--space-6) var(--gutter-screen) var(--floor-screen);
-  }
-
-  .title {
-    font-size: var(--text-title-size);
-    line-height: var(--text-title-line);
+    padding: 20px var(--gutter-screen) var(--floor-screen);
   }
 }

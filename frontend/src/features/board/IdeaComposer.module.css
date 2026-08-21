@@ -1,0 +1,169 @@
+/*
+ * The composer card. Same 2px weight as the capture bar it grew out of, but
+ * apricot — the brand's "you are here" hue — because when the card is open it,
+ * not the bar above it, is where the typing continues. On card tone, no shadow.
+ */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--surface-card);
+  border: var(--border-width-strong) solid var(--wend-apricot);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+}
+
+/* The stacked fields. Quieter boxes than the design-system Input wrapper on
+   purpose: three of them inside an already-bordered card would read as four
+   cards nested, so these keep the hairline edge and let the card do the
+   framing. */
+.input {
+  width: 100%;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: 10px var(--space-3);
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus,
+.input:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The name is the idea — set like an idea row's title while it is typed. */
+.nameInput {
+  font-size: var(--text-body-size);
+  font-weight: var(--weight-bold);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Same heading voice as the idea panel's sections. */
+.sectionLabel {
+  margin: 0;
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 13px pills, the board's own chip size — scanned as marks, not read as prose
+   (the idea rows strike the same bargain, in the same words). Unlit: bare on
+   the card with the strong hairline. */
+.pill {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--text-body);
+  background: transparent;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.pill:hover {
+  opacity: 0.85;
+}
+
+.pill:active {
+  opacity: 0.7;
+}
+
+.pill:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The lit category: the acting colour as a fill, because exactly one of the
+   six is ever lit and it is an answer, not an option. */
+.pillOn {
+  background: var(--wend-leaf);
+  border-color: var(--wend-leaf);
+  color: var(--wend-paper);
+}
+
+/* A chosen parent — leaf as an outline, not a fill: it is kept, not primary. */
+.parentPill {
+  border-color: var(--wend-leaf);
+  color: var(--wend-leaf);
+}
+
+/*
+ * The choice cloud: the one surface in the composer allowed to sit a tone
+ * BELOW the card — paper, so the transient list of candidates reads as a
+ * pocket that opened rather than another card arriving.
+ */
+.cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  background: var(--surface-page);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: var(--space-2);
+}
+
+/* Cloud chips are smaller-boned than the pills above: candidates, not
+   choices, on the quieter surface. */
+.cloudChip {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-body);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.cloudChip:hover {
+  opacity: 0.85;
+}
+
+.cloudChip:active {
+  opacity: 0.7;
+}
+
+.cloudChip:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* A hair of air over the buttons: the card's 12px gap reads tight between
+     a chip row and the commit line. */
+  margin-top: var(--space-1);
+}

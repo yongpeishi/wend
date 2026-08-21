@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
@@ -32,6 +32,7 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     archived_at: null,
     created_at: '',
     updated_at: '',
+    parent_ids: [],
     children_count: 0,
     todos_open_count: 0,
     vote_tally: { total: 0, count: 0, average: 0 },
@@ -48,11 +49,20 @@ const ENTRIES = [
   makeEntry({ id: 4, title: 'Somewhere unplaced', category: 'other' }),
 ];
 
-function renderList(
-  groupMode: GroupMode,
-  entries = ENTRIES,
-  extra: { selectMode?: boolean; selectedIds?: number[]; canEdit?: boolean } = {},
-) {
+interface ListExtras {
+  selectMode?: boolean;
+  selectedIds?: number[];
+  canEdit?: boolean;
+  insideCounts?: ReadonlyMap<number, number>;
+  otherParents?: ReadonlyMap<number, string[]>;
+  onDrill?: (id: number) => void;
+  expandedIds?: ReadonlySet<number>;
+  onToggleExpand?: (id: number) => void;
+  focusedId?: number | null;
+  onFocusRow?: (id: number) => void;
+}
+
+function renderList(groupMode: GroupMode, entries = ENTRIES, extra: ListExtras = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -68,6 +78,14 @@ function renderList(
               selectedIds={extra.selectedIds ?? []}
               onToggleSelect={() => {}}
               canEdit={extra.canEdit}
+              insideCounts={extra.insideCounts ?? new Map()}
+              otherParents={extra.otherParents ?? new Map()}
+              allIdeas={entries}
+              onDrill={extra.onDrill ?? (() => {})}
+              expandedIds={extra.expandedIds ?? new Set()}
+              onToggleExpand={extra.onToggleExpand ?? (() => {})}
+              focusedId={extra.focusedId ?? null}
+              onFocusRow={extra.onFocusRow ?? (() => {})}
             />
           </DndContext>
         </ToastProvider>
@@ -178,8 +196,8 @@ describe('IdeaList', () => {
 
   /**
    * The list draws no affordance of its own — it only has to hand the
-   * capability on. The proof is at the rows: no grips, no ⋯ menus, and every
-   * idea still there to read.
+   * capability on. The proof is at the rows: no grips, and every idea still
+   * there to read.
    */
   it('passes read-only down to every row, in every grouping, without losing an idea', () => {
     for (const mode of ['none', 'category', 'location'] as const) {
@@ -189,7 +207,6 @@ describe('IdeaList', () => {
         expect(screen.getByRole('button', { name: new RegExp(`^${entry.title}`) })).toBeInTheDocument();
       }
       expect(screen.queryByRole('button', { name: /^Drag / })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^Actions for / })).not.toBeInTheDocument();
 
       view.unmount();
     }
@@ -198,6 +215,97 @@ describe('IdeaList', () => {
   it('leaves the rows their affordances by default, so nothing outside a trip changes', () => {
     renderList('none');
     expect(screen.getAllByRole('button', { name: /^Drag / })).toHaveLength(ENTRIES.length);
-    expect(screen.getAllByRole('button', { name: /^Actions for / })).toHaveLength(ENTRIES.length);
+  });
+
+  /**
+   * The per-entry maps and the drill/expand pair are the board's, and the list
+   * only threads them — but the threading is exactly what can silently break,
+   * so each leg is pinned at the rows.
+   */
+  describe('threading the board state to the rows', () => {
+    it('gives each row its own inside count, and no pill where the map is silent', () => {
+      renderList('none', ENTRIES, { insideCounts: new Map([[1, 3]]) });
+
+      expect(screen.getByRole('button', { name: '3 inside ›' })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: /inside ›$/ })).toHaveLength(1);
+    });
+
+    it('gives each row its own "also in" names', () => {
+      renderList('none', ENTRIES, { otherParents: new Map([[2, ['Food crawl']]]) });
+
+      expect(screen.getByText('also in: Food crawl')).toBeInTheDocument();
+      expect(screen.getAllByText(/^also in:/)).toHaveLength(1);
+    });
+
+    it('opens exactly the rows the board names, in grouped modes too', () => {
+      renderList('category', ENTRIES, { expandedIds: new Set([3]) });
+
+      expect(screen.getByRole('button', { name: /^Kinkaku-ji/ })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('holds several rows open at once when the board names several', () => {
+      renderList('none', ENTRIES, { expandedIds: new Set([1, 3]) });
+
+      expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: /^Kinkaku-ji/ })).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('opens nothing when the board names nothing', () => {
+      renderList('none', ENTRIES, { expandedIds: new Set() });
+      for (const entry of ENTRIES) {
+        expect(screen.getByRole('button', { name: new RegExp(`^${entry.title}`) })).toHaveAttribute(
+          'aria-expanded',
+          'false',
+        );
+      }
+    });
+
+    it('reports which row was clicked, and decides nothing itself', async () => {
+      const user = userEvent.setup();
+      const onToggleExpand = vi.fn();
+      renderList('none', ENTRIES, { onToggleExpand });
+
+      await user.click(screen.getByRole('button', { name: /^Nishiki Market/ }));
+
+      expect(onToggleExpand).toHaveBeenCalledWith(2);
+      expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('marks exactly the row the board names as focused, among several open ones', () => {
+      renderList('none', ENTRIES, { expandedIds: new Set([1, 3]), focusedId: 3 });
+
+      const focusedRow = screen.getByRole('button', { name: /^Kinkaku-ji/ }).closest('[data-expanded]');
+      const otherRow = screen.getByRole('button', { name: /^Fushimi Inari/ }).closest('[data-expanded]');
+      expect(focusedRow).toHaveAttribute('data-focused');
+      expect(otherRow).not.toHaveAttribute('data-focused');
+    });
+
+    it('marks nothing as focused when the named row is not open', () => {
+      renderList('none', ENTRIES, { expandedIds: new Set([1]), focusedId: 2 });
+
+      expect(document.querySelector('[data-focused]')).toBeNull();
+    });
+
+    it('hands onFocusRow to the rows, so a press inside an open row reports up', () => {
+      const onFocusRow = vi.fn();
+      renderList('none', ENTRIES, { expandedIds: new Set([2]), onFocusRow });
+
+      fireEvent.pointerDown(screen.getByRole('button', { name: /^Nishiki Market/ }));
+
+      expect(onFocusRow).toHaveBeenCalledWith(2);
+    });
+
+    it('passes a drill straight up with the row it came from', async () => {
+      const user = userEvent.setup();
+      const onDrill = vi.fn();
+      renderList('none', ENTRIES, { insideCounts: new Map([[4, 2]]), onDrill });
+
+      await user.click(screen.getByRole('button', { name: '2 inside ›' }));
+
+      expect(onDrill).toHaveBeenCalledWith(4);
+    });
   });
 });

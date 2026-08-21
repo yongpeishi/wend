@@ -30,21 +30,37 @@ export interface IdeaFilters {
   categories: EntryCategory[];
   hasLocation: boolean;
   scheduleState: ScheduleState;
+  /**
+   * Free-text narrowing on the title — a case-insensitive substring, nothing
+   * cleverer. It is a filter like the chips, not a mode of its own: it stacks
+   * with the categories and the schedule state, and clearing it is deleting
+   * what you typed. Whitespace-only text narrows nothing, so a stray space in
+   * the box cannot quietly empty the board.
+   */
+  text: string;
 }
 
 export const EMPTY_FILTERS: IdeaFilters = {
   categories: [],
   hasLocation: false,
   scheduleState: 'all',
+  text: '',
 };
 
 export function isNarrowed(filters: IdeaFilters): boolean {
-  return filters.categories.length > 0 || filters.hasLocation || filters.scheduleState !== 'all';
+  return (
+    filters.categories.length > 0 ||
+    filters.hasLocation ||
+    filters.scheduleState !== 'all' ||
+    filters.text.trim() !== ''
+  );
 }
 
 /** Filters hide, never delete — this only changes what a query returns, nothing is archived. */
 export function applyFilters(entries: Entry[], filters: IdeaFilters): Entry[] {
+  const query = filters.text.trim().toLowerCase();
   return entries.filter((entry) => {
+    if (query !== '' && !entry.title.toLowerCase().includes(query)) return false;
     // No categories chosen is the widest state, not the narrowest: the whole
     // list passes. Once any chip is lit, an idea has to be in one of them —
     // and an uncategorised idea is in none, so it steps aside until the

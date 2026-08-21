@@ -33,6 +33,7 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     archived_at: null,
     created_at: '',
     updated_at: '',
+    parent_ids: [],
     children_count: 0,
     todos_open_count: 0,
     vote_tally: { total: 0, count: 0, average: 0 },
@@ -78,14 +79,14 @@ function renderBar(options: BarOptions = {}) {
 async function openAddTo(options: BarOptions = {}) {
   const user = userEvent.setup();
   renderBar(options);
-  await user.click(screen.getByRole('button', { name: 'Add to a bundle' }));
+  await user.click(screen.getByRole('button', { name: 'Add to a plan' }));
   return user;
 }
 
 describe('BulkBar — what it says about the selection', () => {
   it('is not on screen at all while nothing is picked', () => {
     renderBar({ selectedIds: [] });
-    expect(screen.queryByRole('button', { name: 'Add to a bundle' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add to a plan' })).not.toBeInTheDocument();
   });
 
   it('says "1 idea selected" rather than "1 ideas selected"', () => {
@@ -124,7 +125,7 @@ describe('BulkBar — the "Add to" popover', () => {
   it('stays shut until it is asked for', () => {
     renderBar();
     expect(screen.queryByRole('button', { name: 'Tuesday south' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add to a bundle' })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Add to a plan' })).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('lists every bundle that exists, and ends with a way to start another', async () => {
@@ -134,12 +135,12 @@ describe('BulkBar — the "Add to" popover', () => {
     const rows = screen.getAllByRole('button').map((button) => button.textContent);
     expect(rows).toContain('Tuesday south');
     expect(rows).toContain('Travel day');
-    expect(rows).toContain('A new bundle');
+    expect(rows).toContain('A new plan');
   });
 
   it('offers to start a bundle even when there is not one yet', async () => {
     await openAddTo({ bundles: [] });
-    expect(screen.getByRole('button', { name: 'A new bundle' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'A new plan' })).toBeInTheDocument();
   });
 
   it('closes on Escape and gives focus back to the button that opened it', async () => {
@@ -148,7 +149,7 @@ describe('BulkBar — the "Add to" popover', () => {
     await user.keyboard('{Escape}');
 
     expect(screen.queryByRole('button', { name: 'Tuesday south' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add to a bundle' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Add to a plan' })).toHaveFocus();
   });
 
   // The click-catcher is hidden from assistive tech on purpose — it is a
@@ -204,9 +205,9 @@ describe('BulkBar — starting a new bundle from the selection', () => {
   it('asks what the bundle is called instead of naming it for you', async () => {
     const user = await openAddTo();
 
-    await user.click(screen.getByRole('button', { name: 'A new bundle' }));
+    await user.click(screen.getByRole('button', { name: 'A new plan' }));
 
-    expect(screen.getByRole('dialog', { name: 'Start a bundle' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Start a plan' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Tuesday south' })).not.toBeInTheDocument();
   });
 
@@ -222,7 +223,7 @@ describe('BulkBar — starting a new bundle from the selection', () => {
     const onToast = vi.fn();
     const user = await openAddTo({ selectedIds: [1, 2], onClear, onExitSelectMode, onToast });
 
-    await user.click(screen.getByRole('button', { name: 'A new bundle' }));
+    await user.click(screen.getByRole('button', { name: 'A new plan' }));
     await user.type(screen.getByLabelText('What are you calling it?'), 'If it rains');
     await user.click(screen.getByRole('button', { name: 'Start it' }));
 
@@ -243,7 +244,7 @@ describe('BulkBar — starting a new bundle from the selection', () => {
   it('will not start a bundle with no name', async () => {
     const user = await openAddTo();
 
-    await user.click(screen.getByRole('button', { name: 'A new bundle' }));
+    await user.click(screen.getByRole('button', { name: 'A new plan' }));
 
     expect(screen.getByRole('button', { name: 'Start it' })).toBeDisabled();
   });
@@ -275,7 +276,7 @@ describe('BulkBar — reading along', () => {
     );
 
     expect(screen.queryByText('2 ideas selected')).not.toBeInTheDocument();
-    for (const label of ['Add to a bundle', 'Make separate trips', 'Move to Set aside', 'Clear']) {
+    for (const label of ['Add to a plan', 'Make separate trips', 'Move to Set aside', 'Clear']) {
       expect(screen.queryByRole('button', { name: label })).not.toBeInTheDocument();
     }
   });
@@ -298,6 +299,6 @@ describe('BulkBar — reading along', () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByRole('button', { name: 'Add to a bundle' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add to a plan' })).toBeInTheDocument();
   });
 });

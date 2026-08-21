@@ -32,6 +32,7 @@ function entry(id: number, title: string, kind: Entry['kind'] = 'idea', schedule
     archived_at: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
+    parent_ids: [],
     children_count: 0,
     todos_open_count: 0,
     vote_tally: { total: 0, count: 0, average: 0 },
@@ -70,21 +71,27 @@ function renderPanel(overrides: Partial<Parameters<typeof BundlePanel>[0]> = {})
   );
 }
 
-describe('BundlePanel — the bundles-only rail', () => {
-  it('names itself, explains what a bundle is, and lists the bundles', () => {
+describe('BundlePanel — the plans-only rail', () => {
+  it('names itself "Plans" and says in one line what the rail is for', () => {
     renderPanel();
-    expect(screen.getByRole('heading', { name: 'Bundles' })).toBeInTheDocument();
-    expect(screen.getByText(/A bundle is a group of things that go well together/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Plans' })).toBeInTheDocument();
+    // One sentence under the label, in the rail's own voice. It explains the
+    // region rather than acting on it, so it does not gate on canEdit.
+    expect(
+      screen.getByText(/A plan groups the ideas that go together — a dinner shortlist, a day's outing, a rainy-day fallback\./),
+    ).toBeInTheDocument();
     // The card's name is now the rename control itself, so it announces as one.
     expect(screen.getByRole('button', { name: 'Rename Kyoto dinner options' })).toBeInTheDocument();
   });
 
-  // The visible <h2> is the region's name. A hardcoded aria-label alongside it
-  // would be a second, competing one that nothing on screen can keep honest.
-  it('takes its landmark name from the visible heading', () => {
+  // The visible <h2> is the region's name, and the visible intro line is its
+  // description. Hardcoded aria-label/-description alongside them would be
+  // second, competing copies that nothing on screen can keep honest.
+  it('takes its landmark name and description from the visible words', () => {
     renderPanel();
-    const rail = screen.getByRole('complementary', { name: 'Bundles' });
-    expect(rail).toHaveAttribute('aria-labelledby', screen.getByRole('heading', { name: 'Bundles' }).id);
+    const rail = screen.getByRole('complementary', { name: 'Plans' });
+    expect(rail).toHaveAttribute('aria-labelledby', screen.getByRole('heading', { name: 'Plans' }).id);
+    expect(rail).toHaveAttribute('aria-describedby', screen.getByText(/A plan groups the ideas/).id);
   });
 
   // The dashed target made a bundle out of a gesture that is easy to miss by
@@ -110,10 +117,13 @@ describe('BundlePanel — the bundles-only rail', () => {
     const user = userEvent.setup();
     renderPanel();
 
-    await user.click(screen.getByRole('button', { name: '+ New bundle' }));
+    await user.click(screen.getByRole('button', { name: '+ New plan' }));
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Name a new bundle')).toBeInTheDocument();
+    expect(screen.getByLabelText('Name a new plan')).toBeInTheDocument();
+    // A swap, not an addition: the input takes the button's slot, so the
+    // button is gone while the name is being typed.
+    expect(screen.queryByRole('button', { name: '+ New plan' })).not.toBeInTheDocument();
   });
 
   // Anything you just made should be the first thing you see, so the form that
@@ -121,12 +131,12 @@ describe('BundlePanel — the bundles-only rail', () => {
   it('puts the naming row above the bundles it will join', async () => {
     const user = userEvent.setup();
     renderPanel();
-    await user.click(screen.getByRole('button', { name: '+ New bundle' }));
+    await user.click(screen.getByRole('button', { name: '+ New plan' }));
 
-    const rail = screen.getByRole('complementary', { name: 'Bundles' });
+    const rail = screen.getByRole('complementary', { name: 'Plans' });
     // querySelectorAll returns document order, which is the order these read in.
     const inOrder = Array.from(rail.querySelectorAll('input, button[aria-label^="Rename "]'));
-    const field = screen.getByLabelText('Name a new bundle');
+    const field = screen.getByLabelText('Name a new plan');
     const firstCard = screen.getByRole('button', { name: 'Rename Kyoto dinner options' });
     expect(inOrder.indexOf(field)).toBeLessThan(inOrder.indexOf(firstCard));
   });
@@ -174,9 +184,9 @@ describe('BundlePanel — the bundles-only rail', () => {
     expect(onOpen).toHaveBeenCalledWith(92);
   });
 
-  it('invites a first bundle rather than showing an empty column', () => {
+  it('invites a first plan rather than showing an empty column', () => {
     renderPanel({ bundles: [], members: new Map() });
-    expect(screen.getByText(/an empty bundle is a fine place to start/i)).toBeInTheDocument();
+    expect(screen.getByText(/an empty plan is a fine place to start/i)).toBeInTheDocument();
   });
 });
 
@@ -211,20 +221,21 @@ describe('BundlePanel — reading along', () => {
     );
   }
 
-  it('keeps the rail whole — its heading, what a bundle is, and every bundle in it', () => {
+  it('keeps the rail whole — its heading, its intro line, and every plan in it', () => {
     renderAsViewer();
 
-    expect(screen.getByRole('heading', { name: 'Bundles' })).toBeInTheDocument();
-    expect(screen.getByText(/a bundle is a group of things that go well together/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Plans' })).toBeInTheDocument();
+    // The intro explains the rail rather than acting on it, so it stays.
+    expect(screen.getByText(/A plan groups the ideas that go together/)).toBeInTheDocument();
     expect(screen.getByText(BUNDLE.title)).toBeInTheDocument();
     for (const member of MEMBERS) {
       expect(screen.getByRole('button', { name: member.title })).toBeInTheDocument();
     }
   });
 
-  it('takes away "+ New bundle"', () => {
+  it('takes away "+ New plan"', () => {
     renderAsViewer();
-    expect(screen.queryByRole('button', { name: '+ New bundle' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '+ New plan' })).not.toBeInTheDocument();
   });
 
   it('still discloses what was set aside, and still names it — only the way back goes', async () => {
@@ -242,9 +253,9 @@ describe('BundlePanel — reading along', () => {
   it('states an empty rail rather than pointing at an action that is not there', () => {
     renderAsViewer({ bundles: [], members: new Map() });
 
-    expect(screen.getByText('No bundles on this trip yet.')).toBeInTheDocument();
+    expect(screen.getByText('No plans on this trip yet.')).toBeInTheDocument();
     expect(screen.queryByText(/start one/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/an empty bundle is a fine place to start/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/an empty plan is a fine place to start/i)).not.toBeInTheDocument();
   });
 
   it('still invites an editor to start the first one', () => {
@@ -252,17 +263,17 @@ describe('BundlePanel — reading along', () => {
 
     expect(
       screen.getByText(
-        'No bundles yet. Start one from the top of this rail — an empty bundle is a fine place to start.',
+        'No plans yet. Start one from the top of this rail — an empty plan is a fine place to start.',
       ),
     ).toBeInTheDocument();
-    expect(screen.queryByText('No bundles on this trip yet.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No plans on this trip yet.')).not.toBeInTheDocument();
   });
 
   it('leaves an owner the action and the way back', async () => {
     const user = userEvent.setup();
     renderPanel();
 
-    expect(screen.getByRole('button', { name: '+ New bundle' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '+ New plan' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Set aside · 1/ }));
     expect(screen.getByRole('button', { name: 'Pick it back up' })).toBeInTheDocument();
   });

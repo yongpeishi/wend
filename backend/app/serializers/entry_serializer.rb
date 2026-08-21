@@ -14,6 +14,11 @@ class EntrySerializer
       tallies = vote_tallies(ids)
       my_votes = current_user ? Vote.where(entry_id: ids, user_id: current_user.id).pluck(:entry_id, :score).to_h : {}
       children_counts = EntryLink.where(parent_id: ids).group(:parent_id).count
+      # Deliberately unfiltered by visibility, unlike `detail`'s parents: a bare
+      # integer id reveals nothing usable on its own, and the client intersects
+      # these with the entries it already fetched. One bulk query, grouped in
+      # Ruby -- never `entry.parents` in the loop below.
+      parent_ids = parent_ids_by_child(ids)
       open_todo_counts = Todo.where(entry_id: ids, done_at: nil).group(:entry_id).count
       scheduled_ids = scheduled_entry_ids(ids, trip_id: trip_id)
       # One bulk query like every other line above, never one per row. Only trips
@@ -23,6 +28,7 @@ class EntrySerializer
 
       entries.map do |entry|
         base(entry).merge(
+          "parent_ids" => parent_ids[entry.id] || [],
           "children_count" => children_counts[entry.id] || 0,
           "todos_open_count" => open_todo_counts[entry.id] || 0,
           "vote_tally" => tallies[entry.id] || { "total" => 0, "count" => 0, "average" => 0.0, "voters" => [] },
@@ -75,6 +81,15 @@ class EntrySerializer
     end
 
     private
+
+    # Every EntryLink parent of each entry, ids ascending. Sorted here rather
+    # than in SQL so the ordering guarantee lives next to the shape it promises.
+    def parent_ids_by_child(ids)
+      EntryLink.where(child_id: ids)
+               .pluck(:child_id, :parent_id)
+               .group_by(&:first)
+               .transform_values { |pairs| pairs.map(&:last).sort }
+    end
 
     def visible(relation, current_user)
       current_user ? relation.visible_to(current_user) : relation.none

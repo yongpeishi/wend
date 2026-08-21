@@ -21,8 +21,6 @@ export interface IdeaListProps {
   selectMode?: boolean;
   selectedIds: number[];
   onToggleSelect: (id: number, shiftKey: boolean) => void;
-  /** Passed straight through to each row — see IdeaRow's `onEdit`. */
-  onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
   /**
    * May you change this trip? Forwarded to every row — the list draws no
@@ -30,6 +28,42 @@ export interface IdeaListProps {
    * for the same reason `IdeaRow`'s does.
    */
   canEdit?: boolean;
+  /**
+   * Subtree size per entry id — what each row's "N inside ›" pill says. The
+   * board computes these once over the whole trip (see tree.ts) rather than
+   * every row walking `parent_ids` for itself; an id with no entry here simply
+   * has nothing inside, so rows read it as `?? 0`.
+   */
+  insideCounts: ReadonlyMap<number, number>;
+  /**
+   * Titles of each entry's OTHER parents — the levels it also lives in, beside
+   * the one this list is showing. Missing id = nowhere else (`?? []`).
+   */
+  otherParents: ReadonlyMap<number, string[]>;
+  /**
+   * Every live idea on the trip, forwarded whole to every row — the rows'
+   * inline edit form names parents and offers nesting choices from it. See
+   * IdeaRow's `allIdeas`.
+   */
+  allIdeas: Entry[];
+  /** Descend into an idea — forwarded untouched to every row. */
+  onDrill: (id: number) => void;
+  /**
+   * Which rows are open — any number at once, so unfolding one idea never
+   * costs the reader another. Expansion is controlled from the board — it
+   * folds every row back when the level changes, which a row (or this list)
+   * cannot know on its own.
+   */
+  expandedIds: ReadonlySet<number>;
+  /** A row was clicked — the board decides what that does to `expandedIds`. */
+  onToggleExpand: (id: number) => void;
+  /**
+   * Of the open rows, the one under attention — at most one, held on the board
+   * beside `expandedIds`. The list only translates it per row into `focused`.
+   */
+  focusedId: number | null;
+  /** A row was touched — the board decides whether that moves `focusedId`. */
+  onFocusRow: (id: number) => void;
 }
 
 /**
@@ -55,9 +89,16 @@ export function IdeaList({
   selectMode = false,
   selectedIds,
   onToggleSelect,
-  onEdit,
   onToast,
   canEdit = true,
+  insideCounts,
+  otherParents,
+  allIdeas,
+  onDrill,
+  expandedIds,
+  onToggleExpand,
+  focusedId,
+  onFocusRow,
 }: IdeaListProps) {
   const idBase = useId();
   const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(() => new Set());
@@ -83,9 +124,16 @@ export function IdeaList({
         selectMode={selectMode}
         selected={selectedIds.includes(entry.id)}
         onToggleSelect={onToggleSelect}
-        onEdit={onEdit}
         onToast={onToast}
         canEdit={canEdit}
+        insideCount={insideCounts.get(entry.id) ?? 0}
+        otherParents={otherParents.get(entry.id) ?? []}
+        allIdeas={allIdeas}
+        onDrill={onDrill}
+        expanded={expandedIds.has(entry.id)}
+        onToggleExpand={onToggleExpand}
+        focused={entry.id === focusedId}
+        onFocusRow={onFocusRow}
       />
     ));
   }

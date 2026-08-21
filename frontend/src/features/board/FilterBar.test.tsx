@@ -14,9 +14,12 @@ function renderBar(
     groupMode?: GroupMode;
     onChange?: (filters: IdeaFilters) => void;
     onGroupModeChange?: (mode: GroupMode) => void;
-    onNewIdea?: () => void;
     visibleCount?: number;
     totalCount?: number;
+    mapOpen?: boolean;
+    onToggleMap?: () => void;
+    selectMode?: boolean;
+    onSelectModeChange?: (selecting: boolean) => void;
   } = {},
 ) {
   return render(
@@ -27,7 +30,10 @@ function renderBar(
       totalCount={overrides.totalCount ?? 12}
       groupMode={overrides.groupMode ?? 'none'}
       onGroupModeChange={overrides.onGroupModeChange ?? (() => {})}
-      onNewIdea={overrides.onNewIdea}
+      mapOpen={overrides.mapOpen}
+      onToggleMap={overrides.onToggleMap}
+      selectMode={overrides.selectMode}
+      onSelectModeChange={overrides.onSelectModeChange}
     />,
   );
 }
@@ -56,7 +62,7 @@ function renderStatefulBar(initial: IdeaFilters = EMPTY_FILTERS) {
   return render(<StatefulBar initial={initial} />);
 }
 
-/** The chips live behind the Filter button now, so every chip assertion opens it
+/** The chips live behind the Filter button, so every chip assertion opens it
  * first. The button's accessible name carries the active count, hence the regex. */
 async function openFilters(user: UserEvent) {
   await user.click(screen.getByRole('button', { name: /^Filter/ }));
@@ -111,8 +117,7 @@ describe('FilterBar — the filter popover', () => {
     expect(screen.queryByRole('group', { name: 'Filter ideas' })).not.toBeInTheDocument();
   });
 
-  // Without this a keyboard user who opens the panel has no way to shut it: the
-  // design only ever specified the outside-click catcher.
+  // Without this a keyboard user who opens the panel has no way to shut it.
   it('Escape closes it and hands focus back to the button', async () => {
     const user = userEvent.setup();
     renderBar();
@@ -144,8 +149,8 @@ describe('FilterBar — the filter popover', () => {
   });
 });
 
-// Folding the chips away costs visibility of what is on, so the button has to
-// carry that back out — and not in a coloured badge alone.
+// Folding the chips away costs visibility of what is on, so the button carries
+// that back out — and not in a coloured badge alone.
 describe('FilterBar — the active-filter count', () => {
   it('says nothing when nothing is narrowing the list', () => {
     renderBar({ filters: EMPTY_FILTERS });
@@ -154,12 +159,12 @@ describe('FilterBar — the active-filter count', () => {
   });
 
   it('counts each narrowing separately in the accessible name', () => {
-    renderBar({ filters: { categories: ['food'], hasLocation: true, scheduleState: 'all' } });
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'], hasLocation: true } });
     expect(screen.getByRole('button', { name: 'Filter (2 active)' })).toBeInTheDocument();
   });
 
   it('counts all three at once', () => {
-    renderBar({ filters: { categories: ['food'], hasLocation: true, scheduleState: 'scheduled' } });
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'], hasLocation: true, scheduleState: 'scheduled' } });
     expect(screen.getByRole('button', { name: 'Filter (3 active)' })).toBeInTheDocument();
   });
 
@@ -168,33 +173,54 @@ describe('FilterBar — the active-filter count', () => {
     expect(within(screen.getByRole('button', { name: 'Filter (1 active)' })).getByText('1')).toBeInTheDocument();
   });
 
-  // Each lit chip counts on its own, so lighting a second category moves the
-  // badge. Counting the category section as one narrowing would let the second
-  // chip hide behind a number that never changed.
   it('counts each selected category individually', () => {
     renderBar({ filters: { ...EMPTY_FILTERS, categories: ['place', 'food'] } });
     expect(screen.getByRole('button', { name: 'Filter (2 active)' })).toBeInTheDocument();
   });
 
-  it('adds up categories alongside the state narrowings', () => {
-    renderBar({ filters: { categories: ['place', 'food', 'lodging'], hasLocation: true, scheduleState: 'scheduled' } });
-    expect(screen.getByRole('button', { name: 'Filter (5 active)' })).toBeInTheDocument();
-  });
-
-  it('goes quiet again when the categories are cleared', () => {
-    renderBar({ filters: { ...EMPTY_FILTERS, categories: [] } });
+  // Search text is not part of the badge: it is already visible in the search
+  // box, and a count of hidden things must count only what is hidden.
+  it('leaves the search text out of the count', () => {
+    renderBar({ filters: { ...EMPTY_FILTERS, text: 'ramen' } });
     expect(screen.getByRole('button', { name: 'Filter' })).toBeInTheDocument();
   });
 });
 
-describe('FilterBar — category filtering', () => {
-  it('labels the category chips', async () => {
-    const user = userEvent.setup();
+describe('FilterBar — the search box', () => {
+  it('shows the round search input with its placeholder', () => {
     renderBar();
-    await openFilters(user);
-    expect(screen.getByText('What')).toBeInTheDocument();
+    const input = screen.getByRole('searchbox', { name: 'Search ideas' });
+    expect(input).toHaveAttribute('placeholder', 'Search ideas');
   });
 
+  it('writes what is typed into filters.text', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderBar({ onChange });
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search ideas' }), 'r');
+
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ text: 'r' }));
+  });
+
+  it('shows the current text, and clears back to everything', async () => {
+    const user = userEvent.setup();
+    renderStatefulBar();
+    const input = screen.getByRole('searchbox', { name: 'Search ideas' });
+
+    await user.type(input, 'kyoto');
+    expect(input).toHaveValue('kyoto');
+
+    await user.clear(input);
+    expect(input).toHaveValue('');
+  });
+});
+
+/**
+ * The chips are a set you build up, not a single choice you replace. "Food or
+ * places?" is the normal shape of a trip question.
+ */
+describe('FilterBar — categories are multi-select', () => {
   it('narrows by category', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -206,25 +232,6 @@ describe('FilterBar — category filtering', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: ['food'] }));
   });
 
-  it('unsets a category by clicking the chip that is already on', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, onChange });
-    await openFilters(user);
-
-    await user.click(screen.getByRole('button', { name: 'Food' }));
-
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: [] }));
-  });
-});
-
-/**
- * The chips are a set you build up, not a single choice you replace. "Food or
- * places?" is the normal shape of a trip question, and answering it used to
- * mean flipping between two lists because selecting the second category threw
- * the first away.
- */
-describe('FilterBar — categories are multi-select', () => {
   it('adds a second category instead of replacing the first', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
@@ -236,15 +243,15 @@ describe('FilterBar — categories are multi-select', () => {
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: ['place', 'food'] }));
   });
 
-  it('keeps the others when one of several is switched off', async () => {
+  it('unsets a category by clicking the chip that is already on', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
-    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['place', 'food', 'lodging'] }, onChange });
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, onChange });
     await openFilters(user);
 
     await user.click(screen.getByRole('button', { name: 'Food' }));
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: ['place', 'lodging'] }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: [] }));
   });
 
   // aria-pressed per chip is what makes this announce as a set of independent
@@ -271,78 +278,97 @@ describe('FilterBar — categories are multi-select', () => {
     expect(screen.getByRole('button', { name: 'Place' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /^Filter/ })).toHaveAccessibleName('Filter (2 active)');
   });
+});
 
-  it('leaves the other one lit after deselecting one of the pair', async () => {
-    const user = userEvent.setup();
-    renderStatefulBar({ ...EMPTY_FILTERS, categories: ['place', 'food'] });
-    await openFilters(user);
-
-    await user.click(screen.getByRole('button', { name: 'Food' }));
-
-    expect(screen.getByRole('button', { name: 'Food' })).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('button', { name: 'Place' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /^Filter/ })).toHaveAccessibleName('Filter (1 active)');
+// Filters hide, never delete — so every active narrowing is echoed under the
+// row as its own removable chip, outside the popover that set it: the way out
+// of a narrowing must never be behind the control that caused it.
+describe('FilterBar — the active filter chips', () => {
+  it('shows nothing below the row while nothing is narrowed', () => {
+    renderBar({ filters: EMPTY_FILTERS });
+    expect(screen.queryByRole('group', { name: 'Active filters' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Filtered, not gone/)).not.toBeInTheDocument();
   });
 
-  // Unpicking four lit chips by hand is four clicks through a panel you have to
-  // open first, so the one-move way out has to clear all of them.
-  it('clears every lit category at once from "See all"', async () => {
+  it('echoes each lit filter as a removable chip, with the promise alongside', () => {
+    renderBar({
+      filters: { ...EMPTY_FILTERS, categories: ['place', 'food'], hasLocation: true, scheduleState: 'scheduled' },
+    });
+
+    const chips = screen.getByRole('group', { name: 'Active filters' });
+    expect(within(chips).getByRole('button', { name: 'Remove Place filter' })).toBeInTheDocument();
+    expect(within(chips).getByRole('button', { name: 'Remove Food filter' })).toBeInTheDocument();
+    expect(within(chips).getByRole('button', { name: 'Remove Has location filter' })).toBeInTheDocument();
+    expect(within(chips).getByRole('button', { name: 'Remove Scheduled filter' })).toBeInTheDocument();
+    expect(screen.getByText('Filtered, not gone — clear a chip to widen again.')).toBeInTheDocument();
+  });
+
+  it('clicking a chip lifts exactly that narrowing and keeps the rest', async () => {
     const user = userEvent.setup();
-    renderStatefulBar({ categories: ['place', 'food', 'lodging'], hasLocation: true, scheduleState: 'scheduled' });
+    const onChange = vi.fn();
+    renderBar({
+      filters: { ...EMPTY_FILTERS, categories: ['place', 'food'], scheduleState: 'scheduled' },
+      onChange,
+    });
 
-    await user.click(screen.getByRole('button', { name: 'See all' }));
+    await user.click(screen.getByRole('button', { name: 'Remove Food filter' }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ categories: ['place'], scheduleState: 'scheduled' }),
+    );
 
+    await user.click(screen.getByRole('button', { name: 'Remove Scheduled filter' }));
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ categories: ['place', 'food'], scheduleState: 'all' }),
+    );
+  });
+
+  it('clears down to nothing one chip at a time', async () => {
+    const user = userEvent.setup();
+    renderStatefulBar({ ...EMPTY_FILTERS, categories: ['place'], hasLocation: true });
+
+    await user.click(screen.getByRole('button', { name: 'Remove Place filter' }));
+    await user.click(screen.getByRole('button', { name: 'Remove Has location filter' }));
+
+    expect(screen.queryByRole('group', { name: 'Active filters' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Filter' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
+  });
 
-    await openFilters(user);
-    for (const label of ['Place', 'Food', 'Lodging']) {
-      expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'false');
-    }
+  it('does not echo the search text as a chip — the box already shows it', () => {
+    renderBar({ filters: { ...EMPTY_FILTERS, text: 'ramen' } });
+    expect(screen.queryByRole('group', { name: 'Active filters' })).not.toBeInTheDocument();
+  });
+});
+
+describe('FilterBar — the way back to the map', () => {
+  it('offers "Show map" only while the map is hidden', () => {
+    const view = renderBar({ mapOpen: false, onToggleMap: () => {} });
+    expect(screen.getByRole('button', { name: 'Show map' })).toBeInTheDocument();
+    view.unmount();
+
+    renderBar({ mapOpen: true, onToggleMap: () => {} });
+    expect(screen.queryByRole('button', { name: 'Show map' })).not.toBeInTheDocument();
+    // And no "Hide map" here either — the pane's own header carries that.
+    expect(screen.queryByRole('button', { name: 'Hide map' })).not.toBeInTheDocument();
+  });
+
+  it('asks the board to open it', async () => {
+    const user = userEvent.setup();
+    const onToggleMap = vi.fn();
+    renderBar({ mapOpen: false, onToggleMap });
+
+    await user.click(screen.getByRole('button', { name: 'Show map' }));
+
+    expect(onToggleMap).toHaveBeenCalled();
+  });
+
+  it('draws no map control at all for a caller with no map', () => {
+    renderBar();
+    expect(screen.queryByRole('button', { name: 'Show map' })).not.toBeInTheDocument();
   });
 });
 
 // The product requirement: grouping and filtering are orthogonal. Whatever the
-// group mode, the chips stay available and keep writing to the filter state —
-// the segmented control never touches `filters`, and a chip never touches the
-// group mode.
-describe('FilterBar — filtering keeps working while grouped', () => {
-  it.each(['none', 'category', 'location'] as const)('offers every category chip in %s mode', async (groupMode) => {
-    const user = userEvent.setup();
-    renderBar({ groupMode });
-    await openFilters(user);
-    for (const label of ['Place', 'Food', 'Activity', 'Lodging', 'Transport', 'Other']) {
-      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
-    }
-  });
-
-  it('still narrows by category while grouped by place', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    const onGroupModeChange = vi.fn();
-    renderBar({ groupMode: 'location', onChange, onGroupModeChange });
-    await openFilters(user);
-
-    await user.click(screen.getByRole('button', { name: 'Food' }));
-
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: ['food'] }));
-    expect(onGroupModeChange).not.toHaveBeenCalled();
-  });
-
-  it('leaves the active filters alone when the grouping changes', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, onChange });
-
-    await user.click(screen.getByRole('tab', { name: 'By location' }));
-
-    expect(onChange).not.toHaveBeenCalled();
-  });
-});
-
-// The point of the segmented control: no grouping is a dead end. Grouping by
-// place used to be a toggle whose only way out was a flat list, which left
-// "by category" unreachable from there.
+// group mode, the chips stay available and keep writing to the filter state.
 describe('FilterBar — the grouping control', () => {
   it('offers all three groupings at once, whichever one is on', () => {
     for (const mode of ['none', 'location', 'category'] as const) {
@@ -379,9 +405,6 @@ describe('FilterBar — the grouping control', () => {
     expect(onGroupModeChange).toHaveBeenCalledWith(mode);
   });
 
-  // The compact variant is a skin, not a different control: the roving-tabindex
-  // contract has to survive it, because arrow keys are how this is reached
-  // without a mouse.
   it('still moves selection with the arrow keys', async () => {
     const user = userEvent.setup();
     const onGroupModeChange = vi.fn();
@@ -393,85 +416,47 @@ describe('FilterBar — the grouping control', () => {
     expect(onGroupModeChange).toHaveBeenCalledWith('location');
   });
 
-  // The dead end the feedback named: grouped by place, with no way back to
-  // categories short of going flat first.
-  it('goes straight from grouping by place to grouping by category', async () => {
+  it('still narrows by category while grouped by place', async () => {
     const user = userEvent.setup();
+    const onChange = vi.fn();
     const onGroupModeChange = vi.fn();
-    renderBar({ groupMode: 'location', onGroupModeChange });
+    renderBar({ groupMode: 'location', onChange, onGroupModeChange });
+    await openFilters(user);
 
-    await user.click(screen.getByRole('tab', { name: 'By category' }));
+    await user.click(screen.getByRole('button', { name: 'Food' }));
 
-    expect(onGroupModeChange).toHaveBeenCalledWith('category');
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ categories: ['food'] }));
+    expect(onGroupModeChange).not.toHaveBeenCalled();
+  });
+
+  it('leaves the active filters alone when the grouping changes', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, onChange });
+
+    await user.click(screen.getByRole('tab', { name: 'By location' }));
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 });
 
-// Filters hide, never delete — so the count is always on screen, and the way
-// out is there for as long as there is something to escape from. Both stay
-// outside the popover: the way back must never be behind the control that
-// narrowed the list.
-describe('FilterBar — the escape hatch', () => {
-  it('always shows how much is hidden', () => {
+describe('FilterBar — the count line', () => {
+  it('always says how much is on screen', () => {
     renderBar({ visibleCount: 3, totalCount: 12 });
     expect(screen.getByText(/Showing 3 of 12/)).toBeInTheDocument();
   });
 
-  it('offers the way out whenever a filter is narrowing the list', () => {
-    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, visibleCount: 3, totalCount: 12 });
-    expect(screen.getByRole('button', { name: 'See all' })).toBeEnabled();
-  });
-
-  it('offers it without the popover having to be open', () => {
-    renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, visibleCount: 3, totalCount: 12 });
-    expect(screen.queryByRole('group', { name: 'Filter ideas' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'See all' })).toBeInTheDocument();
-  });
-
-  it('clears every narrowing at once', async () => {
-    const user = userEvent.setup();
-    const onChange = vi.fn();
-    renderBar({ filters: { categories: ['food'], hasLocation: true, scheduleState: 'scheduled' }, onChange });
-
-    await user.click(screen.getByRole('button', { name: 'See all' }));
-
-    expect(onChange).toHaveBeenCalledWith(EMPTY_FILTERS);
-  });
-
-  // The feedback: with the whole list on screen there is nothing to widen back
-  // to, so the control goes away rather than sitting there greyed out.
-  it('hides the way out entirely when every idea is already listed', () => {
-    renderBar({ filters: EMPTY_FILTERS, visibleCount: 12, totalCount: 12 });
-    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
-    expect(screen.getByText(/Showing 12 of 12/)).toBeInTheDocument();
-  });
-
-  it('does not treat the grouping as a narrowing to escape from', () => {
-    renderBar({ filters: EMPTY_FILTERS, groupMode: 'location' });
-    expect(screen.queryByRole('button', { name: 'See all' })).not.toBeInTheDocument();
-  });
-});
-
-describe('FilterBar — the new idea button', () => {
-  it('sits on the control row when the board wires it up', async () => {
-    const user = userEvent.setup();
-    const onNewIdea = vi.fn();
-    renderBar({ onNewIdea });
-
-    await user.click(screen.getByRole('button', { name: '+ New idea' }));
-
-    expect(onNewIdea).toHaveBeenCalled();
-  });
-
-  it('is left out entirely when the board keeps that button itself', () => {
+  it('and there is no "+ New idea" here any more — capture replaced it', () => {
     renderBar();
-    expect(screen.queryByRole('button', { name: '+ New idea' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /new idea/i })).not.toBeInTheDocument();
   });
 });
 
 /**
- * A viewer loses the two controls that lead somewhere they cannot go, and keeps
- * every control that only decides what is on screen. Both halves are asserted
- * together on purpose: "the buttons are gone" is also true of a blank bar.
+ * A viewer loses the one control that leads somewhere they cannot go, and
+ * keeps every control that only decides what is on screen. Both halves are
+ * asserted together on purpose: "the button is gone" is also true of a blank
+ * bar.
  */
 describe('FilterBar — reading along', () => {
   function renderAsViewer() {
@@ -484,7 +469,6 @@ describe('FilterBar — reading along', () => {
           totalCount={12}
           groupMode="none"
           onGroupModeChange={() => {}}
-          onNewIdea={() => {}}
           onSelectModeChange={() => {}}
           onToggleMap={() => {}}
         />
@@ -492,18 +476,17 @@ describe('FilterBar — reading along', () => {
     );
   }
 
-  it('takes away "+ New idea" and the way into select mode', () => {
+  it('takes away the way into select mode', () => {
     renderAsViewer();
-
-    expect(screen.queryByRole('button', { name: '+ New idea' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Select' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Select several' })).not.toBeInTheDocument();
   });
 
-  it('keeps everything that only narrows the list — filters, grouping, the map and the count', async () => {
+  it('keeps everything that only narrows the list — search, filters, grouping, the map and the count', async () => {
     const user = userEvent.setup();
     renderAsViewer();
 
     expect(screen.getByText('Showing 8 of 12')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Search ideas' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show map' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'By location' })).toBeInTheDocument();
 
@@ -511,7 +494,7 @@ describe('FilterBar — reading along', () => {
     expect(within(panel).getByRole('button', { name: 'Food' })).toBeEnabled();
   });
 
-  it('leaves an owner both of them', () => {
+  it('leaves an owner the select toggle', () => {
     render(
       <TripRoleProvider role="owner">
         <FilterBar
@@ -521,13 +504,23 @@ describe('FilterBar — reading along', () => {
           totalCount={12}
           groupMode="none"
           onGroupModeChange={() => {}}
-          onNewIdea={() => {}}
           onSelectModeChange={() => {}}
         />
       </TripRoleProvider>,
     );
 
-    expect(screen.getByRole('button', { name: '+ New idea' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Select' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Select several' })).toBeInTheDocument();
+  });
+
+  it('flips the select toggle label with the mode', async () => {
+    const user = userEvent.setup();
+    const onSelectModeChange = vi.fn();
+    const view = renderBar({ onSelectModeChange, selectMode: false });
+    await user.click(screen.getByRole('button', { name: 'Select several' }));
+    expect(onSelectModeChange).toHaveBeenCalledWith(true);
+    view.unmount();
+
+    renderBar({ onSelectModeChange, selectMode: true });
+    expect(screen.getByRole('button', { name: 'Done selecting' })).toBeInTheDocument();
   });
 });

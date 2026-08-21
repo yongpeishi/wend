@@ -87,6 +87,57 @@ export function labelIcon(title: string, tone: PinTone | undefined, selected: bo
   });
 }
 
+/** Matches the chip's rendered height in MapView.module.css — 13px text + 4px×2 padding + 1.5px×2 border. */
+const CHIP_HEIGHT = 24;
+
+/**
+ * The labelled chip pin — the board's "this one is in the list you're reading"
+ * mark. Same 0x0-anchor-and-CSS-centring trick as `labelIcon`, and for the
+ * same reason: the chip is as wide as its title, which nothing can measure
+ * before it is in the document. Colour is fixed (leaf on paper) rather than
+ * toned, because the chip/dot split *is* the message — a second colour axis on
+ * top of it would be two encodings fighting over one pill.
+ */
+export function chipIcon(title: string, selected: boolean): L.DivIcon {
+  const classes = ['wend-pin-chip'];
+  if (selected) classes.push('is-selected');
+  const html = `
+    <button type="button" class="${classes.join(' ')}">${escapeHtml(title)}</button>
+  `;
+  return L.divIcon({
+    html,
+    className: 'wend-pin-chip-icon',
+    iconSize: [0, 0],
+    iconAnchor: [0, 0],
+    popupAnchor: [0, -CHIP_HEIGHT / 2],
+  });
+}
+
+/**
+ * The quiet counterpart to `chipIcon`: a located idea that is NOT in the list
+ * on screen. A small neutral circle — card tone, drawn edge, no state colour,
+ * no name — so it registers as "something is here" without competing with the
+ * chips. Still a real pin: clickable, selectable, and it clusters like any
+ * other. The drawn mark is 12px but the button keeps the 32px hit area every
+ * pointer target gets (architecture.md §5).
+ */
+export function dotIcon(title: string, selected: boolean): L.DivIcon {
+  const classes = ['wend-pin-dot'];
+  if (selected) classes.push('is-selected');
+  const html = `
+    <button type="button" class="${classes.join(' ')}" aria-label="${escapeHtml(title)}">
+      <span aria-hidden="true"></span>
+    </button>
+  `;
+  return L.divIcon({
+    html,
+    className: 'wend-pin-dot-icon',
+    iconSize: [PIN_BOX, PIN_BOX],
+    iconAnchor: [PIN_CENTER, PIN_CENTER],
+    popupAnchor: [0, -PIN_CENTER],
+  });
+}
+
 /** A cluster mark: card tone, a count, no shadow, radius matches --radius-card. */
 export function clusterIcon(count: number): L.DivIcon {
   const html = `

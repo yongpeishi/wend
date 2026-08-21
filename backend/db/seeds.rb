@@ -188,6 +188,25 @@ link!(parent: travel_day, child: shinkansen, position: 0)
 link!(parent: travel_day, child: daiso_kyoto, position: 1)
 link!(parent: travel_day, child: hotel, position: 2)
 
+# --- Japan idea tree: ideas nested inside ideas -----------------------------
+
+# The board's drill-down runs on idea -> idea links, and the bundles above all
+# group through kind: "bundle" -- without these rows no seeded idea ever shows
+# the "N inside" pill or the breadcrumb. Following the task doc's own example:
+# "Visit Daiso" is the general intent, and the three branches already seeded
+# above are the specific ways to do it.
+visit_daiso = entry!(kind: "idea", title: "Visit Daiso", category: "place", created_by: sarah)
+link!(parent: japan, child: visit_daiso)
+link!(parent: visit_daiso, child: daiso_harajuku, position: 0)
+link!(parent: visit_daiso, child: daiso_shibuya, position: 1)
+link!(parent: visit_daiso, child: daiso_kyoto, position: 2)
+
+# A second idea parent over the Kyoto branch, so one seeded idea demonstrably
+# lives inside two ideas at once -- the "also in:" chip needs a real example.
+kyoto_shopping = entry!(kind: "idea", title: "Kyoto shopping", category: "place", created_by: peter)
+link!(parent: japan, child: kyoto_shopping)
+link!(parent: kyoto_shopping, child: daiso_kyoto, position: 0)
+
 # Votes from both users -- a mix of enthusiasm, indifference, and a pass.
 vote!(entry: teamlab, user: sarah, score: 2)
 vote!(entry: teamlab, user: peter, score: 2)

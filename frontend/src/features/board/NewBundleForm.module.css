@@ -1,35 +1,24 @@
-/* The box for a new bundle's name, sitting at the top of the bundle list.
-   Solid and card-toned, and the same 12px inset as a BundleCard: it is the
-   first row of the list, a bundle in the moment before it has a name, so it
-   should read as one of them rather than as a tool above them. The dashed
+/* The naming field for a new plan. It swaps in for BundlePanel's "+ New plan"
+   button, so it keeps that button's geometry exactly: the 2px leaf border on
+   the card radius, the same 9px 14px inset. The open state of the button, not
+   a box of its own — nothing around it moves when the swap happens. The dashed
    drop-zone rules that used to head this file went with the drop zone — see
    NewBundleForm.tsx. */
 .form {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--surface-card);
-  border: var(--border-width) solid var(--border-subtle);
-  border-radius: var(--radius-card);
 }
 
 .input {
   flex: 1;
   min-width: 0;
+  box-sizing: border-box;
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
   color: var(--text-strong);
   background: var(--surface-card);
-  border: var(--border-width) solid var(--border-strong);
+  border: var(--border-width-strong) solid var(--wend-leaf);
   border-radius: var(--radius-card);
-  /* Deliberately shorter than <Input>'s 48px: this is one line inside a row
-     that is itself the width of a bundle card, and a full-height field would
-     read as the primary act of the rail rather than as the first bundle in the
-     list. Still above the 32px pointer minimum, and coarse pointers get
-     --tap-min. */
-  padding: var(--space-2) var(--space-3);
-  min-height: 36px;
+  padding: 9px 14px;
   outline: none;
 }
 
@@ -43,16 +32,16 @@
   color: var(--text-muted);
 }
 
-/* One ring, not two. global.css's blanket `input:focus-visible` (0,1,1) paints
-   a solid apricot outline at 3px offset; on a field that already has a border
-   that reads as two concentric apricot rings with a strip of paper between
-   them. This rule scores (0,2,0) and wins: the border itself goes apricot and
-   the outline is the pale wash hugging it at offset 0 — same treatment as
-   <Input> and the NewIdeaModal textarea. */
+/* The border stays leaf while the field is focused — it is ALWAYS focused
+   while it exists (it takes focus on mount and closes when it loses the job),
+   so a border that switched to apricot would mean the leaf outline the design
+   draws was never seen. The apricot wash hugging it at offset 0 is what says
+   "focus" — same wash as <Input>, over the field's own border. This rule also
+   outranks global.css's blanket `input:focus-visible` (0,1,1) at (0,2,0), so
+   the solid apricot outline at 3px offset never doubles it. */
 .input:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring-wash);
   outline-offset: 0;
-  border-color: var(--focus-ring);
 }
 
 .input:disabled {
@@ -61,7 +50,7 @@
 }
 
 /* The label is real and points at the input; it is only hidden from sight
-   because the rail's heading and the button that opened this row have already
+   because the rail's heading and the button this swapped in for have already
    said what is being named. */
 .srOnly {
   position: absolute;

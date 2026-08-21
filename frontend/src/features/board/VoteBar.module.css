@@ -100,6 +100,9 @@
   gap: var(--space-2);
 }
 
+/* Plum wash, matching the card header's category/vote pill, so the tally reads
+   as the same family of chip. The border goes transparent rather than away:
+   the width stays so the pill's box doesn't shift against its old neighbours. */
 .pill {
   position: relative;
   display: flex;
@@ -108,10 +111,10 @@
   /* 6px: between --space-1 (4) and --space-2 (8). A pill hugs its two marks
      more tightly than a control does its label. */
   padding: 6px var(--space-2);
-  border: var(--border-width) solid var(--border-subtle);
+  border: var(--border-width) solid transparent;
   border-radius: var(--radius-pill);
-  background: var(--surface-card);
-  color: var(--text-muted);
+  background: var(--wend-plum-wash);
+  color: var(--wend-plum);
   cursor: default;
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
@@ -142,6 +145,13 @@
  * names out of a keyboard's reach, which is the whole reason the pill is a
  * button. Presentation only: the same names are already on the button as a
  * visually-hidden label, so a screen reader never needs the bubble to open.
+ *
+ * Body ink, not --wend-deep-leaf. The bubble opens a few pixels from the
+ * selected stop, which is filled --wend-leaf, and two saturated greens that
+ * close together read as one thing: the deep-leaf bubble looked like part of
+ * the stop's own state rather than a label floating over the row. Body is the
+ * same ink the row's text already uses, so the bubble reads as annotation —
+ * still a dark chip against the card, still 7:1 under paper text at 12px.
  */
 .tip {
   position: absolute;
@@ -151,7 +161,7 @@
   transform: translateX(-50%);
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-card);
-  background: var(--wend-deep-leaf);
+  background: var(--wend-body);
   color: var(--text-on-dark);
   font-size: var(--text-label-size);
   line-height: 1.4;
