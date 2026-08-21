@@ -107,7 +107,7 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, query, 
 
       <p id={introId} className={styles.intro}>
         A plan groups the ideas that go together — a dinner shortlist, a day's outing, a rainy-day
-        fallback.
+        fallback. Combine plans to build the itinerary next.
       </p>
 
       {/* The rail keeps its name and every plan in it for a viewer — this is
