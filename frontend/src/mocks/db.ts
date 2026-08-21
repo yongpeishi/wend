@@ -706,9 +706,9 @@ export function seed() {
 
   // 30 + 60 + 30 = the bundle's two-hour span exactly, so the members' derived
   // hours come out as whole, obviously-proportional slots.
-  const coffee = idea(6, 'Coffee at Weekenders', 'food', 30, 'Weekenders Coffee');
-  const nishiki = idea(7, 'Nishiki market', 'food', 60, 'Nishiki-koji');
-  const teramachi = idea(8, 'Teramachi arcade', 'activity', 30, 'Teramachi');
+  const coffee = idea(6, 'Coffee at Weekenders', 'food', 30);
+  const nishiki = idea(7, 'Nishiki market', 'food', 60);
+  const teramachi = idea(8, 'Teramachi arcade', 'activity', 30);
 
   const nightBundle: StoredEntry = {
     ...trip,
@@ -721,8 +721,8 @@ export function seed() {
     cons: [],
   };
 
-  const kamogawa = idea(10, 'Kamo river walk', 'activity', 45, 'Kamogawa');
-  const yakitori = idea(11, 'Yakitori under the tracks', 'food', 45, 'Kiyamachi-dori');
+  const kamogawa = idea(10, 'Kamo river walk', 'activity', 45);
+  const yakitori = idea(11, 'Yakitori under the tracks', 'food', 45);
 
   const library1: StoredEntry = {
     ...trip,

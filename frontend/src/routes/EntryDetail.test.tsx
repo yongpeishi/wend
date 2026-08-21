@@ -13,7 +13,7 @@ import type { TripRole } from '../api/types';
 /**
  * Seeded entry 5 (src/mocks/db.ts) — the library idea. It is the right fixture
  * for this screen because it is half filled in: a short description, a
- * category, a location and coordinates, and nothing at all under address,
+ * category and coordinates, and nothing at all under address,
  * estimated duration or notes. Both halves of "what does a viewer see?" are in
  * one entry.
  */
@@ -94,7 +94,6 @@ describe('EntryDetail — a viewer reads it', () => {
     expect(read.getAllByText('Fushimi Inari at dawn').length).toBeGreaterThan(0);
     expect(read.getByText('Saved from a friend’s trip report.')).toBeInTheDocument();
     expect(read.getByText('place')).toBeInTheDocument();
-    expect(read.getByText('Fushimi Inari Taisha')).toBeInTheDocument();
     expect(read.getByText('34.9671')).toBeInTheDocument();
     expect(read.getByText('135.7727')).toBeInTheDocument();
   });
@@ -157,8 +156,7 @@ describe('EntryDetail — what it no longer asks for', () => {
     const panel = await openPanel('member');
     const read = within(panel);
 
-    // The place is in exactly one place: its own field.
-    expect(read.getByRole('textbox', { name: 'Location' })).toHaveValue('Fushimi Inari Taisha');
+    // The summary line is gone; the kind is only ever read off its own field.
     expect(read.queryByText('place · Fushimi Inari Taisha')).not.toBeInTheDocument();
   });
 
@@ -219,7 +217,7 @@ describe('EntryDetail — what it no longer asks for', () => {
  * asserts the other half).
  */
 describe('EntryDetail — the fields are named, not asked', () => {
-  const LABELS = ['Name', 'Short description', 'Category', 'Estimated duration', 'Location', 'Notes'];
+  const LABELS = ['Name', 'Short description', 'Category', 'Estimated duration', 'Notes'];
 
   it('labels every field with a noun, for someone editing', async () => {
     const panel = await openPanel('member');

@@ -125,13 +125,13 @@ export interface EntryGroup {
  * the list whichever mode is active. Grouping never hides an idea — it only
  * decides which heading it sits under.
  */
-export type GroupMode = 'none' | 'category' | 'location';
+export type GroupMode = 'none' | 'category';
 
 /**
- * The three groupings, in the order the board's segmented control offers them:
- * flat first, then the two ways of sectioning. All three are always on screen,
- * so no grouping can strand you — getting back to categories after grouping by
- * place is the same single click as any other move between them.
+ * The groupings, in the order the board's segmented control offers them: flat
+ * first, then the sectioned one. Both are always on screen, so no grouping can
+ * strand you — getting back to a flat list after grouping by category is the
+ * same single click as the move that got you there.
  */
 export const GROUP_MODES: { key: GroupMode; label: string }[] = [
   { key: 'none', label: 'Ungrouped' },

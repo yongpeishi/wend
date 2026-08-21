@@ -133,7 +133,7 @@ describe('buildPlanRows — shape', () => {
     expect(rows.map((r) => r.id)).toEqual([10, 20, 30]);
     expect(rows.map((r) => r.time)).toEqual(['13:00–15:40', '20:30', '']);
     expect(rows.map((r) => r.title)).toEqual(['Fushimi Inari', 'Ramen', 'Untitled']);
-    expect(rows.map((r) => r.meta)).toEqual(['place · Fushimi', 'food', '']);
+    expect(rows.map((r) => r.meta)).toEqual(['place', 'food', '']);
     expect(rows[0]?.startsAtMinutes).toBe(13 * 60);
     expect(rows[0]?.endsAtMinutes).toBe(15 * 60 + 40);
   });

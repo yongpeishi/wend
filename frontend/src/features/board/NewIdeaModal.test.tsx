@@ -70,18 +70,17 @@ describe('NewIdeaModal', () => {
     renderModal(onClose);
 
     await user.type(screen.getByLabelText('Name'), 'Kaiseki dinner');
-    await user.type(screen.getByLabelText('Location'), 'Gion');
+    await user.type(screen.getByLabelText('Address'), 'Gion, Kyoto');
     await user.type(screen.getByLabelText('Estimated duration'), '120');
     await user.selectOptions(screen.getByLabelText('Category'), 'food');
     await user.click(screen.getByRole('button', { name: 'Keep it' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const entries = await api.get<
-      { entries: { title: string; category: string | null; duration_minutes: number | null }[] }
+      { entries: { title: string; category: string | null; address: string | null; duration_minutes: number | null }[] }
     >('/entries', { params: { trip_id: TRIP_ID, kind: 'idea' } });
     const idea = entries.entries.find((e) => e.title === 'Kaiseki dinner');
-    if (!idea) console.log('ALL ENTRIES', JSON.stringify(entries.entries, null, 2));
-    expect(idea).toMatchObject({ category: 'food', duration_minutes: 120 });
+    expect(idea).toMatchObject({ category: 'food', address: 'Gion, Kyoto', duration_minutes: 120 });
   });
 
   /**
@@ -161,7 +160,7 @@ describe('NewIdeaModal', () => {
   it('names its fields with nouns rather than asking questions', () => {
     renderModal(vi.fn());
 
-    for (const label of ['Name', 'Short description', 'Category', 'Location', 'Address', 'Estimated duration', 'Notes']) {
+    for (const label of ['Name', 'Short description', 'Category', 'Address', 'Estimated duration', 'Notes']) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
     for (const asked of ["What's the idea?", 'What kind of thing?', 'How long does it take?', 'Where is it?', 'Anything worth remembering?']) {

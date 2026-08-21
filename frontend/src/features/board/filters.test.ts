@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_FILTERS,
   applyFilters,
-  groupByCategory,
   groupEntries,
   isNarrowed,
   toggleCategory,
@@ -49,7 +48,6 @@ describe('groupEntries', () => {
 
   it("dispatches to each mode's grouping", () => {
     expect(groupEntries(entries, 'category').map((g) => g.label)).toEqual(['Place', 'Food']);
-    expect(groupEntries(entries, 'location').map((g) => g.label)).toEqual(['Gion', 'Namba']);
   });
 
   it("gives 'none' a single unlabelled section holding everything", () => {
@@ -60,14 +58,14 @@ describe('groupEntries', () => {
   });
 
   it('yields the on-screen order in every mode, for shift-click ranges', () => {
-    for (const mode of ['none', 'category', 'location'] as const) {
+    for (const mode of ['none', 'category'] as const) {
       const ordered = groupEntries(entries, mode).flatMap((g) => g.entries.map((e) => e.id));
       expect(ordered.slice().sort()).toEqual([1, 2]);
     }
   });
 
   it('emits nothing for an empty list in every mode', () => {
-    for (const mode of ['none', 'category', 'location'] as const) {
+    for (const mode of ['none', 'category'] as const) {
       expect(groupEntries([], mode)).toEqual([]);
     }
   });

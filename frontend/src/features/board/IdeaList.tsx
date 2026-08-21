@@ -68,12 +68,12 @@ export interface IdeaListProps {
 
 /**
  * The board's idea list: flat in 'none', sectioned under collapsible headers in
- * 'category' and 'location'.
+ * 'category'.
  *
  * Grouping is presentation only. `entries` arrives already filtered, and every
  * mode renders exactly the entries it was handed — so the category chips keep
- * narrowing the list while it is grouped by place, which is the whole point of
- * keeping the two controls apart.
+ * narrowing the list while it is grouped, which is the whole point of keeping
+ * the two controls apart.
  *
  * Collapsing is local state, not a filter: a collapsed section still counts its
  * ideas in its own header, so nothing ever silently disappears. It resets on

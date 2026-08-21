@@ -112,14 +112,14 @@ async function optionsGroup(): Promise<HTMLElement> {
 describe('TripSchedule — the day as it stands', () => {
   beforeEach(() => viewport('wide'));
 
-  it('draws each item as a flat row: when, how long, what and where', async () => {
+  it('draws each item as a flat row: when, how long and what', async () => {
     renderSchedule();
 
     expect(await screen.findByText('Nanzen-ji')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Final schedule', level: 2 })).toBeInTheDocument();
     expect(screen.getByText('09:00–09:40')).toBeInTheDocument();
     expect(screen.getByText('40 min')).toBeInTheDocument();
-    expect(screen.getByText('place · Nanzen-ji')).toBeInTheDocument();
+    expect(screen.getByText('place')).toBeInTheDocument();
   });
 
   /* The dot is a shape and says nothing on its own. A row whose choice nobody
@@ -422,7 +422,7 @@ describe('TripSchedule — as a viewer', () => {
     // The plan is the thing a viewer came to read: the row, its time, its meta.
     expect(await screen.findByText('Nanzen-ji')).toBeInTheDocument();
     expect(screen.getByText('09:00–09:40')).toBeInTheDocument();
-    expect(screen.getByText('place · Nanzen-ji')).toBeInTheDocument();
+    expect(screen.getByText('place')).toBeInTheDocument();
     // The days are reading, not editing — the strip stays.
     expect(screen.getByRole('navigation', { name: 'Days' })).toBeInTheDocument();
     // And the choice, unmade, with every option still readable.
@@ -463,8 +463,10 @@ describe('TripSchedule — on the day itself', () => {
 
     expect(screen.getByText('now')).toBeInTheDocument();
     expect(screen.getByText(`Until 09:40 · then ${BUNDLE_TITLE} at 11:00`)).toBeInTheDocument();
-    // The panel names where you are when the plan already knows.
-    expect(await screen.findByRole('heading', { name: 'Nanzen-ji', level: 2 })).toBeInTheDocument();
+    // The panel is up beside the row. It does not claim to know the name of the
+    // place you are standing on — the sentence under the heading says what the
+    // distances are measured from (its own tests, above).
+    expect(await screen.findByRole('heading', { name: 'Around you', level: 2 })).toBeInTheDocument();
   });
 });
 

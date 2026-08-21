@@ -370,13 +370,12 @@ describe('FilterBar — the way back to the map', () => {
 // The product requirement: grouping and filtering are orthogonal. Whatever the
 // group mode, the chips stay available and keep writing to the filter state.
 describe('FilterBar — the grouping control', () => {
-  it('offers all three groupings at once, whichever one is on', () => {
-    for (const mode of ['none', 'location', 'category'] as const) {
+  it('offers both groupings at once, whichever one is on', () => {
+    for (const mode of ['none', 'category'] as const) {
       const view = renderBar({ groupMode: mode });
       const control = screen.getByRole('tablist', { name: 'Group ideas' });
       expect(within(control).getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
         'Ungrouped',
-        'By location',
         'By category',
       ]);
       view.unmount();
@@ -384,21 +383,20 @@ describe('FilterBar — the grouping control', () => {
   });
 
   it('marks the grouping you are in as the selected one', () => {
-    renderBar({ groupMode: 'location' });
-    expect(screen.getByRole('tab', { name: 'By location' })).toHaveAttribute('aria-selected', 'true');
+    renderBar({ groupMode: 'category' });
+    expect(screen.getByRole('tab', { name: 'By category' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: 'Ungrouped' })).toHaveAttribute('aria-selected', 'false');
   });
 
   it.each([
     ['Ungrouped', 'none'],
-    ['By location', 'location'],
     ['By category', 'category'],
   ])('switches to %s', async (label, mode) => {
     const user = userEvent.setup();
     const onGroupModeChange = vi.fn();
     // Start somewhere else in every case, so each option is reached rather
     // than merely already selected.
-    renderBar({ groupMode: mode === 'category' ? 'location' : 'category', onGroupModeChange });
+    renderBar({ groupMode: mode === 'none' ? 'category' : 'none', onGroupModeChange });
 
     await user.click(screen.getByRole('tab', { name: label }));
 
@@ -413,14 +411,14 @@ describe('FilterBar — the grouping control', () => {
     screen.getByRole('tab', { name: 'Ungrouped' }).focus();
     await user.keyboard('{ArrowRight}');
 
-    expect(onGroupModeChange).toHaveBeenCalledWith('location');
+    expect(onGroupModeChange).toHaveBeenCalledWith('category');
   });
 
-  it('still narrows by category while grouped by place', async () => {
+  it('still narrows by category while the list is grouped', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const onGroupModeChange = vi.fn();
-    renderBar({ groupMode: 'location', onChange, onGroupModeChange });
+    renderBar({ groupMode: 'category', onChange, onGroupModeChange });
     await openFilters(user);
 
     await user.click(screen.getByRole('button', { name: 'Food' }));
@@ -434,7 +432,7 @@ describe('FilterBar — the grouping control', () => {
     const onChange = vi.fn();
     renderBar({ filters: { ...EMPTY_FILTERS, categories: ['food'] }, onChange });
 
-    await user.click(screen.getByRole('tab', { name: 'By location' }));
+    await user.click(screen.getByRole('tab', { name: 'By category' }));
 
     expect(onChange).not.toHaveBeenCalled();
   });
@@ -488,7 +486,7 @@ describe('FilterBar — reading along', () => {
     expect(screen.getByText('Showing 8 of 12')).toBeInTheDocument();
     expect(screen.getByRole('searchbox', { name: 'Search ideas' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show map' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'By location' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'By category' })).toBeInTheDocument();
 
     const panel = await openFilters(user);
     expect(within(panel).getByRole('button', { name: 'Food' })).toBeEnabled();
