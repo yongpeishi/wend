@@ -102,26 +102,40 @@ vi.mock('../features/board/CaptureBar', async () => {
   return { CaptureBar };
 });
 
+/**
+ * One stub for BOTH instances of the composer: the top-of-list card the board
+ * renders itself, and the inline one a row renders inside its own card when
+ * the board names it as the host. They are the same component, so they are the
+ * same mock — told apart here by `hostTitle`, exactly the way the real one
+ * tells itself apart, and given different test ids so a test can assert which
+ * of the two is standing (there is only ever one).
+ */
 vi.mock('../features/board/IdeaComposer', () => ({
   IdeaComposer: (props: {
     open: boolean;
     initialTitle: string;
     initialParentIds: number[];
     parentChoices: Entry[];
+    allIdeas?: Entry[];
+    hostTitle?: string;
+    trimmed?: boolean;
+    submitLabel?: string;
     onSubmit: (draft: {
       title: string;
       description: string;
       address: string;
-      category: 'place' | 'food' | 'activity' | 'lodging' | 'transport' | 'other';
+      category: 'place' | 'food' | 'activity' | 'lodging' | 'transport' | 'other' | null;
       parentIds: number[];
     }) => void;
     onCancel: () => void;
   }) =>
     props.open ? (
-      <div data-testid="composer">
+      <div data-testid={props.hostTitle === undefined ? 'composer' : 'inline-composer'}>
         <p>composer title: {props.initialTitle}</p>
         <p>composer parents: {props.initialParentIds.join(',') || 'none'}</p>
         <p>composer choices: {props.parentChoices.length}</p>
+        <p>composer host: {props.hostTitle ?? 'none'}</p>
+        <p>composer ancestors: {props.allIdeas?.length ?? 'none'}</p>
         {/* Ids 2 and 3 are Nanzen-ji and Kiyamachi in the seed — a multi-parent
             draft, submitted at the contract level. */}
         <button
@@ -137,6 +151,54 @@ vi.mock('../features/board/IdeaComposer', () => ({
           }
         >
           Submit with two parents
+        </button>
+        {/* The ordinary commit: the chips exactly as they were seeded, and no
+            category, which is what the composer now opens with. */}
+        <button
+          type="button"
+          onClick={() =>
+            props.onSubmit({
+              title: 'Nested idea',
+              description: '',
+              address: '',
+              category: null,
+              parentIds: props.initialParentIds,
+            })
+          }
+        >
+          Submit as seeded
+        </button>
+        {/* Every Inside chip taken off before committing — a legitimate ask,
+            and the top-level path. */}
+        <button
+          type="button"
+          onClick={() =>
+            props.onSubmit({
+              title: 'Loose idea',
+              description: '',
+              address: '',
+              category: null,
+              parentIds: [],
+            })
+          }
+        >
+          Submit with no parents
+        </button>
+        {/* The host chip swapped for a different one before committing: the
+            chips are the parent set, so the idea goes there and not here. */}
+        <button
+          type="button"
+          onClick={() =>
+            props.onSubmit({
+              title: 'Refiled idea',
+              description: '',
+              address: '',
+              category: null,
+              parentIds: [3],
+            })
+          }
+        >
+          Submit filed elsewhere
         </button>
         <button type="button" onClick={props.onCancel}>
           Cancel composer
@@ -452,7 +514,7 @@ describe('TripBoard — drilling down', () => {
     renderBoard({ url: `/trips/1?path=${NANZENJI_ID}` });
 
     expect(
-      await screen.findByText('Nothing here yet. Type above — it lands inside Nanzen-ji.'),
+      await screen.findByText('Nothing inside yet. Type above — it lands inside Nanzen-ji.'),
     ).toBeInTheDocument();
   });
 });
@@ -714,6 +776,9 @@ describe('TripBoard — capture', () => {
     expect(within(composer).getByText(`composer parents: ${NANZENJI_ID}`)).toBeInTheDocument();
     // Parent choices are every live idea on the trip.
     expect(within(composer).getByText('composer choices: 7')).toBeInTheDocument();
+    // And the same set again as `allIdeas`, which is what lets each picker
+    // result draw the path of ideas it lives inside.
+    expect(within(composer).getByText('composer ancestors: 7')).toBeInTheDocument();
   });
 
   it('opens the composer with no preset parent at root', async () => {
@@ -761,6 +826,196 @@ describe('TripBoard — capture', () => {
     await user.click(screen.getByRole('button', { name: 'Quick add' }));
 
     expect(await screen.findByText("That didn't save. It's still here — try again.")).toBeInTheDocument();
+  });
+});
+
+/**
+ * An idea with nothing inside it used to be a dead end: the only way in was to
+ * drill down to it and type in the capture bar. "Add an idea inside" puts the
+ * composer in the card itself, already pointed at that idea.
+ *
+ * There is ONE composer on the board — the state that says whether it is open
+ * also says where it is standing — so every test here is really a test of the
+ * same invariant from a different side: opening it somewhere is the same act
+ * as closing it wherever it was.
+ */
+describe('TripBoard — adding an idea inside a card', () => {
+  /** Unfolds `title`'s row and presses the "Add an idea inside" in that card. */
+  async function addInside(user: ReturnType<typeof userEvent.setup>, title: string) {
+    const name = new RegExp(`^${title}`);
+    await user.click(within(ideas()).getByRole('button', { name }));
+    const card = within(ideas()).getByRole('button', { name }).closest(`.${rowStyles.row}`);
+    if (!card) throw new Error(`no row card for ${title}`);
+    await user.click(within(card as HTMLElement).getByRole('button', { name: 'Add an idea inside' }));
+  }
+
+  /** The one composer on screen, whichever card it is standing in. */
+  function inline(): HTMLElement {
+    return screen.getByTestId('inline-composer');
+  }
+
+  it('moves the composer into the card, pointed at that idea, and stands the top one down', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await user.click(screen.getByRole('button', { name: 'Open composer' }));
+    expect(await screen.findByTestId('composer')).toBeInTheDocument();
+
+    await addInside(user, 'Nanzen-ji');
+
+    expect(screen.queryByTestId('composer')).not.toBeInTheDocument();
+    expect(within(inline()).getByText('composer host: Nanzen-ji')).toBeInTheDocument();
+    expect(within(inline()).getByText(`composer parents: ${NANZENJI_ID}`)).toBeInTheDocument();
+  });
+
+  it('gives it back to the capture bar when the bar asks for it again', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await addInside(user, 'Nanzen-ji');
+    expect(inline()).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Open composer' }));
+
+    expect(screen.queryByTestId('inline-composer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('composer')).toBeInTheDocument();
+  });
+
+  it('never leaves two behind: pressing inside a second card moves the one composer there', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await addInside(user, 'Nanzen-ji');
+    await addInside(user, 'Kiyamachi');
+
+    expect(screen.getAllByTestId('inline-composer')).toHaveLength(1);
+    expect(within(inline()).getByText('composer host: Kiyamachi')).toBeInTheDocument();
+    // Nanzen-ji's row is still open — the composer left, the card did not fold.
+    expect(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('closes the inline composer on the way down: a drill is a different level', async () => {
+    await addIdea({ title: 'Temple garden' }, NANZENJI_ID);
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await addInside(user, 'Kiyamachi');
+    expect(inline()).toBeInTheDocument();
+
+    await user.click(within(ideas()).getByRole('button', { name: /1 inside/ }));
+    await within(ideas()).findByText('Temple garden');
+
+    expect(screen.queryByTestId('inline-composer')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('composer')).not.toBeInTheDocument();
+  });
+
+  it('closes the top-of-list composer on the way down too', async () => {
+    await addIdea({ title: 'Temple garden' }, NANZENJI_ID);
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await user.click(screen.getByRole('button', { name: 'Open composer' }));
+    expect(await screen.findByTestId('composer')).toBeInTheDocument();
+
+    await user.click(within(ideas()).getByRole('button', { name: /1 inside/ }));
+    await within(ideas()).findByText('Temple garden');
+
+    expect(screen.queryByTestId('composer')).not.toBeInTheDocument();
+  });
+
+  it('closes it on the way back up as well — a crumb changes the level too', async () => {
+    await addIdea({ title: 'Temple garden' }, NANZENJI_ID);
+    const user = userEvent.setup();
+    renderBoard({ url: `/trips/1?path=${NANZENJI_ID}` });
+    await within(ideas()).findByText('Temple garden');
+
+    await addInside(user, 'Temple garden');
+    expect(inline()).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /All ideas/ }));
+    await within(ideas()).findByText('Kiyamachi');
+
+    expect(screen.queryByTestId('inline-composer')).not.toBeInTheDocument();
+  });
+
+  /**
+   * The commit toast, in the three sentences it can say. The counted one is
+   * the interesting case: the number it reports is `subtreeCount` + 1 over the
+   * board's pre-add snapshot, which is the same function the row's
+   * "N inside ›" pill reads — so the two are asserted together, and a change
+   * that made them disagree would fail here rather than in the field.
+   */
+  describe('what the commit says', () => {
+    it('counts the first one as first, and the pill agrees', async () => {
+      const user = userEvent.setup();
+      renderBoard();
+      await within(ideas()).findByText('Nanzen-ji');
+
+      await addInside(user, 'Nanzen-ji');
+      await user.click(within(inline()).getByRole('button', { name: 'Submit as seeded' }));
+
+      expect(await screen.findByText('Added inside Nanzen-ji. First one.')).toBeInTheDocument();
+      expect(await within(ideas()).findByRole('button', { name: '1 inside ›' })).toBeInTheDocument();
+      // Committed, so the composer is done — it does not stay standing.
+      await waitFor(() => expect(screen.queryByTestId('inline-composer')).not.toBeInTheDocument());
+    });
+
+    it('counts the whole subtree, the same number the pill draws', async () => {
+      // Two levels under Nanzen-ji: one direct child, one grandchild. The
+      // subtree is 2 where the direct children are 1, so the sentence and the
+      // pill can only agree on one of the two readings.
+      await addIdea({ title: 'Temple garden' }, NANZENJI_ID);
+      const { entries } = await api.get<{ entries: Entry[] }>('/entries', {
+        params: { trip_id: TRIP_ID, kind: 'idea' },
+      });
+      const garden = entries.find((e) => e.title === 'Temple garden') as Entry;
+      await addIdea({ title: 'A bench to read on' }, garden.id);
+
+      const user = userEvent.setup();
+      renderBoard();
+      await within(ideas()).findByText('Nanzen-ji');
+      expect(await within(ideas()).findByRole('button', { name: '2 inside ›' })).toBeInTheDocument();
+
+      await addInside(user, 'Nanzen-ji');
+      await user.click(within(inline()).getByRole('button', { name: 'Submit as seeded' }));
+
+      expect(await screen.findByText('Added inside Nanzen-ji. 3 so far.')).toBeInTheDocument();
+      expect(await within(ideas()).findByRole('button', { name: '3 inside ›' })).toBeInTheDocument();
+    });
+
+    it('says top level when every Inside chip was taken off', async () => {
+      const user = userEvent.setup();
+      renderBoard({ url: `/trips/1?path=${NANZENJI_ID}` });
+      await screen.findByRole('heading', { name: 'Nanzen-ji' });
+
+      await user.click(screen.getByRole('button', { name: 'Open composer' }));
+      await user.click(await screen.findByRole('button', { name: 'Submit with no parents' }));
+
+      expect(await screen.findByText('Added "Loose idea" at top level.')).toBeInTheDocument();
+      // Filed under the trip, not the level that was on screen: the chips are
+      // the parent set, and they were emptied.
+      const detail = await api.get<{ children: Entry[] }>(`/entries/${NANZENJI_ID}`);
+      expect(detail.children.map((child) => child.title)).not.toContain('Loose idea');
+    });
+
+    it('falls back to the house sentence when the chips point away from the host', async () => {
+      const user = userEvent.setup();
+      renderBoard();
+      await within(ideas()).findByText('Nanzen-ji');
+
+      await addInside(user, 'Nanzen-ji');
+      await user.click(within(inline()).getByRole('button', { name: 'Submit filed elsewhere' }));
+
+      expect(await screen.findByText('Added "Refiled idea". Nothing locked in.')).toBeInTheDocument();
+      // And it really went where the chips said, not where the composer stood.
+      const kiyamachi = await api.get<{ children: Entry[] }>(`/entries/${KIYAMACHI_ID}`);
+      expect(kiyamachi.children.map((child) => child.title)).toContain('Refiled idea');
+    });
   });
 });
 

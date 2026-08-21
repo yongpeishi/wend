@@ -84,6 +84,34 @@ export interface IdeaRowProps {
    * so the board is never asked to restate what it already holds.
    */
   onFocusRow: (id: number) => void;
+  /**
+   * Which idea's card currently holds the composer; null = the top-of-list
+   * instance. One board-wide value rather than a boolean per row, because
+   * there is exactly one composer on the board at a time: naming its host is
+   * what makes "open it here" also mean "close it wherever it was".
+   */
+  composerAt: number | null;
+  /**
+   * "Add an idea inside" was pressed on this row. The row asks; the board
+   * moves the composer, exactly as it does for expansion and focus — a card
+   * cannot know that opening a composer inside it must close one somewhere
+   * else on the board.
+   */
+  onOpenComposerInside: (id: number) => void;
+  /**
+   * The inline composer committed. The draft goes straight up: creating the
+   * idea and writing its parent links is the board's job here for the same
+   * reason it is on the top-of-list composer — this row owns no create call,
+   * only the edit of its own entry.
+   */
+  onComposerSubmit: (draft: IdeaComposerDraft) => void;
+  /**
+   * The inline composer was cancelled, or must be dismissed. The second case
+   * is why this is not simply "cancelled": pressing Edit takes the whole card
+   * for the edit form, so the row has to tell the board to let the composer
+   * go rather than leave it hidden behind a form it would outlive.
+   */
+  onComposerCancel: () => void;
 }
 
 /**
@@ -121,11 +149,31 @@ export interface IdeaRowProps {
  * navigates.
  *
  * The open card's verbs sit on one line at the foot of the panel — Add to
- * plan, Edit, Move to Set aside — no overflow menu, no verb further than one
- * click. Editing swaps the card in place for the same details form the
- * capture bar's Tab opens (see IdeaComposer): local `editing` state, because
- * only this row can know its panel gave way to a form, and it dies with the
- * expansion — a closed row must never reopen mid-edit.
+ * plan, Add an idea inside, Edit, Move to Set aside — no overflow menu, no
+ * verb further than one click. Editing swaps the card in place for the same
+ * details form the capture bar's Tab opens (see IdeaComposer): local
+ * `editing` state, because only this row can know its panel gave way to a
+ * form, and it dies with the expansion — a closed row must never reopen
+ * mid-edit.
+ *
+ * "Add an idea inside" opens that same composer BELOW the actions row, still
+ * inside this card, with Inside already filled in with this idea. It is on
+ * every open card, with or without children, because it is the only way to
+ * put the first idea inside a childless one: "N inside ›" is derived from the
+ * subtree, so a dead end draws no pill and has nothing to click. Which card
+ * holds the composer is the board's to say (`composerAt`) — there is one
+ * composer on the board and opening it here must close it wherever it was.
+ *
+ * The composer is a SIBLING of the actions row inside the panel, not a dialog
+ * over the board and not a child of the row of buttons. Nesting it in the
+ * flex row would make a form a wrapping flex item beside three buttons; a
+ * dialog would take the answer to "inside what?" off the screen at the exact
+ * moment it is being answered, and would cost a return trip to get back to
+ * the card. Kept in place, the new idea is composed within the walls of the
+ * idea it is going into, and nothing scrolls or moves under the hand.
+ * Editing and the inline composer are mutually exclusive: the edit form
+ * replaces the whole card, so pressing Edit dismisses the composer outright
+ * (`onComposerCancel`) rather than hiding it behind a form.
  *
  * What is kept, and why:
  *   - The drag handle. Dragging an idea onto a plan is the core board gesture
@@ -163,6 +211,10 @@ export function IdeaRow({
   onToggleExpand,
   focused,
   onFocusRow,
+  composerAt,
+  onOpenComposerInside,
+  onComposerSubmit,
+  onComposerCancel,
 }: IdeaRowProps) {
   const { show } = useToast();
   const panelId = useId();
@@ -267,6 +319,11 @@ export function IdeaRow({
     const subtree = subtreeIdeaIds(allIdeas, entry.id);
     const parentChoices = allIdeas.filter((idea) => idea.id !== entry.id && !subtree.has(idea.id));
 
+    // No category stays no category. The chips can all be unlit now, so an
+    // idea kept without one is no longer quietly given 'place' by the form
+    // that came to fix its name — `category` rides the draft through to the
+    // PATCH, which has always taken null.
+    //
     // The entry write first, then the link diff in parallel — the links need
     // nothing from the PATCH, but a failed title save with moved parents would
     // be half an edit. Any failure lands on the house sentence and STAYS in
@@ -302,7 +359,7 @@ export function IdeaRow({
         initialTitle={entry.title}
         initialDescription={entry.description ?? ''}
         initialAddress={entry.address ?? ''}
-        initialCategory={entry.category ?? 'place'}
+        initialCategory={entry.category ?? null}
         initialParentIds={initialParentIds}
         parentChoices={parentChoices}
         submitLabel="Save"
@@ -551,7 +608,32 @@ export function IdeaRow({
                 )}
               </div>
 
-              <Button variant="quiet" size="small" onClick={() => setEditing(true)}>
+              {/* The only way to put the first idea inside this one, so it is
+                  offered whether or not anything is inside already: the
+                  "N inside ›" pill is derived from the subtree, and a
+                  childless idea draws none. It opens the composer below,
+                  inside this card — see the component comment for why it
+                  belongs there rather than in a dialog. */}
+              <Button
+                variant="quiet"
+                size="small"
+                onClick={() => onOpenComposerInside(entry.id)}
+              >
+                Add an idea inside
+              </Button>
+
+              <Button
+                variant="quiet"
+                size="small"
+                onClick={() => {
+                  // The edit form replaces the whole card, composer included.
+                  // Dismissed rather than left standing, or it would vanish
+                  // without being cancelled and then reappear, half-typed,
+                  // the moment the edit ended.
+                  if (composerAt === entry.id) onComposerCancel();
+                  setEditing(true);
+                }}
+              >
                 Edit
               </Button>
 
@@ -582,6 +664,38 @@ export function IdeaRow({
                 ))}
               </div>
             )
+          )}
+
+          {/*
+            The composer, when this card is the one holding it: below the
+            verbs, inside the panel, a sibling of the actions row rather than
+            a fourth item wrapping around inside it.
+
+            `parentChoices` is the WHOLE idea set, unfiltered — unlike the
+            edit form above, which must cut out the entry's own subtree. An
+            idea that does not exist yet has no descendants, so every idea on
+            the trip is a legal parent for it; `initialParentIds` merely
+            starts it inside this one.
+
+            `hostTitle` is what makes it read as belonging to this card (the
+            "NEW IDEA INSIDE <host>" heading and the nested paper surface),
+            and `trimmed` opens it at Name and Short description with the rest
+            a click away — nesting an idea should cost about what typing its
+            name costs. The composer takes its own focus, so the card does not
+            move under the hand.
+          */}
+          {canEdit && composerAt === entry.id && (
+            <IdeaComposer
+              open
+              hostTitle={entry.title}
+              trimmed
+              initialTitle=""
+              initialParentIds={[entry.id]}
+              parentChoices={allIdeas}
+              allIdeas={allIdeas}
+              onSubmit={onComposerSubmit}
+              onCancel={onComposerCancel}
+            />
           )}
         </div>
       )}

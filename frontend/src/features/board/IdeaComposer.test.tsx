@@ -43,6 +43,11 @@ const FOOD_CRAWL = makeEntry({ id: 12, title: 'Food crawl' });
 const ONSEN = makeEntry({ id: 13, title: 'Onsen trip' });
 const CHOICES = [KYOTO, FOOD_CRAWL, ONSEN];
 
+/** A two-level set: the market lives inside the Busan trip, so it has a path. */
+const BUSAN = makeEntry({ id: 21, title: 'Travel to Busan' });
+const MARKET = makeEntry({ id: 22, title: 'Jagalchi market', parent_ids: [21] });
+const NESTED_CHOICES = [BUSAN, MARKET];
+
 function renderComposer(overrides: Partial<IdeaComposerProps> = {}) {
   const onSubmit = vi.fn();
   const onCancel = vi.fn();
@@ -92,7 +97,88 @@ describe('IdeaComposer — the card', () => {
     expect(screen.getByRole('button', { name: 'Add idea' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue('');
     expect(screen.getByRole('textbox', { name: 'Address' })).toHaveValue('');
-    expect(screen.getByRole('radio', { name: 'Place' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('shows the whole form and no reveal link when it is not trimmed', () => {
+    renderComposer();
+
+    expect(screen.getByRole('textbox', { name: 'Address' })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Category' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '＋ address, category, parents' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Opened inside an idea's row, the card is several rows down the page and its
+ * position no longer says what it will be filed under — so it says so in words.
+ */
+describe('IdeaComposer — opened inside an idea', () => {
+  it('names the host it landed in', () => {
+    renderComposer({ hostTitle: 'Kyoto day' });
+
+    expect(screen.getByText('NEW IDEA INSIDE')).toBeInTheDocument();
+    expect(screen.getByText('Kyoto day')).toBeInTheDocument();
+  });
+
+  it('wears no heading at all when there is no host — the top-of-list card', () => {
+    renderComposer();
+
+    expect(screen.queryByText('NEW IDEA INSIDE')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Adding an idea inside another is usually the fast half of a thought: the
+ * parent is already chosen by where you clicked, so only the two fields that
+ * cannot be inferred are asked up front.
+ */
+describe('IdeaComposer — trimmed', () => {
+  it('asks for the name and the description, and nothing else', () => {
+    renderComposer({ trimmed: true, hostTitle: 'Kyoto day' });
+
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Short description' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Address' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Category' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '+ add parent' })).not.toBeInTheDocument();
+  });
+
+  it('unfolds the rest when the link asks for it', async () => {
+    const user = userEvent.setup();
+    renderComposer({ trimmed: true });
+
+    await user.click(screen.getByRole('button', { name: '＋ address, category, parents' }));
+
+    expect(screen.getByRole('textbox', { name: 'Address' })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Category' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '+ add parent' })).toBeInTheDocument();
+  });
+
+  it('stays unfolded — nobody has fields taken back off them mid-thought', async () => {
+    const user = userEvent.setup();
+    renderComposer({ trimmed: true });
+
+    await user.click(screen.getByRole('button', { name: '＋ address, category, parents' }));
+    await user.type(screen.getByRole('textbox', { name: 'Address' }), '68 Fukakusa');
+
+    expect(
+      screen.queryByRole('button', { name: '＋ address, category, parents' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Address' })).toHaveValue('68 Fukakusa');
+  });
+
+  it('folds again on the next opening, not on the re-render in between', async () => {
+    const user = userEvent.setup();
+    const view = renderComposer({ trimmed: true });
+
+    await user.click(screen.getByRole('button', { name: '＋ address, category, parents' }));
+    view.update({ open: false });
+    view.update({ open: true });
+
+    expect(screen.queryByRole('textbox', { name: 'Address' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '＋ address, category, parents' })).toBeInTheDocument();
   });
 });
 
@@ -147,25 +233,33 @@ describe('IdeaComposer — worn as the edit form', () => {
 });
 
 describe('IdeaComposer — the category row', () => {
-  it('offers the six categories with place already answered', () => {
+  // Nothing lit: a pre-lit chip is an answer the writer never gave, and most
+  // of what people keep is not a place.
+  it('offers the six categories with none of them answered', () => {
     renderComposer();
 
     const group = screen.getByRole('radiogroup', { name: 'Category' });
     expect(group).toBeInTheDocument();
     for (const label of ['Place', 'Food', 'Activity', 'Lodging', 'Transport', 'Other']) {
-      expect(screen.getByRole('radio', { name: label })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: label })).toHaveAttribute('aria-checked', 'false');
     }
-    expect(screen.getByRole('radio', { name: 'Place' })).toHaveAttribute('aria-checked', 'true');
   });
 
   it('is one of six — picking a category unpicks the last one', async () => {
     const user = userEvent.setup();
     renderComposer();
 
+    await user.click(screen.getByRole('radio', { name: 'Place' }));
     await user.click(screen.getByRole('radio', { name: 'Food' }));
 
     expect(screen.getByRole('radio', { name: 'Food' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('radio', { name: 'Place' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('lights whichever chip the caller seeds', () => {
+    renderComposer({ initialCategory: 'lodging' });
+
+    expect(screen.getByRole('radio', { name: 'Lodging' })).toHaveAttribute('aria-checked', 'true');
   });
 });
 
@@ -186,9 +280,10 @@ describe('IdeaComposer — the Inside row', () => {
     expect(screen.getByRole('button', { name: 'Remove from Food crawl' })).toBeInTheDocument();
   });
 
-  it('keeps the choice cloud shut until "+ add parent" asks for it', () => {
+  it('keeps the picker shut until "+ add parent" asks for it', () => {
     renderComposer();
     expect(screen.queryByRole('button', { name: 'Kyoto day' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Search ideas' })).not.toBeInTheDocument();
   });
 
   it('offers only the parents not already chosen', async () => {
@@ -203,7 +298,7 @@ describe('IdeaComposer — the Inside row', () => {
     expect(screen.queryByRole('button', { name: 'Kyoto day' })).not.toBeInTheDocument();
   });
 
-  it('adds the picked parent and puts the cloud away — one pick per opening', async () => {
+  it('adds the picked parent and puts the picker away — one pick per opening', async () => {
     const user = userEvent.setup();
     renderComposer();
 
@@ -212,6 +307,117 @@ describe('IdeaComposer — the Inside row', () => {
 
     expect(screen.getByRole('button', { name: 'Remove from Food crawl' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Onsen trip' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Search ideas' })).not.toBeInTheDocument();
+  });
+
+  it('says so plainly when there is nothing left to nest inside', async () => {
+    const user = userEvent.setup();
+    renderComposer({ initialParentIds: [11, 12, 13] });
+
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+
+    expect(screen.getByText('Every idea it could nest in already holds it.')).toBeInTheDocument();
+  });
+});
+
+/**
+ * The picker is a search, not a wall of chips: past a handful of ideas a flat
+ * list has no order and no way to tell two same-named ideas apart.
+ */
+describe('IdeaComposer — the parent picker', () => {
+  /** Ten candidates, more than the picker will ever draw at once. */
+  const MANY = Array.from({ length: 10 }, (_, index) =>
+    makeEntry({ id: 100 + index, title: `Idea ${index + 1}` }),
+  );
+
+  it('takes the caret on opening, so the first keystroke lands in the search', async () => {
+    const user = userEvent.setup();
+    renderComposer();
+
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+
+    expect(screen.getByRole('textbox', { name: 'Search ideas' })).toHaveFocus();
+  });
+
+  it('narrows to what was typed, ignoring case', async () => {
+    const user = userEvent.setup();
+    renderComposer();
+
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+    await user.type(screen.getByRole('textbox', { name: 'Search ideas' }), 'kYo');
+
+    expect(screen.getByRole('button', { name: 'Kyoto day' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Food crawl' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Onsen trip' })).not.toBeInTheDocument();
+  });
+
+  it('draws at most eight matches — the search field reaches the rest', async () => {
+    const user = userEvent.setup();
+    renderComposer({ parentChoices: MANY });
+
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+
+    expect(screen.getAllByRole('button', { name: /^Idea \d+$/ })).toHaveLength(8);
+
+    await user.type(screen.getByRole('textbox', { name: 'Search ideas' }), 'Idea 10');
+
+    expect(screen.getAllByRole('button', { name: /^Idea \d+$/ })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Idea 10' })).toBeInTheDocument();
+  });
+
+  it('says nothing matched in one sentence, not an empty box', async () => {
+    const user = userEvent.setup();
+    renderComposer();
+
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+    await user.type(screen.getByRole('textbox', { name: 'Search ideas' }), 'zzz');
+
+    expect(screen.getByText('Nothing by that name yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Kyoto day' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the chip and drops the query when a result is picked', async () => {
+    const user = userEvent.setup();
+    renderComposer();
+
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+    await user.type(screen.getByRole('textbox', { name: 'Search ideas' }), 'onsen');
+    await user.click(screen.getByRole('button', { name: 'Onsen trip' }));
+
+    expect(screen.getByRole('button', { name: 'Remove from Onsen trip' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Search ideas' })).not.toBeInTheDocument();
+
+    // Reopened, it is a fresh search rather than the last one still narrowed.
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+    expect(screen.getByRole('textbox', { name: 'Search ideas' })).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Kyoto day' })).toBeInTheDocument();
+  });
+
+  // The line that tells two same-named ideas apart.
+  it('writes where a nested candidate lives underneath its name', async () => {
+    const user = userEvent.setup();
+    renderComposer({ parentChoices: NESTED_CHOICES });
+
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+
+    const row = screen.getByRole('button', { name: /Jagalchi market/ });
+    expect(row).toHaveTextContent('Jagalchi market');
+    expect(row).toHaveTextContent('Travel to Busan ›');
+    // A root idea has nowhere to be placed and gets no line saying so.
+    expect(screen.getByRole('button', { name: 'Travel to Busan' })).toHaveTextContent(
+      /^Travel to Busan$/,
+    );
+  });
+
+  it('reads the path off `allIdeas`, which may hold ideas that are not offerable', async () => {
+    const user = userEvent.setup();
+    renderComposer({ parentChoices: [MARKET], allIdeas: NESTED_CHOICES });
+
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+
+    expect(screen.getByRole('button', { name: /Jagalchi market/ })).toHaveTextContent(
+      'Travel to Busan ›',
+    );
   });
 });
 
@@ -238,7 +444,9 @@ describe('IdeaComposer — submit and cancel', () => {
     });
   });
 
-  it('defaults the easy answers — place, and only the parents it was given', async () => {
+  // An untouched category travels as null, not as a guess: nothing downstream
+  // needs one, and inventing "place" would put words in the writer's mouth.
+  it('answers nothing it was not told — a null category and only the given parents', async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderComposer({ initialTitle: 'Onsen day' });
 
@@ -248,8 +456,24 @@ describe('IdeaComposer — submit and cancel', () => {
       title: 'Onsen day',
       description: '',
       address: '',
-      category: 'place',
+      category: null,
       parentIds: [],
+    });
+  });
+
+  it('submits from a trimmed card without ever unfolding it', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer({ trimmed: true, hostTitle: 'Kyoto day', initialParentIds: [11] });
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Nishiki market');
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      title: 'Nishiki market',
+      description: '',
+      address: '',
+      category: null,
+      parentIds: [11],
     });
   });
 
@@ -306,7 +530,7 @@ describe('IdeaComposer — a fresh form every open', () => {
 
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Nishiki market');
     expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue('');
-    expect(screen.getByRole('radio', { name: 'Place' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Food' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByRole('button', { name: 'Remove from Food crawl' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Remove from Kyoto day' })).not.toBeInTheDocument();
   });

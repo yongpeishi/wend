@@ -60,6 +60,10 @@ interface ListExtras {
   onToggleExpand?: (id: number) => void;
   focusedId?: number | null;
   onFocusRow?: (id: number) => void;
+  composerAt?: number | null;
+  onOpenComposerInside?: (id: number) => void;
+  onComposerSubmit?: () => void;
+  onComposerCancel?: () => void;
 }
 
 function renderList(groupMode: GroupMode, entries = ENTRIES, extra: ListExtras = {}) {
@@ -86,6 +90,10 @@ function renderList(groupMode: GroupMode, entries = ENTRIES, extra: ListExtras =
               onToggleExpand={extra.onToggleExpand ?? (() => {})}
               focusedId={extra.focusedId ?? null}
               onFocusRow={extra.onFocusRow ?? (() => {})}
+              composerAt={extra.composerAt ?? null}
+              onOpenComposerInside={extra.onOpenComposerInside ?? (() => {})}
+              onComposerSubmit={extra.onComposerSubmit ?? (() => {})}
+              onComposerCancel={extra.onComposerCancel ?? (() => {})}
             />
           </DndContext>
         </ToastProvider>
@@ -306,6 +314,73 @@ describe('IdeaList', () => {
       await user.click(screen.getByRole('button', { name: '2 inside ›' }));
 
       expect(onDrill).toHaveBeenCalledWith(4);
+    });
+  });
+
+  /**
+   * The composer's four props are the same kind of threading, and the list
+   * interprets none of them: it hands `composerAt` to every row and lets each
+   * one recognise itself, and it hands the three callbacks straight up. The
+   * proof is at the rows, because a list that quietly kept the number for
+   * itself would look identical from here.
+   */
+  describe('threading the composer to the rows', () => {
+    it('gives the composer to exactly the row the board names, and to no other', () => {
+      renderList('none', ENTRIES, { expandedIds: new Set([1, 2]), composerAt: 2 });
+
+      expect(screen.getByText('NEW IDEA INSIDE')).toBeInTheDocument();
+      expect(screen.getByText('Nishiki Market', { selector: 'p' })).toBeInTheDocument();
+      // One composer on the board means one heading in the list, however many
+      // rows are open beside it.
+      expect(screen.getAllByText('NEW IDEA INSIDE')).toHaveLength(1);
+    });
+
+    it('draws no composer at all when the board names nobody', () => {
+      renderList('none', ENTRIES, { expandedIds: new Set([1, 2]) });
+
+      expect(screen.queryByText('NEW IDEA INSIDE')).not.toBeInTheDocument();
+    });
+
+    it('carries the composer into grouped modes, where the row sits under a heading', () => {
+      renderList('category', ENTRIES, { expandedIds: new Set([3]), composerAt: 3 });
+
+      expect(screen.getByText('NEW IDEA INSIDE')).toBeInTheDocument();
+      expect(screen.getByText('Kinkaku-ji', { selector: 'p' })).toBeInTheDocument();
+    });
+
+    it('reports "Add an idea inside" up with the row it was pressed on', async () => {
+      const user = userEvent.setup();
+      const onOpenComposerInside = vi.fn();
+      renderList('none', ENTRIES, { expandedIds: new Set([2]), onOpenComposerInside });
+
+      await user.click(screen.getByRole('button', { name: 'Add an idea inside' }));
+
+      expect(onOpenComposerInside).toHaveBeenCalledWith(2);
+      // The list decided nothing: no composer appeared until the board said so.
+      expect(screen.queryByText('NEW IDEA INSIDE')).not.toBeInTheDocument();
+    });
+
+    it('hands the inline composer its cancel, so a dismissal reaches the board', async () => {
+      const user = userEvent.setup();
+      const onComposerCancel = vi.fn();
+      renderList('none', ENTRIES, { expandedIds: new Set([2]), composerAt: 2, onComposerCancel });
+
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(onComposerCancel).toHaveBeenCalled();
+    });
+
+    it('hands the inline composer its submit, with the draft untouched', async () => {
+      const user = userEvent.setup();
+      const onComposerSubmit = vi.fn();
+      renderList('none', ENTRIES, { expandedIds: new Set([2]), composerAt: 2, onComposerSubmit });
+
+      await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Pickles to bring home');
+      await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+      expect(onComposerSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Pickles to bring home', parentIds: [2] }),
+      );
     });
   });
 });

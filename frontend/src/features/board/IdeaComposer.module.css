@@ -13,6 +13,36 @@
   padding: var(--space-4);
 }
 
+/*
+ * The same card opened INSIDE an idea's row: the card's own tone inverted —
+ * paper inside leaf, where the top-of-list card is card-tone inside apricot.
+ * A second card-toned card in the list would read as another idea arriving;
+ * this reads as a pocket opening inside the row that holds it. Leaf rather
+ * than apricot because apricot is "you are here" for the whole page and the
+ * row above already owns that; leaf is the acting colour of the thing being
+ * done. Radius stays --radius-card: nesting does not earn a new shape.
+ */
+.cardNested {
+  background: var(--surface-page);
+  border-color: var(--wend-leaf);
+}
+
+/* Says in words what position no longer says: which idea this lands in. The
+   label wears the section voice, the host name is set at the card's floor
+   size and full weight, because it is the answer, not a caption. */
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.hostName {
+  margin: 0;
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
 /* The stacked fields. Quieter boxes than the design-system Input wrapper on
    purpose: three of them inside an already-bordered card would read as four
    cards nested, so these keep the hairline edge and let the card do the
@@ -111,13 +141,15 @@
 }
 
 /*
- * The choice cloud: the one surface in the composer allowed to sit a tone
+ * The parent picker: the one surface in the composer allowed to sit a tone
  * BELOW the card — paper, so the transient list of candidates reads as a
- * pocket that opened rather than another card arriving.
+ * pocket that opened rather than another card arriving. It is a column now,
+ * not a wrapping cloud, because a search box and its results are read down
+ * the page and same-named ideas need a second line each to tell them apart.
  */
-.cloud {
+.picker {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-2);
   background: var(--surface-page);
   border: var(--border-width) solid var(--border-subtle);
@@ -125,32 +157,68 @@
   padding: var(--space-2);
 }
 
-/* Cloud chips are smaller-boned than the pills above: candidates, not
-   choices, on the quieter surface. */
-.cloudChip {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--text-body);
+/* Inside the nested card the whole card is already paper, so paper-on-paper
+   would erase the pocket. The relationship the tone encodes is "a step off my
+   container", not "always paper" — so inside the inversion, it inverts too. */
+.cardNested .picker {
   background: var(--surface-card);
-  border: var(--border-width) solid var(--border-subtle);
-  border-radius: var(--radius-pill);
-  padding: 3px 10px;
-  white-space: nowrap;
+}
+
+/* Transparent so it sits on whatever tone the picker is wearing, and the
+   hairline alone marks it out — a filled box inside a filled box inside the
+   card is one frame too many. */
+.searchInput {
+  background: transparent;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Full-width rows, not chips: each result carries a name AND the path it
+   lives under, and a two-line chip is not a chip. */
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-card);
+  padding: var(--space-1) var(--space-2);
   cursor: pointer;
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-.cloudChip:hover {
-  opacity: 0.85;
-}
-
-.cloudChip:active {
+.result:hover {
   opacity: 0.7;
 }
 
-.cloudChip:focus-visible {
+.result:active {
+  opacity: 0.5;
+}
+
+.result:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+.resultName {
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+}
+
+/* The one line in the picker allowed under the 15px floor: it is a locator,
+   read only when two results share a name, and setting it at the name's own
+   size would make every result look like two ideas. */
+.resultPath {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 .empty {
@@ -162,8 +230,42 @@
 .footer {
   display: flex;
   align-items: center;
+  /* Three things on one line now — commit, reveal, cancel — and the reveal
+     link names three fields, so on a narrow column it must be allowed to drop
+     rather than squeeze Cancel off the card. */
+  flex-wrap: wrap;
   gap: var(--space-3);
   /* A hair of air over the buttons: the card's 12px gap reads tight between
      a chip row and the commit line. */
   margin-top: var(--space-1);
+}
+
+/* A text link, not a third button: it does not commit anything, it only
+   unfolds the card, and three buttons in a row would make "reveal" look like
+   a decision on par with keeping the idea. Underlined the way PinPopover's
+   link is, so it reads as a link even sitting between two buttons. */
+.reveal {
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--action-primary);
+  background: transparent;
+  border: none;
+  border-bottom: var(--border-width-strong) solid var(--action-primary);
+  padding: 0 0 1px;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.reveal:hover {
+  opacity: 0.7;
+}
+
+.reveal:active {
+  opacity: 0.5;
+}
+
+.reveal:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }

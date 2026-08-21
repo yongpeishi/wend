@@ -122,11 +122,25 @@ export function TripBoard() {
   // touched, never that some other row was touched more recently. Cleared when
   // its row closes and on every drill, alongside the expansions it qualifies.
   const [focusedId, setFocusedId] = useState<number | null>(null);
-  // The composer, and the words already typed when it was asked for: opening
-  // it must not cost the reader the title they started in the capture bar.
-  const [composer, setComposer] = useState<{ open: boolean; initialTitle: string }>({
+  // The composer: whether it is up, the words already typed when it was asked
+  // for, and WHERE it is standing.
+  //
+  // `initialTitle` is the carry-over — opening the composer must not cost the
+  // reader the title they started in the capture bar.
+  //
+  // `at` is the host: the id of the idea whose card is holding the composer
+  // inside itself, or null for the one instance that lives at the top of the
+  // list under the capture bar. It is one field rather than two pieces of
+  // state because there is only ever ONE composer on the board — the
+  // top-of-list card renders on `at === null`, a row renders it on
+  // `at === entry.id`, and those are mutually exclusive by construction. Two
+  // booleans could disagree; a single `at` cannot. It is also why "add an
+  // idea inside" needs no closing of anything: moving the composer IS moving
+  // this number.
+  const [composer, setComposer] = useState<{ open: boolean; initialTitle: string; at: number | null }>({
     open: false,
     initialTitle: '',
+    at: null,
   });
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
@@ -156,7 +170,22 @@ export function TripBoard() {
   // memoize against their close callback to keep those effects from re-firing
   // on every board render — see NewIdeaModal.tsx's doc comment on the
   // underlying Modal.tsx behaviour.
-  const closeComposer = useCallback(() => setComposer({ open: false, initialTitle: '' }), []);
+  const closeComposer = useCallback(() => setComposer({ open: false, initialTitle: '', at: null }), []);
+
+  /**
+   * "Add an idea inside" on a row: the composer moves into that row's card,
+   * with nothing typed to carry over — the press came from the card, not from
+   * a half-written line in the capture bar.
+   *
+   * A stable handle for the same reason `closeComposer` is one, and more so:
+   * this one is threaded down through `IdeaList` into every row, so an inline
+   * arrow here would hand a fresh identity to the whole list on every board
+   * render.
+   */
+  const openComposerInside = useCallback(
+    (id: number) => setComposer({ open: true, initialTitle: '', at: id }),
+    [],
+  );
 
   const ideasQuery = useEntries({ trip_id: trip.id, kind: 'idea', include_archived: true });
   const bundlesQuery = useEntries({ trip_id: trip.id, kind: 'bundle', include_archived: true });
@@ -201,8 +230,16 @@ export function TripBoard() {
         },
         { replace: false },
       );
+      // Every level change closes the composer, for the same reason it folds
+      // every open row: the composer is standing somewhere — inside a card
+      // that is about to leave the screen, or above a list that is about to
+      // become a different list — and a half-written idea pointed at a level
+      // nobody is reading any more is worse than no composer at all. Closed
+      // HERE rather than in `drillInto` alone, because the breadcrumbs change
+      // the path too; one place makes it true of every way down and back.
+      closeComposer();
     },
-    [setSearchParams],
+    [setSearchParams, closeComposer],
   );
 
   /**
@@ -388,9 +425,13 @@ export function TripBoard() {
     );
   }
 
-  /** The slow path — the capture bar hands over whatever was already typed. */
+  /**
+   * The slow path — the capture bar hands over whatever was already typed.
+   * `at: null` is the composer's home address: asking from the bar always
+   * brings it back to the top of the list, wherever it had been standing.
+   */
   function handleOpenComposer(draft: string) {
-    setComposer({ open: true, initialTitle: draft });
+    setComposer({ open: true, initialTitle: draft, at: null });
   }
 
   /**
@@ -400,16 +441,31 @@ export function TripBoard() {
    * idea exists. Sequenced with `mutateAsync` because the later links need the
    * new idea's id; a failure anywhere lands on the house sentence, and the
    * composer stays up so nothing typed is lost.
+   *
+   * The CHIPS are the parent set, not the level on screen: the composer opened
+   * inside a card seeds itself with that card, and the composer at the top of
+   * the list seeds itself with the drill — but either can be edited before
+   * submit, and what is left in the chips at that moment is where the idea
+   * goes. Emptied to nothing, `parent_id` falls back to the trip and the idea
+   * lands at top level, which is a legitimate thing to ask for.
    */
   async function handleComposerSubmit(draft: IdeaComposerDraft) {
     const [firstParentId, ...remainingParentIds] = draft.parentIds;
+    // Read BEFORE the await: `closeComposer()` runs inside the try below, so
+    // by the time there is a toast to say, `composer.at` in a later render
+    // would already be null. The host is a fact about the moment the submit
+    // was made.
+    const host = composer.at !== null ? ideaById.get(composer.at) : undefined;
     try {
       const entry = await createEntry.mutateAsync({
         entry: {
           kind: 'idea',
           title: draft.title,
           description: draft.description === '' ? null : draft.description,
-          category: draft.category,
+          // Same rule as the address below: the composer no longer lights a
+          // category chip by default, so "nothing chosen" is a real answer and
+          // must be left unsaid rather than written onto the entry as null.
+          ...(draft.category !== null ? { category: draft.category } : {}),
           // Only when there is one: an empty string written onto the entry
           // would read as "an address was given and it is nothing".
           ...(draft.address.trim() !== '' ? { address: draft.address } : {}),
@@ -420,7 +476,25 @@ export function TripBoard() {
         remainingParentIds.map((parentId) => addLink.mutateAsync({ parentId, childId: entry.id })),
       );
       closeComposer();
-      show(`Added "${draft.title}". Nothing locked in.`, 'success');
+      // Three different things just happened, and they do not share a
+      // sentence. Nowhere chosen is worth saying plainly. Landing inside the
+      // card the composer was standing in is worth counting, because the count
+      // is the reassurance: the idea went where you were looking.
+      //
+      // `+ 1` is not an off-by-one. `allIdeas` in this closure is the PRE-ADD
+      // snapshot of the query data — the create's refetch has not repainted
+      // this render — so the child just made is not in it yet. And
+      // `subtreeCount` is the very function the row's "N inside ›" pill reads,
+      // so the number said here and the number drawn there are the same number
+      // by construction rather than by agreement.
+      if (draft.parentIds.length === 0) {
+        show(`Added "${draft.title}" at top level.`, 'success');
+      } else if (host !== undefined && draft.parentIds.includes(host.id)) {
+        const n = subtreeCount(allIdeas, host.id) + 1;
+        show(`Added inside ${host.title}. ${n === 1 ? 'First one.' : `${n} so far.`}`, 'success');
+      } else {
+        show(`Added "${draft.title}". Nothing locked in.`, 'success');
+      }
     } catch {
       show(SAVE_FAILED, 'error');
     }
@@ -513,13 +587,19 @@ export function TripBoard() {
               second way in, so nothing is left listening for an Escape that
               will never come. Parent choices are every live idea on the trip:
               the composer is the one place an idea can be filed somewhere
-              other than the level on screen. */}
+              other than the level on screen.
+
+              This is the composer's home, not its only address: when a row's
+              "Add an idea inside" moves it into that card, `composer.at` names
+              the host and this instance stands down. One composer on the
+              board, and the state says which one it is. */}
           {canEdit && (
             <IdeaComposer
-              open={composer.open}
+              open={composer.open && composer.at === null}
               initialTitle={composer.initialTitle}
               initialParentIds={currentId !== null ? [currentId] : []}
               parentChoices={allIdeas}
+              allIdeas={allIdeas}
               onSubmit={handleComposerSubmit}
               onCancel={closeComposer}
             />
@@ -610,7 +690,7 @@ export function TripBoard() {
               // any is an invitation to put the first one there.
               <p className={styles.noneInView}>
                 {levelIdeas.length === 0 && currentIdea !== undefined
-                  ? `Nothing here yet. Type above — it lands inside ${currentIdea.title}.`
+                  ? `Nothing inside yet. Type above — it lands inside ${currentIdea.title}.`
                   : 'Nothing matches those filters. Nothing is gone — widen them and it comes back.'}
               </p>
             ) : (
@@ -645,6 +725,14 @@ export function TripBoard() {
                 }}
                 focusedId={focusedId}
                 onFocusRow={setFocusedId}
+                // A closed composer stands nowhere: `composer.at` survives no
+                // longer than the composer does, but reading it while shut
+                // would still tell one row it is the host of a card that is
+                // not there.
+                composerAt={composer.open ? composer.at : null}
+                onOpenComposerInside={openComposerInside}
+                onComposerSubmit={handleComposerSubmit}
+                onComposerCancel={closeComposer}
               />
             )}
           </QueryGate>
