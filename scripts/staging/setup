@@ -27,10 +27,10 @@ pi_ssh_tty "sudo bash ~/$remote_dir/provision"
 # back so the toolchain stays pinned in the repo rather than only on the Pi.
 info "collecting env/flake.lock from the Pi"
 if scp -q "$dest:$remote_dir/env/flake.lock" "$STAGING_DIR/env/flake.lock" 2>/dev/null; then
-  if git diff --quiet -- "$STAGING_DIR/env/flake.lock"; then
-    ok "env/flake.lock unchanged"
+  if [ -n "$(git status --porcelain -- "$STAGING_DIR/env/flake.lock")" ]; then
+    warn "env/flake.lock is new or changed -- commit it"
   else
-    warn "env/flake.lock changed -- commit it"
+    ok "env/flake.lock unchanged"
   fi
 fi
 
