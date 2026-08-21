@@ -18,7 +18,6 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     category: null,
     starts_on: null,
     ends_on: null,
-    location_name: null,
     address: null,
     lat: null,
     lng: null,
@@ -120,7 +119,7 @@ describe('openingDay', () => {
 describe('buildPlanRows — shape', () => {
   it('orders rows the way sortDayItems does and formats time, title and meta', () => {
     const entries = [
-      makeEntry({ id: 1, title: 'Fushimi Inari', category: 'place', location_name: 'Fushimi' }),
+      makeEntry({ id: 1, title: 'Fushimi Inari', category: 'place' }),
       makeEntry({ id: 2, title: 'Ramen', category: 'food' }),
     ];
     const items = [

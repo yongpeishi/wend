@@ -16,7 +16,7 @@ export interface PinPopoverProps {
  */
 export function PinPopover({ entry }: PinPopoverProps) {
   const state = pinStateForEntry(entry);
-  const meta = joinMeta(entry.category ?? undefined, entry.location_name ?? undefined);
+  const meta = joinMeta(entry.category ?? undefined);
 
   return (
     <div className={styles.popover}>

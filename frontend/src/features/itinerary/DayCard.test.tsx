@@ -7,7 +7,7 @@ import { DayCard } from './DayCard';
 import type { ItineraryDay } from './itineraryModel';
 
 function summary(id: number, title: string, kind: EntrySummary['kind'] = 'idea'): EntrySummary {
-  return { id, kind, title, category: 'place', duration_minutes: 120, location_name: 'Kyoto south' };
+  return { id, kind, title, category: 'place', duration_minutes: 120,};
 }
 
 function item(overrides: Partial<ItineraryItem> & { id: number }): ItineraryItem {

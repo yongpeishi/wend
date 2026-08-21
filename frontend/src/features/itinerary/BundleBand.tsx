@@ -89,7 +89,7 @@ export function BundleBand({ item, onEditTime, onRemove, readOnly = false }: Bun
             </span>
             <span className={styles.memberTitle}>{member.title}</span>
             <span className={styles.memberMeta}>
-              {joinMeta(member.location_name, formatDuration(member.duration_minutes))}
+              {joinMeta(formatDuration(member.duration_minutes))}
             </span>
           </div>
         );

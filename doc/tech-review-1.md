@@ -256,7 +256,7 @@ writable params — which is exactly where all of these live.
   `ItineraryItemSerializer.context_for` loads them by raw id with no visibility
   scope. Entry ids are sequential integers, so any user can POST
   `schedule_item: { entry_id: <victim id> }` into *their own* trip and read back the
-  victim entry's `title`, `category`, `duration_minutes`, and `location_name`. This
+  victim entry's `title`, `category`, and `duration_minutes`. This
   contradicts the care taken in `EntrySerializer.detail`, which does scope
   `parents`/`children` through `visible_to`. Validate on the model
   (`entry_id` must be a descendant of `trip_id` or visible to the placer), or scope

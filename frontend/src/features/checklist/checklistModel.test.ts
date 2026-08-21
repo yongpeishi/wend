@@ -36,8 +36,8 @@ describe('sortOpenTodos', () => {
 
   it('breaks a due-date tie in favour of the todo whose entry is scheduled', () => {
     const todos = [
-      makeTodo({ id: 1, due_on: '2026-11-05', entry: { id: 10, kind: 'idea', title: 'Onsen', category: 'activity', duration_minutes: null, location_name: null } }),
-      makeTodo({ id: 2, due_on: '2026-11-05', entry: { id: 11, kind: 'idea', title: 'Ryokan', category: 'lodging', duration_minutes: null, location_name: null } }),
+      makeTodo({ id: 1, due_on: '2026-11-05', entry: { id: 10, kind: 'idea', title: 'Onsen', category: 'activity', duration_minutes: null} }),
+      makeTodo({ id: 2, due_on: '2026-11-05', entry: { id: 11, kind: 'idea', title: 'Ryokan', category: 'lodging', duration_minutes: null} }),
     ];
     // Only entry 11 (Ryokan) is scheduled — its todo should sort first despite a tied due date.
     expect(sortOpenTodos(todos, new Set([11])).map((t) => t.id)).toEqual([2, 1]);
@@ -46,7 +46,7 @@ describe('sortOpenTodos', () => {
   it('treats trip-level todos (no entry) as unscheduled for the tiebreak', () => {
     const todos = [
       makeTodo({ id: 1, due_on: '2026-11-05' }),
-      makeTodo({ id: 2, due_on: '2026-11-05', entry: { id: 11, kind: 'idea', title: 'Ryokan', category: 'lodging', duration_minutes: null, location_name: null } }),
+      makeTodo({ id: 2, due_on: '2026-11-05', entry: { id: 11, kind: 'idea', title: 'Ryokan', category: 'lodging', duration_minutes: null} }),
     ];
     expect(sortOpenTodos(todos, new Set([11])).map((t) => t.id)).toEqual([2, 1]);
   });
@@ -57,7 +57,7 @@ describe('isEntryScheduled', () => {
     expect(isEntryScheduled(null, new Set([1]))).toBe(false);
   });
   it('checks membership in the scheduled id set', () => {
-    expect(isEntryScheduled({ id: 1, kind: 'idea', title: 'x', category: null, duration_minutes: null, location_name: null }, new Set([1]))).toBe(true);
-    expect(isEntryScheduled({ id: 2, kind: 'idea', title: 'x', category: null, duration_minutes: null, location_name: null }, new Set([1]))).toBe(false);
+    expect(isEntryScheduled({ id: 1, kind: 'idea', title: 'x', category: null, duration_minutes: null, }, new Set([1]))).toBe(true);
+    expect(isEntryScheduled({ id: 2, kind: 'idea', title: 'x', category: null, duration_minutes: null, }, new Set([1]))).toBe(false);
   });
 });

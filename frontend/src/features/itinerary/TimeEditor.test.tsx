@@ -324,10 +324,9 @@ const BUNDLE: ItineraryItem = {
     title: 'Tuesday south',
     category: 'place',
     duration_minutes: 240,
-    location_name: 'Kyoto south',
   },
   members: [
-    { id: 21, kind: 'idea', title: 'Fushimi Inari', category: 'place', duration_minutes: 120, location_name: null },
+    { id: 21, kind: 'idea', title: 'Fushimi Inari', category: 'place', duration_minutes: 120, },
   ],
 };
 

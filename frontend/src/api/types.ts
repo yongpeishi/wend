@@ -56,7 +56,6 @@ export interface Entry {
   category: EntryCategory | null;
   starts_on: string | null;
   ends_on: string | null;
-  location_name: string | null;
   address: string | null;
   lat: number | null;
   lng: number | null;
@@ -102,7 +101,7 @@ export interface Entry {
 /**
  * The compact form of an Entry that other resources embed — `parents`,
  * `Todo.entry`, and the itinerary's `ItineraryItem.entry`/`members`. Mirrors
- * `EntrySerializer.summary`. `duration_minutes` and `location_name` carry the
+ * `EntrySerializer.summary`. `duration_minutes` carry the
  * same nullability they have on the full `Entry`.
  */
 export interface EntrySummary {
@@ -111,7 +110,6 @@ export interface EntrySummary {
   title: string;
   category: EntryCategory | null;
   duration_minutes: number | null;
-  location_name: string | null;
 }
 
 /**
@@ -294,7 +292,6 @@ export type EntryWritePayload = Partial<
     | 'category'
     | 'starts_on'
     | 'ends_on'
-    | 'location_name'
     | 'address'
     | 'lat'
     | 'lng'

@@ -134,7 +134,7 @@ export function TripsList() {
                 <li key={entry.id}>
                   <EntryRow
                     title={entry.title}
-                    metadata={[entry.category, entry.location_name].filter(Boolean) as string[]}
+                    metadata={[entry.category].filter(Boolean) as string[]}
                     kept
                     onSelect={() => navigate(`/entries/${entry.id}`)}
                   />

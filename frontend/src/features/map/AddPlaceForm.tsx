@@ -10,7 +10,7 @@ import styles from './AddPlaceForm.module.css';
 export interface AddPlaceFormProps {
   /** Set when the user clicked the map directly — the manual, geocode-free path. */
   clickedLocation: { lat: number; lng: number } | null;
-  onSave: (data: { title: string; lat: number; lng: number; location_name: string | null }) => void;
+  onSave: (data: { title: string; lat: number; lng: number;}) => void;
   onCancel: () => void;
   /** Lets the caller draw a pending marker on the map as a location is chosen, before it's saved. */
   onChosenLocationChange?: (location: { lat: number; lng: number } | null) => void;
@@ -45,7 +45,7 @@ export function AddPlaceForm({ clickedLocation, onSave, onCancel, onChosenLocati
   function save() {
     const trimmedTitle = title.trim();
     if (!chosen || !trimmedTitle) return;
-    onSave({ title: trimmedTitle, lat: chosen.lat, lng: chosen.lng, location_name: chosen.label || null });
+    onSave({ title: trimmedTitle, lat: chosen.lat, lng: chosen.lng});
   }
 
   return (

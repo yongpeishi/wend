@@ -26,7 +26,6 @@ function entry(
     category: 'food',
     starts_on: null,
     ends_on: null,
-    location_name: null,
     address,
     lat: null,
     lng: null,

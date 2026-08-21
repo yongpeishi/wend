@@ -77,11 +77,11 @@ describe('NewIdeaModal', () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const entries = await api.get<
-      { entries: { title: string; category: string | null; location_name: string | null; duration_minutes: number | null }[] }
+      { entries: { title: string; category: string | null; duration_minutes: number | null }[] }
     >('/entries', { params: { trip_id: TRIP_ID, kind: 'idea' } });
     const idea = entries.entries.find((e) => e.title === 'Kaiseki dinner');
     if (!idea) console.log('ALL ENTRIES', JSON.stringify(entries.entries, null, 2));
-    expect(idea).toMatchObject({ category: 'food', location_name: 'Gion', duration_minutes: 120 });
+    expect(idea).toMatchObject({ category: 'food', duration_minutes: 120 });
   });
 
   /**

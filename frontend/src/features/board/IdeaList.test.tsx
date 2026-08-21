@@ -18,7 +18,6 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     category: null,
     starts_on: null,
     ends_on: null,
-    location_name: null,
     address: null,
     lat: null,
     lng: null,
@@ -43,9 +42,9 @@ function makeEntry(overrides: Partial<Entry>): Entry {
 }
 
 const ENTRIES = [
-  makeEntry({ id: 1, title: 'Fushimi Inari', category: 'place', location_name: 'Kyoto south', duration_minutes: 120 }),
-  makeEntry({ id: 2, title: 'Nishiki Market', category: 'food', location_name: 'Kyoto central' }),
-  makeEntry({ id: 3, title: 'Kinkaku-ji', category: 'place', location_name: 'Kyoto west', todos_open_count: 2 }),
+  makeEntry({ id: 1, title: 'Fushimi Inari', category: 'place', duration_minutes: 120 }),
+  makeEntry({ id: 2, title: 'Nishiki Market', category: 'food', ),
+  makeEntry({ id: 3, title: 'Kinkaku-ji', category: 'place', todos_open_count: 2 }),
   makeEntry({ id: 4, title: 'Somewhere unplaced', category: 'other' }),
 ];
 

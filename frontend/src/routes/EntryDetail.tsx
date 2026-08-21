@@ -115,7 +115,6 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
       title: entry.title,
       description: entry.description ?? '',
       category: entry.category ?? '',
-      location_name: entry.location_name ?? '',
       address: entry.address ?? '',
       lat: entry.lat == null ? '' : String(entry.lat),
       lng: entry.lng == null ? '' : String(entry.lng),
@@ -284,26 +283,14 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
               </Field>
             </div>
 
-            <div className={styles.pair}>
-              <Field label="Location">
-                <input
-                  className={styles.input}
-                  placeholder="Name of the place"
-                  value={draft.location_name ?? ''}
-                  onChange={(e) => setDraft((d) => ({ ...d, location_name: e.target.value }))}
-                  onBlur={(e) => save('location_name', e.target.value)}
-                />
-              </Field>
-
-              <Field label="Address">
-                <input
-                  className={styles.input}
-                  value={draft.address ?? ''}
-                  onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
-                  onBlur={(e) => save('address', e.target.value)}
-                />
-              </Field>
-            </div>
+            <Field label="Address">
+              <input
+                className={styles.input}
+                value={draft.address ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
+                onBlur={(e) => save('address', e.target.value)}
+              />
+            </Field>
 
             <div className={styles.pair}>
               <Field label="Latitude">
@@ -357,10 +344,7 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
               <Fact label="Estimated duration" value={formatDuration(entry.duration_minutes)} />
             </div>
 
-            <div className={styles.pair}>
-              <Fact label="Location" value={entry.location_name} />
-              <Fact label="Address" value={entry.address} />
-            </div>
+            <Fact label="Address" value={entry.address} />
 
             <div className={styles.pair}>
               <Fact label="Latitude" value={entry.lat == null ? null : String(entry.lat)} />

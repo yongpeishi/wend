@@ -30,7 +30,6 @@ classDiagram
         +enum category = place / food / activity / lodging / transport / other
         +date starts_on
         +date ends_on
-        +string location_name
         +string address
         +decimal lat
         +decimal lng

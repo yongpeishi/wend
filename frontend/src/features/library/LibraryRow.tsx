@@ -28,7 +28,6 @@ export function LibraryRow({ entry, selected, onToggleSelect, onHoverChange }: L
 
   const metadata = [
     entry.category ? CATEGORY_LABELS[entry.category] : null,
-    entry.location_name,
   ].filter((part): part is string => Boolean(part));
 
   return (

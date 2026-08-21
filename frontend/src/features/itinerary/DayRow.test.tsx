@@ -18,7 +18,7 @@ function item(id: number, title: string, start: number, end: number): ItineraryI
     ends_at_minutes: end,
     note: null,
     position: 0,
-    entry: { id, kind: 'idea', title, category: 'place', duration_minutes: null, location_name: null },
+    entry: { id, kind: 'idea', title, category: 'place', duration_minutes: null},
     members: [],
   };
 }

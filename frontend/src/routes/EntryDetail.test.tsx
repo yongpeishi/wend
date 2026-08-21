@@ -420,11 +420,11 @@ describe('EntryDetail — what blur actually saves', () => {
     const panel = await openPanel('member');
     const read = within(panel);
 
-    const location = read.getByRole('textbox', { name: 'Location' });
-    await user.clear(location);
-    await user.type(location, 'Fushimi Inari, south gate');
+    const notes = read.getByRole('textbox', { name: 'Notes' });
+    await user.clear(notes);
+    await user.type(notes, 'Something else');
     await user.tab();
 
-    await waitFor(() => expect(patched).toEqual([{ location_name: 'Fushimi Inari, south gate' }]));
+    await waitFor(() => expect(patched).toEqual([{ notes: 'Something else' }]));
   });
 });

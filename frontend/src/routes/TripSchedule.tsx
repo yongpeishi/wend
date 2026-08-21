@@ -196,8 +196,7 @@ export function TripSchedule() {
   // is the only place-name this screen actually knows — we do not reverse
   // geocode, and guessing one from a coordinate is a second network call for a
   // heading.
-  const hereRow = rows.find((row) => row.state === 'now');
-  const heading = entryFor(entries, hereRow?.entryId ?? null)?.location_name ?? 'Around you';
+  const heading = 'Around you';
 
   // Waiting on the browser is only worth saying when there is nothing to show
   // meanwhile: with the plan's origin standing in, the map and the list are
@@ -208,7 +207,7 @@ export function TripSchedule() {
   // so the sentence under the heading can say it out loud rather than claim a
   // middle-of-the-trip the map is not centred on.
   const originEntry = entryFor(entries, originRow?.entryId ?? null);
-  const originName = originEntry?.location_name ?? originEntry?.title ?? null;
+  const originName = originEntry?.title ?? null;
 
   // A note replaces the list; a blurb sits under the heading and explains it.
   // Both have to stay true about where the distances are measured from.

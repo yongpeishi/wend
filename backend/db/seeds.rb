@@ -76,56 +76,56 @@ japan = entry!(
 
 daiso_harajuku = entry!(
   kind: "idea", title: "Daiso Harajuku", category: "place", created_by: sarah,
-  location_name: "Daiso Harajuku", address: "1-19-24 Jingumae, Shibuya City, Tokyo",
+  address: "1-19-24 Jingumae, Shibuya City, Tokyo",
   lat: 35.6702, lng: 139.7016, duration_minutes: 45
 )
 daiso_shibuya = entry!(
   kind: "idea", title: "Daiso Shibuya", category: "place", created_by: sarah,
-  location_name: "Daiso Shibuya", address: "20-14 Udagawacho, Shibuya City, Tokyo",
+  address: "20-14 Udagawacho, Shibuya City, Tokyo",
   lat: 35.6595, lng: 139.7005, duration_minutes: 45
 )
 daiso_kyoto = entry!(
   kind: "idea", title: "Daiso Kyoto Kawaramachi", category: "place", created_by: peter,
-  location_name: "Daiso Kyoto Kawaramachi", address: "556 Nakanocho, Nakagyo Ward, Kyoto",
+  address: "556 Nakanocho, Nakagyo Ward, Kyoto",
   lat: 35.0038, lng: 135.7681, duration_minutes: 45
 )
 yoyogi = entry!(
   kind: "idea", title: "Yoyogi Park, late afternoon", category: "activity", created_by: sarah,
-  location_name: "Yoyogi Park", lat: 35.6720, lng: 139.6949, duration_minutes: 60,
+  lat: 35.6720, lng: 139.6949, duration_minutes: 60,
   notes: "Ten minutes from the Harajuku shops -- somewhere to sit once the bags are heavy."
 )
 
 nanzenji = entry!(
   kind: "idea", title: "Nanzen-ji", category: "place", created_by: peter,
-  location_name: "Nanzen-ji", address: "Nanzenji Fukuchicho, Sakyo Ward, Kyoto",
+  address: "Nanzenji Fukuchicho, Sakyo Ward, Kyoto",
   lat: 35.0116, lng: 135.7931, duration_minutes: 60,
   notes: "Free to enter the grounds; the Sanmon gate and Hojo garden charge separately."
 )
 gion_walk = entry!(
   kind: "idea", title: "Gion, walking slowly", category: "activity", created_by: peter,
-  location_name: "Gion", lat: 35.0036, lng: 135.7752, duration_minutes: 60,
+  lat: 35.0036, lng: 135.7752, duration_minutes: 60,
   notes: "No plan needed. Down Hanamikoji from Yasaka, stopping when something looks good."
 )
 ramen_dinner = entry!(
   kind: "idea", title: "Ramen at Gion Ramen Koji", category: "food", created_by: peter,
-  location_name: "Gion Ramen Koji", lat: 35.0037, lng: 135.7752, duration_minutes: 60,
+  lat: 35.0037, lng: 135.7752, duration_minutes: 60,
   source_url: "https://instagram.com/p/example-ramen"
 )
 kaiseki_dinner = entry!(
   kind: "idea", title: "Kaiseki at Giro Giro Hitoshina", category: "food", created_by: sarah,
-  location_name: "Giro Giro Hitoshina", lat: 35.0068, lng: 135.7714, duration_minutes: 120,
+  lat: 35.0068, lng: 135.7714, duration_minutes: 120,
   notes: "Needs a reservation -- see todo."
 )
 
 # Lodging, activity, transport, and "other" categories, to round out all six.
 hotel = entry!(
   kind: "idea", title: "Hotel Granvia Kyoto", category: "lodging", created_by: sarah,
-  location_name: "Hotel Granvia Kyoto", lat: 34.9858, lng: 135.7588,
+  lat: 34.9858, lng: 135.7588,
   notes: "Attached to Kyoto Station, easy for early Shinkansen mornings."
 )
 teamlab = entry!(
   kind: "idea", title: "teamLab Planets", category: "activity", created_by: peter,
-  location_name: "teamLab Planets TOKYO", lat: 35.6467, lng: 139.7930, duration_minutes: 90,
+  lat: 35.6467, lng: 139.7930, duration_minutes: 90,
   source_url: "https://instagram.com/p/example-teamlab"
 )
 link!(parent: japan, child: teamlab)

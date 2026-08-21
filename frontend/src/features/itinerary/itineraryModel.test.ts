@@ -22,7 +22,6 @@ function summary(overrides: Partial<EntrySummary> = {}): EntrySummary {
     title: 'Fushimi Inari',
     category: 'place',
     duration_minutes: 120,
-    location_name: 'Kyoto south',
     ...overrides,
   };
 }

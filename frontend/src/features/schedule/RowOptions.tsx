@@ -60,7 +60,6 @@ export function RowOptions({ itemId, bundleId, chosenEntryId, canEdit = true }: 
         const body = (
           <>
             <span className={styles.name}>{member.title}</span>
-            {member.location_name && <span className={styles.where}>{member.location_name}</span>}
             {/* An editor's chosen option says so through aria-pressed. A viewer
                 has no buttons to press, so the answer has to be a word. */}
             {!canEdit && chosen && <span className={styles.mark}>Chosen</span>}

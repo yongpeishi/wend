@@ -202,7 +202,7 @@ module Api
       params.require(:entry).permit(
         *(action_name == "create" ? [ :kind ] : []),
         :title, :description, :category, :starts_on, :ends_on,
-        :location_name, :address, :lat, :lng, :duration_minutes, :source_url,
+        :address, :lat, :lng, :duration_minutes, :source_url,
         :notes, :from_entry_id, :to_entry_id,
         pros: [:id, :text], cons: [:id, :text]
       )

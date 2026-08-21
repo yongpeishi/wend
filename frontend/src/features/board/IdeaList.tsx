@@ -78,8 +78,6 @@ export interface IdeaListProps {
  * Collapsing is local state, not a filter: a collapsed section still counts its
  * ideas in its own header, so nothing ever silently disappears. It resets on
  * remount, which is the honest default — a fold is a glance, not a setting.
- *
- * On group order and the "No location" bucket, see `groupByLocation`.
  */
 export function IdeaList({
   entries,

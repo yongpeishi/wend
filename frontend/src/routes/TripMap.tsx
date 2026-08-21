@@ -61,10 +61,10 @@ export function TripMap() {
     setPendingLocation(null);
   }
 
-  function handleSave(data: { title: string; lat: number; lng: number; location_name: string | null }) {
+  function handleSave(data: { title: string; lat: number; lng: number; }) {
     createEntry.mutate(
       {
-        entry: { kind: 'idea', title: data.title, lat: data.lat, lng: data.lng, location_name: data.location_name },
+        entry: { kind: 'idea', title: data.title, lat: data.lat, lng: data.lng },
         parent_id: trip.id,
       },
       {

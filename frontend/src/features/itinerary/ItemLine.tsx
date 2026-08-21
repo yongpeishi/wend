@@ -32,7 +32,7 @@ export function ItemLine({ item, onEditTime, onRemove, readOnly = false }: ItemL
 
   const title = item.entry?.title ?? 'Something kept';
   const span = formatSpan(item.starts_at_minutes, item.ends_at_minutes);
-  const meta = joinMeta(item.entry?.location_name, item.note);
+  const meta = joinMeta(item.note);
   const canEditTime = Boolean(onEditTime) && !readOnly;
 
   if (editing && onEditTime) {

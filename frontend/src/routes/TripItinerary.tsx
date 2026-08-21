@@ -608,7 +608,6 @@ function toSummary(entry: Entry): EntrySummary {
     title: entry.title,
     category: entry.category,
     duration_minutes: entry.duration_minutes,
-    location_name: entry.location_name,
   };
 }
 

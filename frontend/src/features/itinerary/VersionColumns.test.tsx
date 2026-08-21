@@ -9,7 +9,7 @@ import { VersionColumns } from './VersionColumns';
 const DAY = '2026-10-15';
 
 function summary(id: number, title: string, kind: EntrySummary['kind'] = 'idea'): EntrySummary {
-  return { id, kind, title, category: 'place', duration_minutes: 60, location_name: 'Kyoto west' };
+  return { id, kind, title, category: 'place', duration_minutes: 60,};
 }
 
 function item(overrides: Partial<ItineraryItem> & { id: number }): ItineraryItem {

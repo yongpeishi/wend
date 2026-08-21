@@ -5,7 +5,7 @@ class Api::ItineraryTest < ActionDispatch::IntegrationTest
     @user = create_user
     sign_in_as(@user)
     @trip = create_trip(created_by: @user)
-    @idea = create_idea(title: "Nanzen-ji", created_by: @user, duration_minutes: 40, location_name: "Nanzen-ji")
+    @idea = create_idea(title: "Nanzen-ji", created_by: @user, duration_minutes: 40)
     link!(parent: @trip, child: @idea)
   end
 
@@ -61,7 +61,7 @@ class Api::ItineraryTest < ActionDispatch::IntegrationTest
 
     assert_equal(
       { "id" => @idea.id, "kind" => "idea", "title" => "Nanzen-ji", "category" => "place",
-        "duration_minutes" => 40, "location_name" => "Nanzen-ji" },
+        "duration_minutes" => 40},
       items.first["entry"]
     )
     assert_empty items.first["members"]

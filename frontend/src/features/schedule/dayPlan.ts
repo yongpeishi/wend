@@ -170,7 +170,7 @@ export function buildPlanRows(
       time: formatTimeRange(start, end),
       dur: durationFor(item, entry),
       title: entry?.title ?? 'Untitled',
-      meta: joinMeta(entry?.category, entry?.location_name),
+      meta: joinMeta(entry?.category),
       state,
       tone: toneFor(entry),
       entryId: item.entry_id,
