@@ -78,6 +78,7 @@ function renderList(groupMode: GroupMode, entries = ENTRIES, extra: ListExtras =
               canEdit={extra.canEdit}
               insideCounts={extra.insideCounts ?? new Map()}
               otherParents={extra.otherParents ?? new Map()}
+              allIdeas={entries}
               onDrill={extra.onDrill ?? (() => {})}
               expandedId={extra.expandedId ?? null}
               onToggleExpand={extra.onToggleExpand ?? (() => {})}
@@ -191,8 +192,8 @@ describe('IdeaList', () => {
 
   /**
    * The list draws no affordance of its own — it only has to hand the
-   * capability on. The proof is at the rows: no grips, no ⋯ menus, and every
-   * idea still there to read.
+   * capability on. The proof is at the rows: no grips, and every idea still
+   * there to read.
    */
   it('passes read-only down to every row, in every grouping, without losing an idea', () => {
     for (const mode of ['none', 'category', 'location'] as const) {
@@ -202,7 +203,6 @@ describe('IdeaList', () => {
         expect(screen.getByRole('button', { name: new RegExp(`^${entry.title}`) })).toBeInTheDocument();
       }
       expect(screen.queryByRole('button', { name: /^Drag / })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^Actions for / })).not.toBeInTheDocument();
 
       view.unmount();
     }

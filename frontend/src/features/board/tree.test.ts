@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ideaChildrenOf, otherParentTitles, rootIdeas, subtreeCount } from './tree';
+import { ideaChildrenOf, otherParentTitles, rootIdeas, subtreeCount, subtreeIdeaIds } from './tree';
 import type { Entry } from '../../api/types';
 
 function makeEntry(overrides: Partial<Entry>): Entry {
@@ -123,6 +123,42 @@ describe('subtreeCount', () => {
     const cycle = [idea(1, 'a', [3]), idea(2, 'b', [1]), idea(3, 'c', [2])];
     expect(subtreeCount(cycle, 1)).toBe(2);
     expect(subtreeCount(cycle, 2)).toBe(2);
+  });
+});
+
+describe('subtreeIdeaIds', () => {
+  it('names every descendant at every depth, and never the idea itself', () => {
+    expect(subtreeIdeaIds(IDEAS, 10)).toEqual(new Set([11, 12, 13]));
+    expect(subtreeIdeaIds(IDEAS, 11)).toEqual(new Set([12]));
+  });
+
+  it('is empty for a leaf and for an id that is not here at all', () => {
+    expect(subtreeIdeaIds(IDEAS, 12)).toEqual(new Set());
+    expect(subtreeIdeaIds(IDEAS, 999)).toEqual(new Set());
+  });
+
+  it('holds a diamond-reachable idea once, like the count it backs', () => {
+    const diamond = [
+      idea(1, 'top'),
+      idea(2, 'left', [1]),
+      idea(3, 'right', [1]),
+      idea(4, 'bottom', [2, 3]),
+    ];
+    expect(subtreeIdeaIds(diamond, 1)).toEqual(new Set([2, 3, 4]));
+  });
+
+  it('terminates on a cycle and leaves the starting idea out of its own subtree', () => {
+    // 1 -> 2 -> 3 -> back to 1. The walk reaches 1 again and must neither
+    // loop nor claim 1 as its own descendant.
+    const cycle = [idea(1, 'a', [3]), idea(2, 'b', [1]), idea(3, 'c', [2])];
+    expect(subtreeIdeaIds(cycle, 1)).toEqual(new Set([2, 3]));
+    expect(subtreeIdeaIds(cycle, 3)).toEqual(new Set([1, 2]));
+  });
+
+  it('agrees with subtreeCount, which reads its number off this set', () => {
+    for (const entry of IDEAS) {
+      expect(subtreeCount(IDEAS, entry.id)).toBe(subtreeIdeaIds(IDEAS, entry.id).size);
+    }
   });
 });
 

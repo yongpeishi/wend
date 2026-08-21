@@ -136,7 +136,7 @@ export function FilterBar({
   // document listener rather than a full-screen invisible catcher element,
   // because a catcher swallows the first click anywhere on the page, and
   // dismissing a filter panel should not also cost you the click you were
-  // making. Same pair of listeners as IdeaActionsMenu.
+  // making. Same pair of listeners as IdeaRow's "Add to plan" popover.
   useEffect(() => {
     if (!open) return;
     firstChipRef.current?.focus();

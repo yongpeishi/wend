@@ -21,8 +21,6 @@ export interface IdeaListProps {
   selectMode?: boolean;
   selectedIds: number[];
   onToggleSelect: (id: number, shiftKey: boolean) => void;
-  /** Passed straight through to each row — see IdeaRow's `onEdit`. */
-  onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
   /**
    * May you change this trip? Forwarded to every row — the list draws no
@@ -42,6 +40,12 @@ export interface IdeaListProps {
    * the one this list is showing. Missing id = nowhere else (`?? []`).
    */
   otherParents: ReadonlyMap<number, string[]>;
+  /**
+   * Every live idea on the trip, forwarded whole to every row — the rows'
+   * inline edit form names parents and offers nesting choices from it. See
+   * IdeaRow's `allIdeas`.
+   */
+  allIdeas: Entry[];
   /** Descend into an idea — forwarded untouched to every row. */
   onDrill: (id: number) => void;
   /**
@@ -77,11 +81,11 @@ export function IdeaList({
   selectMode = false,
   selectedIds,
   onToggleSelect,
-  onEdit,
   onToast,
   canEdit = true,
   insideCounts,
   otherParents,
+  allIdeas,
   onDrill,
   expandedId,
   onToggleExpand,
@@ -110,11 +114,11 @@ export function IdeaList({
         selectMode={selectMode}
         selected={selectedIds.includes(entry.id)}
         onToggleSelect={onToggleSelect}
-        onEdit={onEdit}
         onToast={onToast}
         canEdit={canEdit}
         insideCount={insideCounts.get(entry.id) ?? 0}
         otherParents={otherParents.get(entry.id) ?? []}
+        allIdeas={allIdeas}
         onDrill={onDrill}
         expanded={expandedId === entry.id}
         onToggleExpand={onToggleExpand}

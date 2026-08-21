@@ -54,11 +54,12 @@ interface RowOptions {
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: (id: number, shiftKey: boolean) => void;
-  onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
   canEdit?: boolean;
   insideCount?: number;
   otherParents?: string[];
+  /** Every live idea on the trip — what the inline edit form reads. */
+  allIdeas?: Entry[];
   onDrill?: (id: number) => void;
   /** Pins the CONTROLLED expanded prop. With `onToggleExpand`, turns the
       harness's stand-in board off entirely. */
@@ -85,11 +86,11 @@ function HarnessRow({ options }: { options: RowOptions }) {
       selectMode={options.selectMode ?? false}
       selected={options.selected ?? false}
       onToggleSelect={options.onToggleSelect ?? (() => {})}
-      onEdit={options.onEdit}
       onToast={options.onToast}
       canEdit={options.canEdit}
       insideCount={options.insideCount ?? 0}
       otherParents={options.otherParents ?? []}
+      allIdeas={options.allIdeas ?? [entry]}
       onDrill={options.onDrill ?? (() => {})}
       expanded={controlled ? (options.expanded ?? false) : openId === entry.id}
       onToggleExpand={
@@ -138,10 +139,10 @@ async function expandRow() {
   return user;
 }
 
-/** Opens the ⋯ menu — which sits at the open row's top right now. */
-async function openActions() {
+/** Opens the row and swaps it for the inline edit form. */
+async function startEditing() {
   const user = await expandRow();
-  await user.click(screen.getByRole('button', { name: 'Actions for Fushimi Inari' }));
+  await user.click(screen.getByRole('button', { name: 'Edit' }));
   return user;
 }
 
@@ -222,21 +223,17 @@ describe('IdeaRow — drilling in', () => {
     expect(onToggleExpand).not.toHaveBeenCalled();
   });
 
-  it('offers the same descent from inside the open row', async () => {
+  // The pill at the top right is the card's ONE drill affordance — the panel
+  // used to carry a second "Open N inside" button, and it is gone on purpose.
+  it('keeps the pill as the only way down once the row is open', async () => {
     const onDrill = vi.fn();
     renderRow({ insideCount: 3, onDrill });
     const user = await expandRow();
 
-    await user.click(screen.getByRole('button', { name: 'Open 3 inside' }));
+    expect(screen.queryByRole('button', { name: /^Open .* inside$/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '3 inside ›' }));
 
     expect(onDrill).toHaveBeenCalledWith(42);
-  });
-
-  it('keeps the panel free of a descent that leads nowhere', async () => {
-    renderRow({ insideCount: 0 });
-    await expandRow();
-
-    expect(screen.queryByRole('button', { name: /^Open .* inside$/ })).not.toBeInTheDocument();
   });
 });
 
@@ -293,14 +290,13 @@ describe('IdeaRow — opening the row', () => {
     expect(document.getElementById(panelId as string)).toBeInTheDocument();
   });
 
-  it('does not open the editor when the row is clicked — that is the ⋯ menu’s job now', async () => {
-    const onEdit = vi.fn();
-    renderRow({ onEdit });
+  it('does not open the edit form when the row is clicked — that is the Edit button’s job', async () => {
+    renderRow();
     const user = userEvent.setup();
 
     await user.click(rowToggle());
 
-    expect(onEdit).not.toHaveBeenCalled();
+    expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument();
     expect(screen.queryByText('Entry detail screen')).not.toBeInTheDocument();
     expect(rowToggle()).toHaveAttribute('aria-expanded', 'true');
   });
@@ -533,11 +529,12 @@ describe('IdeaRow — the interactions that must survive', () => {
     expect(screen.getByRole('button', { name: 'Drag Fushimi Inari onto a plan to add it there' })).toBeInTheDocument();
   });
 
-  // Every drag in Wend has a pointer-free equivalent. This is the row's, and
-  // it lives inside the ⋯ menu with the rest of the row's verbs.
+  // Every drag in Wend has a pointer-free equivalent. This is the row's: the
+  // plan chips behind the open panel's "Add to plan" button.
   it('keeps a pointer-free way into a plan', async () => {
     renderRow({ bundles: [PLAN] });
-    await openActions();
+    const user = await expandRow();
+    await user.click(screen.getByRole('button', { name: 'Add to plan' }));
 
     expect(screen.getByRole('button', { name: 'Tuesday south' })).toBeInTheDocument();
   });
@@ -557,21 +554,18 @@ describe('IdeaRow — the interactions that must survive', () => {
     expect(rowToggle()).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('hands editing to the board when it offers to take it, rather than navigating away', async () => {
-    const onEdit = vi.fn();
-    renderRow({ onEdit });
-    const user = await openActions();
+  it('edits in place, never navigating away', async () => {
+    renderRow();
+    await startEditing();
 
-    await user.click(screen.getByRole('button', { name: 'Edit' }));
-
-    expect(onEdit).toHaveBeenCalledWith(42);
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
     expect(screen.queryByText('Entry detail screen')).not.toBeInTheDocument();
   });
 
   it('sets an idea aside rather than destroying it', async () => {
     const del = vi.spyOn(api, 'delete').mockResolvedValue({ entry: makeEntry({ archived_at: 'now' }) });
     renderRow();
-    const user = await openActions();
+    const user = await expandRow();
 
     await user.click(screen.getByRole('button', { name: 'Move to Set aside' }));
 
@@ -581,105 +575,208 @@ describe('IdeaRow — the interactions that must survive', () => {
   });
 });
 
-// The ⋯ menu sits at the open row's top right: every verb the row owns
-// arrives with the panel, and the closed row stays a thing you read, drag or pick.
-describe('IdeaRow — the ⋯ actions menu', () => {
+// The open card's verbs sit on one line at the foot of the panel — the ⋯
+// overflow menu is gone, and the closed row stays a thing you read, drag or pick.
+describe('IdeaRow — the actions row', () => {
   it('keeps every verb off the closed row', () => {
     renderRow();
-    expect(screen.queryByRole('button', { name: 'Actions for Fushimi Inari' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Move to Set aside' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add to plan' })).not.toBeInTheDocument();
   });
 
-  it('says whose actions they are, once the row is open', async () => {
-    renderRow();
-    await expandRow();
-    const trigger = screen.getByRole('button', { name: 'Actions for Fushimi Inari' });
-    expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  // Top right means the header, not the panel: the trigger lives outside the
-  // element the disclosure controls, up with the title and the pills.
-  it('keeps the ⋯ at the top right, outside the panel it acts on', async () => {
-    renderRow();
-    await expandRow();
-
-    const trigger = screen.getByRole('button', { name: 'Actions for Fushimi Inari' });
-    const panelId = rowToggle().getAttribute('aria-controls') as string;
-    expect(trigger.closest(`#${CSS.escape(panelId)}`)).toBeNull();
-  });
-
-  // "Move to Set aside", not "Set aside": the menu is too tight for a line of
-  // explanation, so the label names the list at the foot of the board that the
-  // idea is going to — which is also the way back.
-  it('offers Edit, both ways of moving the idea, and the plans together', async () => {
+  // "Move to Set aside", not "Set aside": the label names the list at the foot
+  // of the board that the idea is going to — which is also the way back.
+  it('offers Add to plan, Edit and Move to Set aside together, once the row is open', async () => {
     renderRow({ bundles: [PLAN] });
-    await openActions();
+    await expandRow();
 
+    expect(screen.getByRole('button', { name: 'Add to plan' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Make it a trip of its own' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Move to Set aside' })).toBeInTheDocument();
-    expect(screen.getAllByText('Add to plan').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Tuesday south' })).toBeInTheDocument();
   });
 
-  /**
-   * Lifting an idea out used to sit at the foot of the edit panel. It is a move
-   * rather than a fact about the idea, so it joined the other moves here — and
-   * the panel it left is now only about what the idea is.
-   */
-  it('lifts an idea out into a trip of its own, and closes behind itself', async () => {
-    const post = vi
-      .spyOn(api, 'post')
-      .mockResolvedValue({ entry: makeEntry({ kind: 'trip' }) });
-    renderRow();
-    const user = await openActions();
+  // The overflow menu and everything only it offered are gone from the board —
+  // the bulk bar keeps the multi-select version of the lift.
+  it('has no ⋯ menu and no "Make it a trip of its own" anywhere on the card', async () => {
+    renderRow({ bundles: [PLAN] });
+    await expandRow();
 
-    await user.click(screen.getByRole('button', { name: 'Make it a trip of its own' }));
-
-    await waitFor(() => expect(post).toHaveBeenCalledWith('/entries/42/lift'));
+    expect(screen.queryByRole('button', { name: 'Actions for Fushimi Inari' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Make it a trip of its own' })).not.toBeInTheDocument();
+  });
+
+  it('toasts "Set aside." once the idea is set aside', async () => {
+    const del = vi.spyOn(api, 'delete').mockResolvedValue({ entry: makeEntry({ archived_at: 'now' }) });
+    renderRow();
+    const user = await expandRow();
+
+    await user.click(screen.getByRole('button', { name: 'Move to Set aside' }));
+
+    expect(await screen.findByText('Set aside.')).toBeInTheDocument();
+    del.mockRestore();
+  });
+
+  it('says the house sentence when setting aside does not save', async () => {
+    server.use(http.delete('/api/entries/42', () => HttpResponse.json({ error: 'no' }, { status: 500 })));
+    renderRow();
+    const user = await expandRow();
+
+    await user.click(screen.getByRole('button', { name: 'Move to Set aside' }));
+
+    expect(await screen.findByText("That didn't save. It's still here — try again.")).toBeInTheDocument();
+  });
+});
+
+/**
+ * Edit swaps the card in place for the same details form the capture bar's
+ * Tab opens (IdeaComposer), seeded with the idea's facts. The row owns what
+ * "Save" means: the entry PATCH, then the parent-link diff.
+ */
+describe('IdeaRow — editing in place', () => {
+  /** 42's world: a current parent, a possible parent, and a child of its own. */
+  const KYOTO_DAY = makeEntry({ id: 7, title: 'Kyoto day' });
+  const FOOD_CRAWL = makeEntry({ id: 8, title: 'Food crawl' });
+  const SHRINE_PATH = makeEntry({ id: 9, title: 'Shrine path', parent_ids: [42] });
+  // Parent 90 is a bundle — not in the idea set, so the form must not name it.
+  const ENTRY = makeEntry({
+    description: 'Thousand torii gates.',
+    address: '68 Fukakusa',
+    category: 'activity',
+    parent_ids: [7, 90],
+  });
+  const ALL_IDEAS = [ENTRY, KYOTO_DAY, FOOD_CRAWL, SHRINE_PATH];
+
+  it('swaps the card for the details form, seeded with the idea as it stands', async () => {
+    renderRow({ entry: ENTRY, allIdeas: ALL_IDEAS });
+    await startEditing();
+
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Fushimi Inari');
+    expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue('Thousand torii gates.');
+    expect(screen.getByRole('textbox', { name: 'Address' })).toHaveValue('68 Fukakusa');
+    expect(screen.getByRole('radio', { name: 'Activity' })).toHaveAttribute('aria-checked', 'true');
+    // The idea parent is named; the bundle (90) is not the form's to claim.
+    expect(screen.getByRole('button', { name: 'Remove from Kyoto day' })).toBeInTheDocument();
+    expect(screen.queryByText('#90')).not.toBeInTheDocument();
+    // The card's header and panel are gone — the form IS the card now.
+    expect(screen.queryByRole('button', { name: /^Fushimi Inari/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('To-do')).not.toBeInTheDocument();
+  });
+
+  it('never offers the idea itself or its own subtree as a parent', async () => {
+    renderRow({ entry: ENTRY, allIdeas: ALL_IDEAS });
+    const user = await startEditing();
+
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+
+    // Food crawl is a real choice; the idea and its child would make a loop.
+    expect(screen.getByRole('button', { name: 'Food crawl' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Shrine path' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Fushimi Inari' })).not.toBeInTheDocument();
+  });
+
+  it('saves the edited facts through PATCH and comes back to the open panel', async () => {
+    const patch = vi.spyOn(api, 'patch').mockResolvedValue({ entry: ENTRY });
+    const onToast = vi.fn();
+    renderRow({ entry: ENTRY, allIdeas: ALL_IDEAS, onToast });
+    const user = await startEditing();
+
+    await user.clear(screen.getByRole('textbox', { name: 'Short description' }));
+    await user.type(screen.getByRole('textbox', { name: 'Short description' }), 'Ten thousand gates.');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith('/entries/42', {
+        entry: {
+          title: 'Fushimi Inari',
+          description: 'Ten thousand gates.',
+          address: '68 Fukakusa',
+          category: 'activity',
+        },
+      }),
+    );
+    expect(onToast).toHaveBeenCalledWith('Saved.');
+    // Back to the card, form gone.
+    expect(await screen.findByRole('button', { name: /^Fushimi Inari/ })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument();
+    patch.mockRestore();
+  });
+
+  it('writes an emptied description and address as null, not empty words', async () => {
+    const patch = vi.spyOn(api, 'patch').mockResolvedValue({ entry: ENTRY });
+    renderRow({ entry: ENTRY, allIdeas: ALL_IDEAS });
+    const user = await startEditing();
+
+    await user.clear(screen.getByRole('textbox', { name: 'Short description' }));
+    await user.clear(screen.getByRole('textbox', { name: 'Address' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith('/entries/42', {
+        entry: { title: 'Fushimi Inari', description: null, address: null, category: 'activity' },
+      }),
+    );
+    patch.mockRestore();
+  });
+
+  it('turns the parent diff into links added and removed, never rewrites', async () => {
+    const patch = vi.spyOn(api, 'patch').mockResolvedValue({ entry: ENTRY });
+    const post = vi.spyOn(api, 'post').mockResolvedValue({ link: {} });
+    const del = vi.spyOn(api, 'delete').mockResolvedValue(undefined);
+    renderRow({ entry: ENTRY, allIdeas: ALL_IDEAS });
+    const user = await startEditing();
+
+    // Out of Kyoto day, into Food crawl.
+    await user.click(screen.getByRole('button', { name: 'Remove from Kyoto day' }));
+    await user.click(screen.getByRole('button', { name: '+ add parent' }));
+    await user.click(screen.getByRole('button', { name: 'Food crawl' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/entries/8/links', { child_id: 42 }));
+    await waitFor(() => expect(del).toHaveBeenCalledWith('/entries/7/links/42'));
+    patch.mockRestore();
     post.mockRestore();
+    del.mockRestore();
   });
 
-  /** A plan already is a container; there is nothing to lift it out of. */
-  it('does not offer to make a trip out of a plan', async () => {
-    renderRow({ entry: makeEntry({ kind: 'bundle' }) });
-    await openActions();
+  it('stays in the form when the save fails, with the typing intact', async () => {
+    server.use(http.patch('/api/entries/42', () => HttpResponse.json({ error: 'no' }, { status: 500 })));
+    renderRow({ entry: ENTRY, allIdeas: ALL_IDEAS });
+    const user = await startEditing();
 
-    expect(screen.queryByRole('button', { name: 'Make it a trip of its own' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), ' Taisha');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText("That didn't save. It's still here — try again.")).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Fushimi Inari Taisha');
   });
 
-  it('edits from the menu, and closes it behind itself', async () => {
-    const onEdit = vi.fn();
-    renderRow({ onEdit });
-    const user = await openActions();
+  it('cancels back to the open panel, saving nothing', async () => {
+    const patch = vi.spyOn(api, 'patch');
+    renderRow({ entry: ENTRY, allIdeas: ALL_IDEAS });
+    const user = await startEditing();
 
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument();
+    expect(patch).not.toHaveBeenCalled();
+    patch.mockRestore();
+  });
+
+  // `editing` dies with the expansion: a row the board closed mid-edit must
+  // come back as a card, not as the form someone else's drill left behind.
+  it('forgets it was editing once the board closes the row', async () => {
+    const view = renderRow({ entry: ENTRY, allIdeas: ALL_IDEAS, expanded: true });
+    const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
 
-    expect(onEdit).toHaveBeenCalledWith(42);
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-  });
+    view.update({ entry: ENTRY, allIdeas: ALL_IDEAS, expanded: false });
+    view.update({ entry: ENTRY, allIdeas: ALL_IDEAS, expanded: true });
 
-  it('closes on Escape and gives focus back to the button that opened it', async () => {
-    renderRow();
-    const user = await openActions();
-    expect(screen.getByRole('button', { name: 'Edit' })).toHaveFocus();
-
-    await user.keyboard('{Escape}');
-
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Actions for Fushimi Inari' })).toHaveFocus();
-  });
-
-  it('closes when you click away from it', async () => {
-    renderRow();
-    const user = await openActions();
-
-    await user.click(document.body);
-
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Name' })).not.toBeInTheDocument();
+    expect(screen.getByText('To-do')).toBeInTheDocument();
   });
 });
 
@@ -864,14 +961,15 @@ describe('IdeaRow — reading along', () => {
     expect(screen.getByText('Tuesday south')).toBeInTheDocument();
   });
 
-  it('still has no ⋯ menu and no actions row once the row is open', async () => {
+  it('still has no actions row once the row is open', async () => {
     renderRow({ canEdit: false, bundles: [PLAN], insideCount: 3 });
     await expandRow();
 
-    expect(screen.queryByRole('button', { name: 'Actions for Fushimi Inari' })).not.toBeInTheDocument();
-    // The panel's descent button belongs to the actions row, so a viewer
-    // reaches what's inside by the pill on the closed row instead.
-    expect(screen.queryByRole('button', { name: 'Open 3 inside' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Move to Set aside' })).not.toBeInTheDocument();
+    // Descending is reading, so the pill stays — the viewer's way down is the
+    // same one an editor has.
+    expect(screen.getByRole('button', { name: '3 inside ›' })).toBeInTheDocument();
   });
 
   it('keeps both affordances for anyone who can edit', async () => {
@@ -881,6 +979,6 @@ describe('IdeaRow — reading along', () => {
       screen.getByRole('button', { name: 'Drag Fushimi Inari onto a plan to add it there' }),
     ).toBeInTheDocument();
     await expandRow();
-    expect(screen.getByRole('button', { name: 'Actions for Fushimi Inari' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
 });

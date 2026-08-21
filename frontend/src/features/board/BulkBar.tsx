@@ -214,8 +214,9 @@ export function BulkBar({
             onClick={() => setMenuOpen(false)}
           />
 
-          {/* Not role="menu": these are ordinary buttons and Tab already walks
-              them in order — see IdeaActionsMenu for the same reasoning. */}
+          {/* Not role="menu": that role promises arrow-key traversal and a
+              single tab stop, and these are ordinary buttons Tab already
+              walks in order. */}
           <div className={styles.panel} role="group" aria-labelledby={menuLabelId}>
             <p className={styles.panelLabel} id={menuLabelId}>
               Add to

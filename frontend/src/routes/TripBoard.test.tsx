@@ -673,7 +673,6 @@ describe('TripBoard — as a viewer', () => {
     expect(screen.queryByTestId('composer')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /new idea/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /new plan/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Actions for Nanzen-ji' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Drag Nanzen-ji/ })).not.toBeInTheDocument();
     // Select mode only ever led to a bar of edits, so the way in goes with them.
     expect(screen.queryByRole('button', { name: 'Select several' })).not.toBeInTheDocument();
@@ -721,10 +720,11 @@ describe('TripBoard — as a viewer', () => {
 
     expect(screen.getByTestId('capture-bar')).toBeInTheDocument();
 
-    // The ⋯ actions menu lives in a row's EXPANDED panel now, so the row has
-    // to be unfolded before the trigger exists to find.
+    // The row's verbs live in its EXPANDED panel now, so the row has to be
+    // unfolded before there is an actions row to find.
     await user.click(within(ideas()).getByRole('button', { name: /^Nanzen-ji/ }));
-    expect(await screen.findByRole('button', { name: 'Actions for Nanzen-ji' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Move to Set aside' })).toBeInTheDocument();
   });
 });
 

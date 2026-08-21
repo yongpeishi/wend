@@ -18,9 +18,9 @@ import type { Entry } from '../../api/types';
  *     "has no parent AMONG THESE IDEAS", never "has an empty array".
  *   - Nothing here may assume the links form a tree. They are many-to-many
  *     (an idea can sit inside two others), and the backend does not promise
- *     this mock-era frontend a cycle never slipped in — so the one function
- *     that walks (subtreeCount) carries a visited set rather than trusting
- *     the data to terminate for it.
+ *     this mock-era frontend a cycle never slipped in — so the one walk here
+ *     (subtreeIdeaIds, which subtreeCount reads its number off) carries a
+ *     visited set rather than trusting the data to terminate for it.
  */
 
 /** The ideas that sit directly inside `id` — one level, link order not implied. */
@@ -41,16 +41,20 @@ export function rootIdeas(ideas: Entry[]): Entry[] {
 }
 
 /**
- * How many distinct ideas live anywhere under `id` — the "N inside" number.
+ * Every distinct idea anywhere under `id` — the ids the drill-down can reach
+ * from it, never including `id` itself.
  *
  * Distinct, because the links are many-to-many: an idea reachable down two
- * branches is still one idea, and a count that said two would promise a row
- * the drill-down cannot show. The same visited set is what makes a cycle safe
- * — a loop is a set of ideas each seen once, not a walk that never ends. The
- * entry itself is never its own descendant, even inside a cycle that leads
- * back to it.
+ * branches is still one idea. The visited set is also what makes a cycle safe
+ * — a loop is a set of ideas each seen once, not a walk that never ends — and
+ * it is why the entry is never its own descendant, even inside a cycle that
+ * leads back to it.
+ *
+ * A Set rather than a list because both callers ask set questions: the row's
+ * pill wants the size, and the edit form wants "is this a descendant?" to keep
+ * an idea from being filed inside its own subtree.
  */
-export function subtreeCount(ideas: Entry[], id: number): number {
+export function subtreeIdeaIds(ideas: Entry[], id: number): Set<number> {
   const visited = new Set<number>();
   const queue = ideaChildrenOf(ideas, id).map((entry) => entry.id);
   while (queue.length > 0) {
@@ -59,7 +63,12 @@ export function subtreeCount(ideas: Entry[], id: number): number {
     visited.add(nextId);
     for (const child of ideaChildrenOf(ideas, nextId)) queue.push(child.id);
   }
-  return visited.size;
+  return visited;
+}
+
+/** How many distinct ideas live anywhere under `id` — the "N inside" number. */
+export function subtreeCount(ideas: Entry[], id: number): number {
+  return subtreeIdeaIds(ideas, id).size;
 }
 
 /**

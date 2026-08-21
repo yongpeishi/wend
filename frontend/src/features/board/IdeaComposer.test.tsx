@@ -85,6 +85,65 @@ describe('IdeaComposer — the card', () => {
     expect(screen.getByPlaceholderText('Short description')).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Address — leave empty if it isn't a place")).toBeInTheDocument();
   });
+
+  it('starts blank and says "Add idea" when nobody seeds it — the create path unchanged', () => {
+    renderComposer();
+
+    expect(screen.getByRole('button', { name: 'Add idea' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: 'Address' })).toHaveValue('');
+    expect(screen.getByRole('radio', { name: 'Place' })).toHaveAttribute('aria-checked', 'true');
+  });
+});
+
+/**
+ * The card's second wearer: seeded with an existing idea's values and a
+ * renamed button, it is the inline edit form. Same gathering, same draft.
+ */
+describe('IdeaComposer — worn as the edit form', () => {
+  it('arrives dressed in the idea being edited — every field pre-answered', () => {
+    renderComposer({
+      initialTitle: 'Fushimi Inari',
+      initialDescription: 'Torii gates',
+      initialAddress: '68 Fukakusa',
+      initialCategory: 'activity',
+      initialParentIds: [11],
+    });
+
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Fushimi Inari');
+    expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue('Torii gates');
+    expect(screen.getByRole('textbox', { name: 'Address' })).toHaveValue('68 Fukakusa');
+    expect(screen.getByRole('radio', { name: 'Activity' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('button', { name: 'Remove from Kyoto day' })).toBeInTheDocument();
+  });
+
+  it('wears whatever label the caller puts on the primary button', () => {
+    renderComposer({ submitLabel: 'Save changes' });
+
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add idea' })).not.toBeInTheDocument();
+  });
+
+  it('hands the seeded values back untouched when nothing was changed', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer({
+      initialTitle: 'Fushimi Inari',
+      initialDescription: 'Torii gates',
+      initialAddress: '68 Fukakusa',
+      initialCategory: 'activity',
+      submitLabel: 'Save changes',
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      title: 'Fushimi Inari',
+      description: 'Torii gates',
+      address: '68 Fukakusa',
+      category: 'activity',
+      parentIds: [],
+    });
+  });
 });
 
 describe('IdeaComposer — the category row', () => {

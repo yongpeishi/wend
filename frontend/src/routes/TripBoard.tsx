@@ -120,11 +120,11 @@ export function TripBoard() {
     open: false,
     initialTitle: '',
   });
-  // The idea whose edit dialog is up, if any. One piece of state for both ways
-  // in — a row in the idea list and a member in the plans rail — so the two
-  // cannot drift into two different panels. Held here rather than reached by
-  // navigating to /entries/:id, so it lands over the board instead of over an
-  // empty page — see EntryDetailModal.
+  // The idea whose detail dialog is up, if any — opened from the plans rail
+  // (BundlePanel's onOpen). A row edits itself in place now (see IdeaRow), so
+  // the rail is this state's one remaining way in. Held here rather than
+  // reached by navigating to /entries/:id, so it lands over the board instead
+  // of over an empty page — see EntryDetailModal.
   const [editingId, setEditingId] = useState<number | null>(null);
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
@@ -582,11 +582,11 @@ export function TripBoard() {
                 selectMode={selectMode}
                 selectedIds={selectedIds}
                 onToggleSelect={onToggleSelect}
-                onEdit={setEditingId}
                 onToast={(message) => show(message, 'success')}
                 canEdit={canEdit}
                 insideCounts={insideCounts}
                 otherParents={otherParents}
+                allIdeas={allIdeas}
                 onDrill={drillInto}
                 expandedId={expandedId}
                 onToggleExpand={(id) => setExpandedId((previous) => (previous === id ? null : id))}

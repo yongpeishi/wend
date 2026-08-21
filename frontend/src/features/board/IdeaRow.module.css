@@ -20,13 +20,13 @@
   border-color: var(--wend-apricot);
 }
 
-/* An open row takes the 2px leaf edge instead — the design's "this card is
-   active" border, the same weight the capture bar and the composer wear. It
-   deliberately outranks the apricot when the two coincide: open is the louder
-   claim, and two hues on one border is not a thing a border can do. */
+/* An open row takes the 2px apricot edge — the "I'm here" highlight, the same
+   border the capture bar and the composer wear, so the card under attention is
+   one hue everywhere on the board. Selection and expansion agree on it, which
+   is exactly why they can share a border when the two coincide. */
 .row[data-expanded] {
   border-width: var(--border-width-strong);
-  border-color: var(--wend-leaf);
+  border-color: var(--wend-apricot);
   /* Half a px each side, so open rows do not sit visibly fatter than closed
      ones: the extra border eats the padding rather than growing the card. */
   padding: calc(var(--space-3) - 0.5px) calc(var(--space-4) - 0.5px);
@@ -240,8 +240,9 @@
   white-space: nowrap;
 }
 
-/* "N inside ›" — the one control on the closed row that goes somewhere else,
-   so it is the one pill that is a button. Leaf, the acting colour. */
+/* "N inside ›" — the card's one drill affordance, at its top-right corner
+   whether the row is open or closed, and so the one pill that is a button.
+   Leaf, the acting colour. */
 .insidePill {
   flex: none;
   font-family: var(--font-sans);
@@ -354,8 +355,7 @@
   flex-wrap: wrap;
 }
 
-/* Anchors the plans popover to its button, exactly as IdeaActionsMenu's .wrap
-   anchors the ⋯ menu. */
+/* Anchors the plans popover to its button. */
 .plansWrap {
   position: relative;
 }

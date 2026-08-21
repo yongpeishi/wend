@@ -25,6 +25,14 @@ export interface IdeaComposerProps {
   initialParentIds: number[];
   /** Every idea the new one could nest inside. Titles are looked up here. */
   parentChoices: Entry[];
+  /** Seed for the description field — an existing idea's, when editing. */
+  initialDescription?: string;
+  /** Seed for the address field — an existing idea's, when editing. */
+  initialAddress?: string;
+  /** Which category chip starts lit; 'place' when nothing says otherwise. */
+  initialCategory?: EntryCategory;
+  /** The primary footer button's label — "Add idea" unless editing. */
+  submitLabel?: string;
   onSubmit: (draft: IdeaComposerDraft) => void;
   onCancel: () => void;
 }
@@ -38,13 +46,19 @@ export interface IdeaComposerProps {
  * The card wears the apricot "you are here" border while open, so the eye
  * follows the promotion from the bar down into the details.
  *
+ * The same card also serves as the inline EDIT form for an existing idea:
+ * seed every field through the `initial*` props and rename the footer button
+ * with `submitLabel`, and it gathers a corrected draft exactly the way it
+ * gathers a new one. The board still owns what "submit" means in either case.
+ *
  * Pure and controlled from above: no fetching, no mutations, no toast. The
  * board owns what "submit" means (a create plus zero or more links), so this
  * component's whole job is to gather an `IdeaComposerDraft` and hand it over.
  * That is also why `parentChoices` is a prop — the board already holds every
  * idea on the trip, and a second fetch here would be the same list again.
  *
- * Category defaults to 'place' rather than opening unanswered. The six chips
+ * Category defaults to 'place' (or whatever `initialCategory` says) rather
+ * than opening unanswered. The six chips
  * are single-select and one is always lit: the draft's `category` is typed
  * non-null, because the composer is the "full picture" path and a category is
  * the cheapest fact it asks for. (Quick-add stays category-free — that is the
@@ -52,7 +66,8 @@ export interface IdeaComposerProps {
  *
  * State resets when `open` flips true — the composer stays mounted across
  * opens the way NewIdeaModal does, so a fresh Tab must not resurrect the
- * half-draft someone cancelled yesterday. While it is open, the initials are
+ * half-draft someone cancelled yesterday. The reset seeds every field from
+ * the initials of that moment. While it is open, the initials are
  * deliberately NOT watched: re-seeding mid-edit would overwrite typing.
  *
  * Blank-title submits are refused silently, with one courtesy first: if the
@@ -65,13 +80,17 @@ export function IdeaComposer({
   initialTitle,
   initialParentIds,
   parentChoices,
+  initialDescription = '',
+  initialAddress = '',
+  initialCategory = 'place',
+  submitLabel = 'Add idea',
   onSubmit,
   onCancel,
 }: IdeaComposerProps) {
   const [title, setTitle] = useState(initialTitle);
-  const [description, setDescription] = useState('');
-  const [address, setAddress] = useState('');
-  const [category, setCategory] = useState<EntryCategory>('place');
+  const [description, setDescription] = useState(initialDescription);
+  const [address, setAddress] = useState(initialAddress);
+  const [category, setCategory] = useState<EntryCategory>(initialCategory);
   const [parentIds, setParentIds] = useState<number[]>(initialParentIds);
   const [cloudOpen, setCloudOpen] = useState(false);
   const categoryLabelId = useId();
@@ -87,14 +106,14 @@ export function IdeaComposer({
   useEffect(() => {
     if (open && !wasOpen.current) {
       setTitle(initialTitle);
-      setDescription('');
-      setAddress('');
-      setCategory('place');
+      setDescription(initialDescription);
+      setAddress(initialAddress);
+      setCategory(initialCategory);
       setParentIds(initialParentIds);
       setCloudOpen(false);
     }
     wasOpen.current = open;
-  }, [open, initialTitle, initialParentIds]);
+  }, [open, initialTitle, initialDescription, initialAddress, initialCategory, initialParentIds]);
 
   if (!open) return null;
 
@@ -230,7 +249,7 @@ export function IdeaComposer({
 
       <div className={styles.footer}>
         <Button size="small" onClick={submit}>
-          Add idea
+          {submitLabel}
         </Button>
         <Button variant="quiet" size="small" onClick={onCancel}>
           Cancel

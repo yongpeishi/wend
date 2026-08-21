@@ -1,16 +1,17 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { GripVertical } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
-import { useNavigate } from 'react-router-dom';
 import type { Entry, EntryCategory } from '../../api/types';
 import { CATEGORY_LABELS } from './filters';
 import { Button } from '../../design/components/core/Button';
 import { Chip, Tag } from '../../design/components/core/Chip';
 import { useToast } from '../../components/Toast';
-import { useDeleteVote, useVote } from '../../api';
-import { IdeaActionsMenu } from './IdeaActionsMenu';
+import { useArchiveEntry, useDeleteVote, useUpdateEntry, useVote } from '../../api';
+import { IdeaComposer } from './IdeaComposer';
+import type { IdeaComposerDraft } from './IdeaComposer';
 import { IdeaTodos } from './IdeaTodos';
 import { VoteBar } from './VoteBar';
+import { subtreeIdeaIds } from './tree';
 import { useLinkMutations } from './useLinkMutations';
 import styles from './IdeaRow.module.css';
 
@@ -29,13 +30,6 @@ export interface IdeaRowProps {
   selectMode: boolean;
   selected: boolean;
   onToggleSelect: (id: number, shiftKey: boolean) => void;
-  /**
-   * Opens the idea for editing — now reached only from the ⋯ menu's Edit, since
-   * clicking the row expands it instead. The board passes a handler that raises
-   * the edit drawer over the board itself; without one the row falls back to
-   * navigating to /entries/:id, which is the same drawer over an empty page.
-   */
-  onEdit?: (id: number) => void;
   onToast?: (message: string) => void;
   /**
    * May you change this trip? A prop rather than `useCanEdit()` because this row
@@ -59,6 +53,13 @@ export interface IdeaRowProps {
    * "here" and so which ones are "also".
    */
   otherParents: string[];
+  /**
+   * Every live idea on the trip. The edit form is what needs the whole set:
+   * the names of this idea's current parents, and the ideas it could be filed
+   * under instead — everything except itself and its own subtree, because an
+   * idea inside its own descendant is a loop the board could never draw.
+   */
+  allIdeas: Entry[];
   /** Descend one level — show what lives inside this idea. */
   onDrill: (id: number) => void;
   /**
@@ -110,29 +111,35 @@ const CATEGORY_CLASS: Record<EntryCategory, string> = {
  * the row reports the click (`onToggleExpand`) and obeys the prop (`expanded`),
  * the same shape as `selected`/`onToggleSelect` beside it.
  *
- * Drilling ("N inside ›", and "Open N inside" in the panel) is the one click
- * on this row that leaves it: it descends into the idea's own list. It lives
- * on a pill rather than the row body so that the row's big target keeps the
- * smaller, reversible meaning — a click on a line of text opens the line of
- * text, never navigates.
+ * Drilling ("N inside ›") is the one click on this row that leaves it: it
+ * descends into the idea's own list. The pill sits at the card's top right,
+ * open or closed, and is the card's ONE drill affordance — it lives on a pill
+ * rather than the row body so that the row's big target keeps the smaller,
+ * reversible meaning: a click on a line of text opens the line of text, never
+ * navigates.
+ *
+ * The open card's verbs sit on one line at the foot of the panel — Add to
+ * plan, Edit, Move to Set aside — no overflow menu, no verb further than one
+ * click. Editing swaps the card in place for the same details form the
+ * capture bar's Tab opens (see IdeaComposer): local `editing` state, because
+ * only this row can know its panel gave way to a form, and it dies with the
+ * expansion — a closed row must never reopen mid-edit.
  *
  * What is kept, and why:
  *   - The drag handle. Dragging an idea onto a plan is the core board gesture
  *     (`data: { entryId, title }` is what the plan drop targets read, and what
  *     TripBoard's onDragEnd turns into a link). Its pointer-free equivalent is
- *     the plan list inside the ⋯ menu — every drag in Wend has one.
+ *     the plan chips behind the panel's "Add to plan" button — every drag in
+ *     Wend has one.
  *   - Multi-select, which is what `BulkBar` acts on — as a mode, taking the
  *     left slot. See the comment on the slot.
- *   - Set aside and Edit, in the ⋯ menu, which sits at the open row's top
- *     right: every verb the row owns arrives with the panel, and the closed
- *     row stays a thing you read, drag, or pick.
- *   - The plan chips, twice — behind the panel's "Add to plan" button and in
- *     the ⋯ menu. Both were asked for; they toggle the same links through the
- *     same mutations.
+ *   - The plan chips, behind "Add to plan": they toggle the same links the
+ *     drag writes, through the same mutations.
  *
  * Interaction: hover and press are opacity only, focus is the apricot ring,
- * there are no shadows. A selected row is bordered apricot; an open row takes
- * the 2px leaf border — the design's "this card is active" edge.
+ * there are no shadows. A selected row is bordered apricot, and so is an open
+ * one — apricot is the design's "I'm here" edge, the same border the capture
+ * bar and the composer wear, so attention reads as one hue everywhere.
  */
 export function IdeaRow({
   entry,
@@ -141,21 +148,22 @@ export function IdeaRow({
   selectMode,
   selected,
   onToggleSelect,
-  onEdit,
   onToast,
   canEdit = true,
   insideCount,
   otherParents,
+  allIdeas,
   onDrill,
   expanded,
   onToggleExpand,
 }: IdeaRowProps) {
-  const navigate = useNavigate();
   const { show } = useToast();
   const panelId = useId();
   const plansLabelId = useId();
   const vote = useVote(entry.id);
   const deleteVote = useDeleteVote(entry.id);
+  const updateEntry = useUpdateEntry(entry.id);
+  const archiveEntry = useArchiveEntry();
   const { addLink, removeLink } = useLinkMutations();
   // Disabled, not merely un-gripped: dnd-kit binds its listeners to whatever
   // element takes them, and a viewer with a keyboard would still be able to
@@ -166,9 +174,17 @@ export function IdeaRow({
     disabled: !canEdit,
   });
 
-  // The "Add to plan" popover in the panel's actions row. Open/close state and
-  // the two listeners are the same shape as IdeaActionsMenu's, for the same
-  // reasons — see the comments there.
+  // The card has given way to the edit form. Local, unlike `expanded`, because
+  // no one but this row cares that its panel is a form right now — and tied to
+  // the expansion below, so a row the board closes comes back as a card.
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) setEditing(false);
+  }, [expanded]);
+
+  // The "Add to plan" popover in the panel's actions row: open/close state, a
+  // click-away listener, and Escape handing focus back to the trigger.
   const [plansOpen, setPlansOpen] = useState(false);
   const plansRef = useRef<HTMLDivElement>(null);
   const plansTriggerRef = useRef<HTMLButtonElement>(null);
@@ -197,11 +213,6 @@ export function IdeaRow({
     if (!expanded) setPlansOpen(false);
   }, [expanded]);
 
-  function edit() {
-    if (onEdit) onEdit(entry.id);
-    else navigate(`/entries/${entry.id}`);
-  }
-
   // The plan names for a viewer's tags. Derived from the plan membership
   // TripBoard already loads for the drag targets — no extra request.
   const bundleNames = useMemo(
@@ -216,8 +227,8 @@ export function IdeaRow({
     return (members.get(bundleId) ?? []).some((member) => member.id === entry.id);
   }
 
-  // The same two mutations and the same two sentences as the ⋯ menu's chips,
-  // because they are the same act — only reached from the other place.
+  // The same two mutations and the same two sentences as a drag onto the rail,
+  // because they are the same act — only reached without a pointer.
   function toggleBundle(bundle: Entry) {
     if (isMember(bundle.id)) {
       removeLink.mutate(
@@ -230,6 +241,68 @@ export function IdeaRow({
         { onSuccess: () => onToast?.(`Added to ${bundle.title}.`) },
       );
     }
+  }
+
+  /*
+   * Editing: the card swaps in place for the same details form the capture
+   * bar's Tab opens, seeded with this idea's facts. Everything below is
+   * computed only on the branch that shows the form — a board of forty closed
+   * rows must not walk forty subtrees per render.
+   */
+  if (expanded && editing && canEdit) {
+    // Only parents the idea set can vouch for: `parent_ids` arrives unfiltered
+    // (the trip entry, bundles — see tree.ts), and a parent the form cannot
+    // name is not one it may offer to remove.
+    const ideaIds = new Set(allIdeas.map((idea) => idea.id));
+    const initialParentIds = entry.parent_ids.filter((id) => ideaIds.has(id));
+    // Not itself, and nothing beneath it: filing an idea inside its own
+    // subtree would make a loop out of the drill-down.
+    const subtree = subtreeIdeaIds(allIdeas, entry.id);
+    const parentChoices = allIdeas.filter((idea) => idea.id !== entry.id && !subtree.has(idea.id));
+
+    // The entry write first, then the link diff in parallel — the links need
+    // nothing from the PATCH, but a failed title save with moved parents would
+    // be half an edit. Any failure lands on the house sentence and STAYS in
+    // the form: what was typed survives to be tried again.
+    const save = async (draft: IdeaComposerDraft) => {
+      try {
+        await updateEntry.mutateAsync({
+          entry: {
+            title: draft.title,
+            description: draft.description || null,
+            address: draft.address || null,
+            category: draft.category,
+          },
+        });
+        await Promise.all([
+          ...draft.parentIds
+            .filter((id) => !initialParentIds.includes(id))
+            .map((parentId) => addLink.mutateAsync({ parentId, childId: entry.id })),
+          ...initialParentIds
+            .filter((id) => !draft.parentIds.includes(id))
+            .map((parentId) => removeLink.mutateAsync({ parentId, childId: entry.id })),
+        ]);
+        setEditing(false);
+        onToast?.('Saved.');
+      } catch {
+        show(SAVE_FAILED, 'error');
+      }
+    };
+
+    return (
+      <IdeaComposer
+        open
+        initialTitle={entry.title}
+        initialDescription={entry.description ?? ''}
+        initialAddress={entry.address ?? ''}
+        initialCategory={entry.category ?? 'place'}
+        initialParentIds={initialParentIds}
+        parentChoices={parentChoices}
+        submitLabel="Save"
+        onSubmit={save}
+        onCancel={() => setEditing(false)}
+      />
+    );
   }
 
   return (
@@ -258,8 +331,8 @@ export function IdeaRow({
           Rendering a `role="checkbox"` that is not operable, or a handle that
           claims to be checkable, would be a lie in one direction or the other.
           Nothing is lost by the swap: the drag's pointer-free equivalent — the
-          plan list in the ⋯ menu — is untouched while picking, and the
-          handle returns the moment select mode ends.
+          plan chips behind the open row's "Add to plan" — is untouched while
+          picking, and the handle returns the moment select mode ends.
 
           A <button role="checkbox"> rather than <input type="checkbox">: the
           visual is a filled circle with a tick, which no native checkbox will
@@ -357,8 +430,9 @@ export function IdeaRow({
           </span>
         )}
 
-        {/* The one click on the closed row that goes somewhere else. Stops its
-            own propagation so descending never also unfolds the row it leaves. */}
+        {/* The card's one drill affordance, at its top-right corner, open or
+            closed. Stops its own propagation so descending never also unfolds
+            (or folds) the row it leaves. */}
         {insideCount > 0 && (
           <button
             type="button"
@@ -370,21 +444,6 @@ export function IdeaRow({
           >
             {insideCount} inside ›
           </button>
-        )}
-
-        {/* The ⋯ menu holds the open row's verbs, at the card's top right —
-            the corner every card in this product keeps its overflow in. It is
-            a sibling of the disclosure, so opening it never also closes the
-            row, and its popup is already right-anchored. Arrives with the
-            panel: the closed row stays a thing you read, drag, or pick. */}
-        {expanded && canEdit && (
-          <IdeaActionsMenu
-            entry={entry}
-            bundles={bundles}
-            members={members}
-            onEdit={edit}
-            onToast={onToast}
-          />
         )}
       </div>
 
@@ -424,11 +483,11 @@ export function IdeaRow({
           <IdeaTodos entryId={entry.id} canEdit={canEdit} />
 
           {/*
-            The verbs, gathered on one line now that the row has an inside to
-            keep them in. A viewer gets the row's words and none of its verbs —
-            not a greyed row, just no row — and keeps the answer to "which
-            plans?" as tags, the same plum the plan names are written in
-            everywhere else.
+            The verbs, gathered on one line at the foot of the panel — every
+            one of them, since the overflow menu is gone. A viewer gets the
+            row's words and none of its verbs — not a greyed row, just no row —
+            and keeps the answer to "which plans?" as tags, the same plum the
+            plan names are written in everywhere else.
           */}
           {canEdit ? (
             <div className={styles.actionsRow}>
@@ -466,14 +525,26 @@ export function IdeaRow({
                 )}
               </div>
 
-              {/* The panel's road down, beside the pill's — same destination,
-                  reachable once the row is already open and the pill is a
-                  scroll away. */}
-              {insideCount > 0 && (
-                <Button variant="quiet" size="small" onClick={() => onDrill(entry.id)}>
-                  Open {insideCount} inside
-                </Button>
-              )}
+              <Button variant="quiet" size="small" onClick={() => setEditing(true)}>
+                Edit
+              </Button>
+
+              {/* Set aside, never delete — SetAsideSection at the foot of the
+                  board is the way back, on the same screen as the way out. The
+                  label names that list rather than the motion, so the way back
+                  is already in the words on the way out. */}
+              <Button
+                variant="quiet"
+                size="small"
+                onClick={() =>
+                  archiveEntry.mutate(entry.id, {
+                    onSuccess: () => show('Set aside.', 'success'),
+                    onError: () => show(SAVE_FAILED, 'error'),
+                  })
+                }
+              >
+                Move to Set aside
+              </Button>
             </div>
           ) : (
             bundleNames.length > 0 && (
