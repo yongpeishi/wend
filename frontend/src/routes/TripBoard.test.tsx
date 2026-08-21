@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom';
@@ -556,6 +556,115 @@ describe('TripBoard — the focused open row', () => {
     expect(ideas().querySelector('[data-focused]')).toBeNull();
     // The survivor is still open; it just was not promoted to focused.
     expect(rowCard(/^Nanzen-ji/)).toHaveAttribute('data-expanded');
+  });
+});
+
+/**
+ * Clicking an idea inside a plan NAVIGATES the board to it: the drill lands on
+ * the idea's own level, the filters reset (a jump that lands on a hidden row
+ * would be navigation to nowhere), and the row arrives expanded, focused and
+ * scrolled into view. The detail dialog this click used to raise is gone from
+ * the board entirely — EntryDetailModal still backs /entries/:id, it just has
+ * no way in from here.
+ */
+describe('TripBoard — opening an idea from a plan', () => {
+  /** The plans rail — the only place a member's bare title is a button. */
+  function plansRail(): HTMLElement {
+    return screen.getByRole('complementary', { name: 'Plans' });
+  }
+
+  /** The row's card, found by the data-entry-id hook the scroll also uses. */
+  function row(id: number): HTMLElement {
+    const card = ideas().querySelector(`[data-entry-id="${id}"]`);
+    if (!card) throw new Error(`no row card for entry ${id}`);
+    return card as HTMLElement;
+  }
+
+  // jsdom implements no scrolling, so the smooth-scroll the jump asks for is
+  // stubbed — which also makes it observable: the mock's `this` is the very
+  // element the board brought into view.
+  const originalScrollIntoView = Element.prototype.scrollIntoView;
+  let scrollIntoView: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+  });
+  afterEach(() => {
+    Element.prototype.scrollIntoView = originalScrollIntoView;
+  });
+
+  it('drills to a nested member: its parent leads the breadcrumb, its row open and focused', async () => {
+    // A nested idea that is also a plan member: the garden lives inside
+    // Nanzen-ji AND belongs to the market crawl.
+    await addIdea({ title: 'Temple garden' }, NANZENJI_ID);
+    const { entries } = await api.get<{ entries: Entry[] }>('/entries', {
+      params: { trip_id: TRIP_ID, kind: 'idea' },
+    });
+    const garden = entries.find((e) => e.title === 'Temple garden') as Entry;
+    await api.post(`/entries/${MARKET_BUNDLE_ID}/links`, { child_id: garden.id });
+
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await user.click(within(plansRail()).getByRole('button', { name: 'Temple garden' }));
+
+    // The board stands on the garden's level: its parent chain is the crumb row.
+    expect(await within(ideas()).findByText('Temple garden')).toBeInTheDocument();
+    const crumbs = screen.getByRole('navigation', { name: 'Idea path' });
+    expect(within(crumbs).getByRole('heading', { name: 'Nanzen-ji' })).toBeInTheDocument();
+    expect(row(garden.id)).toHaveAttribute('data-expanded');
+    expect(row(garden.id)).toHaveAttribute('data-focused');
+
+    // And the row was brought into view — the scroll landed on its card.
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    expect(scrollIntoView.mock.contexts[0]).toBe(row(garden.id));
+  });
+
+  it('keeps the path at root for a root member, with the row open', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    // Kiyamachi's parents are the trip and the night bundle — no idea among
+    // them, so its level IS the root and the jump goes nowhere but its row.
+    await user.click(within(plansRail()).getByRole('button', { name: 'Kiyamachi' }));
+
+    expect(screen.getByRole('heading', { name: 'All ideas' })).toBeInTheDocument();
+    expect(row(KIYAMACHI_ID)).toHaveAttribute('data-expanded');
+    expect(row(KIYAMACHI_ID)).toHaveAttribute('data-focused');
+  });
+
+  it('raises no dialog — the jump replaced the modal', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    await user.click(within(plansRail()).getByRole('button', { name: 'Kiyamachi' }));
+
+    await waitFor(() => expect(row(KIYAMACHI_ID)).toHaveAttribute('data-expanded'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('clears the active filters, so the jump can never land on a hidden row', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await within(ideas()).findByText('Nanzen-ji');
+
+    // Search and a chip together: Kiyamachi is doubly hidden.
+    await user.type(screen.getByRole('searchbox', { name: 'Search ideas' }), 'nanzen');
+    await user.click(screen.getByRole('button', { name: /^Filter/ }));
+    await user.click(screen.getByRole('button', { name: 'Place' }));
+    expect(await screen.findByText(/Showing 1 of 7/)).toBeInTheDocument();
+
+    await user.click(within(plansRail()).getByRole('button', { name: 'Kiyamachi' }));
+
+    // Both filters went with the jump — the whole level is back, Kiyamachi in it.
+    expect(await screen.findByText(/Showing 7 of 7/)).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: 'Search ideas' })).toHaveValue('');
+    expect(screen.queryByText('Filtered, not gone — clear a chip to widen again.')).not.toBeInTheDocument();
+    expect(within(ideas()).getByText('Kiyamachi')).toBeInTheDocument();
+    expect(row(KIYAMACHI_ID)).toHaveAttribute('data-expanded');
   });
 });
 

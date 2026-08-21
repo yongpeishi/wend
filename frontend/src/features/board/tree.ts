@@ -72,6 +72,35 @@ export function subtreeCount(ideas: Entry[], id: number): number {
 }
 
 /**
+ * The drill-down path that puts `id`'s row on screen: its idea ancestors,
+ * root first, ending at the idea's own parent — never `id` itself, which is a
+ * row on the level the path opens, not a level of its own. `[]` when the idea
+ * has no idea parent: a root idea's level IS the root.
+ *
+ * "Parent" here means the FIRST entry of `parent_ids` the idea set can vouch
+ * for, taken at every step — the links are many-to-many, so an idea can have
+ * several idea parents, and the board has to pick ONE chain to walk down.
+ * First-listed is the serializer's own order (ascending by id), so the same
+ * idea always answers with the same path. The visited set is what makes a
+ * cycle safe: a chain that leads back to an id already on it stops there
+ * rather than walking the loop forever.
+ */
+export function pathToIdea(ideas: Entry[], id: number): number[] {
+  const byId = new Map(ideas.map((entry) => [entry.id, entry]));
+  const visited = new Set<number>([id]);
+  const chain: number[] = [];
+  let current = byId.get(id);
+  while (current !== undefined) {
+    const parentId = current.parent_ids.find((candidate) => byId.has(candidate));
+    if (parentId === undefined || visited.has(parentId)) break;
+    visited.add(parentId);
+    chain.unshift(parentId);
+    current = byId.get(parentId);
+  }
+  return chain;
+}
+
+/**
  * The titles of `entry`'s OTHER idea parents — the "also inside …" fact a row
  * shows when an idea belongs to more places than the one you are looking at.
  *

@@ -325,6 +325,7 @@ export function IdeaRow({
   return (
     <div
       className={styles.row}
+      data-entry-id={entry.id}
       data-selected={selected || undefined}
       data-expanded={expanded || undefined}
       data-focused={(expanded && focused) || undefined}

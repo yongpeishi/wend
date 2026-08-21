@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ideaChildrenOf, otherParentTitles, rootIdeas, subtreeCount, subtreeIdeaIds } from './tree';
+import { ideaChildrenOf, otherParentTitles, pathToIdea, rootIdeas, subtreeCount, subtreeIdeaIds } from './tree';
 import type { Entry } from '../../api/types';
 
 function makeEntry(overrides: Partial<Entry>): Entry {
@@ -159,6 +159,42 @@ describe('subtreeIdeaIds', () => {
     for (const entry of IDEAS) {
       expect(subtreeCount(IDEAS, entry.id)).toBe(subtreeIdeaIds(IDEAS, entry.id).size);
     }
+  });
+});
+
+describe('pathToIdea', () => {
+  it('is empty for a root idea — its level is the root already', () => {
+    expect(pathToIdea(IDEAS, 10)).toEqual([]);
+    expect(pathToIdea(IDEAS, 20)).toEqual([]);
+  });
+
+  it('names a single idea parent as a one-crumb path', () => {
+    expect(pathToIdea(IDEAS, 11)).toEqual([10]);
+  });
+
+  it('walks a deep chain root first', () => {
+    // teahouse (12) sits inside the temple (11) inside the day trip (10).
+    expect(pathToIdea(IDEAS, 12)).toEqual([10, 11]);
+  });
+
+  it('takes the FIRST idea parent when there are several', () => {
+    // market's parents are the day trip (10) and ramen (20), in that order —
+    // one chain has to be picked, and it is the first-listed one.
+    expect(pathToIdea(IDEAS, 13)).toEqual([10]);
+  });
+
+  it('ignores parents outside the idea set — the trip, a bundle', () => {
+    // ramen's parents are the trip (1) and a bundle (90); neither is an idea
+    // here, so ramen is root and its path is empty rather than a guess.
+    expect(pathToIdea(IDEAS, 20)).toEqual([]);
+  });
+
+  it('terminates on a cycle, stopping before any id repeats', () => {
+    // 1 -> 2 -> 3 -> back to 1. Walking up from 1 must visit each ancestor
+    // once and stop rather than orbiting the loop.
+    const cycle = [idea(1, 'a', [3]), idea(2, 'b', [1]), idea(3, 'c', [2])];
+    expect(pathToIdea(cycle, 1)).toEqual([2, 3]);
+    expect(pathToIdea(cycle, 2)).toEqual([3, 1]);
   });
 });
 

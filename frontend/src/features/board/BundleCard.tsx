@@ -30,7 +30,10 @@ export interface BundleCardProps {
   tripId: number;
   /** Bundle members in entry_links.position order — see useBundleMembers.ts. */
   members: Entry[];
-  /** Open a member idea in place. Omitted, the card falls back to navigating. */
+  /**
+   * Take the board to a member idea — it scrolls to the idea's row and opens
+   * it. Omitted, the card falls back to navigating.
+   */
   onOpen?: (id: number) => void;
   onToast: (message: string) => void;
 }
@@ -124,19 +127,19 @@ export interface BundleCardProps {
  *   text in the row, which is what makes it read as an annotation on the idea
  *   rather than a status the idea is in.
  *
- * A member's name opens it, and when the board offers `onOpen` it opens in
- * place rather than by navigating to /entries/:id — the same bargain IdeaRow
- * strikes with the board. Two things depend on staying put: the drawer's scrim
- * is paper at 0.92, so over the board the page shows faintly through and it
- * reads as see-through, while on a route of its own it covers an empty page
- * with nothing behind it to show and reads as opaque; and off the board the
- * member is outside the trip's TripRoleProvider, where the editable default
- * applies and a viewer would be handed the form. Opening over the board keeps
- * the page under the scrim and keeps the member inside the trip's role. The
- * prop is `onOpen` rather than `onEdit` because that is all it promises: a
- * viewer opens a member and gets it read-only. Without the prop the card still
- * navigates, which is what a card outside a board — the design gallery, its own
- * tests — has to do, since there is no drawer there to open into.
+ * A member's name opens it, and when the board offers `onOpen` it opens ON
+ * the board rather than by navigating to /entries/:id: the list drills to the
+ * idea's level, scrolls to its row and unfolds it, focused. Two things depend
+ * on staying put: the reader keeps the page they were reading — the answer to
+ * "where does this idea live?" is shown as the board standing on that level,
+ * not told in a dialog over it — and the member stays inside the trip's
+ * TripRoleProvider, where a viewer's row is read-only; off the board the
+ * editable default applies and a viewer would be handed the form. The prop is
+ * `onOpen` rather than `onEdit` because that is all it promises: a viewer
+ * opens a member and gets the row without its verbs. Without the prop the
+ * card still navigates, which is what a card outside a board — the design
+ * gallery, its own tests — has to do, since there is no idea list there to
+ * land on.
  */
 export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleCardProps) {
   const navigate = useNavigate();

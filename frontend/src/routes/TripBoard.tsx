@@ -33,11 +33,10 @@ import type { BundleDropData } from '../features/board/bundleDrop';
 import { BOARD_DRAG_ANNOUNCEMENTS, BOARD_DRAG_INSTRUCTIONS } from '../features/board/dragAnnouncements';
 import { EMPTY_FILTERS, applyFilters, groupEntries } from '../features/board/filters';
 import type { GroupMode, IdeaFilters } from '../features/board/filters';
-import { ideaChildrenOf, otherParentTitles, rootIdeas, subtreeCount } from '../features/board/tree';
+import { ideaChildrenOf, otherParentTitles, pathToIdea, rootIdeas, subtreeCount } from '../features/board/tree';
 import { isWithinBounds } from '../features/map/bounds';
 import { entriesWithCoordinates, entryToPin } from '../features/map/pins';
 import type { Bounds, MapPin } from '../features/map/types';
-import { EntryDetailModal } from './EntryDetail';
 import styles from './TripBoard.module.css';
 
 /**
@@ -129,12 +128,6 @@ export function TripBoard() {
     open: false,
     initialTitle: '',
   });
-  // The idea whose detail dialog is up, if any — opened from the plans rail
-  // (BundlePanel's onOpen). A row edits itself in place now (see IdeaRow), so
-  // the rail is this state's one remaining way in. Held here rather than
-  // reached by navigating to /entries/:id, so it lands over the board instead
-  // of over an empty page — see EntryDetailModal.
-  const [editingId, setEditingId] = useState<number | null>(null);
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
 
@@ -159,10 +152,10 @@ export function TripBoard() {
   const createEntry = useCreateEntry();
   const { addLink } = useLinkMutations();
 
-  // Stable handles, not inline arrows: modal components memoize against their
-  // onClose to keep focus effects from re-firing on every board render — see
-  // NewIdeaModal.tsx's doc comment on the underlying Modal.tsx behaviour.
-  const closeEditing = useCallback(() => setEditingId(null), []);
+  // A stable handle, not an inline arrow: components with focus effects
+  // memoize against their close callback to keep those effects from re-firing
+  // on every board render — see NewIdeaModal.tsx's doc comment on the
+  // underlying Modal.tsx behaviour.
   const closeComposer = useCallback(() => setComposer({ open: false, initialTitle: '' }), []);
 
   const ideasQuery = useEntries({ trip_id: trip.id, kind: 'idea', include_archived: true });
@@ -225,6 +218,30 @@ export function TripBoard() {
     // The focus belonged to one of the rows just folded — it goes with them.
     setFocusedId(null);
     setFilters((previous) => ({ ...previous, text: '' }));
+  }
+
+  /**
+   * The plans rail's way in: clicking an idea in a plan NAVIGATES the board to
+   * that idea — the drill lands on the level its row lives on (pathToIdea),
+   * the row opens focused, and the list scrolls until it is in view. It used
+   * to raise the idea's detail dialog over the board instead; the row already
+   * says everything the dialog said, so the honest answer to "where is this?"
+   * is to go there.
+   *
+   * The filters reset whole, not just the search text: the jump was aimed at
+   * one specific row, and a chip that hides it would make this navigation to
+   * nowhere. The scroll waits one frame because the row may not exist yet —
+   * the drill re-renders the level first, and only then is there a
+   * `data-entry-id` to bring into view.
+   */
+  function openIdeaFromPlan(id: number) {
+    setPath(pathToIdea(allIdeas, id));
+    setFilters(EMPTY_FILTERS);
+    setExpandedIds(new Set([id]));
+    setFocusedId(id);
+    requestAnimationFrame(() => {
+      document.querySelector(`[data-entry-id="${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
   }
 
   // ---- One level of the tree, then the filters ------------------------------
@@ -646,13 +663,11 @@ export function TripBoard() {
             archivedBundles={archivedBundles}
             members={members}
             query={bundlesQuery}
-            onOpen={setEditingId}
+            onOpen={openIdeaFromPlan}
             onToast={(message) => show(message, 'success')}
           />
         </div>
       </div>
-
-      {editingId !== null && <EntryDetailModal entryId={editingId} onClose={closeEditing} />}
 
       <DragOverlay>
         {activeDrag && (

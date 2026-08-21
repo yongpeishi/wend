@@ -25,7 +25,10 @@ export interface BundlePanelProps {
    * no right to make about a request that never answered.
    */
   query: QueryGateSource;
-  /** Open a member idea in place. Omitted, the card falls back to navigating. */
+  /**
+   * Take the board to a member idea — it scrolls to the idea's row and opens
+   * it. Omitted, the card falls back to navigating.
+   */
   onOpen?: (id: number) => void;
   onToast: (message: string) => void;
 }
@@ -79,12 +82,14 @@ export interface BundlePanelProps {
  * this one back through the board would be the odd one out.
  *
  * `onOpen` is the exception, and it is a pass-through rather than a decision:
- * opening a bundle member is the board's business, because the drawer it opens
- * belongs to the board. Handing it down means a member opens over the page
- * instead of at a route of its own, which is what keeps the page beneath the
- * drawer's scrim and keeps the idea inside the trip's role — a viewer opening a
- * member gets it read-only. The rail adds nothing to it and takes nothing from
- * it; where it is absent the cards navigate as they always did.
+ * opening a bundle member is the board's business, because the row it lands on
+ * belongs to the board. Handing it down means a member opens on the board
+ * itself — the list drills to the idea's level, scrolls to its row and unfolds
+ * it — instead of at a route of its own, which keeps the reader on the page
+ * they were reading and keeps the idea inside the trip's role: a viewer
+ * opening a member gets the same read-only row. The rail adds nothing to it
+ * and takes nothing from it; where it is absent the cards navigate as they
+ * always did.
  */
 export function BundlePanel({ tripId, bundles, archivedBundles, members, query, onOpen, onToast }: BundlePanelProps) {
   const restoreEntry = useRestoreEntry();
