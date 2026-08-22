@@ -16,7 +16,7 @@ function item(id: number, title: string): ItineraryItem {
     ends_at_minutes: 11 * 60,
     note: null,
     position: 0,
-    entry: { id, kind: 'idea', title, category: 'place', duration_minutes: 120, location_name: 'Kyoto west' },
+    entry: { id, kind: 'idea', title, category: 'place', duration_minutes: 120 },
     members: [],
   };
 }
@@ -35,7 +35,7 @@ function bundle(id: number, title: string): ItineraryItem {
     ends_at_minutes: 13 * 60,
     entry: { ...base.entry!, kind: 'bundle' },
     members: [
-      { id: 91, kind: 'idea', title: 'Teramachi arcade', category: 'place', duration_minutes: 30, location_name: 'Teramachi' },
+      { id: 91, kind: 'idea', title: 'Teramachi arcade', category: 'place', duration_minutes: 30 },
     ],
   };
 }

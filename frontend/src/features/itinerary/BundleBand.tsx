@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { ItineraryItem } from '../../api/types';
-import { joinMeta } from '../../lib/formatDates';
 import { bundleMemberSpans, formatDuration, formatSpan } from './itineraryModel';
 import { TimeEditor } from './TimeEditor';
 import styles from './BundleBand.module.css';
@@ -89,7 +88,7 @@ export function BundleBand({ item, onEditTime, onRemove, readOnly = false }: Bun
             </span>
             <span className={styles.memberTitle}>{member.title}</span>
             <span className={styles.memberMeta}>
-              {joinMeta(member.location_name, formatDuration(member.duration_minutes))}
+              {formatDuration(member.duration_minutes)}
             </span>
           </div>
         );

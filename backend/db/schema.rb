@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_18_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_063301) do
   create_table "day_versions", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
@@ -37,7 +37,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_18_090000) do
     t.string "kind", null: false
     t.decimal "lat", precision: 10, scale: 6
     t.decimal "lng", precision: 10, scale: 6
-    t.string "location_name"
     t.text "notes"
     t.json "pros", default: [], null: false
     t.string "source_url"

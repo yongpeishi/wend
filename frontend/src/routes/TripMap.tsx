@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast';
 import { useCreateEntry, useEntries } from '../api';
 import type { Entry } from '../api/types';
 import { AddPlaceForm } from '../features/map/AddPlaceForm';
+import type { NewPlace } from '../features/map/AddPlaceForm';
 import { MapFilterBar } from '../features/map/MapFilterBar';
 import { EMPTY_MAP_FILTERS, applyMapFilters } from '../features/map/mapFilters';
 import type { MapFilters } from '../features/map/mapFilters';
@@ -61,10 +62,10 @@ export function TripMap() {
     setPendingLocation(null);
   }
 
-  function handleSave(data: { title: string; lat: number; lng: number; location_name: string | null }) {
+  function handleSave(data: NewPlace) {
     createEntry.mutate(
       {
-        entry: { kind: 'idea', title: data.title, lat: data.lat, lng: data.lng, location_name: data.location_name },
+        entry: { kind: 'idea', title: data.title, lat: data.lat, lng: data.lng },
         parent_id: trip.id,
       },
       {

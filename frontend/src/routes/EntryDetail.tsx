@@ -9,11 +9,10 @@ import { Field } from '../components/Field';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
 import { useEntry, useRestoreEntry, useUpdateEntry } from '../api/entries';
-import type { EntryCategory } from '../api/types';
+import { CATEGORY_LABELS, CATEGORY_ORDER } from '../features/board/filters';
 import { formatDuration } from '../lib/formatDates';
 import styles from './EntryDetail.module.css';
 
-const CATEGORIES: EntryCategory[] = ['place', 'food', 'activity', 'lodging', 'transport', 'other'];
 
 /**
  * One fact, read rather than filled in.
@@ -115,7 +114,6 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
       title: entry.title,
       description: entry.description ?? '',
       category: entry.category ?? '',
-      location_name: entry.location_name ?? '',
       address: entry.address ?? '',
       lat: entry.lat == null ? '' : String(entry.lat),
       lng: entry.lng == null ? '' : String(entry.lng),
@@ -265,9 +263,9 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
                   }}
                 >
                   <option value="">Not sure yet</option>
-                  {CATEGORIES.map((c) => (
+                  {CATEGORY_ORDER.map((c) => (
                     <option key={c} value={c}>
-                      {c}
+                      {CATEGORY_LABELS[c]}
                     </option>
                   ))}
                 </Select>
@@ -284,26 +282,14 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
               </Field>
             </div>
 
-            <div className={styles.pair}>
-              <Field label="Location">
-                <input
-                  className={styles.input}
-                  placeholder="Name of the place"
-                  value={draft.location_name ?? ''}
-                  onChange={(e) => setDraft((d) => ({ ...d, location_name: e.target.value }))}
-                  onBlur={(e) => save('location_name', e.target.value)}
-                />
-              </Field>
-
-              <Field label="Address">
-                <input
-                  className={styles.input}
-                  value={draft.address ?? ''}
-                  onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
-                  onBlur={(e) => save('address', e.target.value)}
-                />
-              </Field>
-            </div>
+            <Field label="Address">
+              <input
+                className={styles.input}
+                value={draft.address ?? ''}
+                onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
+                onBlur={(e) => save('address', e.target.value)}
+              />
+            </Field>
 
             <div className={styles.pair}>
               <Field label="Latitude">
@@ -351,16 +337,13 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
             <Fact label="Short description" value={entry.description} />
 
             <div className={styles.pair}>
-              <Fact label="Category" value={entry.category} />
+              <Fact label="Category" value={entry.category && CATEGORY_LABELS[entry.category]} />
               {/* "2 hr", not "120". The minutes box exists because minutes are
                   what you type; reading it, how long it takes is a duration. */}
               <Fact label="Estimated duration" value={formatDuration(entry.duration_minutes)} />
             </div>
 
-            <div className={styles.pair}>
-              <Fact label="Location" value={entry.location_name} />
-              <Fact label="Address" value={entry.address} />
-            </div>
+            <Fact label="Address" value={entry.address} />
 
             <div className={styles.pair}>
               <Fact label="Latitude" value={entry.lat == null ? null : String(entry.lat)} />

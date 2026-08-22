@@ -7,10 +7,21 @@ import { PlaceSearch } from './PlaceSearch';
 import type { GeocodeResult } from './types';
 import styles from './AddPlaceForm.module.css';
 
+/**
+ * Everything an entry needs to exist on the map: a name, and somewhere to put
+ * it. Named rather than written inline twice, so the form and the route that
+ * saves for it cannot drift apart a field at a time.
+ */
+export interface NewPlace {
+  title: string;
+  lat: number;
+  lng: number;
+}
+
 export interface AddPlaceFormProps {
   /** Set when the user clicked the map directly — the manual, geocode-free path. */
   clickedLocation: { lat: number; lng: number } | null;
-  onSave: (data: { title: string; lat: number; lng: number; location_name: string | null }) => void;
+  onSave: (data: NewPlace) => void;
   onCancel: () => void;
   /** Lets the caller draw a pending marker on the map as a location is chosen, before it's saved. */
   onChosenLocationChange?: (location: { lat: number; lng: number } | null) => void;
@@ -24,12 +35,12 @@ export interface AddPlaceFormProps {
  * title to become a real entry.
  */
 export function AddPlaceForm({ clickedLocation, onSave, onCancel, onChosenLocationChange, saving = false }: AddPlaceFormProps) {
-  const [chosen, setChosen] = useState<{ lat: number; lng: number; label: string } | null>(null);
+  const [chosen, setChosen] = useState<{ lat: number; lng: number } | null>(null);
   const [title, setTitle] = useState('');
 
   useEffect(() => {
     if (!clickedLocation) return;
-    setChosen({ ...clickedLocation, label: '' });
+    setChosen(clickedLocation);
     onChosenLocationChange?.(clickedLocation);
     // Only the coordinates identify a new click — onChosenLocationChange is stable enough in practice
     // and re-running this on every parent render would fight the user's own typing below.
@@ -37,7 +48,7 @@ export function AddPlaceForm({ clickedLocation, onSave, onCancel, onChosenLocati
   }, [clickedLocation?.lat, clickedLocation?.lng]);
 
   function pick(result: GeocodeResult) {
-    setChosen(result);
+    setChosen({ lat: result.lat, lng: result.lng });
     setTitle((current) => current || (result.label.split(',')[0] ?? result.label));
     onChosenLocationChange?.({ lat: result.lat, lng: result.lng });
   }
@@ -45,7 +56,7 @@ export function AddPlaceForm({ clickedLocation, onSave, onCancel, onChosenLocati
   function save() {
     const trimmedTitle = title.trim();
     if (!chosen || !trimmedTitle) return;
-    onSave({ title: trimmedTitle, lat: chosen.lat, lng: chosen.lng, location_name: chosen.label || null });
+    onSave({ title: trimmedTitle, lat: chosen.lat, lng: chosen.lng });
   }
 
   return (

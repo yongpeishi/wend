@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { ItineraryItem } from '../../api/types';
-import { joinMeta } from '../../lib/formatDates';
 import { formatSpan } from './itineraryModel';
 import { TimeEditor } from './TimeEditor';
 import styles from './ItemLine.module.css';
@@ -32,7 +31,7 @@ export function ItemLine({ item, onEditTime, onRemove, readOnly = false }: ItemL
 
   const title = item.entry?.title ?? 'Something kept';
   const span = formatSpan(item.starts_at_minutes, item.ends_at_minutes);
-  const meta = joinMeta(item.entry?.location_name, item.note);
+  const meta = item.note ?? '';
   const canEditTime = Boolean(onEditTime) && !readOnly;
 
   if (editing && onEditTime) {

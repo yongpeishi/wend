@@ -82,6 +82,27 @@ class EntrySerializerTest < ActiveSupport::TestCase
     assert_equal [their_trip.id], row["parent_ids"]
   end
 
+  # `summary` is the one EntrySummary shape in the API: entry `parents`,
+  # `Todo#entry` and the itinerary's `entry`/`members` all send exactly this.
+  # Asserted as a whole hash, not key by key, because the value of a shared shape
+  # is that it stays shared -- a field added here for one caller quietly widens
+  # the payload of the other three, and this is where that shows up.
+  test "summary sends exactly the EntrySummary keys and nothing else" do
+    idea = create_idea(title: "Nanzen-ji", created_by: @user, duration_minutes: 40)
+
+    assert_equal(
+      { "id" => idea.id, "kind" => "idea", "title" => "Nanzen-ji", "category" => "place",
+        "duration_minutes" => 40 },
+      EntrySerializer.summary(idea)
+    )
+  end
+
+  # `Todo#entry` and a schedule_item's `entry` are both optional, so the nil is
+  # handled once here rather than guarded at every call site.
+  test "summary of no entry is nil, not an empty hash" do
+    assert_nil EntrySerializer.summary(nil)
+  end
+
   # The constraint in this serializer's header comment: fixed, small query count
   # regardless of how many entries are passed. `voters` and `parent_ids` must
   # each be one more bulk query, never one per entry.

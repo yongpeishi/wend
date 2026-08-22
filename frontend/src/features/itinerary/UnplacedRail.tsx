@@ -151,7 +151,6 @@ function RailItem({ item, days, onAddToDay, readOnly = false }: RailItemProps) {
 
   const meta = joinMeta(
     item.kind === 'bundle' ? 'Plan' : null,
-    item.location_name,
     formatDuration(item.duration_minutes),
   );
 

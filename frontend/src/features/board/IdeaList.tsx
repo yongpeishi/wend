@@ -88,18 +88,22 @@ export interface IdeaListProps {
 
 /**
  * The board's idea list: flat in 'none', sectioned under collapsible headers in
- * 'category' and 'location'.
+ * 'category'.
  *
  * Grouping is presentation only. `entries` arrives already filtered, and every
  * mode renders exactly the entries it was handed — so the category chips keep
- * narrowing the list while it is grouped by place, which is the whole point of
- * keeping the two controls apart.
+ * narrowing the list while it is grouped, and a heading never claims more than
+ * what is actually under it.
+ *
+ * The chips and the grouping control read the same field now that grouping by
+ * place is gone, so lighting Food and grouping by category leaves one section
+ * titled Food. That is the two controls composing, not one overriding the
+ * other: what the chips took out never reaches this component, and this
+ * component only decides where what did arrive is drawn.
  *
  * Collapsing is local state, not a filter: a collapsed section still counts its
  * ideas in its own header, so nothing ever silently disappears. It resets on
  * remount, which is the honest default — a fold is a glance, not a setting.
- *
- * On group order and the "No location" bucket, see `groupByLocation`.
  */
 export function IdeaList({
   entries,

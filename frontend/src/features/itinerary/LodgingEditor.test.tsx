@@ -6,7 +6,7 @@ import { LodgingEditor } from './LodgingEditor';
 import type { LodgingValue } from './LodgingEditor';
 
 function place(id: number, title: string): EntrySummary {
-  return { id, kind: 'idea', title, category: 'lodging', duration_minutes: null, location_name: null };
+  return { id, kind: 'idea', title, category: 'lodging', duration_minutes: null };
 }
 
 const CHOICES = [place(11, 'Machiya near Yasaka'), place(12, 'Hotel in Namba')];

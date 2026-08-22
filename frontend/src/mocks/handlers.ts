@@ -237,7 +237,6 @@ export const handlers = [
       category: body.entry.category ?? null,
       starts_on: body.entry.starts_on ?? null,
       ends_on: body.entry.ends_on ?? null,
-      location_name: body.entry.location_name ?? null,
       address: body.entry.address ?? null,
       lat: body.entry.lat ?? null,
       lng: body.entry.lng ?? null,
@@ -469,7 +468,7 @@ export const handlers = [
     if (done !== null) results = results.filter((t) => (done === 'true' ? t.done_at !== null : t.done_at === null));
     const withEntry = results.map((t) => ({
       ...t,
-      // The shared summary shape — duration_minutes and location_name included.
+      // The shared summary shape — duration_minutes
       entry: t.entry_id !== null ? (() => {
         const e = findEntry(t.entry_id as number);
         return e ? toEntrySummary(e) : null;

@@ -40,7 +40,6 @@ export interface StoredEntry {
   category: Entry['category'];
   starts_on: string | null;
   ends_on: string | null;
-  location_name: string | null;
   address: string | null;
   lat: number | null;
   lng: number | null;
@@ -207,7 +206,6 @@ export function toEntrySummary(entry: StoredEntry): EntrySummary {
     title: entry.title,
     category: entry.category,
     duration_minutes: entry.duration_minutes,
-    location_name: entry.location_name,
   };
 }
 
@@ -220,7 +218,6 @@ export function toEntry(entry: StoredEntry, currentUserId: number | null): Entry
     category: entry.category,
     starts_on: entry.starts_on,
     ends_on: entry.ends_on,
-    location_name: entry.location_name,
     address: entry.address,
     lat: entry.lat,
     lng: entry.lng,
@@ -619,7 +616,6 @@ export function seed() {
     category: null,
     starts_on: '2026-11-02',
     ends_on: '2026-11-08',
-    location_name: null,
     address: null,
     lat: null,
     lng: null,
@@ -650,7 +646,6 @@ export function seed() {
     category: 'place',
     starts_on: null,
     ends_on: null,
-    location_name: 'Nanzen-ji',
     address: 'Kyoto, Sakyo Ward',
     lat: 35.0116,
     lng: 135.7681,
@@ -666,7 +661,6 @@ export function seed() {
     pros: [],
     cons: [],
     category: 'activity',
-    location_name: 'Kiyamachi-dori',
     address: 'Kyoto',
     lat: 35.0086,
     lng: 135.7717,
@@ -693,7 +687,6 @@ export function seed() {
     title: string,
     category: Entry['category'],
     durationMinutes: number,
-    locationName: string,
   ): StoredEntry => ({
     ...trip,
     id,
@@ -705,7 +698,6 @@ export function seed() {
     category,
     starts_on: null,
     ends_on: null,
-    location_name: locationName,
     address: null,
     lat: null,
     lng: null,
@@ -714,9 +706,9 @@ export function seed() {
 
   // 30 + 60 + 30 = the bundle's two-hour span exactly, so the members' derived
   // hours come out as whole, obviously-proportional slots.
-  const coffee = idea(6, 'Coffee at Weekenders', 'food', 30, 'Weekenders Coffee');
-  const nishiki = idea(7, 'Nishiki market', 'food', 60, 'Nishiki-koji');
-  const teramachi = idea(8, 'Teramachi arcade', 'activity', 30, 'Teramachi');
+  const coffee = idea(6, 'Coffee at Weekenders', 'food', 30);
+  const nishiki = idea(7, 'Nishiki market', 'food', 60);
+  const teramachi = idea(8, 'Teramachi arcade', 'activity', 30);
 
   const nightBundle: StoredEntry = {
     ...trip,
@@ -729,8 +721,8 @@ export function seed() {
     cons: [],
   };
 
-  const kamogawa = idea(10, 'Kamo river walk', 'activity', 45, 'Kamogawa');
-  const yakitori = idea(11, 'Yakitori under the tracks', 'food', 45, 'Kiyamachi-dori');
+  const kamogawa = idea(10, 'Kamo river walk', 'activity', 45);
+  const yakitori = idea(11, 'Yakitori under the tracks', 'food', 45);
 
   const library1: StoredEntry = {
     ...trip,
@@ -741,7 +733,6 @@ export function seed() {
     pros: [],
     cons: [],
     category: 'place',
-    location_name: 'Fushimi Inari Taisha',
     lat: 34.9671,
     lng: 135.7727,
     source_url: 'https://example.com/fushimi-inari',

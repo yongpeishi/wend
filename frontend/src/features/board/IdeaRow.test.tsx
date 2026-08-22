@@ -22,7 +22,6 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     category: 'place',
     starts_on: null,
     ends_on: null,
-    location_name: 'Kyoto south',
     address: null,
     lat: null,
     lng: null,
@@ -46,7 +45,7 @@ function makeEntry(overrides: Partial<Entry>): Entry {
   };
 }
 
-const PLAN = makeEntry({ id: 90, kind: 'bundle', title: 'Tuesday south', category: null, location_name: null });
+const PLAN = makeEntry({ id: 90, kind: 'bundle', title: 'Tuesday south', category: null });
 
 interface RowOptions {
   entry?: Entry;

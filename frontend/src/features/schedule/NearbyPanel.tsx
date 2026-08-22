@@ -17,8 +17,6 @@ export interface NearbyPlace {
 export interface NearbyPanelProps {
   /** 'overlay' = the mobile full-screen sheet; 'rail' = the desktop side card. */
   layout: 'overlay' | 'rail';
-  /** "Around you" or a place name when we have one. */
-  heading: string;
   /** The sentence under the heading. May be ''. */
   blurb: string;
   places: NearbyPlace[];
@@ -40,6 +38,21 @@ export interface NearbyPanelProps {
  * can look sideways at what is around you without the plan moving under you.
  */
 const CLOSING_LINE = 'Nothing here changes the plan. Pick one up and the day carries on.';
+
+/**
+ * Always "you", never a place name. Naming where you are would mean reverse
+ * geocoding a coordinate — a second network call spent on a heading — and the
+ * blurb underneath already says what the distances are measured from when that
+ * is worth saying.
+ *
+ * There used to be a second line under this one, a title reading "Around you",
+ * which said the same thing twice as soon as the place name went. This is the
+ * survivor: the eyebrow's small-caps treatment is CSS, so the sentence stays
+ * mixed-case in the DOM and a screen reader says it as words rather than
+ * spelling out capitals. It is the panel's heading and, in the overlay, the
+ * dialog's accessible name.
+ */
+const HEADING = 'Around you now';
 
 const MAP_HEIGHT_OVERLAY = 320;
 const MAP_HEIGHT_RAIL = 260;
@@ -70,7 +83,6 @@ function pinsFor(places: NearbyPlace[]): MapPin[] {
  */
 export function NearbyPanel({
   layout,
-  heading,
   blurb,
   places,
   origin,
@@ -115,9 +127,8 @@ export function NearbyPanel({
     >
       <header className={styles.head}>
         <div className={styles.headText}>
-          <p className={styles.eyebrow}>AROUND YOU NOW</p>
-          <h2 className={styles.heading} id={headingId}>
-            {heading}
+          <h2 className={styles.eyebrow} id={headingId}>
+            {HEADING}
           </h2>
           {blurb && <p className={styles.blurb}>{blurb}</p>}
         </div>

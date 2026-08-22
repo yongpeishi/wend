@@ -13,6 +13,7 @@ import type { NearbyPlace } from '../features/schedule/NearbyPanel';
 import { NowBar } from '../features/schedule/NowBar';
 import { RowOptions } from '../features/schedule/RowOptions';
 import { ScheduleRow } from '../features/schedule/ScheduleRow';
+import { CATEGORY_LABELS } from '../features/board/filters';
 import type { PlanRow } from '../features/schedule/dayPlan';
 import { buildPlanRows, dayChips, nowLine, openingDay } from '../features/schedule/dayPlan';
 import type { Coords } from '../features/schedule/useGeolocation';
@@ -91,8 +92,8 @@ function coordsOf(entries: Entry[], row: PlanRow | null): Coords | null {
  * is no last-resort centroid here for that reason. A day with nothing located
  * on it says so instead, which is at least true.
  *
- * It is also the fact the panel's heading already names, so the sentence, the
- * heading and the map finally agree with each other.
+ * It is also the row the blurb under the panel's heading names out loud, so the
+ * sentence and the map agree with each other about where you are standing.
  */
 function planOriginRow(rows: PlanRow[], entries: Entry[]): PlanRow | null {
   const located = rows.filter((row) => coordsOf(entries, row) !== null);
@@ -187,17 +188,10 @@ export function TripSchedule() {
   const places: NearbyPlace[] = nearbyEntries.map((entry) => ({
     id: entry.id,
     name: entry.title,
-    meta: joinMeta(entry.category, formatWalk(entry.distance_km)),
+    meta: joinMeta(entry.category && CATEGORY_LABELS[entry.category], formatWalk(entry.distance_km)),
     lat: entry.lat,
     lng: entry.lng,
   }));
-
-  // "Around you" until we can name where you are. The item you are standing in
-  // is the only place-name this screen actually knows — we do not reverse
-  // geocode, and guessing one from a coordinate is a second network call for a
-  // heading.
-  const hereRow = rows.find((row) => row.state === 'now');
-  const heading = entryFor(entries, hereRow?.entryId ?? null)?.location_name ?? 'Around you';
 
   // Waiting on the browser is only worth saying when there is nothing to show
   // meanwhile: with the plan's origin standing in, the map and the list are
@@ -208,15 +202,15 @@ export function TripSchedule() {
   // so the sentence under the heading can say it out loud rather than claim a
   // middle-of-the-trip the map is not centred on.
   const originEntry = entryFor(entries, originRow?.entryId ?? null);
-  const originName = originEntry?.location_name ?? originEntry?.title ?? null;
+  const originName = originEntry?.title ?? null;
 
   // A note replaces the list; a blurb sits under the heading and explains it.
   // Both have to stay true about where the distances are measured from.
   const note = (() => {
     if (!origin) {
       return geo.denied
-        ? "Your browser won't share your location, and nothing on this day has a place yet. Add a location to an idea and this will work."
-        : 'Nothing on this day has a place yet, so there is nothing to measure from. Add a location to an idea and this will work.';
+        ? "Your browser won't share your location, and nothing on this day has a place yet. Drop a pin on the map, or give an idea a latitude and longitude, and this will work."
+        : 'Nothing on this day has a place yet, so there is nothing to measure from. Drop a pin on the map, or give an idea a latitude and longitude, and this will work.';
     }
     if (nearbyQuery.data && places.length === 0) {
       return 'Nothing unplaced within a short walk. A good moment for a detour.';
@@ -236,7 +230,6 @@ export function TripSchedule() {
   const nearbyPanel = (layout: 'overlay' | 'rail') => (
     <NearbyPanel
       layout={layout}
-      heading={heading}
       blurb={blurb}
       places={places}
       origin={origin}

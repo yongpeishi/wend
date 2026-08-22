@@ -6,6 +6,7 @@ import { EmptyState } from '../components/EmptyState';
 import { QueryGate } from '../components/QueryGate';
 import { useArchiveEntry, useEntries, useRestoreEntry } from '../api/entries';
 import { canDelete } from '../auth/tripRole';
+import { CATEGORY_LABELS } from '../features/board/filters';
 import { NewTripModal } from '../features/trips/NewTripModal';
 import { TripCard } from '../features/trips/TripCard';
 import styles from './TripsList.module.css';
@@ -134,7 +135,7 @@ export function TripsList() {
                 <li key={entry.id}>
                   <EntryRow
                     title={entry.title}
-                    metadata={[entry.category, entry.location_name].filter(Boolean) as string[]}
+                    metadata={entry.category ? [CATEGORY_LABELS[entry.category]] : []}
                     kept
                     onSelect={() => navigate(`/entries/${entry.id}`)}
                   />

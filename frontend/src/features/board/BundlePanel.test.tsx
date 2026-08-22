@@ -18,7 +18,6 @@ function entry(id: number, title: string, kind: Entry['kind'] = 'idea', schedule
     category: 'food',
     starts_on: null,
     ends_on: null,
-    location_name: null,
     address: null,
     lat: null,
     lng: null,

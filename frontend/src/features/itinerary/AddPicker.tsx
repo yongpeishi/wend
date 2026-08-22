@@ -48,7 +48,6 @@ export function AddPicker({ choices, onPick, onClose, slotLabel }: AddPickerProp
             <span className={styles.choiceMeta}>
               {joinMeta(
                 choice.kind === 'bundle' ? 'Plan' : null,
-                choice.location_name,
                 formatDuration(choice.duration_minutes),
               )}
             </span>

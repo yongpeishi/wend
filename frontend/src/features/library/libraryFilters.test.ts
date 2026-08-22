@@ -17,7 +17,6 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     category: null,
     starts_on: null,
     ends_on: null,
-    location_name: null,
     address: null,
     lat: null,
     lng: null,

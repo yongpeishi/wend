@@ -112,14 +112,14 @@ async function optionsGroup(): Promise<HTMLElement> {
 describe('TripSchedule — the day as it stands', () => {
   beforeEach(() => viewport('wide'));
 
-  it('draws each item as a flat row: when, how long, what and where', async () => {
+  it('draws each item as a flat row: when, how long and what', async () => {
     renderSchedule();
 
     expect(await screen.findByText('Nanzen-ji')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Final schedule', level: 2 })).toBeInTheDocument();
     expect(screen.getByText('09:00–09:40')).toBeInTheDocument();
     expect(screen.getByText('40 min')).toBeInTheDocument();
-    expect(screen.getByText('place · Nanzen-ji')).toBeInTheDocument();
+    expect(screen.getByText('Place')).toBeInTheDocument();
   });
 
   /* The dot is a shape and says nothing on its own. A row whose choice nobody
@@ -283,12 +283,12 @@ describe('TripSchedule — the now bar', () => {
     renderSchedule();
     await screen.findByText('Nanzen-ji');
 
-    expect(screen.queryByText('AROUND YOU NOW')).not.toBeInTheDocument();
+    expect(screen.queryByText('Around you now')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: "What's nearby" }));
 
     const sheet = await screen.findByRole('dialog');
-    expect(within(sheet).getByText('AROUND YOU NOW')).toBeInTheDocument();
+    expect(within(sheet).getByText('Around you now')).toBeInTheDocument();
     expect(await within(sheet).findByText('Kiyamachi')).toBeInTheDocument();
 
     await userEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
@@ -307,9 +307,9 @@ describe('TripSchedule — nearby, at both widths', () => {
     renderSchedule();
     await screen.findByText('Nanzen-ji');
 
-    expect(await screen.findByText('AROUND YOU NOW')).toBeInTheDocument();
+    expect(await screen.findByText('Around you now')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getAllByText('AROUND YOU NOW')).toHaveLength(1);
+    expect(screen.getAllByText('Around you now')).toHaveLength(1);
   });
 
   /**
@@ -329,7 +329,7 @@ describe('TripSchedule — nearby, at both widths', () => {
     ).toBeInTheDocument();
     // Kept, unplaced, and turned into minutes on foot rather than kilometres —
     // measured from Nanzen-ji, not from the middle of anything.
-    expect(await screen.findByText('activity · 8 min walk')).toBeInTheDocument();
+    expect(await screen.findByText('Activity · 8 min walk')).toBeInTheDocument();
     // And the panel is whole: a map with the pin on it, not just a sentence.
     expect(await screen.findByText('pin: Kiyamachi')).toBeInTheDocument();
   });
@@ -364,7 +364,7 @@ describe('TripSchedule — nearby, at both widths', () => {
     renderSchedule();
     await screen.findByText('Nanzen-ji');
 
-    expect(screen.queryByText('AROUND YOU NOW')).not.toBeInTheDocument();
+    expect(screen.queryByText('Around you now')).not.toBeInTheDocument();
   });
 });
 
@@ -422,7 +422,7 @@ describe('TripSchedule — as a viewer', () => {
     // The plan is the thing a viewer came to read: the row, its time, its meta.
     expect(await screen.findByText('Nanzen-ji')).toBeInTheDocument();
     expect(screen.getByText('09:00–09:40')).toBeInTheDocument();
-    expect(screen.getByText('place · Nanzen-ji')).toBeInTheDocument();
+    expect(screen.getByText('Place')).toBeInTheDocument();
     // The days are reading, not editing — the strip stays.
     expect(screen.getByRole('navigation', { name: 'Days' })).toBeInTheDocument();
     // And the choice, unmade, with every option still readable.
@@ -463,8 +463,10 @@ describe('TripSchedule — on the day itself', () => {
 
     expect(screen.getByText('now')).toBeInTheDocument();
     expect(screen.getByText(`Until 09:40 · then ${BUNDLE_TITLE} at 11:00`)).toBeInTheDocument();
-    // The panel names where you are when the plan already knows.
-    expect(await screen.findByRole('heading', { name: 'Nanzen-ji', level: 2 })).toBeInTheDocument();
+    // The panel is up beside the row. It does not claim to know the name of the
+    // place you are standing on — the sentence under the heading says what the
+    // distances are measured from (its own tests, above).
+    expect(await screen.findByRole('heading', { name: 'Around you now', level: 2 })).toBeInTheDocument();
   });
 });
 

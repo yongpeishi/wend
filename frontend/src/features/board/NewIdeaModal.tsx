@@ -23,7 +23,6 @@ interface Draft {
   title: string;
   description: string;
   category: EntryCategory | '';
-  location_name: string;
   address: string;
   duration_minutes: string;
   notes: string;
@@ -33,7 +32,6 @@ const EMPTY_DRAFT: Draft = {
   title: '',
   description: '',
   category: '',
-  location_name: '',
   address: '',
   duration_minutes: '',
   notes: '',
@@ -47,7 +45,7 @@ const EMPTY_DRAFT: Draft = {
  * return, it exists.
  *
  * What it asks for is a subset of what an idea can hold: name, short
- * description, category, location, address, estimated duration, notes. The
+ * description, category, address, estimated duration, notes. The
  * coordinates are deliberately not here — nobody types a latitude at capture
  * speed, and the map fills them in later — so the full set lives in the panel
  * at /entries/:id (EntryDetail.tsx), which opens as the same <Modal> this one
@@ -94,7 +92,6 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
     const entry: EntryWritePayload = { kind: 'idea', title };
     if (draft.description.trim()) entry.description = draft.description.trim();
     if (draft.category) entry.category = draft.category;
-    if (draft.location_name.trim()) entry.location_name = draft.location_name.trim();
     if (draft.address.trim()) entry.address = draft.address.trim();
     if (draft.notes.trim()) entry.notes = draft.notes.trim();
     if (draft.duration_minutes.trim()) {
@@ -182,13 +179,6 @@ export function NewIdeaModal({ open, onClose, parentId, onCreated }: NewIdeaModa
             ))}
           </Select>
         </div>
-
-        <Field
-          label="Location"
-          placeholder="Name of the place"
-          value={draft.location_name}
-          onChange={(e) => setDraft((d) => ({ ...d, location_name: e.target.value }))}
-        />
 
         <Field
           label="Address"

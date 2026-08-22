@@ -18,7 +18,6 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     category: null,
     starts_on: null,
     ends_on: null,
-    location_name: null,
     address: null,
     lat: null,
     lng: null,
@@ -43,9 +42,9 @@ function makeEntry(overrides: Partial<Entry>): Entry {
 }
 
 const ENTRIES = [
-  makeEntry({ id: 1, title: 'Fushimi Inari', category: 'place', location_name: 'Kyoto south', duration_minutes: 120 }),
-  makeEntry({ id: 2, title: 'Nishiki Market', category: 'food', location_name: 'Kyoto central' }),
-  makeEntry({ id: 3, title: 'Kinkaku-ji', category: 'place', location_name: 'Kyoto west', todos_open_count: 2 }),
+  makeEntry({ id: 1, title: 'Fushimi Inari', category: 'place', duration_minutes: 120 }),
+  makeEntry({ id: 2, title: 'Nishiki Market', category: 'food' }),
+  makeEntry({ id: 3, title: 'Kinkaku-ji', category: 'place', todos_open_count: 2 }),
   makeEntry({ id: 4, title: 'Somewhere unplaced', category: 'other' }),
 ];
 
@@ -116,11 +115,6 @@ describe('IdeaList', () => {
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
 
-  it('sections by place, alphabetically, with the unplaced idea under "No location" last', () => {
-    renderList('location');
-    expect(groupLabels()).toEqual(['Kyoto central', 'Kyoto south', 'Kyoto west', 'No location']);
-  });
-
   it('sections by category in the same shape', () => {
     renderList('category');
     expect(groupLabels()).toEqual(['Place', 'Food', 'Other']);
@@ -138,15 +132,15 @@ describe('IdeaList', () => {
   });
 
   it('says "1 idea" rather than "1 ideas"', () => {
-    renderList('location');
-    expect(screen.getByRole('button', { name: /^Kyoto south/ })).toHaveTextContent('1 idea');
+    renderList('category');
+    expect(screen.getByRole('button', { name: /^Food/ })).toHaveTextContent('1 idea');
   });
 
   it('collapses and reopens a group, announcing it with aria-expanded', async () => {
     const user = userEvent.setup();
-    renderList('location');
+    renderList('category');
 
-    const header = screen.getByRole('button', { name: /^Kyoto south/ });
+    const header = screen.getByRole('button', { name: /^Place/ });
     expect(header).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: /^Fushimi Inari/ })).toBeInTheDocument();
 
@@ -160,8 +154,8 @@ describe('IdeaList', () => {
   });
 
   it('points aria-controls at the panel it actually folds', () => {
-    renderList('location');
-    const header = screen.getByRole('button', { name: /^Kyoto south/ });
+    renderList('category');
+    const header = screen.getByRole('button', { name: /^Place/ });
     const panelId = header.getAttribute('aria-controls') as string;
     const panel = document.getElementById(panelId);
 
@@ -171,12 +165,12 @@ describe('IdeaList', () => {
 
   it('folds one group at a time, leaving its neighbours open', async () => {
     const user = userEvent.setup();
-    renderList('location');
+    renderList('category');
 
-    await user.click(screen.getByRole('button', { name: /^Kyoto south/ }));
+    await user.click(screen.getByRole('button', { name: /^Place/ }));
 
-    expect(screen.getByRole('button', { name: /^Kyoto west/ })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('button', { name: /^Kinkaku-ji/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Food/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toBeInTheDocument();
   });
 
   it('leaves every row with its drag handle, not a checkbox, until the board says otherwise', () => {
@@ -193,7 +187,7 @@ describe('IdeaList', () => {
   });
 
   it('renders every entry it is given, in every mode — grouping hides nothing', () => {
-    for (const mode of ['none', 'category', 'location'] as const) {
+    for (const mode of ['none', 'category'] as const) {
       const view = renderList(mode);
       for (const entry of ENTRIES) {
         expect(screen.getByRole('button', { name: new RegExp(`^${entry.title}`) })).toBeInTheDocument();
@@ -208,7 +202,7 @@ describe('IdeaList', () => {
    * there to read.
    */
   it('passes read-only down to every row, in every grouping, without losing an idea', () => {
-    for (const mode of ['none', 'category', 'location'] as const) {
+    for (const mode of ['none', 'category'] as const) {
       const view = renderList(mode, ENTRIES, { canEdit: false });
 
       for (const entry of ENTRIES) {

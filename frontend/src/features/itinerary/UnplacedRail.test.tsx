@@ -8,7 +8,7 @@ import type { ItineraryDay } from './itineraryModel';
 import { UnplacedRail } from './UnplacedRail';
 
 function summary(id: number, title: string, kind: EntrySummary['kind'] = 'idea'): EntrySummary {
-  return { id, kind, title, category: 'place', duration_minutes: 60, location_name: 'Kyoto west' };
+  return { id, kind, title, category: 'place', duration_minutes: 60 };
 }
 
 function day(number: number, iso: string, label: string): ItineraryDay {
@@ -60,7 +60,7 @@ describe('UnplacedRail — what is waiting', () => {
     renderRail();
 
     expect(screen.getByText('Kinkaku-ji')).toBeInTheDocument();
-    expect(screen.getByText('Plan · Kyoto west · 1 hr')).toBeInTheDocument();
+    expect(screen.getByText('Plan · 1 hr')).toBeInTheDocument();
   });
 
   it('says plainly when everything kept is already on a day', () => {
@@ -235,7 +235,7 @@ describe('UnplacedRail — read only', () => {
     expect(screen.getByText('Not placed yet · 2')).toBeInTheDocument();
     expect(screen.getByText('Kept for this trip, not on a day yet.')).toBeInTheDocument();
     expect(screen.getByText('Kinkaku-ji')).toBeInTheDocument();
-    expect(screen.getByText('Plan · Kyoto west · 1 hr')).toBeInTheDocument();
+    expect(screen.getByText('Plan · 1 hr')).toBeInTheDocument();
     // The one thing about this rail people assume wrongly still gets said.
     expect(screen.getByText(/Nothing here is used up/)).toBeInTheDocument();
 

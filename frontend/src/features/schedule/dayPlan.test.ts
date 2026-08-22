@@ -18,7 +18,6 @@ function makeEntry(overrides: Partial<Entry>): Entry {
     category: null,
     starts_on: null,
     ends_on: null,
-    location_name: null,
     address: null,
     lat: null,
     lng: null,
@@ -120,7 +119,7 @@ describe('openingDay', () => {
 describe('buildPlanRows — shape', () => {
   it('orders rows the way sortDayItems does and formats time, title and meta', () => {
     const entries = [
-      makeEntry({ id: 1, title: 'Fushimi Inari', category: 'place', location_name: 'Fushimi' }),
+      makeEntry({ id: 1, title: 'Fushimi Inari', category: 'place' }),
       makeEntry({ id: 2, title: 'Ramen', category: 'food' }),
     ];
     const items = [
@@ -134,7 +133,7 @@ describe('buildPlanRows — shape', () => {
     expect(rows.map((r) => r.id)).toEqual([10, 20, 30]);
     expect(rows.map((r) => r.time)).toEqual(['13:00–15:40', '20:30', '']);
     expect(rows.map((r) => r.title)).toEqual(['Fushimi Inari', 'Ramen', 'Untitled']);
-    expect(rows.map((r) => r.meta)).toEqual(['place · Fushimi', 'food', '']);
+    expect(rows.map((r) => r.meta)).toEqual(['Place', 'Food', '']);
     expect(rows[0]?.startsAtMinutes).toBe(13 * 60);
     expect(rows[0]?.endsAtMinutes).toBe(15 * 60 + 40);
   });

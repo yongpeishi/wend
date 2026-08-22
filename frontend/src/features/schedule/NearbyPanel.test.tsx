@@ -42,28 +42,30 @@ const ORIGIN = { lat: 35.0, lng: 135.77 };
 const CLOSING = 'Nothing here changes the plan. Pick one up and the day carries on.';
 
 describe('NearbyPanel', () => {
-  it('renders the eyebrow, heading, blurb and closing line in the rail', () => {
+  it('renders the heading, blurb and closing line in the rail', () => {
     render(
       <NearbyPanel
         layout="rail"
-        heading="Around Nanzen-ji"
         blurb="Three kept places within a short walk."
         places={PLACES}
         origin={ORIGIN}
       />,
     );
 
-    expect(screen.getByText('AROUND YOU NOW')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Around Nanzen-ji' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Around you now' })).toBeInTheDocument();
     expect(screen.getByText('Three kept places within a short walk.')).toBeInTheDocument();
     expect(screen.getByText(CLOSING)).toBeInTheDocument();
   });
 
+  // The panel writes its own heading rather than taking one — see HEADING in
+  // NearbyPanel.tsx — so what these two assert is that the fixed text reaches
+  // both the <h2> and, through aria-labelledby, the overlay's accessible name.
+  // Asserted by role and mixed-case name, not by the uppercase on screen: the
+  // capitals are text-transform, and the accessible name is what is in the DOM.
   it('renders the same head in the overlay, as a dialog named by its heading', () => {
     render(
       <NearbyPanel
         layout="overlay"
-        heading="Around you"
         blurb="Three kept places within a short walk."
         places={PLACES}
         origin={ORIGIN}
@@ -71,25 +73,25 @@ describe('NearbyPanel', () => {
       />,
     );
 
-    const dialog = screen.getByRole('dialog', { name: 'Around you' });
-    expect(within(dialog).getByText('AROUND YOU NOW')).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: 'Around you now' });
+    expect(within(dialog).getByRole('heading', { name: 'Around you now' })).toBeInTheDocument();
     expect(within(dialog).getByText('Three kept places within a short walk.')).toBeInTheDocument();
     expect(within(dialog).getByText(CLOSING)).toBeInTheDocument();
   });
 
   it('draws nothing for an empty blurb', () => {
     const { rerender } = render(
-      <NearbyPanel layout="rail" heading="Around you" blurb="Two kept places nearby." places={PLACES} origin={ORIGIN} />,
+      <NearbyPanel layout="rail" blurb="Two kept places nearby." places={PLACES} origin={ORIGIN} />,
     );
     expect(screen.getByText('Two kept places nearby.')).toBeInTheDocument();
 
-    rerender(<NearbyPanel layout="rail" heading="Around you" blurb="" places={PLACES} origin={ORIGIN} />);
+    rerender(<NearbyPanel layout="rail" blurb="" places={PLACES} origin={ORIGIN} />);
     expect(screen.queryByText('Two kept places nearby.')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Around you' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Around you now' })).toBeInTheDocument();
   });
 
   it('lists every place with its name and meta', () => {
-    render(<NearbyPanel layout="rail" heading="Around you" blurb="" places={PLACES} origin={null} />);
+    render(<NearbyPanel layout="rail" blurb="" places={PLACES} origin={null} />);
 
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(2);
@@ -102,15 +104,15 @@ describe('NearbyPanel', () => {
   it('shows the × only in the overlay, and only when there is something to close to', async () => {
     const onClose = vi.fn();
     const { rerender } = render(
-      <NearbyPanel layout="rail" heading="Around you" blurb="" places={PLACES} origin={ORIGIN} onClose={onClose} />,
+      <NearbyPanel layout="rail" blurb="" places={PLACES} origin={ORIGIN} onClose={onClose} />,
     );
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
 
-    rerender(<NearbyPanel layout="overlay" heading="Around you" blurb="" places={PLACES} origin={ORIGIN} />);
+    rerender(<NearbyPanel layout="overlay" blurb="" places={PLACES} origin={ORIGIN} />);
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
 
     rerender(
-      <NearbyPanel layout="overlay" heading="Around you" blurb="" places={PLACES} origin={ORIGIN} onClose={onClose} />,
+      <NearbyPanel layout="overlay" blurb="" places={PLACES} origin={ORIGIN} onClose={onClose} />,
     );
     await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalledOnce();
@@ -119,7 +121,7 @@ describe('NearbyPanel', () => {
   it('closes the overlay on Escape', async () => {
     const onClose = vi.fn();
     render(
-      <NearbyPanel layout="overlay" heading="Around you" blurb="" places={PLACES} origin={ORIGIN} onClose={onClose} />,
+      <NearbyPanel layout="overlay" blurb="" places={PLACES} origin={ORIGIN} onClose={onClose} />,
     );
 
     await userEvent.keyboard('{Escape}');
@@ -129,7 +131,7 @@ describe('NearbyPanel', () => {
   it('does not answer Escape when it is the desktop rail', async () => {
     const onClose = vi.fn();
     render(
-      <NearbyPanel layout="rail" heading="Around you" blurb="" places={PLACES} origin={ORIGIN} onClose={onClose} />,
+      <NearbyPanel layout="rail" blurb="" places={PLACES} origin={ORIGIN} onClose={onClose} />,
     );
 
     await userEvent.keyboard('{Escape}');
@@ -138,7 +140,7 @@ describe('NearbyPanel', () => {
 
   it('maps the places that have coordinates, at the height its layout asks for', () => {
     const { rerender } = render(
-      <NearbyPanel layout="overlay" heading="Around you" blurb="" places={PLACES} origin={ORIGIN} />,
+      <NearbyPanel layout="overlay" blurb="" places={PLACES} origin={ORIGIN} />,
     );
 
     expect(screen.getByTestId('map-fit')).toHaveTextContent('fit: true');
@@ -147,19 +149,19 @@ describe('NearbyPanel', () => {
     expect(within(map).getByText('Nanzen-ji (potential)')).toBeInTheDocument();
     expect(within(map).getByText('Omen Nippon (potential)')).toBeInTheDocument();
 
-    rerender(<NearbyPanel layout="rail" heading="Around you" blurb="" places={PLACES} origin={ORIGIN} />);
+    rerender(<NearbyPanel layout="rail" blurb="" places={PLACES} origin={ORIGIN} />);
     expect(screen.getByTestId('map-height')).toHaveTextContent('height: 260');
   });
 
   it('marks where you are on the map, and says what the mark means', () => {
-    render(<NearbyPanel layout="overlay" heading="Around you" blurb="" places={PLACES} origin={ORIGIN} />);
+    render(<NearbyPanel layout="overlay" blurb="" places={PLACES} origin={ORIGIN} />);
 
     expect(screen.getByTestId('map-origin')).toHaveTextContent('origin: 35,135.77');
     expect(screen.getByText('Where you are now')).toBeInTheDocument();
   });
 
   it('still draws the map when we do not know where you are, without claiming to', () => {
-    render(<NearbyPanel layout="overlay" heading="Around you" blurb="" places={PLACES} origin={null} />);
+    render(<NearbyPanel layout="overlay" blurb="" places={PLACES} origin={null} />);
 
     expect(screen.getByTestId('map-view')).toBeInTheDocument();
     expect(screen.getByTestId('map-origin')).toHaveTextContent('origin: none');
@@ -169,7 +171,7 @@ describe('NearbyPanel', () => {
 
   it('still draws the map when no place has coordinates — you are on it, and that is the point', () => {
     const flat: NearbyPlace[] = [{ id: 3, name: 'A note to self', meta: '', lat: null, lng: null }];
-    render(<NearbyPanel layout="rail" heading="Around you" blurb="" places={flat} origin={ORIGIN} />);
+    render(<NearbyPanel layout="rail" blurb="" places={flat} origin={ORIGIN} />);
 
     const map = screen.getByTestId('map-view');
     expect(within(map).queryByTestId('map-pin')).not.toBeInTheDocument();
@@ -182,7 +184,6 @@ describe('NearbyPanel', () => {
     render(
       <NearbyPanel
         layout="rail"
-        heading="Around you"
         blurb=""
         places={PLACES}
         origin={null}
@@ -196,7 +197,7 @@ describe('NearbyPanel', () => {
   });
 
   it('says it is still looking while loading', () => {
-    render(<NearbyPanel layout="rail" heading="Around you" blurb="" places={[]} origin={ORIGIN} loading />);
+    render(<NearbyPanel layout="rail" blurb="" places={[]} origin={ORIGIN} loading />);
 
     expect(screen.getByRole('status')).toHaveTextContent('Looking around');
     expect(screen.queryByRole('listitem')).not.toBeInTheDocument();

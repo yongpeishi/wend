@@ -125,17 +125,25 @@ export interface EntryGroup {
  * the list whichever mode is active. Grouping never hides an idea — it only
  * decides which heading it sits under.
  */
-export type GroupMode = 'none' | 'category' | 'location';
+export type GroupMode = 'none' | 'category';
 
 /**
- * The three groupings, in the order the board's segmented control offers them:
- * flat first, then the two ways of sectioning. All three are always on screen,
- * so no grouping can strand you — getting back to categories after grouping by
- * place is the same single click as any other move between them.
+ * The two groupings the board's control offers, flat first. There is only one
+ * way to section the list now, so what used to be a choice among several is a
+ * toggle: on, and the ideas sit under category headings; off, and they are one
+ * run. Both states are always on screen, so grouping cannot strand you —
+ * getting back to a flat list is the same single click as the move that got you
+ * there.
+ *
+ * Worth saying plainly, because it is no longer obvious from the code: the
+ * grouping control and the category chips now read the same field. They still
+ * do different jobs — the chips decide which ideas are on the board at all, the
+ * mode decides what headings they sit under — but that means lighting Food and
+ * grouping by category leaves a single section titled Food, which is the two
+ * controls composing rather than either one misbehaving.
  */
 export const GROUP_MODES: { key: GroupMode; label: string }[] = [
   { key: 'none', label: 'Ungrouped' },
-  { key: 'location', label: 'By location' },
   { key: 'category', label: 'By category' },
 ];
 
@@ -159,59 +167,6 @@ export function groupByCategory(entries: Entry[]): EntryGroup[] {
     }));
 }
 
-/** The bucket every idea without a usable `location_name` falls into. */
-export const NO_LOCATION_KEY = '__no_location__';
-export const NO_LOCATION_LABEL = 'No location';
-
-/**
- * Groups already-filtered entries by `location_name`, the mirror of
- * `groupByCategory` — same return shape, so both feed the same list renderer.
- *
- * `location_name` is nullable free text typed by a human, not a foreign key, so:
- *
- *   - Buckets are EXACT matches on the trimmed string. "Kyoto south" and
- *     "kyoto south" stay apart. Folding case (or fuzzy-matching near-misses)
- *     would silently merge two places a person deliberately wrote differently,
- *     and there is no way for them to pull the merge back apart. Wend never
- *     makes a destructive guess on the user's behalf.
- *   - Ordering is alphabetical and fully deterministic: `localeCompare` for
- *     human-sensible ordering, with a codepoint tiebreak so two strings that
- *     compare equal under base sensitivity ("Kyoto" vs "kyoto") still land in a
- *     fixed order rather than depending on input order.
- *   - Null, empty and whitespace-only names collect in one "No location"
- *     bucket, always last. It is a real, permanent, unremarkable state — an idea
- *     with no place yet is not a gap to nag about — so it gets a plain heading
- *     rather than being hidden or floated to the top.
- *
- * Empty buckets are never emitted, so the section list matches what is on
- * screen after filtering.
- */
-export function groupByLocation(entries: Entry[]): EntryGroup[] {
-  const named = new Map<string, Entry[]>();
-  const unplaced: Entry[] = [];
-
-  for (const entry of entries) {
-    const name = entry.location_name?.trim();
-    if (!name) {
-      unplaced.push(entry);
-      continue;
-    }
-    const bucket = named.get(name);
-    if (bucket) bucket.push(entry);
-    else named.set(name, [entry]);
-  }
-
-  const groups: EntryGroup[] = Array.from(named.entries())
-    .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: 'base' }) || (a < b ? -1 : a > b ? 1 : 0))
-    .map(([key, list]) => ({ key, label: key, entries: list }));
-
-  if (unplaced.length > 0) {
-    groups.push({ key: NO_LOCATION_KEY, label: NO_LOCATION_LABEL, entries: unplaced });
-  }
-
-  return groups;
-}
-
 /** The single flat section 'none' renders as — one unlabelled group, everything in it. */
 export const UNGROUPED_KEY = 'all';
 
@@ -225,8 +180,6 @@ export function groupEntries(entries: Entry[], mode: GroupMode): EntryGroup[] {
   switch (mode) {
     case 'category':
       return groupByCategory(entries);
-    case 'location':
-      return groupByLocation(entries);
     case 'none':
       return entries.length > 0 ? [{ key: UNGROUPED_KEY, label: '', entries }] : [];
   }
