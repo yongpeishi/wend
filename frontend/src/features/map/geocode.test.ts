@@ -41,6 +41,29 @@ describe('searchPlace', () => {
     expect(results).toEqual([{ lat: 35.0116, lng: 135.7681, label: 'Nanzen-ji, Kyoto' }]);
   });
 
+  it('carries the provider kind and place id through, id as a string — the seam never speaks numbers', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        { lat: '35.0116', lon: '135.7681', display_name: 'Nanzen-ji, Kyoto', type: 'attraction', place_id: 240109189 },
+      ],
+    });
+    const results = await searchPlace('nanzenji', { fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(results).toEqual([
+      { lat: 35.0116, lng: 135.7681, label: 'Nanzen-ji, Kyoto', kind: 'attraction', placeId: '240109189' },
+    ]);
+  });
+
+  it('leaves kind and placeId undefined when the response lacks them — the old shape still parses', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ lat: '35.0116', lon: '135.7681', display_name: 'Nanzen-ji, Kyoto' }],
+    });
+    const results = await searchPlace('nanzenji', { fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(results[0]!.kind).toBeUndefined();
+    expect(results[0]!.placeId).toBeUndefined();
+  });
+
   it('resolves to an empty array — never throws — when the response is not ok', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false, json: async () => [] });
     await expect(searchPlace('nowhere', { fetchImpl: fetchImpl as unknown as typeof fetch })).resolves.toEqual([]);

@@ -40,6 +40,10 @@ interface NominatimResult {
   lat: string;
   lon: string;
   display_name: string;
+  /** jsonv2's fine-grained kind ('attraction', 'restaurant', …). Optional in the response, optional all the way through. */
+  type?: string;
+  /** Nominatim counts place ids in numbers; the seam speaks strings — see GeocodeResult.placeId. */
+  place_id?: number;
 }
 
 export interface SearchPlaceOptions {
@@ -69,7 +73,17 @@ export async function searchPlace(query: string, options: SearchPlaceOptions = {
       });
       if (!response.ok) return [];
       const body = (await response.json()) as NominatimResult[];
-      return body.map((r) => ({ lat: Number(r.lat), lng: Number(r.lon), label: r.display_name }));
+      // `kind` and `placeId` ride along only when the response carries them —
+      // both are optional on GeocodeResult, so a leaner provider (or an older
+      // cached response) degrades to the original lat/lng/label shape rather
+      // than to undefined-shaped surprises.
+      return body.map((r) => ({
+        lat: Number(r.lat),
+        lng: Number(r.lon),
+        label: r.display_name,
+        kind: r.type,
+        placeId: r.place_id != null ? String(r.place_id) : undefined,
+      }));
     });
   } catch {
     return [];

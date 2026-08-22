@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DivIcon } from 'leaflet';
-import { chipIcon, clusterIcon, dotIcon, labelIcon, pinIcon } from './markerIcon';
+import { chipIcon, clusterIcon, dotIcon, faintIcon, labelIcon, pinIcon } from './markerIcon';
 
 // The icons are HTML strings handed to Leaflet, so the only thing worth
 // asserting is the contract that string carries: which classes the stylesheet
@@ -77,6 +77,19 @@ describe('chipIcon', () => {
     expect(icon.options.iconSize).toEqual([0, 0]);
     expect(icon.options.iconAnchor).toEqual([0, 0]);
   });
+
+  it('dashes the edge, at 1.5px, when the place is nested inside another kept thing', () => {
+    const markup = html(chipIcon('A', false, true));
+    expect(markup).toContain('wend-pin-chip--nested');
+    expect(markup).toContain('border-style: dashed');
+    expect(markup).toContain('border-width: 1.5px');
+  });
+
+  it('draws a plain solid edge for the two-argument call every existing caller makes', () => {
+    const markup = html(chipIcon('A', false));
+    expect(markup).not.toContain('wend-pin-chip--nested');
+    expect(markup).not.toContain('dashed');
+  });
 });
 
 describe('dotIcon', () => {
@@ -105,6 +118,34 @@ describe('dotIcon', () => {
   it('marks the selected dot, and only the selected dot, as selected', () => {
     expect(html(dotIcon('A', true))).toContain('is-selected');
     expect(html(dotIcon('A', false))).not.toContain('is-selected');
+  });
+});
+
+describe('faintIcon', () => {
+  it('reuses the dot markup — same neutral circle, faded rather than removed', () => {
+    const markup = html(faintIcon('Fushimi Inari'));
+    expect(markup).toContain('wend-pin-dot');
+    expect(markup).toContain('wend-pin-faint');
+    expect(markup).toContain('opacity: 0.45');
+  });
+
+  it('names the place for a screen reader without drawing the name', () => {
+    const markup = html(faintIcon('Fushimi Inari'));
+    expect(markup).toContain('aria-label="Fushimi Inari"');
+    expect(markup).not.toContain('>Fushimi Inari<');
+  });
+
+  it('escapes a title that contains markup rather than rendering it', () => {
+    const markup = html(faintIcon('<script>alert(1)</script>'));
+    expect(markup).not.toContain('<script>');
+    expect(markup).toContain('&lt;script&gt;');
+  });
+
+  it('stays a real button with the full 32px hit area — filtered out is not gone', () => {
+    const icon = faintIcon('A');
+    expect(html(icon)).toContain('<button type="button"');
+    expect(icon.options.iconSize).toEqual([32, 32]);
+    expect(icon.options.iconAnchor).toEqual([16, 16]);
   });
 });
 

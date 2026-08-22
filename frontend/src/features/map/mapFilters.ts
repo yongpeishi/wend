@@ -26,6 +26,15 @@ export type MapScheduleFilter = 'all' | 'scheduled' | 'potential';
 export interface MapFilters {
   categories: EntryCategory[];
   scheduleState: MapScheduleFilter;
+  /**
+   * Free-text narrowing on the title — a case-insensitive substring, nothing
+   * cleverer, the same rule the board's filter bar applies. It is a filter
+   * like the chips, not a mode of its own: it stacks with the categories and
+   * the schedule state, and clearing it is deleting what you typed.
+   * Whitespace-only text narrows nothing, so a stray space in the box cannot
+   * quietly blank the map.
+   */
+  text: string;
 }
 
 /**
@@ -37,10 +46,15 @@ export interface MapFilters {
  * undoing it. The one rule in applyMapFilters keeps the two readings from ever
  * diverging.
  */
-export const EMPTY_MAP_FILTERS: MapFilters = { categories: [], scheduleState: 'all' };
+export const EMPTY_MAP_FILTERS: MapFilters = { categories: [], scheduleState: 'all', text: '' };
 
 export function isMapFiltersNarrowed(filters: MapFilters): boolean {
-  return filters.categories.length > 0 || filters.scheduleState !== 'all';
+  // Text counts as narrowing exactly when applyMapFilters would act on it —
+  // trimmed, so the whitespace that narrows nothing also lights nothing up.
+  // Same rule as the board's isNarrowed, and for the same reason: "narrowed"
+  // must mean "some pin could be hidden", or the escape hatch it gates would
+  // appear and disappear out of step with the map.
+  return filters.categories.length > 0 || filters.scheduleState !== 'all' || filters.text.trim() !== '';
 }
 
 /**
@@ -64,7 +78,12 @@ export function toggleMapCategory(filters: MapFilters, category: EntryCategory):
 
 /** Filters hide pins, never delete entries — same rule as the board's filter bar. */
 export function applyMapFilters(entries: Entry[], filters: MapFilters): Entry[] {
+  // Trimmed once, outside the loop: the query is the same for every entry, and
+  // trimming here is also the whitespace-only rule — a query of spaces trims to
+  // '' and the text check below never fires, same as the board's applyFilters.
+  const query = filters.text.trim().toLowerCase();
   return entries.filter((entry) => {
+    if (query !== '' && !entry.title.toLowerCase().includes(query)) return false;
     // Selected categories are OR'd, not AND'd: an entry carries exactly one
     // category, so intersecting them could only ever return nothing. Union is
     // the only reading of several lit chips that means anything here.

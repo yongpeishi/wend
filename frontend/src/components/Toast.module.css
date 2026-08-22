@@ -59,6 +59,40 @@
   color: var(--text-strong);
 }
 
+/* The one action a toast may offer ("Undo", "Show me") — drawn in the app's
+   secondary-button grammar: transparent, card radius, a leaf edge saying
+   "pressable", at the toast's own 1.5px border weight rather than the 2px a
+   full Button carries, so it sits inside the card instead of competing with
+   it. Never jade — jade means "this happened" and an action means "this
+   could", and a jade-edged Undo inside a jade-edged Saved toast would make
+   do and done the same object. Text stays --text-strong like everything
+   else in the toast. */
+.action {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 5px 12px;
+  background: transparent;
+  border: var(--border-width) solid var(--action-primary);
+  border-radius: var(--radius-card);
+  color: var(--text-strong);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.action:hover {
+  opacity: 0.8;
+}
+
+.action:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
 .dismiss {
   flex-shrink: 0;
   width: 32px;

@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { boundsTupleForPoints } from './bounds';
 import { cellSizeForZoom, clusterPoints, isMultiPointCluster } from './clustering';
 import { fitAndReport, readBounds } from './fit';
-import { chipIcon, clusterIcon, dotIcon, labelIcon, pendingIcon, pinIcon } from './markerIcon';
+import { chipIcon, clusterIcon, dotIcon, faintIcon, labelIcon, pendingIcon, pinIcon } from './markerIcon';
 import type { Bounds, Cluster, ClusterPoint, MapPin } from './types';
 import styles from './MapView.module.css';
 
@@ -45,6 +45,16 @@ export interface MapViewProps {
    * keeps knowing *how*, so nothing outside the seam ever holds a map handle.
    */
   fitRequest?: number;
+  /**
+   * Point the view at a specific subset of places — "show me these" — without
+   * the caller ever holding a map handle. Same shape of ask as `fitRequest`
+   * (a nonce, because "look here" is a thing that happened, not a thing that
+   * is true), but it carries its own points: the board asks for one bundle's
+   * places, or one place, while `fitRequest` always means everything. Two or
+   * more points fit their bounds; exactly one centres on it at street zoom,
+   * since a one-point "bounds" is a zero-area box Leaflet would dive into.
+   */
+  viewRequest?: { points: { id: number; lat: number; lng: number }[]; nonce: number } | null;
   /** How pins draw. Defaults to the trail stop-circle; the board asks for name pills instead. */
   pinVariant?: PinVariant;
   onBoundsChange?: (bounds: Bounds) => void;
@@ -121,6 +131,49 @@ function RefitOnRequest({
     // against stale bounds, it moved nothing and corrected nothing.
     fitAndReport(map, pins, onBoundsChange);
   }, [fitRequest, pins, map, onBoundsChange]);
+
+  return null;
+}
+
+/** The zoom a single-place "show me this" lands on — streets and the blocks around them, not a rooftop. */
+const PLACE_ZOOM = 16;
+
+/**
+ * "Show me these" — move the view to a caller-chosen subset of points.
+ * Same guard idiom as RefitOnRequest, and for the same reasons: the ref
+ * starts at whatever nonce the component mounted with, so the mounting value
+ * never counts as a request, and StrictMode's double-invoked effects see no
+ * change on the re-run. Only an actually different nonce moves the map.
+ *
+ * Both branches report through onBoundsChange, exactly as every other
+ * programmatic movement does (see fit.ts): the multi-point branch through the
+ * fit-and-report seam, the single-point branch by reading the bounds straight
+ * after `setView` — which moveend cannot be trusted to do, because a view the
+ * map is already on fires nothing, and the parent would keep counting pins
+ * against a viewport nobody is looking at.
+ */
+function ViewOnRequest({
+  viewRequest,
+  onBoundsChange,
+}: {
+  viewRequest: MapViewProps['viewRequest'];
+  onBoundsChange?: (bounds: Bounds) => void;
+}) {
+  const map = useMap();
+  const handled = useRef(viewRequest?.nonce);
+
+  useEffect(() => {
+    if (!viewRequest || viewRequest.nonce === handled.current) return;
+    handled.current = viewRequest.nonce;
+    const { points } = viewRequest;
+    if (points.length >= 2) {
+      fitAndReport(map, points, onBoundsChange);
+    } else if (points.length === 1) {
+      const only = points[0]!;
+      map.setView([only.lat, only.lng], PLACE_ZOOM);
+      onBoundsChange?.(readBounds(map));
+    }
+  }, [viewRequest, map, onBoundsChange]);
 
   return null;
 }
@@ -222,10 +275,11 @@ function PinMarker({
   // when it wants the chip/dot split, and pins without one keep drawing the
   // way the variant says — so a caller that never sets it sees no change.
   const icon = useMemo(() => {
-    if (pin.mark === 'chip') return chipIcon(pin.title, selected);
+    if (pin.mark === 'chip') return chipIcon(pin.title, selected, pin.nested);
     if (pin.mark === 'dot') return dotIcon(pin.title, selected);
+    if (pin.mark === 'faint') return faintIcon(pin.title);
     return variant === 'label' ? labelIcon(pin.title, pin.tone, selected) : pinIcon(pin.state, selected, pin.title);
-  }, [variant, pin.mark, pin.state, pin.tone, selected, pin.title]);
+  }, [variant, pin.mark, pin.state, pin.tone, pin.nested, selected, pin.title]);
   return (
     <Marker
       position={[pin.lat, pin.lng]}
@@ -299,6 +353,7 @@ export function MapView({
   youAreHere = null,
   fitToPins = false,
   fitRequest,
+  viewRequest = null,
   pinVariant = 'marker',
   onBoundsChange,
   renderPopup,
@@ -329,6 +384,7 @@ export function MapView({
         <ZoomControl position="topright" />
         <FitToPins pins={fitPoints} enabled={fitToPins} onBoundsChange={onBoundsChange} />
         <RefitOnRequest pins={fitPoints} fitRequest={fitRequest} onBoundsChange={onBoundsChange} />
+        <ViewOnRequest viewRequest={viewRequest} onBoundsChange={onBoundsChange} />
         <ResizeBridge />
         <ViewportBridge onMapClick={onMapClick} onBoundsChange={onBoundsChange} onZoomChange={setZoom} />
 
