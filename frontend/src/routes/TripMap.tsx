@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useCanEdit } from '../auth/TripRoleContext';
 import { QueryGate } from '../components/QueryGate';
@@ -400,10 +400,30 @@ export function TripMap() {
     setDropMode({ kind: 'existing', id });
   }
 
-  function exitDropMode() {
+  const exitDropMode = useCallback(() => {
     setDropMode(null);
     setPendingLocation(null);
-  }
+  }, []);
+
+  // Escape stands an armed drop down from anywhere — the same exit the
+  // banner's Cancel and the card's Cancel offer, for the keyboard. Bound only
+  // while the mode is armed, and deliberately WITHOUT stopPropagation: unlike
+  // BulkBar's popover there is no modal one route away that a leaked Escape
+  // could close. The screen's other Escape listeners (the PlansDropdown and
+  // MapSelectionBar popovers) each attach only while their own popover is
+  // open, so in the ordinary case this is the sole listener; in the odd case
+  // of a popover opened mid-drop, one Escape closing both is a harmless
+  // everything-stands-down, not a fight.
+  const dropArmed = dropMode !== null;
+  useEffect(() => {
+    if (!dropArmed) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      exitDropMode();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [dropArmed, exitDropMode]);
 
   async function handleDropConfirm() {
     if (dropMode === null || dropMode.point === undefined) return;
@@ -604,7 +624,15 @@ export function TripMap() {
               {/* The aiming banner, until the first click lands a point — from
                   then on the card itself says "click again to move it". */}
               {dropMode !== null && dropMode.point === undefined && (
-                <p className={styles.banner}>{dropBanner}</p>
+                <p className={styles.banner}>
+                  {dropBanner}
+                  {/* The way out before any click lands — the same exit the
+                      card's Cancel gives once a point exists, and what Escape
+                      does from the keyboard. */}
+                  <button type="button" className={styles.bannerCancel} onClick={exitDropMode}>
+                    Cancel
+                  </button>
+                </p>
               )}
 
               <div className={styles.cards}>

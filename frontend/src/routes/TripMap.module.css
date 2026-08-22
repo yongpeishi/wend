@@ -253,6 +253,9 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 1100;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
   margin: 0;
   padding: var(--space-2) var(--space-4);
   background: var(--surface-page);
@@ -263,6 +266,34 @@
   font-weight: var(--weight-bold);
   color: var(--text-strong);
   white-space: nowrap;
+}
+
+/* The banner's way out before any click lands: the same quiet link-look as
+   "zoom out to widen" — an aside beside the instruction, not a second
+   command competing with it. Regular weight and muted ink so the bold
+   instruction stays the sentence being read. */
+.bannerCancel {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--wend-apricot);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.bannerCancel:hover {
+  opacity: 0.7;
+}
+
+.bannerCancel:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /* Where the preview and dropped-pin cards land: bottom-left, clear of the

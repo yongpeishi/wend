@@ -318,6 +318,44 @@ describe('TripMap — putting a placeless idea on the map', () => {
     expect(coffee.lat).toBe(35.02);
     expect(coffee.lng).toBe(135.77);
   });
+
+  it('Escape while aiming stands the drop down — the banner goes, and a map click is a plain click again', async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await listUp();
+
+    await user.click(screen.getByRole('button', { name: 'Show them ›' }));
+    const row = screen.getByText('Coffee at Weekenders').closest('div') as HTMLElement;
+    await user.click(within(row).getByRole('button', { name: 'Put it on the map' }));
+    expect(screen.getByText('Click where Coffee at Weekenders is')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+
+    expect(screen.queryByText('Click where Coffee at Weekenders is')).not.toBeInTheDocument();
+    // The mode is genuinely gone, not just the banner: a further click drops
+    // nothing and raises no card.
+    await user.click(screen.getByRole('button', { name: 'Simulate map click' }));
+    expect(screen.queryByText('Putting Coffee at Weekenders on the map')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pending')).toHaveTextContent('pending: none');
+  });
+
+  it("the banner's own Cancel exits the same way", async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await listUp();
+
+    await user.click(screen.getByRole('button', { name: 'Show them ›' }));
+    const row = screen.getByText('Coffee at Weekenders').closest('div') as HTMLElement;
+    await user.click(within(row).getByRole('button', { name: 'Put it on the map' }));
+    expect(screen.getByText('Click where Coffee at Weekenders is')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText('Click where Coffee at Weekenders is')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Simulate map click' }));
+    expect(screen.queryByText('Putting Coffee at Weekenders on the map')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pending')).toHaveTextContent('pending: none');
+  });
 });
 
 describe('TripMap — search the map', () => {
