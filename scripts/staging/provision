@@ -203,6 +203,30 @@ else
   warn "ufw not active -- no firewall rule added"
 fi
 
+# --- tailnet service --------------------------------------------------------
+# Published as svc:wend, so the app is reachable from a phone away from the
+# house without opening anything to the internet -- the same shape as the
+# navidrome and www services already on this node. Nothing new is exposed on
+# the LAN: tailscale proxies to the Vite port over loopback.
+#
+# `tailscale serve --service` also advertises the node as a host for it, so
+# there's no separate advertise step. It's skipped entirely when tailscale
+# isn't set up -- that's the machine's business, not the app's.
+
+TS_SERVICE="${WEND_TS_SERVICE:-svc:wend}"
+if ! command -v tailscale >/dev/null || ! tailscale status >/dev/null 2>&1; then
+  warn "tailscale isn't up -- skipping the $TS_SERVICE service"
+elif tailscale serve status --json | grep -q "\"$TS_SERVICE\""; then
+  ok "tailscale already serves $TS_SERVICE"
+else
+  info "publishing $TS_SERVICE -> http://127.0.0.1:$FRONTEND_PORT"
+  # Needs the service to exist in the tailnet policy file first, and the node
+  # to be approved as a host for it, so treat a failure as informational.
+  tailscale serve --service="$TS_SERVICE" --https=443 --yes \
+    "http://127.0.0.1:$FRONTEND_PORT" \
+    || warn "couldn't publish $TS_SERVICE -- is it in the tailnet policy, and this node approved to host it?"
+fi
+
 # --- start, if there's anything to start ------------------------------------
 
 echo
