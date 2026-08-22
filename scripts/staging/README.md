@@ -14,6 +14,7 @@ deploy.
 ```sh
 scripts/staging/deploy      # put your branch on staging, push, restart, wait for it to answer
 scripts/staging/logs        # follow both services' logs
+scripts/staging/console     # rails console on the staging app, from here
 scripts/staging/restart     # bounce the services without deploying
 scripts/staging/setup       # (re)provision the Pi — needs sudo there
 ```
@@ -59,7 +60,7 @@ Run anything that touches the app as the `wend` user:
 
 ```sh
 sudo -u wend scripts/db-reset     # start clean — drops, migrates, seeds
-sudo -u wend scripts/console      # rails console
+sudo -u wend scripts/console      # rails console (or scripts/staging/console from home)
 sudo -u wend scripts/test         # the suite writes its own databases
 git log                           # /srv/wend/app is a real checkout, so this is just git
 ```

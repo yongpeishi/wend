@@ -23,6 +23,7 @@ Deploying to the shared Pi has its own folder — see [`staging/README.md`](stag
 | --- | --- |
 | `scripts/staging/deploy` | Merge your branch into `staging`, push it to the Pi, restart it there |
 | `scripts/staging/logs` | Follow the Pi's Rails and Vite logs |
+| `scripts/staging/console` | Rails console on the Pi's copy, from your machine |
 | `scripts/staging/restart` | Bounce the Pi's services without deploying |
 | `scripts/staging/setup` | Provision (or re-provision) the Pi. Idempotent. |
 
