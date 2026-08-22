@@ -130,7 +130,10 @@ cat > "$ROOT/deploy.env" <<EOF
 PATH=/srv/wend/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 HOME=$ROOT
 RAILS_ENV=development
-RAILS_DEVELOPMENT_HOSTS=logpi.local
+# Rails blocks hostnames it hasn't been told about, exactly as Vite does, and
+# tailscale hands it the tailnet name in X-Forwarded-Host. Keep this list in
+# step with allowedHosts in frontend/vite.config.ts.
+RAILS_DEVELOPMENT_HOSTS=logpi.local,wend.anchovy-census.ts.net
 BUNDLE_PATH=$ROOT/bundle
 BACKEND_PORT=3000
 FRONTEND_PORT=$FRONTEND_PORT
