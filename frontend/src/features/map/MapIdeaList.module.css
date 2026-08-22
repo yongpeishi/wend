@@ -1,0 +1,345 @@
+/*
+ * The list beside the map. Rows are the board's card idiom — card tone on page
+ * tone with a hairline border, elevation is tone, never shadow — and the pick
+ * circle is IdeaRow's, kept to its exact geometry so the two screens read as
+ * one product. The dashed place-less block at the foot is this screen's own:
+ * the one surface about things the map cannot draw.
+ */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-list-row);
+}
+
+.groupHeader {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+/* The house heading voice: 12px uppercase tracked. */
+.groupLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+/* 13px: meta size on this screen — scanned as a mark beside the label, not
+   read as prose, the same bargain the 12px label token strikes. */
+.groupCount {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* The zoom action: a quiet verb on the header's right edge. Underlined the way
+   MapFilterBar's "widen" is — a reading action, not a button. */
+.zoom {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--wend-apricot);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.zoom:hover {
+  opacity: 0.85;
+}
+
+.zoom:active {
+  opacity: 0.7;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: var(--space-3) var(--space-4);
+}
+
+/* Just added: the strong apricot edge — the design's "you are here", on the
+   row the add-place flow just made real. The extra half-px each side eats the
+   padding rather than growing the card, IdeaRow's own trick. */
+.row[data-just-added] {
+  border-width: var(--border-width-strong);
+  border-color: var(--wend-apricot);
+  padding: calc(var(--space-3) - 0.5px) calc(var(--space-4) - 0.5px);
+}
+
+/*
+ * The pick circle — IdeaRow's, verbatim geometry: 22px visual, 32px pointer
+ * target via ::before, 48px on touch.
+ */
+.pick {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  /* Optically centres the circle against the 15px name's first line. */
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: none;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.pick::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+}
+
+@media (pointer: coarse) {
+  .pick::before {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+}
+
+.pick:hover {
+  opacity: 0.85;
+}
+
+.pick:active {
+  opacity: 0.7;
+}
+
+.pick:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Picked: the border thickens as well as filling — the colourless half of the
+   signal, alongside the tick. Leaf, the acting colour; jade never fills. */
+.pickOn {
+  border-width: var(--border-width-strong);
+  border-color: var(--wend-leaf);
+  background: var(--wend-leaf);
+}
+
+/* 13px: a glyph inside a 22px circle, never read as words. */
+.pickTick {
+  font-size: 13px;
+  line-height: 1;
+  font-weight: var(--weight-bold);
+  color: var(--wend-paper);
+}
+
+.rowBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* 3px: the meta hangs close under the name it qualifies. */
+  gap: 3px;
+}
+
+.nameLine {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  /* 10px: between --space-2 and --space-3 — pills ride close to the name. */
+  gap: 10px;
+  min-width: 0;
+}
+
+/* The name is the row's navigation — a text button at the readable floor. */
+.name {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.name:hover {
+  opacity: 0.85;
+}
+
+.name:active {
+  opacity: 0.7;
+}
+
+.name:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Jade as words, never a fill: the schedule confirmation, IdeaRow's own mark. */
+.onDay {
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--wend-jade);
+  white-space: nowrap;
+}
+
+/* The tally pill: a bordered mark, full pill radius, no fill. */
+.votes {
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--text-body);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  /* 3px 10px: the 13px chip geometry IdeaRow's pills use. */
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* The label half of the just-added signal. Apricot only as shape — border and
+   wash — the words stay ink. */
+.justAdded {
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  background: var(--wend-apricot-wash);
+  border: var(--border-width) solid var(--wend-apricot);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+/* The meta line the parent computed: address · in {parents} · n inside. */
+.meta {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/*
+ * The place-less footer. Dashed, because it is about absence — the only
+ * dashed border on the screen, so it cannot be mistaken for a card.
+ */
+.placeless {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: var(--border-width) dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  padding: var(--space-3) var(--space-4);
+}
+
+.placelessHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.placelessCount {
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}
+
+/* The unfold toggle: a quiet reading verb, same voice as .zoom. */
+.placelessToggle {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--wend-apricot);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.placelessToggle:hover {
+  opacity: 0.85;
+}
+
+.placelessToggle:active {
+  opacity: 0.7;
+}
+
+.zoom:focus-visible,
+.placelessToggle:focus-visible,
+.putOnMap:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.placelessNote {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.placelessRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* A soft rule between rows, not a card per row — these are a sublist. */
+  border-top: var(--border-width) solid var(--border-subtle);
+  padding-top: var(--space-2);
+}
+
+.placelessTitle {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-body);
+}
+
+/* The one verb down here. Quiet — pin-drop mode is entered, nothing saved yet. */
+.putOnMap {
+  background: none;
+  border: none;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--wend-apricot);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.putOnMap:hover {
+  opacity: 0.85;
+}
+
+.putOnMap:active {
+  opacity: 0.7;
+}

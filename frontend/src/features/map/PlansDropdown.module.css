@@ -1,0 +1,125 @@
+/*
+ * The read-only plans glance in the map's control row. The popover is the
+ * house panel — card tone with a drawn edge, no shadow — opening downward,
+ * because its trigger sits in a control row at the top of the column.
+ */
+
+/* Anchors the panel to the trigger. */
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* A bordered control, not a filled one: this reads, it changes nothing. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+@media (pointer: coarse) {
+  .trigger {
+    min-height: var(--tap-min);
+  }
+}
+
+.trigger:hover {
+  opacity: 0.85;
+}
+
+.trigger:active {
+  opacity: 0.7;
+}
+
+.trigger:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The count rides muted beside the word — a fact, not part of the verb. */
+.triggerCount {
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
+}
+
+/* Invisible, fills the viewport, sits under the panel and over everything
+   else: the next click anywhere goes here and closes the panel. */
+.catcher {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: default;
+}
+
+/* Left-anchored and opening downward from the control row. */
+.panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 20;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  /* 6px: half of --space-3. These rows are a list, not separate controls. */
+  gap: 6px;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+}
+
+.panelLabel {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+/* One row per plan: title, and how many ideas it holds. Paper on card is the
+   only separation — these are facts, not controls, so no hover state. */
+.item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 9px 10px;
+  /* 4px: rows inside a panel — a soft edge, not a shape of their own. */
+  border-radius: 4px;
+  background: var(--wend-paper);
+  font-family: var(--font-sans);
+}
+
+.itemTitle {
+  min-width: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-body);
+}
+
+.itemMeta {
+  flex: none;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--text-min-size);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
