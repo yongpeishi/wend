@@ -72,8 +72,14 @@ export interface IdeaListProps {
  *
  * Grouping is presentation only. `entries` arrives already filtered, and every
  * mode renders exactly the entries it was handed — so the category chips keep
- * narrowing the list while it is grouped, which is the whole point of keeping
- * the two controls apart.
+ * narrowing the list while it is grouped, and a heading never claims more than
+ * what is actually under it.
+ *
+ * The chips and the grouping control read the same field now that grouping by
+ * place is gone, so lighting Food and grouping by category leaves one section
+ * titled Food. That is the two controls composing, not one overriding the
+ * other: what the chips took out never reaches this component, and this
+ * component only decides where what did arrive is drawn.
  *
  * Collapsing is local state, not a filter: a collapsed section still counts its
  * ideas in its own header, so nothing ever silently disappears. It resets on

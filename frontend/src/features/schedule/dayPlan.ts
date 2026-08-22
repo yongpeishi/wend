@@ -10,6 +10,7 @@
  * for ordering and lookup rather than repeating either.
  */
 import type { Entry, ScheduleItem } from '../../api/types';
+import { CATEGORY_LABELS } from '../board/filters';
 import { formatDuration, formatMinutes, formatTimeRange, joinMeta, parseDay } from '../../lib/formatDates';
 import type { DayTab } from './scheduleModel';
 import { entryFor, sortDayItems } from './scheduleModel';
@@ -170,7 +171,7 @@ export function buildPlanRows(
       time: formatTimeRange(start, end),
       dur: durationFor(item, entry),
       title: entry?.title ?? 'Untitled',
-      meta: joinMeta(entry?.category),
+      meta: entry?.category ? CATEGORY_LABELS[entry.category] : '',
       state,
       tone: toneFor(entry),
       entryId: item.entry_id,

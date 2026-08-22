@@ -326,7 +326,7 @@ const BUNDLE: ItineraryItem = {
     duration_minutes: 240,
   },
   members: [
-    { id: 21, kind: 'idea', title: 'Fushimi Inari', category: 'place', duration_minutes: 120, },
+    { id: 21, kind: 'idea', title: 'Fushimi Inari', category: 'place', duration_minutes: 120 },
   ],
 };
 

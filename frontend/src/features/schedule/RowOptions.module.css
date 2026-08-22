@@ -86,11 +86,6 @@ button.option:focus-visible {
   overflow-wrap: anywhere;
 }
 
-.where {
-  flex: none;
-  color: var(--text-muted);
-}
-
 .mark {
   flex: none;
   font-size: var(--text-label-size);

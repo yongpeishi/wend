@@ -8,7 +8,7 @@ import type { ItineraryDay } from './itineraryModel';
 import { UnplacedRail } from './UnplacedRail';
 
 function summary(id: number, title: string, kind: EntrySummary['kind'] = 'idea'): EntrySummary {
-  return { id, kind, title, category: 'place', duration_minutes: 60,};
+  return { id, kind, title, category: 'place', duration_minutes: 60 };
 }
 
 function day(number: number, iso: string, label: string): ItineraryDay {

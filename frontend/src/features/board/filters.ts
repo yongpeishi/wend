@@ -128,10 +128,19 @@ export interface EntryGroup {
 export type GroupMode = 'none' | 'category';
 
 /**
- * The groupings, in the order the board's segmented control offers them: flat
- * first, then the sectioned one. Both are always on screen, so no grouping can
- * strand you — getting back to a flat list after grouping by category is the
- * same single click as the move that got you there.
+ * The two groupings the board's control offers, flat first. There is only one
+ * way to section the list now, so what used to be a choice among several is a
+ * toggle: on, and the ideas sit under category headings; off, and they are one
+ * run. Both states are always on screen, so grouping cannot strand you —
+ * getting back to a flat list is the same single click as the move that got you
+ * there.
+ *
+ * Worth saying plainly, because it is no longer obvious from the code: the
+ * grouping control and the category chips now read the same field. They still
+ * do different jobs — the chips decide which ideas are on the board at all, the
+ * mode decides what headings they sit under — but that means lighting Food and
+ * grouping by category leaves a single section titled Food, which is the two
+ * controls composing rather than either one misbehaving.
  */
 export const GROUP_MODES: { key: GroupMode; label: string }[] = [
   { key: 'none', label: 'Ungrouped' },

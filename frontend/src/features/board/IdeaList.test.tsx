@@ -155,6 +155,16 @@ describe('IdeaList', () => {
     expect(within(panel as HTMLElement).getByRole('button', { name: /^Fushimi Inari/ })).toBeInTheDocument();
   });
 
+  it('folds one group at a time, leaving its neighbours open', async () => {
+    const user = userEvent.setup();
+    renderList('category');
+
+    await user.click(screen.getByRole('button', { name: /^Place/ }));
+
+    expect(screen.getByRole('button', { name: /^Food/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: /^Nishiki Market/ })).toBeInTheDocument();
+  });
+
   it('leaves every row with its drag handle, not a checkbox, until the board says otherwise', () => {
     renderList('none');
     expect(screen.queryAllByRole('checkbox')).toHaveLength(0);

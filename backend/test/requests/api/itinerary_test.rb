@@ -61,7 +61,7 @@ class Api::ItineraryTest < ActionDispatch::IntegrationTest
 
     assert_equal(
       { "id" => @idea.id, "kind" => "idea", "title" => "Nanzen-ji", "category" => "place",
-        "duration_minutes" => 40},
+        "duration_minutes" => 40 },
       items.first["entry"]
     )
     assert_empty items.first["members"]

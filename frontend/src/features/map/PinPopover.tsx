@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { EntryRow } from '../../components/EntryRow';
 import type { Entry } from '../../api/types';
-import { joinMeta } from '../../lib/formatDates';
+import { CATEGORY_LABELS } from '../board/filters';
 import { pinStateForEntry, pinStateLabel } from './pins';
 import styles from './PinPopover.module.css';
 
@@ -16,7 +16,7 @@ export interface PinPopoverProps {
  */
 export function PinPopover({ entry }: PinPopoverProps) {
   const state = pinStateForEntry(entry);
-  const meta = joinMeta(entry.category ?? undefined);
+  const meta = entry.category ? CATEGORY_LABELS[entry.category] : '';
 
   return (
     <div className={styles.popover}>

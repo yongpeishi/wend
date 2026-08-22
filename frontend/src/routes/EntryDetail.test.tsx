@@ -93,7 +93,7 @@ describe('EntryDetail — a viewer reads it', () => {
     expect(read.getByText('Name')).toBeInTheDocument();
     expect(read.getAllByText('Fushimi Inari at dawn').length).toBeGreaterThan(0);
     expect(read.getByText('Saved from a friend’s trip report.')).toBeInTheDocument();
-    expect(read.getByText('place')).toBeInTheDocument();
+    expect(read.getByText('Place')).toBeInTheDocument();
     expect(read.getByText('34.9671')).toBeInTheDocument();
     expect(read.getByText('135.7727')).toBeInTheDocument();
   });
@@ -148,16 +148,19 @@ describe('EntryDetail — anyone who can edit', () => {
  */
 describe('EntryDetail — what it no longer asks for', () => {
   /**
-   * The dialog opened with "place · Fushimi Inari Taisha" directly above the
-   * fields that say the kind, the place and how long it takes. A panel whose
-   * whole job is the facts should not preview them.
+   * The dialog opened with a middle-dot summary — the kind, the place and how
+   * long it takes — directly above the fields that say those same three things.
+   * A panel whose whole job is the facts should not preview them.
    */
   it('does not summarise the facts above the fields that hold them', async () => {
     const panel = await openPanel('member');
     const read = within(panel);
 
-    // The summary line is gone; the kind is only ever read off its own field.
-    expect(read.queryByText('place · Fushimi Inari Taisha')).not.toBeInTheDocument();
+    // The category is in exactly one place: the field that holds it. And
+    // nothing anywhere in the panel strings facts together with a middle dot,
+    // which is the shape any such summary would come back in.
+    expect(read.getByRole('combobox', { name: 'Category' })).toHaveValue('place');
+    expect(read.queryByText(/·/)).not.toBeInTheDocument();
   });
 
   /** One labelled box for one URL is a lot of panel for something most ideas
@@ -381,10 +384,17 @@ describe('EntryDetail — what blur actually saves', () => {
     const panel = await openPanel('member');
     const read = within(panel);
 
-    // In at the name and out past the coordinates: eight blurs, none of them
-    // a change — the numeric fields included, which used to fire like the rest.
+    // In at the name and out past the coordinates: seven blurs — name, short
+    // description, category, duration, address, latitude, longitude — none of
+    // them a change, the numeric fields included, which used to fire like the
+    // rest. The seventh tab lands in the notes box, which the sentinel below
+    // then genuinely edits.
     await user.click(read.getByRole('textbox', { name: 'Name' }));
-    for (let i = 0; i < 8; i++) await user.tab();
+    for (let i = 0; i < 7; i++) await user.tab();
+
+    // Pinned, so that adding or removing a field makes the count wrong out
+    // loud rather than quietly leaving the last field untabbed.
+    expect(document.activeElement).toBe(read.getByRole('textbox', { name: 'Notes' }));
 
     await user.type(read.getByRole('textbox', { name: 'Notes' }), SENTINEL);
     await user.tab();
@@ -412,17 +422,23 @@ describe('EntryDetail — what blur actually saves', () => {
     await waitFor(() => expect(patched).toEqual([{ notes: SENTINEL }]));
   });
 
+  /**
+   * The address, deliberately, and not the notes box the two above end on: it
+   * sits in the middle of the panel with fields on either side of it, so a body
+   * carrying `address` and nothing else says both halves at once — the edit did
+   * save, and the fields it was tabbed past on the way in and out stayed quiet.
+   */
   it('still PATCHes a genuine change, and exactly that field', async () => {
     const patched = recordPatches();
     const user = userEvent.setup();
     const panel = await openPanel('member');
     const read = within(panel);
 
-    const notes = read.getByRole('textbox', { name: 'Notes' });
-    await user.clear(notes);
-    await user.type(notes, 'Something else');
+    const address = read.getByRole('textbox', { name: 'Address' });
+    await user.clear(address);
+    await user.type(address, 'Fushimi Inari, south gate');
     await user.tab();
 
-    await waitFor(() => expect(patched).toEqual([{ notes: 'Something else' }]));
+    await waitFor(() => expect(patched).toEqual([{ address: 'Fushimi Inari, south gate' }]));
   });
 });

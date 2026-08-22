@@ -459,6 +459,7 @@ from the request and ignored if supplied in the body.
   "starts_on": null, "ends_on": null,
   "address": "…", "lat": 35.0116, "lng": 135.7681,
   "duration_minutes": 40, "source_url": null, "notes": null,
+  "pros": [], "cons": [],
   "from_entry_id": null, "to_entry_id": null,
   "archived_at": null, "created_at": "…", "updated_at": "…",
   "children_count": 0, "todos_open_count": 2,
@@ -469,17 +470,19 @@ from the request and ignored if supplied in the body.
 }
 ```
 
+`pros` and `cons` are always arrays, never `null` — `Entry`'s readers coerce a legacy NULL
+to `[]`, so a caller never has to guard before iterating.
+
 `my_role` is your role on **this trip** — `owner` \| `member` \| `viewer` — and is `null`
 on ideas and bundles, which inherit their trip's role rather than carrying one. Access is
 uniform over a subtree by construction, so children need no field of their own. It is
 filled by one bulk lookup per list, never one query per row.
 
-`Entry` (detail form) adds `parents: [EntrySummary]`, `children: [Entry]`,
-`todos: [Todo]`, `votes: [Vote]`, and `collaborators_count: Int` — how many people are on
-the trip, so the header can say who is here without fetching the list.
-`EntrySummary` = `{ id, kind, title, category, duration_minutes }` — one
-shared shape, sent by entry `parents`, `Todo#entry` and the itinerary's `entry`/`members`.
-It carries no role.
+`Entry` (detail form) adds `parents: [EntrySummary]`, `children: [Entry]`, `todos: [Todo]`,
+`votes: [Vote]`, and `collaborators_count: Int` — how many people are on the trip, so the
+header can say who is here without fetching the list. `EntrySummary` = `{ id, kind, title,
+category, duration_minutes }` — one shared shape, sent by entry `parents`, `Todo#entry` and
+the itinerary's `entry`/`members`. It carries no role.
 
 The itinerary sends three more:
 

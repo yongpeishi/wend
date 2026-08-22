@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_FILTERS,
   applyFilters,
+  groupByCategory,
   groupEntries,
   isNarrowed,
   toggleCategory,
@@ -42,8 +43,8 @@ function makeEntry(overrides: Partial<Entry>): Entry {
 
 describe('groupEntries', () => {
   const entries = [
-    makeEntry({ id: 1, category: 'food'}),
-    makeEntry({ id: 2, category: 'place'}),
+    makeEntry({ id: 1, category: 'food' }),
+    makeEntry({ id: 2, category: 'place' }),
   ];
 
   it("dispatches to each mode's grouping", () => {
@@ -68,6 +69,29 @@ describe('groupEntries', () => {
     for (const mode of ['none', 'category'] as const) {
       expect(groupEntries([], mode)).toEqual([]);
     }
+  });
+});
+
+// Grouping is presentation; filtering is what narrows. They must compose, so
+// that "only what is already scheduled, grouped by category" is one obvious
+// thing and not a conflict.
+describe('filtering and grouping are orthogonal', () => {
+  const entries = [
+    makeEntry({ id: 1, category: 'food', scheduled: true }),
+    makeEntry({ id: 2, category: 'place', scheduled: true }),
+    makeEntry({ id: 3, category: 'food', scheduled: false }),
+  ];
+
+  it('groups by category what the schedule filter left behind', () => {
+    const groups = groupByCategory(applyFilters(entries, { ...EMPTY_FILTERS, scheduleState: 'scheduled' }));
+
+    expect(groups.map((g) => g.label)).toEqual(['Place', 'Food']);
+    expect(groups.flatMap((g) => g.entries.map((e) => e.id))).toEqual([2, 1]);
+  });
+
+  it('drops a category bucket entirely once nothing in it survives the filter', () => {
+    const groups = groupByCategory(applyFilters(entries, { ...EMPTY_FILTERS, scheduleState: 'potential' }));
+    expect(groups.map((g) => g.label)).toEqual(['Food']);
   });
 });
 

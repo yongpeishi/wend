@@ -49,9 +49,8 @@ class EntrySerializer
 
     # The one EntrySummary shape in the API: entry `parents`, `Todo#entry`, and
     # the itinerary's `entry`/`members` all send exactly this. `duration_minutes`
-    # is here for the itinerary, which sizes a day from
-    # them, but they cost nothing on the row and one shared shape beats two
-    # near-identical ones.
+    # is here for the itinerary, which sizes a day from it, but it costs nothing
+    # on the row and one shared shape beats two near-identical ones.
     def summary(entry)
       return nil if entry.nil?
 
@@ -60,7 +59,7 @@ class EntrySerializer
         "kind" => entry.kind,
         "title" => entry.title,
         "category" => entry.category,
-        "duration_minutes" => entry.duration_minutes,
+        "duration_minutes" => entry.duration_minutes
       }
     end
 

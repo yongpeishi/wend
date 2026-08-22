@@ -9,11 +9,10 @@ import { Field } from '../components/Field';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
 import { useEntry, useRestoreEntry, useUpdateEntry } from '../api/entries';
-import type { EntryCategory } from '../api/types';
+import { CATEGORY_LABELS, CATEGORY_ORDER } from '../features/board/filters';
 import { formatDuration } from '../lib/formatDates';
 import styles from './EntryDetail.module.css';
 
-const CATEGORIES: EntryCategory[] = ['place', 'food', 'activity', 'lodging', 'transport', 'other'];
 
 /**
  * One fact, read rather than filled in.
@@ -264,9 +263,9 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
                   }}
                 >
                   <option value="">Not sure yet</option>
-                  {CATEGORIES.map((c) => (
+                  {CATEGORY_ORDER.map((c) => (
                     <option key={c} value={c}>
-                      {c}
+                      {CATEGORY_LABELS[c]}
                     </option>
                   ))}
                 </Select>
@@ -338,7 +337,7 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
             <Fact label="Short description" value={entry.description} />
 
             <div className={styles.pair}>
-              <Fact label="Category" value={entry.category} />
+              <Fact label="Category" value={entry.category && CATEGORY_LABELS[entry.category]} />
               {/* "2 hr", not "120". The minutes box exists because minutes are
                   what you type; reading it, how long it takes is a duration. */}
               <Fact label="Estimated duration" value={formatDuration(entry.duration_minutes)} />

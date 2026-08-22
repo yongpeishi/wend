@@ -26,9 +26,7 @@ export function LibraryRow({ entry, selected, onToggleSelect, onHoverChange }: L
   const vote = useVote(entry.id);
   const deleteVote = useDeleteVote(entry.id);
 
-  const metadata = [
-    entry.category ? CATEGORY_LABELS[entry.category] : null,
-  ].filter((part): part is string => Boolean(part));
+  const metadata = entry.category ? [CATEGORY_LABELS[entry.category]] : [];
 
   return (
     <Row
