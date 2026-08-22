@@ -155,12 +155,15 @@ export function dotIcon(title: string, selected: boolean): L.DivIcon {
  * pins would make the map lie about what the trip holds. The fade is an
  * inline opacity rather than a stylesheet rule for the same reason the dash
  * on a nested chip is: opacity is not a colour, so nothing escapes the token
- * file, and the icon stays whole on its own. No `selected` argument — a pin
- * the filter set aside is by definition not the one under discussion.
+ * file, and the icon stays whole on its own. 0.55 is the floor that still
+ * reads over OSM tiles (the .wend-pin-faint border override in
+ * MapView.module.css is the other half of that legibility). No `selected`
+ * argument — a pin the filter set aside is by definition not the one under
+ * discussion.
  */
 export function faintIcon(title: string): L.DivIcon {
   const html = `
-    <button type="button" class="wend-pin-dot wend-pin-faint" style="opacity: 0.45;" aria-label="${escapeHtml(title)}">
+    <button type="button" class="wend-pin-dot wend-pin-faint" style="opacity: 0.55;" aria-label="${escapeHtml(title)}">
       <span aria-hidden="true"></span>
     </button>
   `;

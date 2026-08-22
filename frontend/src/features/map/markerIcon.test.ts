@@ -126,7 +126,7 @@ describe('faintIcon', () => {
     const markup = html(faintIcon('Fushimi Inari'));
     expect(markup).toContain('wend-pin-dot');
     expect(markup).toContain('wend-pin-faint');
-    expect(markup).toContain('opacity: 0.45');
+    expect(markup).toContain('opacity: 0.55');
   });
 
   it('names the place for a screen reader without drawing the name', () => {

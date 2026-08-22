@@ -558,7 +558,7 @@ export function TripMap() {
           </div>
 
           <div className={styles.mapCol}>
-            <div className={styles.mapWrap}>
+            <div className={dropMode !== null ? `${styles.mapWrap} ${styles.dropArmed}` : styles.mapWrap}>
               {/* The map ALWAYS renders, even with zero located ideas — search
                   is how places arrive, and a hidden map would hide the way in.
                   selectedId stays null: the seam draws selection for one pin

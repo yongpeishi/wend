@@ -194,6 +194,15 @@
   border: var(--border-width) solid var(--border-subtle);
 }
 
+/* While a drop is armed every map click places (or moves) the pending point,
+   so the cursor says "aim", not "drag". Leaflet sets grab on its own container
+   — which lives inside MapView's seam, hence :global to reach it — and this
+   wrapper class is how the screen states the mode without TripMap ever
+   touching a map handle. */
+.dropArmed :global(.leaflet-container) {
+  cursor: crosshair;
+}
+
 /* Overlays sit above Leaflet's panes and controls (Leaflet's own stack tops
    out at 1000). 14px in from the corners — the same inset MapView gives the
    zoom control and the attribution, so the chrome reads as one family. */
