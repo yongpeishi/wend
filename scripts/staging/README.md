@@ -51,18 +51,32 @@ untracked, and survives every deploy — so demo data you set up by hand stays p
 the shared gems are found through a `backend/.bundle/config` the deploy writes, so the
 project's own scripts work as they do at home.
 
-Anything that *writes* has to run as the `wend` user, because the database and the logs
-belong to the service, not to you:
+(`ssh you@logpi.local 'some command'` does *not* get that `PATH` — a one-shot command like
+that isn't a login shell, and `/etc/profile.d` is only read by login shells. Log in and
+then run things, or use `sudo -u wend`, which carries the right `PATH` either way.)
+
+Run anything that touches the app as the `wend` user:
 
 ```sh
 sudo -u wend scripts/db-reset     # start clean — drops, migrates, seeds
 sudo -u wend scripts/console      # rails console
-scripts/test                      # read-only, so no sudo needed
-git log                           # /srv/wend/app is a real checkout
+sudo -u wend scripts/test         # the suite writes its own databases
+git log                           # /srv/wend/app is a real checkout, so this is just git
 ```
 
-That `sudo -u wend` grants nothing you don't already have: deploying *is* running your
+That `sudo -u wend` grants nothing you don't already have — deploying *is* running your
 code as `wend`. It cannot become root, and it owns nothing outside `/srv/wend`.
+
+The reason it's a rule rather than a suggestion: sqlite creates its files `0644` whatever
+the umask, so a database file is only writable by whoever made it. Run the suite as
+yourself and `backend/storage/test.sqlite3*` becomes yours, and the next person gets
+`SQLite3::ReadOnlyException`. One owner for everything the app writes keeps that from
+happening. If it already has:
+
+```sh
+rm backend/storage/test.sqlite3*        # anyone in the group may delete them
+sudo -u wend scripts/test
+```
 
 ## On the Pi
 

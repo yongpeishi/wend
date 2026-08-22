@@ -21,3 +21,10 @@ Cmnd_Alias WEND_SERVICES = \
 # services then run as `wend` -- that is what deploying is. `wend` owns nothing
 # outside /srv/wend and cannot become root.
 %wend ALL=(wend) NOPASSWD: ALL
+
+# sudo replaces PATH with its own secure_path, which doesn't have the staging
+# ruby and node on it -- `sudo -u wend scripts/db-reset` died on "env: ruby:
+# No such file or directory". These two apply only when the command is being
+# run *as* wend, and give it the same PATH and HOME the systemd units use.
+Defaults>wend secure_path="/srv/wend/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Defaults>wend always_set_home
