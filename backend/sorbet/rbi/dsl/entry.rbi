@@ -504,6 +504,20 @@ class Entry
     def from_entry_previously_changed?; end
 
     sig { returns(T::Array[T.untyped]) }
+    def lodging_trip_day_ids; end
+
+    sig { params(ids: T::Array[T.untyped]).returns(T::Array[T.untyped]) }
+    def lodging_trip_day_ids=(ids); end
+
+    # This method is created by ActiveRecord on the `Entry` class because it declared `has_many :lodging_trip_days`.
+    # 🔗 [Rails guide for `has_many` association](https://guides.rubyonrails.org/association_basics.html#the-has-many-association)
+    sig { returns(::TripDay::PrivateCollectionProxy) }
+    def lodging_trip_days; end
+
+    sig { params(value: T::Enumerable[::TripDay]).void }
+    def lodging_trip_days=(value); end
+
+    sig { returns(T::Array[T.untyped]) }
     def parent_ids; end
 
     sig { params(ids: T::Array[T.untyped]).returns(T::Array[T.untyped]) }
@@ -602,6 +616,20 @@ class Entry
 
     sig { params(value: T::Enumerable[::Todo]).void }
     def todos=(value); end
+
+    sig { returns(T::Array[T.untyped]) }
+    def trip_day_ids; end
+
+    sig { params(ids: T::Array[T.untyped]).returns(T::Array[T.untyped]) }
+    def trip_day_ids=(ids); end
+
+    # This method is created by ActiveRecord on the `Entry` class because it declared `has_many :trip_days`.
+    # 🔗 [Rails guide for `has_many` association](https://guides.rubyonrails.org/association_basics.html#the-has-many-association)
+    sig { returns(::TripDay::PrivateCollectionProxy) }
+    def trip_days; end
+
+    sig { params(value: T::Enumerable[::TripDay]).void }
+    def trip_days=(value); end
 
     sig { returns(T::Array[T.untyped]) }
     def trip_membership_ids; end
@@ -1538,51 +1566,6 @@ class Entry
     def lng_will_change!; end
 
     sig { returns(T.nilable(::String)) }
-    def location_name; end
-
-    sig { params(value: T.nilable(::String)).returns(T.nilable(::String)) }
-    def location_name=(value); end
-
-    sig { returns(T::Boolean) }
-    def location_name?; end
-
-    sig { returns(T.nilable(::String)) }
-    def location_name_before_last_save; end
-
-    sig { returns(T.untyped) }
-    def location_name_before_type_cast; end
-
-    sig { returns(T::Boolean) }
-    def location_name_came_from_user?; end
-
-    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def location_name_change; end
-
-    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def location_name_change_to_be_saved; end
-
-    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def location_name_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
-
-    sig { returns(T.nilable(::String)) }
-    def location_name_in_database; end
-
-    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def location_name_previous_change; end
-
-    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def location_name_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
-
-    sig { returns(T.nilable(::String)) }
-    def location_name_previously_was; end
-
-    sig { returns(T.nilable(::String)) }
-    def location_name_was; end
-
-    sig { void }
-    def location_name_will_change!; end
-
-    sig { returns(T.nilable(::String)) }
     def notes; end
 
     sig { params(value: T.nilable(::String)).returns(T.nilable(::String)) }
@@ -1718,9 +1701,6 @@ class Entry
     def restore_lng!; end
 
     sig { void }
-    def restore_location_name!; end
-
-    sig { void }
     def restore_notes!; end
 
     sig { void }
@@ -1830,12 +1810,6 @@ class Entry
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def saved_change_to_lng?(from: T.unsafe(nil), to: T.unsafe(nil)); end
-
-    sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
-    def saved_change_to_location_name; end
-
-    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def saved_change_to_location_name?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable([T.nilable(::String), T.nilable(::String)])) }
     def saved_change_to_notes; end
@@ -2148,9 +2122,6 @@ class Entry
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_lng?(from: T.unsafe(nil), to: T.unsafe(nil)); end
-
-    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
-    def will_save_change_to_location_name?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_notes?(from: T.unsafe(nil), to: T.unsafe(nil)); end

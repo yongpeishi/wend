@@ -419,6 +419,9 @@ class ScheduleItem
     sig { params(args: T.untyped, blk: T.untyped).returns(::Entry) }
     def build_chosen_entry(*args, &blk); end
 
+    sig { params(args: T.untyped, blk: T.untyped).returns(::DayVersion) }
+    def build_day_version(*args, &blk); end
+
     sig { params(args: T.untyped, blk: T.untyped).returns(::Entry) }
     def build_entry(*args, &blk); end
 
@@ -443,6 +446,12 @@ class ScheduleItem
     sig { params(args: T.untyped, blk: T.untyped).returns(::Entry) }
     def create_chosen_entry!(*args, &blk); end
 
+    sig { params(args: T.untyped, blk: T.untyped).returns(::DayVersion) }
+    def create_day_version(*args, &blk); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(::DayVersion) }
+    def create_day_version!(*args, &blk); end
+
     sig { params(args: T.untyped, blk: T.untyped).returns(::Entry) }
     def create_entry(*args, &blk); end
 
@@ -454,6 +463,18 @@ class ScheduleItem
 
     sig { params(args: T.untyped, blk: T.untyped).returns(::Entry) }
     def create_trip!(*args, &blk); end
+
+    sig { returns(T.nilable(::DayVersion)) }
+    def day_version; end
+
+    sig { params(value: T.nilable(::DayVersion)).void }
+    def day_version=(value); end
+
+    sig { returns(T::Boolean) }
+    def day_version_changed?; end
+
+    sig { returns(T::Boolean) }
+    def day_version_previously_changed?; end
 
     sig { returns(T.nilable(::Entry)) }
     def entry; end
@@ -470,6 +491,9 @@ class ScheduleItem
     sig { returns(T.nilable(::Entry)) }
     def reload_chosen_entry; end
 
+    sig { returns(T.nilable(::DayVersion)) }
+    def reload_day_version; end
+
     sig { returns(T.nilable(::Entry)) }
     def reload_entry; end
 
@@ -478,6 +502,9 @@ class ScheduleItem
 
     sig { void }
     def reset_chosen_entry; end
+
+    sig { void }
+    def reset_day_version; end
 
     sig { void }
     def reset_entry; end
@@ -542,6 +569,9 @@ class ScheduleItem
     def having(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
+    def in_final_plan(*args, &blk); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
     def in_order_of(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
@@ -588,6 +618,9 @@ class ScheduleItem
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
     def order(*args, &blk); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
+    def placed(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
     def preload(*args, &blk); end
@@ -776,6 +809,51 @@ class ScheduleItem
 
     sig { returns(T.nilable(::Date)) }
     def day_previously_was; end
+
+    sig { returns(T.nilable(::Integer)) }
+    def day_version_id; end
+
+    sig { params(value: T.nilable(::Integer)).returns(T.nilable(::Integer)) }
+    def day_version_id=(value); end
+
+    sig { returns(T::Boolean) }
+    def day_version_id?; end
+
+    sig { returns(T.nilable(::Integer)) }
+    def day_version_id_before_last_save; end
+
+    sig { returns(T.untyped) }
+    def day_version_id_before_type_cast; end
+
+    sig { returns(T::Boolean) }
+    def day_version_id_came_from_user?; end
+
+    sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
+    def day_version_id_change; end
+
+    sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
+    def day_version_id_change_to_be_saved; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def day_version_id_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable(::Integer)) }
+    def day_version_id_in_database; end
+
+    sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
+    def day_version_id_previous_change; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def day_version_id_previously_changed?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable(::Integer)) }
+    def day_version_id_previously_was; end
+
+    sig { returns(T.nilable(::Integer)) }
+    def day_version_id_was; end
+
+    sig { void }
+    def day_version_id_will_change!; end
 
     sig { returns(T.nilable(::Date)) }
     def day_was; end
@@ -1063,6 +1141,9 @@ class ScheduleItem
     def restore_day!; end
 
     sig { void }
+    def restore_day_version_id!; end
+
+    sig { void }
     def restore_ends_at_minutes!; end
 
     sig { void }
@@ -1106,6 +1187,12 @@ class ScheduleItem
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def saved_change_to_day?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
+    def saved_change_to_day_version_id; end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def saved_change_to_day_version_id?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { returns(T.nilable([T.nilable(::Integer), T.nilable(::Integer)])) }
     def saved_change_to_ends_at_minutes; end
@@ -1306,6 +1393,9 @@ class ScheduleItem
     def will_save_change_to_day?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
+    def will_save_change_to_day_version_id?(from: T.unsafe(nil), to: T.unsafe(nil)); end
+
+    sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
     def will_save_change_to_ends_at_minutes?(from: T.unsafe(nil), to: T.unsafe(nil)); end
 
     sig { params(from: T.untyped, to: T.untyped).returns(T::Boolean) }
@@ -1377,6 +1467,9 @@ class ScheduleItem
     def having(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
+    def in_final_plan(*args, &blk); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
     def in_order_of(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
@@ -1423,6 +1516,9 @@ class ScheduleItem
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
     def order(*args, &blk); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
+    def placed(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
     def preload(*args, &blk); end
