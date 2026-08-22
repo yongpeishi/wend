@@ -1,25 +1,298 @@
-/* Desktop-first, like the board: the map wants real screen space to be
-   useful. Below 900px the header stacks instead of sitting side by side. */
-.wrap {
+/* /trips/:id/map — the map-driven planning screen. Desktop-first like the
+   board: the list takes a fixed reading column on the left and the map takes
+   everything else, because the map is the point of this screen and a map on a
+   leash gains nothing from a wider desk while the list would only stretch its
+   lines. Below 900px the pair stacks, map first — same order of importance.
+
+   Separation is tone and hairline everywhere, never shadow; interaction is
+   opacity; focus is the app ring. All colours are tokens. */
+
+.screen {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
 }
 
-.head {
+/* The control row: plans glance, filter chips (with their own Showing N of M
+   line), the text narrowing, and the follow pill. Top-aligned because the
+   chip block is two lines tall and the single-line controls should hang from
+   the same top edge rather than float mid-block. */
+.controls {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-6);
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
-.mapWrap {
-  height: 560px;
+/* The chips take the flexible middle — they are the widest, wrappiest thing
+   on the row. min-width keeps them from collapsing to a one-chip column
+   before the row decides to wrap. */
+.filters {
+  flex: 1 1 auto;
+  min-width: 280px;
 }
 
+.narrow {
+  flex: 0 1 220px;
+  min-width: 160px;
+}
+
+/* The follow switch: a full-radius pill, filled while the map is narrowing
+   the list and outlined-muted while it is not — pressed IS on, exactly what
+   aria-pressed announces. The fill is leaf, the product's "in the current
+   reading" colour, same as a lit chip pin. */
+.follow {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  border: var(--border-width) solid var(--border-subtle);
+  background: none;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.follow[aria-pressed='true'] {
+  background: var(--wend-leaf);
+  border-color: var(--wend-leaf);
+  color: var(--wend-paper);
+}
+
+.follow:hover {
+  opacity: 0.8;
+}
+
+.follow:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The reassurance under the controls — the meta floor's 13px, muted. */
+.caption {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+/* The two columns. The height is a viewport calculation, not a content one:
+   ~340px is the chrome above (shell header, trip title, tabs, this screen's
+   own control row) plus breathing room below, and the map needs a real height
+   or Leaflet paints nothing. The floor keeps a short window from crushing the
+   map into a letterbox. */
+.columns {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-4);
+  height: calc(100vh - 340px);
+  min-height: 480px;
+}
+
+/* The list column: a fixed reading measure, scrolling on its own so a long
+   trip never scrolls the map off the screen. min-width: 0 so the flex row,
+   not a long title, decides the width. */
+.listCol {
+  flex: 0 0 360px;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* Room for the focus ring on the rows' controls — an overflow container
+     clips outlines that sit exactly on its edge. */
+  padding: 2px;
+}
+
+.groupRow {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* The counter and its escape hatch share a baseline: the sentence states the
+   narrowing, the button beside it undoes it. */
+.counterRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.counter {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+/* Same link-look as MapFilterBar's "See all": quiet ink, apricot underline —
+   an aside, not a control demanding attention. */
+.widen {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--wend-apricot);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.widen:hover {
+  opacity: 0.7;
+}
+
+.widen:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Both kinds of empty list — never-located and viewport-emptied — read in the
+   same quiet voice; the words carry the difference. */
+.emptyLine {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+  max-width: var(--measure-body);
+}
+
+/* The map column holds the map and the selection bar under it. min-width: 0
+   and min-height: 0 are both load-bearing: without them the flex children
+   refuse to shrink and the map overflows the row instead of filling it. */
+.mapCol {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The map's frame. 14px radius is the design's own number for this screen —
+   between --radius-card (12) and --radius-screen (22), and deliberately not
+   either: the map is a window, not a card. position: relative is the anchor
+   for every overlay; overflow: hidden is what actually rounds the tiles. */
+.mapWrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border-subtle);
+}
+
+/* Overlays sit above Leaflet's panes and controls (Leaflet's own stack tops
+   out at 1000). 14px in from the corners — the same inset MapView gives the
+   zoom control and the attribution, so the chrome reads as one family. */
+.searchOverlay {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1100;
+}
+
+/* Under the zoom pair: 14px inset + two 36px circles + the 8px between them
+   + 10px of air. Card tone, hairline, no shadow — map chrome, not a card. */
+.fitAll {
+  position: absolute;
+  top: 104px;
+  right: 14px;
+  z-index: 1100;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  color: var(--text-strong);
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.fitAll:hover {
+  opacity: 0.8;
+}
+
+.fitAll:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The aiming banner while a pin waits for its first click. Paper tone so it
+   reads as an instruction over the map, not another idea card; centred where
+   the eye already is, clear of the search (left) and the zoom (right). */
+.banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-page);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+
+/* Where the preview and dropped-pin cards land: bottom-left, clear of the
+   attribution pill in the opposite corner. The cards style themselves; this
+   only places them and caps their width so a long label cannot shade the
+   whole map. */
+.cards {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 1100;
+  width: 340px;
+  max-width: calc(100% - 28px);
+}
+
+/* One column on a narrow window: map above the list, each at a working
+   height, the page scrolling as a whole instead of the list column. */
 @media (max-width: 900px) {
+  .columns {
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  .listCol {
+    flex: none;
+    width: 100%;
+    max-height: 420px;
+    order: 2;
+  }
+
+  .mapCol {
+    flex: none;
+    width: 100%;
+    order: 1;
+  }
+
   .mapWrap {
+    flex: none;
     height: 380px;
   }
 }
