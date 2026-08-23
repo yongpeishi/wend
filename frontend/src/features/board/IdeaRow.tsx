@@ -1,16 +1,15 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { GripVertical, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Entry } from '../../api/types';
-import { CATEGORY_LABELS } from './filters';
 import { Button } from '../../design/components/core/Button';
 import { Chip, Tag } from '../../design/components/core/Chip';
 import { useToast } from '../../components/Toast';
-import { useArchiveEntry, useDeleteVote, useUpdateEntry, useVote } from '../../api';
+import { useArchiveEntry, useUpdateEntry } from '../../api';
 import { IdeaComposer } from './IdeaComposer';
 import type { IdeaComposerDraft } from './IdeaComposer';
-import { IdeaTodos } from './IdeaTodos';
-import { VoteBar } from './VoteBar';
+import { IdeaPanel } from './IdeaPanel';
+import { VotePill } from './VotePill';
 import { subtreeIdeaIds } from './tree';
 import { useLinkMutations } from './useLinkMutations';
 import styles from './IdeaRow.module.css';
@@ -219,8 +218,6 @@ export function IdeaRow({
   const { show } = useToast();
   const panelId = useId();
   const plansLabelId = useId();
-  const vote = useVote(entry.id);
-  const deleteVote = useDeleteVote(entry.id);
   const updateEntry = useUpdateEntry(entry.id);
   const archiveEntry = useArchiveEntry();
   const { addLink, removeLink } = useLinkMutations();
@@ -491,27 +488,10 @@ export function IdeaRow({
 
         {/* Category and appetite in one plum-wash pill — "Shopping · 👍 6" —
             open or closed, so it meets the VoteBar's plum pills when the panel
-            unfolds. Plum because a vote marks appetite for a destination, and
-            words beside the number so the row can be scanned without a legend.
-            Zero votes draws no number (a scoreboard on an idea nobody has
-            judged), just the category word; no category and no votes draws no
-            pill at all. */}
-        {(entry.category !== null || entry.vote_tally.total !== 0) && (
-          <span className={styles.votePill} title="Everyone's votes added up, from +2 to -2 each">
-            {entry.category !== null && CATEGORY_LABELS[entry.category]}
-            {entry.vote_tally.total !== 0 && (
-              <>
-                {entry.category !== null && <span aria-hidden="true">·</span>}
-                {entry.vote_tally.total > 0 ? (
-                  <ThumbsUp size={14} strokeWidth={2} aria-hidden="true" />
-                ) : (
-                  <ThumbsDown size={14} strokeWidth={2} aria-hidden="true" />
-                )}
-                {entry.vote_tally.total}
-              </>
-            )}
-          </span>
-        )}
+            unfolds. The pill itself lives in VotePill, shared with the map's
+            pin card: the same idea seen on two screens must make the same
+            claim, and it draws nothing at all when there is nothing to say. */}
+        <VotePill category={entry.category} total={entry.vote_tally.total} />
 
         {/* The card's one drill affordance, at its top-right corner, open or
             closed. Stops its own propagation so descending never also unfolds
@@ -538,166 +518,162 @@ export function IdeaRow({
         Not rendered while closed rather than rendered hidden: IdeaTodos fetches
         on mount, and a board of forty rows would open with forty requests for
         lists nobody has asked to see.
+
+        Its reading half — the words, the ballot and the to-dos, along with the
+        vote mutations that make the ballot work — lives in IdeaPanel now,
+        shared with the map's pin card. Only the verbs stayed here, as the
+        panel's `actions` slot: reading an idea is the same act on every
+        screen, and what may be DONE about it is not.
       */}
       {expanded && (
-        <div id={panelId} className={styles.panel}>
-          {/* The mockup has one `note`; our model splits the same idea into a
-              description and private notes, and both are worth reading here.
-              The notes are muted because they are the aside, not the pitch. */}
-          {entry.description && <p className={styles.body}>{entry.description}</p>}
-          {entry.notes && <p className={[styles.body, styles.notes].join(' ')}>{entry.notes}</p>}
-
-          {/* Data tracking, because an address is read character by character. */}
-          {entry.address && <p className={styles.address}>{entry.address}</p>}
-
-          <VoteBar
-            myVote={entry.my_vote}
-            tally={entry.vote_tally}
-            entryTitle={entry.title}
-            canVote={canEdit}
-            // The optimistic write lives in useVote/useDeleteVote, so the stop
-            // fills before the request lands; all this has to do is stop taking
-            // a second answer while the first is in the air.
-            onVote={(score) => vote.mutate(score, { onError: () => show(SAVE_FAILED, 'error') })}
-            onClear={() => deleteVote.mutate(undefined, { onError: () => show(SAVE_FAILED, 'error') })}
-            disabled={vote.isPending || deleteVote.isPending}
-          />
-
-          <IdeaTodos entryId={entry.id} canEdit={canEdit} />
-
-          {/*
+        <IdeaPanel
+          entry={entry}
+          canEdit={canEdit}
+          id={panelId}
+          /*
             The verbs, gathered on one line at the foot of the panel — every
             one of them, since the overflow menu is gone. A viewer gets the
             row's words and none of its verbs — not a greyed row, just no row —
             and keeps the answer to "which plans?" as tags, the same plum the
             plan names are written in everywhere else.
-          */}
-          {canEdit ? (
-            <div className={styles.actionsRow}>
-              <div className={styles.plansWrap} ref={plansRef}>
-                <Button
-                  ref={plansTriggerRef}
-                  size="small"
-                  aria-haspopup="true"
-                  aria-expanded={plansOpen}
-                  onClick={() => setPlansOpen((value) => !value)}
-                >
-                  Add to plan
-                </Button>
-                {plansOpen && (
-                  <div className={styles.plansMenu} role="group" aria-labelledby={plansLabelId}>
-                    <p className={styles.sectionLabel} id={plansLabelId}>
+
+            They ride in as the panel's slot because they are the half that is
+            the BOARD's: the panel is the idea being read, which is the same
+            everywhere, and these four are what this screen can do about it.
+            The inline composer comes with them so it stays the panel's last
+            child, a sibling of the actions row rather than a fifth item
+            wrapping around inside it.
+          */
+          actions={
+            <>
+              {canEdit ? (
+                <div className={styles.actionsRow}>
+                  <div className={styles.plansWrap} ref={plansRef}>
+                    <Button
+                      ref={plansTriggerRef}
+                      size="small"
+                      aria-haspopup="true"
+                      aria-expanded={plansOpen}
+                      onClick={() => setPlansOpen((value) => !value)}
+                    >
                       Add to plan
-                    </p>
-                    {bundles.length === 0 ? (
-                      <p className={styles.empty}>No plans yet. Start one in the plans column.</p>
-                    ) : (
-                      <div className={styles.chips}>
-                        {bundles.map((bundle) => (
-                          <Chip
-                            key={bundle.id}
-                            selected={isMember(bundle.id)}
-                            onClick={() => toggleBundle(bundle)}
-                          >
-                            {bundle.title}
-                          </Chip>
-                        ))}
+                    </Button>
+                    {plansOpen && (
+                      <div className={styles.plansMenu} role="group" aria-labelledby={plansLabelId}>
+                        <p className={styles.sectionLabel} id={plansLabelId}>
+                          Add to plan
+                        </p>
+                        {bundles.length === 0 ? (
+                          <p className={styles.empty}>No plans yet. Start one in the plans column.</p>
+                        ) : (
+                          <div className={styles.chips}>
+                            {bundles.map((bundle) => (
+                              <Chip
+                                key={bundle.id}
+                                selected={isMember(bundle.id)}
+                                onClick={() => toggleBundle(bundle)}
+                              >
+                                {bundle.title}
+                              </Chip>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              {/* The only way to put the first idea inside this one, so it is
-                  offered whether or not anything is inside already: the
-                  "N inside ›" pill is derived from the subtree, and a
-                  childless idea draws none. It opens the composer below,
-                  inside this card — see the component comment for why it
-                  belongs there rather than in a dialog. */}
-              <Button
-                variant="quiet"
-                size="small"
-                onClick={() => onOpenComposerInside(entry.id)}
-              >
-                Add an idea inside
-              </Button>
+                  {/* The only way to put the first idea inside this one, so it
+                      is offered whether or not anything is inside already: the
+                      "N inside ›" pill is derived from the subtree, and a
+                      childless idea draws none. It opens the composer below,
+                      inside this card — see the component comment for why it
+                      belongs there rather than in a dialog. */}
+                  <Button
+                    variant="quiet"
+                    size="small"
+                    onClick={() => onOpenComposerInside(entry.id)}
+                  >
+                    Add an idea inside
+                  </Button>
 
-              <Button
-                variant="quiet"
-                size="small"
-                onClick={() => {
-                  // The edit form replaces the whole card, composer included.
-                  // Dismissed rather than left standing, or it would vanish
-                  // without being cancelled and then reappear, half-typed,
-                  // the moment the edit ended.
-                  if (composerAt === entry.id) onComposerCancel();
-                  setEditing(true);
-                }}
-              >
-                Edit
-              </Button>
+                  <Button
+                    variant="quiet"
+                    size="small"
+                    onClick={() => {
+                      // The edit form replaces the whole card, composer
+                      // included. Dismissed rather than left standing, or it
+                      // would vanish without being cancelled and then reappear,
+                      // half-typed, the moment the edit ended.
+                      if (composerAt === entry.id) onComposerCancel();
+                      setEditing(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
 
-              {/* Set aside, never delete — SetAsideSection at the foot of the
-                  board is the way back, on the same screen as the way out. The
-                  label names that list rather than the motion, so the way back
-                  is already in the words on the way out. */}
-              <Button
-                variant="quiet"
-                size="small"
-                onClick={() =>
-                  archiveEntry.mutate(entry.id, {
-                    onSuccess: () => show('Set aside.', 'success'),
-                    onError: () => show(SAVE_FAILED, 'error'),
-                  })
-                }
-              >
-                Move to Set aside
-              </Button>
-            </div>
-          ) : (
-            bundleNames.length > 0 && (
-              <div className={styles.tags}>
-                {bundleNames.map((name) => (
-                  <Tag key={name} tone="saved">
-                    {name}
-                  </Tag>
-                ))}
-              </div>
-            )
-          )}
+                  {/* Set aside, never delete — SetAsideSection at the foot of
+                      the board is the way back, on the same screen as the way
+                      out. The label names that list rather than the motion, so
+                      the way back is already in the words on the way out. */}
+                  <Button
+                    variant="quiet"
+                    size="small"
+                    onClick={() =>
+                      archiveEntry.mutate(entry.id, {
+                        onSuccess: () => show('Set aside.', 'success'),
+                        onError: () => show(SAVE_FAILED, 'error'),
+                      })
+                    }
+                  >
+                    Move to Set aside
+                  </Button>
+                </div>
+              ) : (
+                bundleNames.length > 0 && (
+                  <div className={styles.tags}>
+                    {bundleNames.map((name) => (
+                      <Tag key={name} tone="saved">
+                        {name}
+                      </Tag>
+                    ))}
+                  </div>
+                )
+              )}
 
-          {/*
-            The composer, when this card is the one holding it: below the
-            verbs, inside the panel, a sibling of the actions row rather than
-            a fourth item wrapping around inside it.
+              {/*
+                The composer, when this card is the one holding it: below the
+                verbs, inside the panel, a sibling of the actions row rather
+                than a fourth item wrapping around inside it.
 
-            `parentChoices` is the WHOLE idea set, unfiltered — unlike the
-            edit form above, which must cut out the entry's own subtree. An
-            idea that does not exist yet has no descendants, so every idea on
-            the trip is a legal parent for it; `initialParentIds` merely
-            starts it inside this one.
+                `parentChoices` is the WHOLE idea set, unfiltered — unlike the
+                edit form above, which must cut out the entry's own subtree. An
+                idea that does not exist yet has no descendants, so every idea
+                on the trip is a legal parent for it; `initialParentIds` merely
+                starts it inside this one.
 
-            `hostTitle` is what makes it read as belonging to this card (the
-            "NEW IDEA INSIDE <host>" heading and the nested paper surface),
-            and `trimmed` opens it at Name and Short description with the rest
-            a click away — nesting an idea should cost about what typing its
-            name costs. The composer takes its own focus, so the card does not
-            move under the hand.
-          */}
-          {canEdit && composerAt === entry.id && (
-            <IdeaComposer
-              open
-              hostTitle={entry.title}
-              trimmed
-              initialTitle=""
-              initialParentIds={[entry.id]}
-              parentChoices={allIdeas}
-              allIdeas={allIdeas}
-              onSubmit={onComposerSubmit}
-              onCancel={onComposerCancel}
-            />
-          )}
-        </div>
+                `hostTitle` is what makes it read as belonging to this card (the
+                "NEW IDEA INSIDE <host>" heading and the nested paper surface),
+                and `trimmed` opens it at Name and Short description with the
+                rest a click away — nesting an idea should cost about what
+                typing its name costs. The composer takes its own focus, so the
+                card does not move under the hand.
+              */}
+              {canEdit && composerAt === entry.id && (
+                <IdeaComposer
+                  open
+                  hostTitle={entry.title}
+                  trimmed
+                  initialTitle=""
+                  initialParentIds={[entry.id]}
+                  parentChoices={allIdeas}
+                  allIdeas={allIdeas}
+                  onSubmit={onComposerSubmit}
+                  onCancel={onComposerCancel}
+                />
+              )}
+            </>
+          }
+        />
       )}
     </div>
   );

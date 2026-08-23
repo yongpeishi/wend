@@ -1,25 +1,314 @@
-/* Desktop-first, like the board: the map wants real screen space to be
-   useful. Below 900px the header stacks instead of sitting side by side. */
-.wrap {
+/* /trips/:id/map — the map-driven planning screen. Desktop-first like the
+   board: the list takes a fixed reading column on the left and the map takes
+   everything else, because the map is the point of this screen and a map on a
+   leash gains nothing from a wider desk while the list would only stretch its
+   lines. Below 900px the pair stacks, map first — same order of importance.
+
+   Separation is tone and hairline everywhere, never shadow; interaction is
+   opacity; focus is the app ring. All colours are tokens. */
+
+.screen {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  /* The screen takes the height it is already being offered rather than
+     guessing at it: TripLayout's wrap is `flex: 1` inside a shell that is at
+     least a window tall, so `flex: 1` here reaches the bottom of the window on
+     any desk. min-height: 0 is the other half — without it this box refuses to
+     shrink below its content and the columns row below can never resolve
+     against it. */
+  flex: 1;
+  min-height: 0;
+  /* The paper under a page is --floor-screen (64px). Under a map, 64px of
+     paper is 64px the map could have had — the same argument the schedule
+     makes when it cancels the floor for its now bar. This screen keeps a
+     floor, but the gutter's: the map frame ends the same 20px from the bottom
+     of the window as it stands from its sides. */
+  margin-bottom: calc(var(--gutter-screen) - var(--floor-screen));
+  /* And the same refusal sideways. TripLayout caps every screen at a 1360px
+     reading measure, which is the right call for text and the wrong one for a
+     map: past 1360px of window the cap simply stopped handing the map desk it
+     had, and left a band of paper down the right edge to prove it. This is
+     TripLayout's own opt-out (the board takes it too), scoped to this element
+     — .head is a separate child of the wrap and keeps the 1360px measure,
+     because a trip title running the width of an ultrawide window is one
+     enormous line with nothing to relate to.
+
+     Full width, not full bleed: the wrap's --gutter-screen padding stays on
+     both sides, so the map frame stands 20px in from the right edge of the
+     window — the same 20px it keeps at the left, the top and now the bottom.
+     The board cancels that gutter with a negative inline margin; this screen
+     deliberately does not. */
+  --screen-measure: none;
 }
 
-.head {
+/* The two columns take everything the screen has left under the control rows.
+   This used to be `calc(100vh - 340px)` — a single number standing in for the
+   shell header, the trip title, the filter bar and the counter row all at
+   once. None of those has a fixed height: the title wraps on a long trip, the
+   filter bar grows a second line when chips are active, and the counter row
+   comes and goes with the query. So the guess was wrong on nearly every desk,
+   and wrong in the visible direction — the map stopped short of the window
+   with a band of paper under it. `flex: 1` measures the same thing exactly,
+   because the chain above it (shell 100vh -> main -> wrap -> screen) is real
+   layout rather than arithmetic.
+
+   min-height is still a floor and not a height: on a window too short for it
+   the row keeps 480px and the page scrolls, which beats crushing the map into
+   a letterbox. min-width/min-height: 0 on the children is what lets them
+   shrink inside the row (see .listCol, .mapCol, .mapWrap). */
+.columns {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-6);
+  align-items: stretch;
+  gap: var(--space-4);
+  flex: 1 1 auto;
+  min-height: 480px;
+}
+
+/* The list column: a fixed reading measure, scrolling on its own so a long
+   trip never scrolls the map off the screen. min-width: 0 so the flex row,
+   not a long title, decides the width. */
+.listCol {
+  flex: 0 0 360px;
+  min-width: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* Room for the focus ring on the rows' controls — an overflow container
+     clips outlines that sit exactly on its edge. */
+  padding: 2px;
+}
+
+/* The counter and its escape hatch share a baseline: the sentence states the
+   narrowing, the button beside it undoes it. The third row of the control
+   block, under the filter bar rather than over the list — everything that
+   describes the current reading now sits together above the two panes. */
+.counterRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
-.mapWrap {
-  height: 560px;
+.counter {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
 }
 
+/* Quiet ink, apricot underline — an aside beside the count, not a control
+   demanding attention. */
+.widen {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-decoration-color: var(--wend-apricot);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.widen:hover {
+  opacity: 0.7;
+}
+
+.widen:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Both kinds of empty list — never-located and viewport-emptied — read in the
+   same quiet voice; the words carry the difference. */
+.emptyLine {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+  max-width: var(--measure-body);
+}
+
+/* The map column holds the map and the selection bar under it. min-width: 0
+   and min-height: 0 are both load-bearing: without them the flex children
+   refuse to shrink and the map overflows the row instead of filling it. */
+.mapCol {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The map's frame. 14px radius is the design's own number for this screen —
+   between --radius-card (12) and --radius-screen (22), and deliberately not
+   either: the map is a window, not a card. position: relative is the anchor
+   for every overlay; overflow: hidden is what actually rounds the tiles. */
+.mapWrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border-subtle);
+}
+
+/* While a drop is armed every map click places (or moves) the pending point,
+   so the cursor says "aim", not "drag". Leaflet sets grab on its own container
+   — which lives inside MapView's seam, hence :global to reach it — and this
+   wrapper class is how the screen states the mode without TripMap ever
+   touching a map handle. */
+.dropArmed :global(.leaflet-container) {
+  cursor: crosshair;
+}
+
+/* Overlays sit above Leaflet's panes and controls (Leaflet's own stack tops
+   out at 1000). 14px in from the corners — the same inset MapView gives the
+   zoom control and the attribution, so the chrome reads as one family. */
+.searchOverlay {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 1100;
+}
+
+/* Under the zoom pair: 14px inset + two 36px circles + the 8px between them
+   + 10px of air. Card tone, hairline, no shadow — map chrome, not a card. */
+.fitAll {
+  position: absolute;
+  top: 104px;
+  right: 14px;
+  z-index: 1100;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  color: var(--text-strong);
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.fitAll:hover {
+  opacity: 0.8;
+}
+
+.fitAll:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The aiming banner while a pin waits for its first click. Paper tone so it
+   reads as an instruction over the map, not another idea card; centred where
+   the eye already is, clear of the search (left) and the zoom (right). */
+.banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-page);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+
+/* The banner's way out before any click lands: the same quiet link-look as
+   "zoom out to widen" — an aside beside the instruction, not a second
+   command competing with it. Regular weight and muted ink so the bold
+   instruction stays the sentence being read. */
+.bannerCancel {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-decoration-color: var(--wend-apricot);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.bannerCancel:hover {
+  opacity: 0.7;
+}
+
+.bannerCancel:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Where the preview and dropped-pin cards land: bottom-left, clear of the
+   attribution pill in the opposite corner. The cards style themselves; this
+   only places them and caps their width so a long label cannot shade the
+   whole map. */
+.cards {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 1100;
+  width: 340px;
+  max-width: calc(100% - 28px);
+}
+
+/* One column on a narrow window: map above the list, each at a working
+   height, the page scrolling as a whole instead of the list column. */
 @media (max-width: 900px) {
+  /* Back to a content-sized page: the screen no longer claims the window's
+     height, and the floor it traded away for the map comes back, because here
+     the map is a fixed 380px band rather than the thing filling the view. */
+  .screen {
+    flex: none;
+    min-height: 0;
+    margin-bottom: 0;
+  }
+
+  .columns {
+    flex: none;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+
+  .listCol {
+    flex: none;
+    width: 100%;
+    max-height: 420px;
+    order: 2;
+  }
+
+  .mapCol {
+    flex: none;
+    width: 100%;
+    order: 1;
+  }
+
   .mapWrap {
+    flex: none;
     height: 380px;
   }
 }

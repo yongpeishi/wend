@@ -1,0 +1,125 @@
+/* The search card that overlays the map top-left. The parent positions it;
+   this styles the card itself: paper tone (so it reads as chrome over the map,
+   not another idea card), card radius, single 1.5px border — tone change is
+   the separation, per the no-shadow rule. */
+.card {
+  box-sizing: border-box;
+  width: 320px;
+  max-width: 100%;
+  padding: var(--space-3);
+  background: var(--surface-page);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* Same token pairing as every section heading in the product (BundlePanel's
+   .heading, TripsList's .sectionLabel) — the one sanctioned 12px. */
+.sectionLabel {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: var(--space-2);
+  border-radius: var(--radius-card);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.row:hover {
+  opacity: 0.7;
+}
+
+.row:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.rowName {
+  display: block;
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Meta floor: 13px, muted — the row's "what it is" hint. */
+.rowMeta {
+  display: block;
+  font-size: var(--text-code-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+.nothing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+.nothingLine {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+/* The pin path out of a dead-end search. Bordered rather than filled — it is
+   an invitation, not the screen's primary action — and 2px because the border
+   carries the action. */
+.dropPin {
+  background: none;
+  border: var(--border-width-strong) solid var(--wend-leaf);
+  border-radius: var(--radius-card);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--wend-deep-leaf);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.dropPin:hover {
+  opacity: 0.7;
+}
+
+.dropPin:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

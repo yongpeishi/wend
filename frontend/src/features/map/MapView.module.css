@@ -11,6 +11,13 @@
   border-radius: var(--radius-media);
   overflow: hidden;
   border: var(--border-width) solid var(--border-subtle);
+  /* Leaflet stacks its panes at z-index 400+ and, absent this, they join the
+     ROOT stacking context — where they beat every overlay the app draws in
+     single digits (the selection bar's popover at 20, even the fixed toast
+     stack at 200). isolation: isolate makes this wrap its own stacking
+     context, so Leaflet's z-index contest stays internal to the map and the
+     rest of the page never has to out-bid 400. */
+  isolation: isolate;
 }
 
 .map {
@@ -316,6 +323,16 @@
 
 :global(.wend-pin-dot:hover) {
   opacity: 0.8;
+}
+
+/* The faint dot (MapPin.mark='faint') — dimmed, not gone. The dot's own edge
+   (--border-strong) is a near-paper hairline that disappears completely under
+   the extra fade, so the faint mark borrows the muted ink tone instead: still
+   neutral — no state colour sneaks back in — but dark enough to survive the
+   0.55 opacity over OSM tiles, while the regular dot stays the louder of the
+   two. */
+:global(.wend-pin-faint span) {
+  border-color: var(--text-muted);
 }
 
 /* The ring hugs the 12px mark, not the invisible 32px hit box — a ring around

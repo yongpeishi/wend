@@ -41,6 +41,29 @@ describe('searchPlace', () => {
     expect(results).toEqual([{ lat: 35.0116, lng: 135.7681, label: 'Nanzen-ji, Kyoto' }]);
   });
 
+  it('carries the provider kind and place id through, id as a string — the seam never speaks numbers', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        { lat: '35.0116', lon: '135.7681', display_name: 'Nanzen-ji, Kyoto', type: 'attraction', place_id: 240109189 },
+      ],
+    });
+    const results = await searchPlace('nanzenji', { fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(results).toEqual([
+      { lat: 35.0116, lng: 135.7681, label: 'Nanzen-ji, Kyoto', kind: 'attraction', placeId: '240109189' },
+    ]);
+  });
+
+  it('leaves kind and placeId undefined when the response lacks them — the old shape still parses', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [{ lat: '35.0116', lon: '135.7681', display_name: 'Nanzen-ji, Kyoto' }],
+    });
+    const results = await searchPlace('nanzenji', { fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(results[0]!.kind).toBeUndefined();
+    expect(results[0]!.placeId).toBeUndefined();
+  });
+
   it('resolves to an empty array — never throws — when the response is not ok', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false, json: async () => [] });
     await expect(searchPlace('nowhere', { fetchImpl: fetchImpl as unknown as typeof fetch })).resolves.toEqual([]);
@@ -49,6 +72,33 @@ describe('searchPlace', () => {
   it('resolves to an empty array — never throws — when the network call rejects', async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error('offline'));
     await expect(searchPlace('nowhere', { fetchImpl: fetchImpl as unknown as typeof fetch })).resolves.toEqual([]);
+  });
+
+  it('biases toward the given viewport, spelling the box west,north,east,south', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    await searchPlace('nanzenji', {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      viewbox: { north: 35.1, south: 34.9, east: 135.9, west: 135.6 },
+    });
+    // Longitude first in each pair — Nominatim reads x,y, not lat,lng.
+    expect(fetchImpl.mock.calls[0]![0]).toContain('&viewbox=135.6,35.1,135.9,34.9');
+  });
+
+  it('never sends bounded=1 — the viewport is a bias, not a fence', async () => {
+    // A search for somewhere outside the current view must still find it;
+    // bounded=1 would hand the user nothing for a place that plainly exists.
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    await searchPlace('osaka castle', {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      viewbox: { north: 35.1, south: 34.9, east: 135.9, west: 135.6 },
+    });
+    expect(fetchImpl.mock.calls[0]![0]).not.toContain('bounded');
+  });
+
+  it('sends no viewbox at all when none is given — an unbiased search stays unbiased', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    await searchPlace('nanzenji', { fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(fetchImpl.mock.calls[0]![0]).not.toContain('viewbox');
   });
 
   it('resolves to an empty array for blank queries without calling fetch at all', async () => {

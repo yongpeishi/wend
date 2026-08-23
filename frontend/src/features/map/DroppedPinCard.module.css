@@ -1,0 +1,68 @@
+/* The dropped-pin confirmation card, floated over the map by the parent. Card
+   tone, 1.5px border, card radius — no shadow. */
+.card {
+  box-sizing: border-box;
+  width: 280px;
+  max-width: 100%;
+  padding: var(--space-4);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The sanctioned 12px: uppercase, tracked — same pairing as every section
+   label in the product. */
+.heading {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-strong);
+}
+
+.whereLabel {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Coordinates are data at its most literal — the one place the mono voice
+   earns its keep. */
+.coords {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-small-size);
+  line-height: var(--text-small-line);
+  color: var(--text-body);
+}
+
+.hint {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-code-size);
+  line-height: var(--text-small-line);
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

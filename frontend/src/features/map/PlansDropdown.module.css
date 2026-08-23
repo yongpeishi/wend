@@ -1,0 +1,180 @@
+/*
+ * The plans picker in the map's control row. The popover is the house panel —
+ * card tone with a drawn edge, no shadow — opening downward, because its
+ * trigger sits in a control row at the top of the screen.
+ */
+
+/* Anchors the panel to the trigger. */
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* A bordered control, not a filled one: this narrows what you are reading, it
+   changes nothing on the board. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+@media (pointer: coarse) {
+  .trigger {
+    min-height: var(--tap-min);
+  }
+}
+
+.trigger:hover {
+  opacity: 0.85;
+}
+
+.trigger:active {
+  opacity: 0.7;
+}
+
+.trigger:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Narrowed to one plan: the leaf edge, the same "this is on" colour a lit chip
+   wears. Never the only signal — the trigger also stops saying a count and
+   starts saying the plan's name, which survives having no colour vision. */
+.triggerOn {
+  border-color: var(--wend-leaf);
+}
+
+/* The count rides muted beside the word — a fact, not part of the verb. */
+.triggerCount {
+  font-weight: var(--weight-regular);
+  color: var(--text-muted);
+}
+
+/* The picked plan's title in the trigger's value slot. Bold ink rather than the
+   count's muted grey — it is the answer to "what am I looking at", not a
+   footnote — and clipped rather than allowed to stretch the control row. */
+.triggerValue {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-strong);
+}
+
+/* Invisible, fills the viewport, sits under the panel and over everything
+   else: the next click anywhere goes here and closes the panel. Above
+   Leaflet's own stack (which tops out at 1000) so a click on the map closes
+   this rather than landing on the tiles. */
+.catcher {
+  position: fixed;
+  inset: 0;
+  z-index: 1199;
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: default;
+}
+
+/* Left-anchored and opening downward from the control row, clear of Leaflet's
+   panes for the same reason the catcher is. */
+.panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 1200;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  /* 6px: half of --space-3. These rows are a list, not separate controls. */
+  gap: 6px;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--surface-card);
+}
+
+.panelLabel {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+/* One row per plan: title, and how many ideas it holds. Paper on card is the
+   separation; a real button now, because picking a row narrows the map. The
+   border is transparent rather than absent so the lit state below can colour
+   it without the row growing by 3px as it lights. */
+.item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 9px 10px;
+  /* 4px: rows inside a panel — a soft edge, not a shape of their own. */
+  border-radius: 4px;
+  border: var(--border-width) solid transparent;
+  background: var(--wend-paper);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.item:hover {
+  opacity: 0.8;
+}
+
+.item:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The row the map is currently reading. The leaf edge is the colour half; the
+   ✓ beside the count and `aria-current` on the button are the other two, so
+   nothing about "you are here" is carried by hue alone. */
+.itemOn {
+  border-color: var(--wend-leaf);
+}
+
+.itemTitle {
+  min-width: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-body);
+}
+
+.itemMeta {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* The tick, in the same leaf as the row's edge — a glyph, so it reads without
+   colour too. */
+.tick {
+  color: var(--wend-leaf);
+  font-weight: var(--weight-bold);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--text-min-size);
+  line-height: 1.5;
+  color: var(--text-muted);
+}

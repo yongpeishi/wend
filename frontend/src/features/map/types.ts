@@ -1,5 +1,5 @@
 // Provider-agnostic shapes. TripMap.tsx and Library.tsx only ever import
-// these plus <MapView> and <PlaceSearch> — never `leaflet` or `react-leaflet`
+// these plus <MapView> and <MapSearch> — never `leaflet` or `react-leaflet`
 // directly. That is the seam: swapping the renderer for a keyed provider
 // (Google/Mapbox) later means rewriting the inside of this folder only.
 
@@ -19,11 +19,14 @@ export type PinTone = 'bundled' | 'inView' | 'offView';
 /**
  * A stronger split than tone: 'chip' draws the labelled leaf pill (this idea
  * is in the list beside the map), 'dot' draws a small neutral circle (located,
- * but not in what you're reading). Like `tone`, it is board vocabulary the
- * board computes and hands down — the map only draws it. When set it wins over
- * tone/variant for that pin; absent means the variant/tone rendering decides.
+ * but not in what you're reading), 'faint' draws a barely-there dot (filtered
+ * out of the current reading, but never removed from the map — a filter that
+ * deleted pins would make the map lie about what the trip holds). Like `tone`,
+ * it is board vocabulary the board computes and hands down — the map only
+ * draws it. When set it wins over tone/variant for that pin; absent means the
+ * variant/tone rendering decides.
  */
-export type PinMark = 'chip' | 'dot';
+export type PinMark = 'chip' | 'dot' | 'faint';
 
 export interface MapPin {
   id: number;
@@ -35,6 +38,14 @@ export interface MapPin {
   tone?: PinTone;
   /** Optional. Absent means the map's `pinVariant` (and `tone`) decide — see PinMark. */
   mark?: PinMark;
+  /**
+   * Optional. True means this place lives inside another kept thing (board
+   * vocabulary again — the board knows the nesting, the map only draws it):
+   * a chip-marked pin with `nested` draws its edge dashed, the same
+   * "contained, not standalone" grammar the trail's dashed strokes use.
+   * Absent means false; non-chip marks ignore it.
+   */
+  nested?: boolean;
 }
 
 /** A plain lat/lng box — the provider-agnostic stand-in for LatLngBounds. */
@@ -62,4 +73,17 @@ export interface GeocodeResult {
   lat: number;
   lng: number;
   label: string;
+  /**
+   * What the place is, in the provider's own vocabulary ('attraction',
+   * 'restaurant', …). Optional and deliberately untyped beyond string: it is
+   * a display hint, never something to branch on — an enum here would freeze
+   * one provider's taxonomy into the seam.
+   */
+  kind?: string;
+  /**
+   * The provider's stable id for the place, when it has one. A string even
+   * where the current provider counts in numbers, so the shape never encodes
+   * which provider sits behind the seam.
+   */
+  placeId?: string;
 }

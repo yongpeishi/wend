@@ -98,11 +98,20 @@ const CHIP_HEIGHT = 24;
  * toned, because the chip/dot split *is* the message — a second colour axis on
  * top of it would be two encodings fighting over one pill.
  */
-export function chipIcon(title: string, selected: boolean): L.DivIcon {
+export function chipIcon(title: string, selected: boolean, nested?: boolean): L.DivIcon {
   const classes = ['wend-pin-chip'];
   if (selected) classes.push('is-selected');
+  if (nested) classes.push('wend-pin-chip--nested');
+  // A nested place — one that lives inside another kept thing — keeps the
+  // chip's colour and shape and dashes only its edge: the same "contained,
+  // not standalone" grammar the trail's dashed strokes carry. The dash rides
+  // inline (border-style is geometry, not colour, so nothing here escapes the
+  // token file) with the width restated so the dash is the contract's 1.5px
+  // whatever the stylesheet's border variable does; the modifier class above
+  // is the stylesheet's hook if it ever wants more than a dash.
+  const nestedStyle = nested ? ' style="border-style: dashed; border-width: 1.5px;"' : '';
   const html = `
-    <button type="button" class="${classes.join(' ')}">${escapeHtml(title)}</button>
+    <button type="button" class="${classes.join(' ')}"${nestedStyle}>${escapeHtml(title)}</button>
   `;
   return L.divIcon({
     html,
@@ -126,6 +135,35 @@ export function dotIcon(title: string, selected: boolean): L.DivIcon {
   if (selected) classes.push('is-selected');
   const html = `
     <button type="button" class="${classes.join(' ')}" aria-label="${escapeHtml(title)}">
+      <span aria-hidden="true"></span>
+    </button>
+  `;
+  return L.divIcon({
+    html,
+    className: 'wend-pin-dot-icon',
+    iconSize: [PIN_BOX, PIN_BOX],
+    iconAnchor: [PIN_CENTER, PIN_CENTER],
+    popupAnchor: [0, -PIN_CENTER],
+  });
+}
+
+/**
+ * The quietest mark of all (MapPin.mark='faint'): a pin the current filter
+ * has set aside. It reuses the dot's markup wholesale — same neutral circle,
+ * same 32px hit area, still clickable — and fades the whole button, because
+ * "filtered out" must read as *dimmed*, never *gone*: a filter that removed
+ * pins would make the map lie about what the trip holds. The fade is an
+ * inline opacity rather than a stylesheet rule for the same reason the dash
+ * on a nested chip is: opacity is not a colour, so nothing escapes the token
+ * file, and the icon stays whole on its own. 0.55 is the floor that still
+ * reads over OSM tiles (the .wend-pin-faint border override in
+ * MapView.module.css is the other half of that legibility). No `selected`
+ * argument — a pin the filter set aside is by definition not the one under
+ * discussion.
+ */
+export function faintIcon(title: string): L.DivIcon {
+  const html = `
+    <button type="button" class="wend-pin-dot wend-pin-faint" style="opacity: 0.55;" aria-label="${escapeHtml(title)}">
       <span aria-hidden="true"></span>
     </button>
   `;
