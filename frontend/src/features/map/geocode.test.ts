@@ -74,6 +74,33 @@ describe('searchPlace', () => {
     await expect(searchPlace('nowhere', { fetchImpl: fetchImpl as unknown as typeof fetch })).resolves.toEqual([]);
   });
 
+  it('biases toward the given viewport, spelling the box west,north,east,south', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    await searchPlace('nanzenji', {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      viewbox: { north: 35.1, south: 34.9, east: 135.9, west: 135.6 },
+    });
+    // Longitude first in each pair — Nominatim reads x,y, not lat,lng.
+    expect(fetchImpl.mock.calls[0]![0]).toContain('&viewbox=135.6,35.1,135.9,34.9');
+  });
+
+  it('never sends bounded=1 — the viewport is a bias, not a fence', async () => {
+    // A search for somewhere outside the current view must still find it;
+    // bounded=1 would hand the user nothing for a place that plainly exists.
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    await searchPlace('osaka castle', {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      viewbox: { north: 35.1, south: 34.9, east: 135.9, west: 135.6 },
+    });
+    expect(fetchImpl.mock.calls[0]![0]).not.toContain('bounded');
+  });
+
+  it('sends no viewbox at all when none is given — an unbiased search stays unbiased', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    await searchPlace('nanzenji', { fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(fetchImpl.mock.calls[0]![0]).not.toContain('viewbox');
+  });
+
   it('resolves to an empty array for blank queries without calling fetch at all', async () => {
     const fetchImpl = vi.fn();
     await expect(searchPlace('   ', { fetchImpl: fetchImpl as unknown as typeof fetch })).resolves.toEqual([]);

@@ -214,10 +214,52 @@ export function findDuplicateIdea(
  * `max` caps the list because a dropdown longer than the screen is not a
  * suggestion; order within the cap is input order, which is the caller's
  * (serializer) order — stable, and not pretending to rank by relevance.
+ *
+ * `near` — when the caller knows where the map is currently looking — changes
+ * that last sentence and nothing else: matches are ordered nearest-first from
+ * that point and only THEN capped. The ordering matters less than the interaction
+ * with the cap. A trip with six "Temple ..." ideas across three cities, capped
+ * at three, would otherwise show whichever three the serializer happened to
+ * emit first — quite possibly none of the ones you can see on screen, which is
+ * exactly the complaint this answers. Sorting before the cap means the survivors
+ * are the near ones.
+ *
+ * Distance is squared degrees, no trigonometry, for the same reason as
+ * findDuplicateIdea above: only the ordering is asked of the number, sqrt is
+ * monotonic so it could only cost, and at the scale of one viewport the
+ * lat/lng anisotropy cannot plausibly reorder a suggestion list. If this ever
+ * needs to rank places continents apart, that is the point to reach for real
+ * distance — not before.
+ *
+ * Without `near`, behaviour is byte-for-byte what it was: input order, cap
+ * applied while scanning.
  */
-export function matchIdeas(query: string, located: LocatedEntry[], max: number): LocatedEntry[] {
+export function matchIdeas(
+  query: string,
+  located: LocatedEntry[],
+  max: number,
+  near?: { lat: number; lng: number },
+): LocatedEntry[] {
   const trimmed = query.trim().toLowerCase();
   if (trimmed === '') return [];
+
+  if (near) {
+    // Collect everything first — capping while scanning would throw away the
+    // near matches sitting late in the input, which is the whole bug.
+    const matches = located.filter((entry) => entry.title.toLowerCase().includes(trimmed));
+    const distanceOf = (entry: LocatedEntry) => {
+      const dLat = entry.lat - near.lat;
+      const dLng = entry.lng - near.lng;
+      return dLat * dLat + dLng * dLng;
+    };
+    // Sorting the copy filter already made, so `located` stays the caller's.
+    // Equal distances keep input order — Array.sort is stable in every engine
+    // we ship to, so ties read the same way they did before `near` existed.
+    matches.sort((a, b) => distanceOf(a) - distanceOf(b));
+    // slice, not splice-while-scanning: max <= 0 still means "no suggestions".
+    return matches.slice(0, Math.max(0, max));
+  }
+
   const matches: LocatedEntry[] = [];
   for (const entry of located) {
     // Checked before matching, not after pushing, so max <= 0 means "no

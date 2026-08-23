@@ -344,4 +344,42 @@ describe('matchIdeas', () => {
   it('is empty when nothing matches', () => {
     expect(matchIdeas('onsen', located, 10)).toEqual([]);
   });
+
+  describe('with a `near` point', () => {
+    // Spread across three cities so distance and input order disagree — the
+    // whole point of the parameter is what happens when they do.
+    const spread = [
+      makeLocated({ id: 1, title: 'Senso-ji Temple', lat: 35.71, lng: 139.8 }), // Tokyo
+      makeLocated({ id: 2, title: 'Ramen alley', lat: 35.03, lng: 135.77 }), // Kyoto
+      makeLocated({ id: 3, title: 'Golden Temple viewpoint', lat: 35.04, lng: 135.73 }), // Kyoto
+      makeLocated({ id: 4, title: 'Temple market', lat: 34.69, lng: 135.5 }), // Osaka
+    ];
+    const lookingAtKyoto = { lat: 35.02, lng: 135.76 };
+
+    it('orders matches nearest-first from the point', () => {
+      expect(matchIdeas('temple', spread, 10, lookingAtKyoto).map((e) => e.id)).toEqual([3, 4, 1]);
+    });
+
+    it('caps to the NEAREST matches, not the first ones in input order', () => {
+      // Input order would keep Tokyo's Senso-ji (id 1) purely for being
+      // serialized first, and drop the Kyoto one you can actually see.
+      expect(matchIdeas('temple', spread, 2, lookingAtKyoto).map((e) => e.id)).toEqual([3, 4]);
+      expect(matchIdeas('temple', spread, 2).map((e) => e.id)).toEqual([1, 3]);
+    });
+
+    it('leaves input order alone when no point is given', () => {
+      expect(matchIdeas('temple', spread, 10).map((e) => e.id)).toEqual([1, 3, 4]);
+    });
+
+    it('still suggests nothing for an empty query, and nothing past a zero cap', () => {
+      expect(matchIdeas('   ', spread, 10, lookingAtKyoto)).toEqual([]);
+      expect(matchIdeas('temple', spread, 0, lookingAtKyoto)).toEqual([]);
+    });
+
+    it('does not reorder the caller’s array', () => {
+      const before = spread.map((e) => e.id);
+      matchIdeas('temple', spread, 10, lookingAtKyoto);
+      expect(spread.map((e) => e.id)).toEqual(before);
+    });
+  });
 });

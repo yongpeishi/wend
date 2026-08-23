@@ -1,0 +1,23 @@
+/*
+ * The category-and-tally pill, lifted out of IdeaRow so the map screen can wear
+ * the same mark on a pin's card. The rule below is the row's, verbatim: one
+ * pill, one look, wherever an idea is being shown.
+ */
+
+/* The category-and-tally pill. Plum — appetite for a destination — on the
+   plum wash, the same treatment the VoteBar's pills wear below. The border is
+   transparent rather than absent so the box matches its bordered siblings. */
+.votePill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 13px;
+  font-weight: var(--weight-bold);
+  color: var(--wend-plum);
+  background: var(--wend-plum-wash);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  white-space: nowrap;
+}

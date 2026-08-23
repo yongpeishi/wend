@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { MapSearch } from './MapSearch';
 import type { LocatedEntry } from './mapScreen';
 import type { Entry } from '../../api/types';
-import type { GeocodeResult } from './types';
+import type { Bounds, GeocodeResult } from './types';
 
 function makeLocated(overrides: Partial<Entry> & { lat?: number; lng?: number }): LocatedEntry {
   return {
@@ -48,7 +48,8 @@ interface Overrides {
   ideas?: LocatedEntry[];
   canEdit?: boolean;
   clearNonce?: number;
-  searchFn?: (query: string, options?: { signal?: AbortSignal }) => Promise<GeocodeResult[]>;
+  bounds?: Bounds | null;
+  searchFn?: (query: string, options?: { signal?: AbortSignal; viewbox?: Bounds }) => Promise<GeocodeResult[]>;
   onPickIdea?: (id: number) => void;
   onPickPlace?: (place: GeocodeResult) => void;
   onDropPinIntent?: (query: string) => void;
@@ -181,6 +182,94 @@ describe('MapSearch', () => {
 
     await waitFor(() => expect(searchFn).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/Nothing by that name\./)).toBeInTheDocument();
+  });
+
+  describe('viewport bias', () => {
+    const kyoto: Bounds = { north: 35.1, south: 34.95, east: 135.85, west: 135.65 };
+    const osaka: Bounds = { north: 34.75, south: 34.6, east: 135.6, west: 135.4 };
+
+    it('hands the map’s current viewport to the search as its viewbox', async () => {
+      const user = userEvent.setup();
+      const searchFn = vi.fn().mockResolvedValue([]);
+      renderSearch({ searchFn, bounds: kyoto });
+
+      await user.type(screen.getByRole('textbox', { name: 'Search the map' }), 'nanzenji');
+
+      await waitFor(() => expect(searchFn).toHaveBeenCalledTimes(1));
+      expect(searchFn.mock.calls[0]![1]).toMatchObject({ viewbox: kyoto });
+    });
+
+    it('carries no viewbox when the map has no bounds to offer', async () => {
+      const user = userEvent.setup();
+      const searchFn = vi.fn().mockResolvedValue([]);
+      renderSearch({ searchFn, bounds: null });
+
+      await user.type(screen.getByRole('textbox', { name: 'Search the map' }), 'nanzenji');
+
+      await waitFor(() => expect(searchFn).toHaveBeenCalledTimes(1));
+      expect(searchFn.mock.calls[0]![1]!.viewbox).toBeUndefined();
+    });
+
+    it('biases toward where the map is when the search FIRES, not when the key was pressed', async () => {
+      // The debounce means those are different moments; a viewport read from
+      // the keystroke's closure would search Kyoto after you'd panned to Osaka.
+      const user = userEvent.setup();
+      const searchFn = vi.fn().mockResolvedValue([]);
+      const props = {
+        ideas: [] as LocatedEntry[],
+        canEdit: true,
+        searchFn,
+        onPickIdea: noop,
+        onPickPlace: noop,
+        onDropPinIntent: noop,
+      };
+      const { rerender } = render(<MapSearch {...props} bounds={kyoto} />);
+
+      await user.type(screen.getByRole('textbox', { name: 'Search the map' }), 'castle');
+      rerender(<MapSearch {...props} bounds={osaka} />);
+
+      await waitFor(() => expect(searchFn).toHaveBeenCalledTimes(1));
+      expect(searchFn.mock.calls[0]![1]).toMatchObject({ viewbox: osaka });
+    });
+
+    it('does not re-run the geocode when the map merely pans', async () => {
+      // Bounds change on every frame of a drag. They are an input to the next
+      // search, never a trigger for one — Nominatim's 1/sec budget depends on it.
+      const user = userEvent.setup();
+      const searchFn = vi.fn().mockResolvedValue([]);
+      const props = {
+        ideas: [] as LocatedEntry[],
+        canEdit: true,
+        searchFn,
+        onPickIdea: noop,
+        onPickPlace: noop,
+        onDropPinIntent: noop,
+      };
+      const { rerender } = render(<MapSearch {...props} bounds={kyoto} />);
+
+      await user.type(screen.getByRole('textbox', { name: 'Search the map' }), 'castle');
+      await waitFor(() => expect(searchFn).toHaveBeenCalledTimes(1));
+
+      rerender(<MapSearch {...props} bounds={osaka} />);
+      rerender(<MapSearch {...props} bounds={kyoto} />);
+
+      expect(searchFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('orders idea matches nearest to the viewport centre, so the cap keeps what you can see', async () => {
+      const user = userEvent.setup();
+      const ideas = [
+        makeLocated({ id: 1, title: 'Tokyo Temple', lat: 35.71, lng: 139.8 }),
+        makeLocated({ id: 2, title: 'Osaka Temple', lat: 34.69, lng: 135.5 }),
+        makeLocated({ id: 3, title: 'Kyoto Temple', lat: 35.03, lng: 135.77 }),
+      ];
+      renderSearch({ ideas, bounds: kyoto });
+
+      await user.type(screen.getByRole('textbox', { name: 'Search the map' }), 'temple');
+
+      const rows = screen.getAllByRole('button', { name: /Temple/ });
+      expect(rows.map((r) => r.textContent)).toEqual(['Kyoto Temple', 'Osaka Temple', 'Tokyo Temple']);
+    });
   });
 
   it('clears the field on a clearNonce bump, but never on the initial value', async () => {

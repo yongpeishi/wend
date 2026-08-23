@@ -4,7 +4,7 @@ import { Spinner } from '../../components/Spinner';
 import { searchPlace as defaultSearchPlace } from './geocode';
 import { matchIdeas } from './mapScreen';
 import type { LocatedEntry } from './mapScreen';
-import type { GeocodeResult } from './types';
+import type { Bounds, GeocodeResult } from './types';
 import styles from './MapSearch.module.css';
 
 const DEBOUNCE_MS = 400;
@@ -28,11 +28,19 @@ export interface MapSearchProps {
    */
   clearNonce?: number;
   /**
+   * The map's current viewport — biases both halves of the answer toward what
+   * is on screen: place results via the provider's viewbox, idea matches via
+   * nearest-first ordering from the viewport centre. Null/undefined (a map that
+   * hasn't reported bounds yet, or a caller that has none) means unbiased,
+   * exactly as before this prop existed.
+   */
+  bounds?: Bounds | null;
+  /**
    * Injectable so a keyed provider can be swapped in later without touching
    * any caller, and so tests never depend on a real network call. Defaults to
    * Nominatim via geocode.ts (rate-limited to 1/sec there).
    */
-  searchFn?: (query: string, options?: { signal?: AbortSignal }) => Promise<GeocodeResult[]>;
+  searchFn?: (query: string, options?: { signal?: AbortSignal; viewbox?: Bounds }) => Promise<GeocodeResult[]>;
 }
 
 /**
@@ -50,6 +58,7 @@ export function MapSearch({
   onDropPinIntent,
   canEdit,
   clearNonce,
+  bounds,
   searchFn = defaultSearchPlace,
 }: MapSearchProps) {
   const [query, setQuery] = useState('');
@@ -58,6 +67,26 @@ export function MapSearch({
   const [searched, setSearched] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  /**
+   * The viewport, in a ref rather than read from the closure — and deliberately
+   * NOT in any dependency array. Two things are being kept apart here:
+   *
+   * 1. handleChange's search fires on a 400ms timer. The closure it schedules
+   *    captures whatever `bounds` was when the key was pressed; if you nudge the
+   *    map in that gap the request would be biased toward where you *were*. The
+   *    ref is read at fire time, so the bias follows the map.
+   * 2. Panning must not re-run a geocode. `bounds` changes on every frame of a
+   *    drag; wiring it into an effect dependency (or resubscribing the debounce
+   *    to it) would fire a request per pan, which both burns Nominatim's 1/sec
+   *    budget and makes the results flicker under a still-typing user. Bounds
+   *    are an input to the next search, never a trigger for one.
+   *
+   * Assigned during render rather than in an effect so the very first search
+   * after mount already sees real bounds.
+   */
+  const boundsRef = useRef(bounds);
+  boundsRef.current = bounds;
 
   function reset() {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -102,7 +131,7 @@ export function MapSearch({
       const controller = new AbortController();
       abortRef.current = controller;
       setSearching(true);
-      searchFn(trimmed, { signal: controller.signal })
+      searchFn(trimmed, { signal: controller.signal, viewbox: boundsRef.current ?? undefined })
         // A swapped-in provider might reject instead of resolving empty — the
         // seam itself must absorb that, not just geocode.ts's default fetch.
         .catch(() => [])
@@ -116,7 +145,14 @@ export function MapSearch({
     }, DEBOUNCE_MS);
   }
 
-  const ideaMatches = matchIdeas(query, ideas, MAX_IDEA_MATCHES);
+  // Idea matching is local and instant, so it reads `bounds` straight from the
+  // props — no ref needed, because there is no gap between deciding and doing:
+  // this runs during the same render that received the new viewport. Re-ordering
+  // on pan is the point, and costs nothing (no network, a handful of entries).
+  const near = bounds
+    ? { lat: (bounds.north + bounds.south) / 2, lng: (bounds.east + bounds.west) / 2 }
+    : undefined;
+  const ideaMatches = matchIdeas(query, ideas, MAX_IDEA_MATCHES, near);
   const places = canEdit ? results.slice(0, MAX_PLACE_RESULTS) : [];
   const nothingFound = searched && ideaMatches.length === 0 && results.length === 0;
   const panelOpen =

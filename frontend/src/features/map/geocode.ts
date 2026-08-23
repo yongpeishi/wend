@@ -1,4 +1,4 @@
-import type { GeocodeResult } from './types';
+import type { Bounds, GeocodeResult } from './types';
 
 /**
  * Nominatim's usage policy caps requests at ~1/second. This throttle serialises
@@ -50,6 +50,37 @@ export interface SearchPlaceOptions {
   signal?: AbortSignal;
   /** Injectable so callers (and tests) never depend on a real network fetch. */
   fetchImpl?: typeof fetch;
+  /**
+   * The viewport to bias results toward. Omitted = unbiased, exactly as before
+   * this existed. See buildSearchUrl for why this is only ever a bias.
+   */
+  viewbox?: Bounds;
+}
+
+/**
+ * Builds the Nominatim query URL.
+ *
+ * On `viewbox`: Nominatim takes the box as `<west>,<north>,<east>,<south>`
+ * (x,y pairs — longitude first, which is the opposite of how everyone says
+ * "lat/lng" out loud, hence spelling it out here). Passing it alone *prefers*
+ * results inside the box; adding `bounded=1` would *restrict* them to it.
+ *
+ * We deliberately do NOT send `bounded=1`. The feedback that prompted this was
+ * "search should return results near the current map view" — near, not only.
+ * Someone looking at Kyoto who types "Fushimi Inari" wants the one down the
+ * road rather than a namesake shrine three prefectures away; the same person
+ * typing "Osaka Castle" still wants Osaka Castle, and a fenced search would
+ * hand them nothing and push them into the drop-a-pin fallback for a place
+ * that plainly exists. Bias fixes the first case for free; the fence breaks the
+ * second. If you are here because results feel too loose, tighten the ranking,
+ * do not add the fence.
+ */
+function buildSearchUrl(trimmed: string, viewbox?: Bounds): string {
+  let url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(trimmed)}`;
+  if (viewbox) {
+    url += `&viewbox=${viewbox.west},${viewbox.north},${viewbox.east},${viewbox.south}`;
+  }
+  return url;
 }
 
 /**
@@ -66,8 +97,7 @@ export async function searchPlace(query: string, options: SearchPlaceOptions = {
 
   try {
     return await throttle1Hz(async () => {
-      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(trimmed)}`;
-      const response = await fetchImpl(url, {
+      const response = await fetchImpl(buildSearchUrl(trimmed, options.viewbox), {
         signal: options.signal,
         headers: { Accept: 'application/json' },
       });

@@ -1,0 +1,46 @@
+/*
+ * The open idea's panel, lifted out of IdeaRow so the map screen can read an
+ * idea in exactly the same words. The rules below are the row's, verbatim.
+ */
+
+/*
+ * The panel. One surface with the header above it, separated by a rule rather
+ * than by a box — nesting a card inside a card would make the idea look like
+ * two things.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  /* Children stretch to the card's full width — the vote bar's tally and the
+     to-do row's Add button belong to the right edge, not to where their
+     content happens to stop. */
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--border-subtle);
+}
+
+/* Running text, at the product's readable floor. 60ch is the design's own
+   measure for this panel — a shade narrower than --measure-body (66ch), which
+   is sized for full reading pages rather than a card. */
+.body {
+  margin: 0;
+  font-size: var(--text-min-size);
+  line-height: var(--text-small-line);
+  color: var(--text-strong);
+  max-width: 60ch;
+}
+
+/* Notes are the aside to the description's pitch, so they read quieter. */
+.notes {
+  color: var(--text-muted);
+}
+
+/* An address is data — read character by character — so it takes the data
+   tracking rather than prose spacing. */
+.address {
+  margin: 0;
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-data-tracking);
+  color: var(--text-body);
+}
