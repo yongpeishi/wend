@@ -31,6 +31,14 @@
  * moment the column starts scrolling and every label in it steps sideways as
  * you walk from all trips into a trip. A gutter that is always there costs the
  * same few pixels on every screen; one that arrives costs a jump.
+ *
+ * The 20px at the foot of that rhythm is set on .utilities rather than here.
+ * The pair is pinned to the bottom of the scrollport (see .utilities), and a
+ * scroll container's own bottom padding sits below the scrollport, where a
+ * pinned element never reaches — so held here it would be air you only see once
+ * you have scrolled to the end. Carried by the pair itself it is the same 20px
+ * in both states, and it is the last child, so the column ends where it always
+ * did.
  */
 .sidebar {
   width: 246px;
@@ -41,7 +49,7 @@
   display: flex;
   flex-direction: column;
   gap: 26px;
-  padding: 26px 18px 20px;
+  padding: 26px 18px 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
   background: var(--wend-deep-leaf);
@@ -434,13 +442,33 @@ button.avatar:focus-visible {
  *
  * Left-aligned, not stretched: both are text buttons, and a full-width hit area
  * on a quiet control invites a click the traveller did not aim.
+ *
+ * The pair holds its place at the foot of the scrollport. Being last is what
+ * makes it the first thing a short window takes, and these are the two controls
+ * that have to be reachable from every screen — so rather than ride to the
+ * bottom of the content and go under the fold with it, the pair stays where the
+ * column ends and the list scrolls behind it. `margin-top: auto` still does the
+ * work whenever the column has height to spare: it eats the slack, the pair
+ * already sits at the foot, and sticky has nothing to hold it back from. Only
+ * once the content outgrows the window does the pin start to matter.
+ *
+ * Its ground is the sidebar's own colour, because scrolled rows pass underneath
+ * it and this system lifts a surface with tone, not with a shadow or an edge —
+ * the same deep leaf is what makes the pair read as the floor of the column
+ * rather than a card laid on top of it. The ground spans the full content
+ * measure, which is the whole of what scrolls: the sidebar's 18px flanks hold
+ * no content at any scroll position, so there is nothing to bleed out over.
  */
 .utilities {
   margin-top: auto;
+  position: sticky;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-1);
+  padding-bottom: 20px;
+  background: var(--wend-deep-leaf);
 }
 
 /* One look for both: a quiet on-dark text button with its icon on the left, the
@@ -573,7 +601,14 @@ button.avatar:focus-visible {
   /* The pair stops being a column of its own and hands both buttons straight to
      the header, so each can be ordered onto line one individually. Its
      `margin-top: auto` goes with it — there is no leftover height to eat in a
-     row that is as tall as its tallest child. */
+     row that is as tall as its tallest child — and so does the pin that holds it
+     to the foot of the scrolling column, with the ground and the bottom padding
+     that pin needs. `display: contents` draws no box, so there is nothing to
+     stick, to paint or to pad, and none of it is reset by hand: a reset here
+     would read as though one of them still applied. Nothing is pinned at this
+     width in any case — the header does not scroll, it is as tall as its two
+     lines, and both buttons are already on line one where the design puts
+     them. */
   .utilities {
     display: contents;
   }
