@@ -4,9 +4,34 @@
   background: var(--wend-paper);
 }
 
-/* 246px is the design's sidebar measure; the vertical rhythm inside it
-   (26 / 18 / 20) comes from the same source. Everything with a token uses the
-   token — no shadow, no border: the deep-leaf ground is the separation. */
+/*
+ * 246px is the design's sidebar measure; the vertical rhythm inside it
+ * (26 / 18 / 20) comes from the same source. Everything with a token uses the
+ * token — no shadow, no border: the deep-leaf ground is the separation.
+ *
+ * The column carries its own scroll, because it is exactly one viewport tall
+ * and stays there: inside a trip the PLAN panel and the people planning it can
+ * together outgrow a short window, and the page scrolling underneath rescues
+ * nothing — a sticky column pinned at 100vh does not move with it, so whatever
+ * fell off the bottom stays off the bottom for good. What falls off is the pair
+ * at the foot: feedback and sign out are last in the column, so they are the
+ * first thing the window takes, and they are the two controls that have to be
+ * reachable from every screen. Everything in here is reachable at any window
+ * height or it is not really in here at all.
+ *
+ * The scroll is on the column and nowhere inside it. A scroll container clips,
+ * and the one thing in this sidebar that paints outside its own parent is the
+ * planner reveal (see .plannerNames) — which opens upward and is inset from the
+ * panel's edges, so it stays within the column's own box and the column can
+ * hold it. Putting the scroll on .sections or .tripCard instead would cut it
+ * off, which is the fight that comment is already a record of.
+ *
+ * `scrollbar-gutter: stable` keeps the 246px measure still. The width is fixed,
+ * so without the gutter the content box narrows by a scrollbar's width the
+ * moment the column starts scrolling and every label in it steps sideways as
+ * you walk from all trips into a trip. A gutter that is always there costs the
+ * same few pixels on every screen; one that arrives costs a jump.
+ */
 .sidebar {
   width: 246px;
   flex: none;
@@ -17,6 +42,8 @@
   flex-direction: column;
   gap: 26px;
   padding: 26px 18px 20px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   background: var(--wend-deep-leaf);
   color: var(--text-on-dark);
 }
@@ -502,6 +529,14 @@ button.avatar:focus-visible {
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3) var(--gutter-screen);
+    /* No scroll here, and the gutter goes with it. The column's own scroll is
+       for a box that is pinned to the window's height; this one is as tall as
+       its two lines and grows with them, so there is nothing to scroll — and a
+       scroll container would clip, which here is not academic: the reveal opens
+       downward at this width, out through the header's bottom edge and over the
+       page. Clipping it would take the names away entirely. */
+    overflow: visible;
+    scrollbar-gutter: auto;
   }
 
   .sections,
