@@ -11,17 +11,24 @@
 }
 
 /* A bordered control, not a filled one: this narrows what you are reading, it
-   changes nothing on the board. */
+   changes nothing on the board.
+
+   Drawn to Filter's measurements, down to the 36px height and the 5px/14px
+   padding, because the two sit side by side on the same control row and do the
+   same KIND of thing — both narrow the map, neither edits it. Two controls read
+   as a pair have to look like a pair; a lighter edge and a filled ground on
+   this one made it read as the lesser control of the two. */
 .trigger {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-width) solid var(--border-subtle);
+  min-height: 36px;
+  padding: 5px 14px;
+  border: var(--border-width-strong) solid var(--border-strong);
   border-radius: var(--radius-card);
-  background: var(--surface-card);
+  background: transparent;
   font-family: var(--font-sans);
-  font-size: var(--text-min-size);
+  font-size: var(--text-small-size);
   font-weight: var(--weight-bold);
   color: var(--text-strong);
   cursor: pointer;
@@ -35,7 +42,7 @@
 }
 
 .trigger:hover {
-  opacity: 0.85;
+  opacity: 0.82;
 }
 
 .trigger:active {
@@ -51,7 +58,7 @@
    wears. Never the only signal — the trigger also stops saying a count and
    starts saying the plan's name, which survives having no colour vision. */
 .triggerOn {
-  border-color: var(--wend-leaf);
+  border-color: var(--action-primary);
 }
 
 /* The count rides muted beside the word — a fact, not part of the verb. */

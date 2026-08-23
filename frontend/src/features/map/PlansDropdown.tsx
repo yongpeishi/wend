@@ -1,3 +1,4 @@
+import { ChevronDown } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { Entry } from '../../api/types';
 import styles from './PlansDropdown.module.css';
@@ -89,12 +90,15 @@ export function PlansDropdown({ bundles, members, selectedId, onSelect }: PlansD
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        Plans <span aria-hidden="true">⌄</span>
+        {/* The space is explicit: JSX would swallow the newline, and without it
+            the accessible name runs together as "Plans2". */}
+        Plans{' '}
         {selected ? (
           <span className={styles.triggerValue}>{selected.title}</span>
         ) : (
           <span className={styles.triggerCount}>{bundles.length}</span>
         )}
+        <ChevronDown size={16} strokeWidth={2} aria-hidden="true" />
       </button>
 
       {open && (
