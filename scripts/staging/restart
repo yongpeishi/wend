@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Restart the staging services without deploying anything -- for when the app is
+# wedged, or you changed something on the Pi by hand.
+#
+#   scripts/staging/restart
+#   scripts/staging/restart backend
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+services=(wend-backend.service wend-frontend.service)
+case "${1:-}" in
+  "")       ;;
+  backend)  services=(wend-backend.service) ;;
+  frontend) services=(wend-frontend.service) ;;
+  *)        die "unknown argument $1" ;;
+esac
+
+# One unit per call: the sudoers rule names each service on its own, so a
+# combined `systemctl restart a b` would be a command it doesn't recognise.
+for s in "${services[@]}"; do
+  info "restarting $s"
+  pi_ssh_run "sudo -n systemctl restart $s"
+done
+
+pi_ssh_run "systemctl is-active ${services[*]}" || true
+ok "http://$PI_HOST:$FRONTEND_PORT"

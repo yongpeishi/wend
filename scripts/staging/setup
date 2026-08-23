@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Prepare the Pi to host wend, from your own machine. Safe to re-run -- that's
+# how you roll out a change to the systemd units or the deploy hook.
+#
+#   scripts/staging/setup
+#
+# Copies scripts/staging to the Pi and runs `provision` there under sudo. You
+# need an account on the Pi that's allowed sudo; if you don't have one, ask
+# whoever does to run this once.
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+cd "$(git_root)"
+require_pi_remote
+
+dest="$(pi_ssh)"
+remote_dir=".cache/wend-staging"
+
+info "copying scripts/staging to $dest:~/$remote_dir"
+run rsync -az --delete "$STAGING_DIR/" "$dest:$remote_dir/"
+
+echo
+info "running provision on the Pi (sudo)"
+pi_ssh_tty "sudo bash ~/$remote_dir/provision"
+
+# nix writes the lockfile next to the flake the first time it builds. Bring it
+# back so the toolchain stays pinned in the repo rather than only on the Pi.
+info "collecting env/flake.lock from the Pi"
+if scp -q "$dest:$remote_dir/env/flake.lock" "$STAGING_DIR/env/flake.lock" 2>/dev/null; then
+  if [ -n "$(git status --porcelain -- "$STAGING_DIR/env/flake.lock")" ]; then
+    warn "env/flake.lock is new or changed -- commit it"
+  else
+    ok "env/flake.lock unchanged"
+  fi
+fi
+
+echo
+ok "the Pi is ready. Deploy with: scripts/staging/deploy"

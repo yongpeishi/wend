@@ -1,0 +1,25 @@
+# Installed to /etc/systemd/system/ by scripts/staging/provision.
+[Unit]
+Description=wend staging: Rails API
+Documentation=https://github.com/yongpeishi/wend/blob/main/scripts/staging/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wend
+Group=wend
+WorkingDirectory=/srv/wend/app
+EnvironmentFile=/srv/wend/deploy.env
+# The same entry point everyone uses locally, so staging can't drift from
+# `scripts/start-dev`. It runs `bin/rails dev:prepare` before booting, which is
+# where migrations and first-run seeding happen.
+ExecStart=/srv/wend/app/scripts/start-backend
+Restart=on-failure
+RestartSec=5
+# Files this writes (the sqlite database, logs, tmp) stay group-writable so a
+# deploy running as logan or peishi can clear them out.
+UMask=0002
+
+[Install]
+WantedBy=multi-user.target

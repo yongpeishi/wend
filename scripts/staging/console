@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Rails console on the staging app, from here.
+#
+#   scripts/staging/console
+#   scripts/staging/console --sandbox     # roll everything back on exit
+#
+# Runs the app's own scripts/console over ssh, as the `wend` service user --
+# the database belongs to it, so a console run as you would be read-only.
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+# Quote each argument for the remote shell rather than relying on it to leave
+# them alone: `--sandbox` is fine either way, but a ruby snippet isn't.
+remote="cd $PI_ROOT/app && sudo -u wend scripts/console"
+for arg in "$@"; do
+  remote+=" $(printf '%q' "$arg")"
+done
+
+case " $* " in
+  *" --sandbox "*) ;;
+  *) warn "this is the shared staging database -- --sandbox rolls back on exit" ;;
+esac
+
+pi_ssh_tty "$remote"

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Follow the staging services' logs.
+#
+#   scripts/staging/logs             # both, following
+#   scripts/staging/logs backend     # just Rails
+#   scripts/staging/logs frontend    # just Vite
+#   scripts/staging/logs -n 200      # more history, no following
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+units=(-u wend-backend.service -u wend-frontend.service)
+# One array, never empty: bash 3.2 (which is what macOS ships) treats an empty
+# "${arr[@]}" as an unbound variable under `set -u`.
+how=(-n 50 -f)
+
+for arg in "$@"; do
+  case "$arg" in
+    backend)  units=(-u wend-backend.service) ;;
+    frontend) units=(-u wend-frontend.service) ;;
+    -n)       ;;                      # a bare -n just precedes the number
+    [0-9]*)   how=(-n "$arg") ;;      # a line count means "show me", not "follow"
+    *)        die "unknown argument $arg" ;;
+  esac
+done
+
+pi_ssh_tty journalctl "${units[@]}" "${how[@]}"

@@ -1,0 +1,23 @@
+# Installed to /etc/systemd/system/ by scripts/staging/provision.
+[Unit]
+Description=wend staging: Vite dev server
+Documentation=https://github.com/yongpeishi/wend/blob/main/scripts/staging/README.md
+After=network-online.target wend-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wend
+Group=wend
+WorkingDirectory=/srv/wend/app
+EnvironmentFile=/srv/wend/deploy.env
+# --host binds every interface so the Pi is reachable from the LAN; without it
+# Vite listens on localhost only. It proxies /api to the Rails service, so the
+# browser only ever talks to this port.
+ExecStart=/srv/wend/app/scripts/start-frontend --host 0.0.0.0
+Restart=on-failure
+RestartSec=5
+UMask=0002
+
+[Install]
+WantedBy=multi-user.target
