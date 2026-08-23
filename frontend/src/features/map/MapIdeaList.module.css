@@ -66,19 +66,40 @@
   opacity: 0.7;
 }
 
+/* A column now: the head line, and under it the panel when the row is open —
+   exactly IdeaRow's shape, so an open idea reads the same on both screens. */
 .row {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
+  flex-direction: column;
   background: var(--surface-card);
   border: var(--border-width) solid var(--border-subtle);
   border-radius: var(--radius-card);
   padding: var(--space-3) var(--space-4);
 }
 
+/* The closed row's own line: the pick circle beside the name and its pills.
+   Everything the row said before the panel existed still says it here. */
+.rowHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* An open row thickens its border to the strong line — IdeaRow's rule, for
+   IdeaRow's reason: open must still read as open, but with several rows open
+   at once the apricot "I'm here" edge cannot mark them all, so plain openness
+   is weight without the hue. The extra half-px each side eats the padding
+   rather than growing the card. */
+.row[data-expanded] {
+  border-width: var(--border-width-strong);
+  border-color: var(--wend-line-strong);
+  padding: calc(var(--space-3) - 0.5px) calc(var(--space-4) - 0.5px);
+}
+
 /* Just added: the strong apricot edge — the design's "you are here", on the
-   row the add-place flow just made real. The extra half-px each side eats the
-   padding rather than growing the card, IdeaRow's own trick. */
+   row the add-place flow just made real. After the expanded rule on purpose:
+   a row both open and just-added must still read as just-added, and the two
+   agree on the weight, so only the hue is contested and apricot wins it. */
 .row[data-just-added] {
   border-width: var(--border-width-strong);
   border-color: var(--wend-apricot);
@@ -207,17 +228,9 @@
   white-space: nowrap;
 }
 
-/* The tally pill: a bordered mark, full pill radius, no fill. */
-.votes {
-  font-size: 13px;
-  font-weight: var(--weight-bold);
-  color: var(--text-body);
-  border: var(--border-width) solid var(--border-subtle);
-  border-radius: var(--radius-pill);
-  /* 3px 10px: the 13px chip geometry IdeaRow's pills use. */
-  padding: 3px 10px;
-  white-space: nowrap;
-}
+/* No rule for the tally: it is VotePill now, which owns its own plum wash,
+   size and radius — the whole point of sharing it with the board is that this
+   screen cannot give the same idea a subtly different pill. */
 
 /* The label half of the just-added signal. Apricot only as shape — border and
    wash — the words stay ink. */
@@ -237,6 +250,67 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/*
+ * The open row's verbs, at the foot of the panel. IdeaRow's rules verbatim —
+ * two buttons here rather than four, but the same line, the same popover
+ * surface, so the two screens do not lay the same act out differently.
+ */
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Anchors the plans popover to its button. */
+.plansWrap {
+  position: relative;
+}
+
+/* Card tone on page tone with a drawn edge — the popup is lifted the only way
+   this system lifts anything. No shadow. Left-anchored, because its trigger
+   sits at the head of the actions row and a right-anchored menu would hang out
+   of the card — and this card lives in a narrow column beside the map. */
+.plansMenu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 20;
+  min-width: 240px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+}
+
+/* The house heading voice again, so the popover reads as part of the panel's
+   stack of sections rather than an imported menu. */
+.sectionLabel {
+  margin: 0;
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.chips,
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--text-min-size);
   color: var(--text-muted);
 }
 

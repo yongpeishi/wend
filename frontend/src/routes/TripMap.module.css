@@ -13,75 +13,6 @@
   gap: var(--space-3);
 }
 
-/* The control row: plans glance, filter chips (with their own Showing N of M
-   line), the text narrowing, and the follow pill. Top-aligned because the
-   chip block is two lines tall and the single-line controls should hang from
-   the same top edge rather than float mid-block. */
-.controls {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-
-/* The chips take the flexible middle — they are the widest, wrappiest thing
-   on the row. min-width keeps them from collapsing to a one-chip column
-   before the row decides to wrap. */
-.filters {
-  flex: 1 1 auto;
-  min-width: 280px;
-}
-
-.narrow {
-  flex: 0 1 220px;
-  min-width: 160px;
-}
-
-/* The follow switch: a full-radius pill, filled while the map is narrowing
-   the list and outlined-muted while it is not — pressed IS on, exactly what
-   aria-pressed announces. The fill is leaf, the product's "in the current
-   reading" colour, same as a lit chip pin. */
-.follow {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-pill);
-  border: var(--border-width) solid var(--border-subtle);
-  background: none;
-  color: var(--text-muted);
-  font-family: var(--font-sans);
-  font-size: var(--text-small-size);
-  font-weight: var(--weight-bold);
-  cursor: pointer;
-  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-.follow[aria-pressed='true'] {
-  background: var(--wend-leaf);
-  border-color: var(--wend-leaf);
-  color: var(--wend-paper);
-}
-
-.follow:hover {
-  opacity: 0.8;
-}
-
-.follow:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
-/* The reassurance under the controls — the meta floor's 13px, muted. */
-.caption {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: var(--text-code-size);
-  line-height: var(--text-small-line);
-  color: var(--text-muted);
-}
-
 /* The two columns. The height is a viewport calculation, not a content one:
    ~340px is the chrome above (shell header, trip title, tabs, this screen's
    own control row) plus breathing room below, and the map needs a real height
@@ -110,14 +41,10 @@
   padding: 2px;
 }
 
-.groupRow {
-  display: flex;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
 /* The counter and its escape hatch share a baseline: the sentence states the
-   narrowing, the button beside it undoes it. */
+   narrowing, the button beside it undoes it. The third row of the control
+   block, under the filter bar rather than over the list — everything that
+   describes the current reading now sits together above the two panes. */
 .counterRow {
   display: flex;
   align-items: baseline;
@@ -133,8 +60,8 @@
   color: var(--text-muted);
 }
 
-/* Same link-look as MapFilterBar's "See all": quiet ink, apricot underline —
-   an aside, not a control demanding attention. */
+/* Quiet ink, apricot underline — an aside beside the count, not a control
+   demanding attention. */
 .widen {
   background: none;
   border: none;

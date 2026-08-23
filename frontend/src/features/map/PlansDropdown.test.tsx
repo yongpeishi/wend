@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Entry } from '../../api/types';
 import { PlansDropdown } from './PlansDropdown';
@@ -42,8 +42,21 @@ const TRAVEL_DAY = makeEntry({ id: 91, kind: 'bundle', title: 'Travel day' });
 function renderDropdown({
   bundles = [TUESDAY, TRAVEL_DAY],
   members = new Map<number, Entry[]>(),
-}: { bundles?: Entry[]; members?: Map<number, Entry[]> } = {}) {
-  render(<PlansDropdown bundles={bundles} members={members} />);
+  selectedId = null,
+}: { bundles?: Entry[]; members?: Map<number, Entry[]>; selectedId?: number | null } = {}) {
+  const onSelect = vi.fn();
+  render(<PlansDropdown bundles={bundles} members={members} selectedId={selectedId} onSelect={onSelect} />);
+  return { onSelect };
+}
+
+/**
+ * The open panel, scoped. Once a plan is picked the TRIGGER reads its title
+ * too, so a bare getByRole for a plan name would find two buttons — the row and
+ * the control that says which row is current. The panel names itself "Plans"
+ * via its label, which is what this reaches for.
+ */
+function panel() {
+  return within(screen.getByRole('group', { name: 'Plans' }));
 }
 
 describe('PlansDropdown', () => {
@@ -59,7 +72,7 @@ describe('PlansDropdown', () => {
     expect(screen.queryByText('Tuesday south')).not.toBeInTheDocument();
   });
 
-  it('lists each plan with how many ideas it holds — as words, not buttons', async () => {
+  it('lists each plan with how many ideas it holds, as a row you can pick', async () => {
     const user = userEvent.setup();
     renderDropdown({
       members: new Map([
@@ -71,13 +84,69 @@ describe('PlansDropdown', () => {
     await user.click(screen.getByRole('button', { name: 'Plans 2' }));
 
     expect(screen.getByRole('button', { name: 'Plans 2' })).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('Tuesday south')).toBeInTheDocument();
     expect(screen.getByText('2 ideas')).toBeInTheDocument();
-    expect(screen.getByText('Travel day')).toBeInTheDocument();
     expect(screen.getByText('1 idea')).toBeInTheDocument();
-    // Read-only: the rows offer nothing to press — adding lives on the
-    // selection bar, and this dropdown only reports.
-    expect(screen.queryByRole('button', { name: /Tuesday south/ })).not.toBeInTheDocument();
+    // Every row is a real button now — picking one narrows the map to that
+    // plan, which is a way of reading it, not a way of editing it.
+    expect(screen.getByRole('button', { name: /Tuesday south/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Travel day/ })).toBeInTheDocument();
+    // Opening hands the keyboard the first row rather than stranding it on the
+    // trigger, now that there is something inside to operate.
+    expect(screen.getByRole('button', { name: 'All plans' })).toHaveFocus();
+  });
+
+  it('picking a plan reports it and shuts the panel', async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderDropdown();
+
+    await user.click(screen.getByRole('button', { name: 'Plans 2' }));
+    await user.click(screen.getByRole('button', { name: /Tuesday south/ }));
+
+    expect(onSelect).toHaveBeenCalledWith(90);
+    expect(screen.queryByRole('button', { name: 'All plans' })).not.toBeInTheDocument();
+  });
+
+  it('marks the picked plan in words and in a glyph, not only in colour', async () => {
+    const user = userEvent.setup();
+    renderDropdown({ selectedId: 90 });
+
+    await user.click(screen.getByRole('button', { name: /Plans/ }));
+
+    expect(panel().getByRole('button', { name: /Tuesday south/ })).toHaveAttribute('aria-current', 'true');
+    expect(panel().getByRole('button', { name: /Travel day/ })).not.toHaveAttribute('aria-current');
+    expect(panel().getByRole('button', { name: 'All plans' })).not.toHaveAttribute('aria-current');
+    // The tick rides with the row, so the state survives having no colour vision.
+    expect(screen.getByText('✓')).toBeInTheDocument();
+  });
+
+  it('the trigger reads the picked plan instead of the count', async () => {
+    renderDropdown({ selectedId: 91 });
+
+    // Still says what it is — the title is the value, not a replacement name.
+    expect(screen.getByRole('button', { name: 'Plans Travel day' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Plans 2' })).not.toBeInTheDocument();
+  });
+
+  it('picking the plan you are already on widens back to all of them', async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderDropdown({ selectedId: 90 });
+
+    await user.click(screen.getByRole('button', { name: /Plans/ }));
+    await user.click(panel().getByRole('button', { name: /Tuesday south/ }));
+
+    expect(onSelect).toHaveBeenCalledWith(null);
+  });
+
+  it('"All plans" is the named way out, and is current while nothing is picked', async () => {
+    const user = userEvent.setup();
+    const { onSelect } = renderDropdown({ selectedId: 90 });
+
+    await user.click(screen.getByRole('button', { name: /Plans/ }));
+    const allPlans = panel().getByRole('button', { name: 'All plans' });
+    expect(allPlans).not.toHaveAttribute('aria-current');
+    await user.click(allPlans);
+
+    expect(onSelect).toHaveBeenCalledWith(null);
   });
 
   it('counts a plan with nothing in it as 0 ideas', async () => {

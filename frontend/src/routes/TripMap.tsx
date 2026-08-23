@@ -5,9 +5,6 @@ import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import { useArchiveEntry, useCreateEntry, useEntries, useUpdateEntry } from '../api';
 import type { Entry, EntryCategory } from '../api/types';
-import { Chip } from '../design/components/core/Chip';
-import { Input } from '../design/components/core/Input';
-import { GROUP_MODES } from '../features/board/filters';
 import { useBundleMembers } from '../features/board/useBundleMembers';
 import { useLinkMutations } from '../features/board/useLinkMutations';
 import { isWithinBounds } from '../features/map/bounds';
@@ -29,7 +26,6 @@ import { MapSearch } from '../features/map/MapSearch';
 import { MapSelectionBar } from '../features/map/MapSelectionBar';
 import { MapView } from '../features/map/MapView';
 import { PlacePreviewCard } from '../features/map/PlacePreviewCard';
-import { PlansDropdown } from '../features/map/PlansDropdown';
 import { entriesWithCoordinates, entryToPin } from '../features/map/pins';
 import type { Bounds, GeocodeResult, MapPin } from '../features/map/types';
 import styles from './TripMap.module.css';
@@ -76,8 +72,11 @@ function placeName(label: string): string {
 
 /**
  * /trips/:id/map — the map-driven planning screen. TripLayout draws the
- * header and tabs; this owns the body only: a control row (plans, filters,
- * the follow switch), then the list on the left and the map on the right.
+ * header and tabs; this owns the body only: the control block (MapFilterBar's
+ * row of plans / search / filters / follow / grouping, its active-filter chips,
+ * and the counter line under them), then the list on the left and the map on
+ * the right. The control block is deliberately the board's shape — a reader one
+ * tab across should not have to learn a second grammar; see MapFilterBar.
  *
  * The organising idea is that the MAP decides the list, not the other way
  * round. Every located idea is always a pin — filters and the viewport only
@@ -151,7 +150,28 @@ export function TripMap() {
   const located = useMemo(() => entriesWithCoordinates(ideas) as LocatedEntry[], [ideas]);
   const placeless = useMemo(() => placelessIdeas(ideas), [ideas]);
 
-  const filtered = useMemo(() => applyMapFilters(located, filters) as LocatedEntry[], [located, filters]);
+  /**
+   * The ids of the picked plan's members, or undefined when no plan is picked.
+   *
+   * applyMapFilters draws a hard line between "no plan narrowing" (undefined)
+   * and "this plan is genuinely empty" (a supplied, empty Set) — see its doc.
+   * `useBundleMembers` cannot quite tell those apart for us: a bundle whose
+   * detail query is still in flight sits in the map as an empty array, the same
+   * shape a genuinely empty plan has. In practice that beat is invisible here,
+   * because the only way to pick a plan is the dropdown, and the dropdown is
+   * drawing its "N ideas" counts out of this very map — if it said "3 ideas",
+   * the three ids are already in hand. Worth knowing about, not worth a second
+   * loading state to paper over.
+   */
+  const planMemberIds = useMemo<ReadonlySet<number> | undefined>(() => {
+    if (filters.planId === null) return undefined;
+    return new Set((members.get(filters.planId) ?? []).map((entry) => entry.id));
+  }, [filters.planId, members]);
+
+  const filtered = useMemo(
+    () => applyMapFilters(located, filters, planMemberIds) as LocatedEntry[],
+    [located, filters, planMemberIds],
+  );
 
   // The viewport cut, applied only while following — and only once the map
   // has actually said where it is looking. Before the first bounds report the
@@ -206,6 +226,35 @@ export function TripMap() {
   function lookAtIdea(id: number) {
     const entry = located.find((e) => e.id === id);
     if (entry) lookAt([{ id: entry.id, lat: entry.lat, lng: entry.lng }]);
+  }
+
+  /**
+   * Picking a plan from the dropdown: narrow the list to it, and go and look at
+   * it. It is the one narrowing on this screen that also moves the map, and
+   * that is the point of it — "show me Tuesday" is a request to SEE Tuesday,
+   * and a list that quietly shrank while the viewport stayed over yesterday's
+   * neighbourhood would have answered half the question.
+   *
+   * Two deliberate silences:
+   *  - Clearing the plan (id === null) does not move the map, the same rule the
+   *    follow switch keeps. Only a positive "show me these" earns a movement;
+   *    widening should leave you exactly where you were looking, with more of
+   *    the list back.
+   *  - A plan with no LOCATED members does not move it either. `lookAt` returns
+   *    on an empty set, which is the behaviour we want spelled out rather than
+   *    guarded here: a fit to nothing is a jump to nowhere. The list still
+   *    narrows — an empty list under a picked plan is the honest report that
+   *    this plan holds nothing the map can draw.
+   */
+  function handleSelectPlan(id: number | null) {
+    setFilters((prev) => ({ ...prev, planId: id }));
+    if (id === null) return;
+    const memberIds = new Set((members.get(id) ?? []).map((entry) => entry.id));
+    lookAt(
+      located
+        .filter((entry) => memberIds.has(entry.id))
+        .map((entry) => ({ id: entry.id, lat: entry.lat, lng: entry.lng })),
+    );
   }
 
   // ---- Selection: one set, ticked in the list or clicked on the map ---------
@@ -409,9 +458,10 @@ export function TripMap() {
   // banner's Cancel and the card's Cancel offer, for the keyboard. Bound only
   // while the mode is armed, and deliberately WITHOUT stopPropagation: unlike
   // BulkBar's popover there is no modal one route away that a leaked Escape
-  // could close. The screen's other Escape listeners (the PlansDropdown and
-  // MapSelectionBar popovers) each attach only while their own popover is
-  // open, so in the ordinary case this is the sole listener; in the odd case
+  // could close. The screen's other Escape listeners (the PlansDropdown, the
+  // Filter popover and the MapSelectionBar popover) each attach only while
+  // their own popover is open, so in the ordinary case this is the sole
+  // listener; in the odd case
   // of a popover opened mid-drop, one Escape closing both is a harmless
   // everything-stands-down, not a fight.
   const dropArmed = dropMode !== null;
@@ -474,43 +524,44 @@ export function TripMap() {
 
   return (
     <div className={styles.screen}>
-      {/* The control row: what plans exist, what narrows the map, and whether
-          the map may narrow the list. All reading-chrome, so it stands outside
-          the QueryGate the way the board's FilterBar does. */}
-      <div className={styles.controls}>
-        <PlansDropdown bundles={bundles} members={members} />
-        <div className={styles.filters}>
-          <MapFilterBar
-            filters={filters}
-            onChange={setFilters}
-            visibleCount={filtered.length}
-            totalCount={located.length}
-          />
-        </div>
-        <div className={styles.narrow}>
-          <Input
-            aria-label="Search ideas"
-            placeholder="Narrow the list"
-            value={filters.text}
-            onChange={(e) => setFilters({ ...filters, text: e.target.value })}
-          />
-        </div>
-        {/* aria-pressed carries the state; toggling only changes what the list
-            listens to — it NEVER moves the map, which is what makes turning it
-            off feel safe. */}
-        <button
-          type="button"
-          className={styles.follow}
-          aria-pressed={followOn}
-          onClick={() => setFollowOn((value) => !value)}
-        >
-          <span aria-hidden="true">◍</span> follow map
-        </button>
-      </div>
+      {/* The control row: which plan is being read, what narrows the map,
+          whether the map may narrow the list, and how the list stacks. All
+          reading-chrome, so it stands outside the QueryGate the way the board's
+          FilterBar does. */}
+      <MapFilterBar
+        filters={filters}
+        onChange={setFilters}
+        bundles={bundles}
+        members={members}
+        onSelectPlan={handleSelectPlan}
+        groupMode={groupMode}
+        onGroupModeChange={setGroupMode}
+        followOn={followOn}
+        onFollowChange={setFollowOn}
+      />
 
-      {/* Said out loud because a faint dot is easy to read as a bug: filtering
-          is a way of reading the map, never an edit to the board. */}
-      <p className={styles.caption}>Filtered ideas keep a faint dot on the map. Nothing leaves your board.</p>
+      {/* The third row of the control block: what you are looking at, and the
+          way back out of the viewport cut. It moved up here from the list
+          column with the rest of the controls, so everything that describes the
+          reading sits in one place above the two panes.
+
+          It waits for the ideas query, the same judgement FilterBar's
+          `countKnown` makes: "0 of 0 ideas on the map are in view" while the
+          load is still running is not a report, it is a guess dressed as one,
+          and the region below is already saying "loading" or "didn't load". */}
+      {ideasQuery.isSuccess && (
+        <div className={styles.counterRow}>
+          <p className={styles.counter}>{counter}</p>
+          {/* The way back appears exactly when the viewport is the thing hiding
+              rows — a filter's escape hatch is its own chip in the active row,
+              and a plan's is the dropdown that picked it. */}
+          {followOn && rows.length < filtered.length && (
+            <button type="button" className={styles.widen} onClick={() => setFitRequest((n) => n + 1)}>
+              zoom out to widen
+            </button>
+          )}
+        </div>
+      )}
 
       <QueryGate
         query={ideasQuery}
@@ -519,26 +570,6 @@ export function TripMap() {
       >
         <div className={styles.columns}>
           <div className={styles.listCol}>
-            <div className={styles.groupRow} role="group" aria-label="Group ideas">
-              {GROUP_MODES.map((mode) => (
-                <Chip key={mode.key} selected={groupMode === mode.key} onClick={() => setGroupMode(mode.key)}>
-                  {mode.label}
-                </Chip>
-              ))}
-            </div>
-
-            <div className={styles.counterRow}>
-              <p className={styles.counter}>{counter}</p>
-              {/* The way back appears exactly when the viewport is the thing
-                  hiding rows — a filter's escape hatch is the chip row's own
-                  "See all", not this. */}
-              {followOn && rows.length < filtered.length && (
-                <button type="button" className={styles.widen} onClick={() => setFitRequest((n) => n + 1)}>
-                  zoom out to widen
-                </button>
-              )}
-            </div>
-
             {/* The three kinds of nothing get three different sentences — only
                 this file knows which nothing it is (see MapIdeaList's doc). */}
             {located.length === 0 ? (
@@ -574,6 +605,12 @@ export function TripMap() {
               placeless={placeless}
               onPutOnMap={handlePutOnMap}
               canEdit={canEdit}
+              // What an unfolded row needs to say (and change) about plans: the
+              // plans themselves, who is in them, and the one voice this screen
+              // reports success in.
+              bundles={bundles}
+              members={members}
+              onToast={(message) => show(message, 'success')}
             />
           </div>
 
@@ -607,6 +644,11 @@ export function TripMap() {
                   onDropPinIntent={handleDropPinIntent}
                   canEdit={canEdit}
                   clearNonce={clearNonce}
+                  // Bias the geocoder to what is on screen: searching "station"
+                  // while looking at Kyoto should offer Kyoto's, not the
+                  // planet's. Null until the map has said where it is looking,
+                  // which MapSearch reads as unbiased.
+                  bounds={mapBounds}
                 />
               </div>
 

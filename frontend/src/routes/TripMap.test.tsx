@@ -130,8 +130,12 @@ function renderMap(role?: TripRole) {
  * coordinates. The simulated pan above is a box around Nanzen-ji alone.
  */
 const NANZENJI_ID = 2;
+const KIYAMACHI_ID = 3;
 const MARKET_BUNDLE_ID = 4;
+/** Three members, none of them located — the plan the map cannot draw. */
 const MARKET_BUNDLE_TITLE = 'Nishiki market crawl';
+/** Three members, exactly one of them located: Kiyamachi. */
+const NIGHT_BUNDLE_TITLE = 'A night out in Pontocho';
 
 /** Every screen paint starts with the located rows arriving. */
 async function listUp() {
@@ -214,9 +218,11 @@ describe('TripMap — the map decides the list', () => {
     renderMap();
     await listUp();
 
-    await user.type(screen.getByRole('textbox', { name: 'Search ideas' }), 'nanzen');
+    await user.type(screen.getByRole('searchbox', { name: 'Search ideas' }), 'nanzen');
 
-    expect(screen.getByText(/Showing 1 of 2/)).toBeInTheDocument();
+    // One count line on this screen, and it is the map's richer one — see the
+    // control row's doc.
+    expect(screen.getByText('1 of 2 ideas on the map are in view')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Kiyamachi' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Kiyamachi (faint)' })).toBeInTheDocument();
   });
@@ -226,7 +232,7 @@ describe('TripMap — the map decides the list', () => {
     renderMap();
     await listUp();
 
-    await user.type(screen.getByRole('textbox', { name: 'Search ideas' }), 'zzz');
+    await user.type(screen.getByRole('searchbox', { name: 'Search ideas' }), 'zzz');
 
     expect(
       screen.getByText('No ideas in view. Zoom out, or clear a chip — they are all still on the board.'),
@@ -273,13 +279,186 @@ describe('TripMap — selection is one set, list and pins', () => {
     renderMap();
     await listUp();
 
-    await user.click(screen.getByRole('button', { name: 'Nanzen-ji' }));
+    const name = screen.getByRole('button', { name: 'Nanzen-ji' });
+    expect(name).toHaveAttribute('aria-expanded', 'false');
+    await user.click(name);
 
     // The map was pointed at the idea…
     expect(screen.getByTestId('view-request')).toHaveTextContent(`view: 1:${NANZENJI_ID}`);
-    // …and nothing was ticked.
+    // …the row unfolded…
+    expect(screen.getByRole('button', { name: 'Nanzen-ji' })).toHaveAttribute('aria-expanded', 'true');
+    // …and nothing was ticked. Still the whole point of this test: the name is
+    // never a way to select, however much else it now does.
     expect(screen.getByRole('checkbox', { name: 'Nanzen-ji' })).not.toBeChecked();
     expect(screen.queryByText('1 idea selected')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * The control row is the board's, plus the two controls only this screen has:
+ * the plans dropdown and the follow switch. These tests are about where things
+ * live and what each one still promises — not about the filtering arithmetic,
+ * which mapFilters.test.ts owns.
+ */
+describe('TripMap — the control row', () => {
+  it('keeps the chips and the screen’s promise behind Filter', async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await listUp();
+
+    // Nothing on the surface until asked for.
+    expect(screen.queryByRole('button', { name: 'Scheduled' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/faint dot on the map/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Filter' }));
+
+    // "What" and "State", the board's own two sections.
+    expect(screen.getByRole('button', { name: 'Place' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Food' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scheduled' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Potential' })).toBeInTheDocument();
+    // The sentence went in with the chips it explains, and was not lost.
+    expect(
+      screen.getByText('Filtered ideas keep a faint dot on the map. Nothing leaves your board.'),
+    ).toBeInTheDocument();
+  });
+
+  it('echoes each lit filter as a chip that removes its own narrowing', async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await listUp();
+
+    await user.click(screen.getByRole('button', { name: 'Filter' }));
+    await user.click(screen.getByRole('button', { name: 'Scheduled' }));
+
+    // The count is on the trigger in words as well as in the badge.
+    expect(screen.getByRole('button', { name: 'Filter (1 active)' })).toBeInTheDocument();
+    expect(screen.getByText('Filtered, not gone — clear a chip to widen again.')).toBeInTheDocument();
+    expect(screen.getByText('1 of 2 ideas on the map are in view')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kiyamachi (faint)' })).toBeInTheDocument();
+
+    // The chip is its own undo.
+    await user.click(screen.getByRole('button', { name: 'Remove Scheduled filter' }));
+
+    expect(screen.getByText('2 of 2 ideas on the map are in view')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filter' })).toBeInTheDocument();
+    expect(screen.queryByText('Filtered, not gone — clear a chip to widen again.')).not.toBeInTheDocument();
+  });
+
+  it('groups with the board’s own segmented control', async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await listUp();
+
+    const tabs = screen.getByRole('tablist', { name: 'Group ideas' });
+    expect(within(tabs).getByRole('tab', { name: 'Ungrouped' })).toHaveAttribute('aria-selected', 'true');
+
+    await user.click(within(tabs).getByRole('tab', { name: 'By category' }));
+
+    expect(within(tabs).getByRole('tab', { name: 'By category' })).toHaveAttribute('aria-selected', 'true');
+    // The two located ideas fall under their own headings.
+    expect(screen.getByText('Place')).toBeInTheDocument();
+    expect(screen.getByText('Activity')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Picking a plan is a narrowing that also MOVES the map — the only one on this
+ * screen that does. "Show me Tuesday" is a request to see Tuesday.
+ */
+describe('TripMap — reading one plan', () => {
+  /**
+   * Opens the dropdown and waits for the memberships to land. The fit reads the
+   * plan's members at the moment of the click, so a test that picked before
+   * they arrived would be asserting on a race, not on the behaviour. Both
+   * seeded plans hold three ideas; the counts arriving in the panel are the
+   * memberships arriving.
+   */
+  async function openLoadedPlans(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole('button', { name: /^Plans/ }));
+    await waitFor(() => expect(screen.getAllByText('3 ideas')).toHaveLength(2));
+  }
+
+  /**
+   * The open panel, scoped. Once a plan is picked the trigger reads its title
+   * too, so a bare query for a plan name would find both the row and the
+   * control saying which row is current.
+   */
+  function plansPanel() {
+    return within(screen.getByRole('group', { name: 'Plans' }));
+  }
+
+  it('narrows the list to the plan’s ideas and takes the map to them', async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await listUp();
+
+    await openLoadedPlans(user);
+    await user.click(plansPanel().getByRole('button', { name: new RegExp(NIGHT_BUNDLE_TITLE) }));
+
+    // Kiyamachi is the plan's one located member; Nanzen-ji is in no plan.
+    expect(screen.getByRole('button', { name: 'Kiyamachi' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Nanzen-ji' })).not.toBeInTheDocument();
+    // Filtered out of the reading, never off the map.
+    expect(screen.getByRole('button', { name: 'Nanzen-ji (faint)' })).toBeInTheDocument();
+    expect(screen.getByText('1 of 2 ideas on the map are in view')).toBeInTheDocument();
+
+    // The map was fitted to the plan's located members…
+    expect(screen.getByTestId('view-request')).toHaveTextContent(`view: 1:${KIYAMACHI_ID}`);
+    // …and the trigger says what is being read.
+    expect(screen.getByRole('button', { name: `Plans ${NIGHT_BUNDLE_TITLE}` })).toBeInTheDocument();
+  });
+
+  it('picking the same plan again widens back, and never moves the map to do it', async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await listUp();
+
+    await openLoadedPlans(user);
+    await user.click(plansPanel().getByRole('button', { name: new RegExp(NIGHT_BUNDLE_TITLE) }));
+    const afterPick = screen.getByTestId('view-request').textContent as string;
+
+    await user.click(screen.getByRole('button', { name: /^Plans/ }));
+    await user.click(plansPanel().getByRole('button', { name: new RegExp(NIGHT_BUNDLE_TITLE) }));
+
+    expect(screen.getByRole('button', { name: 'Nanzen-ji' })).toBeInTheDocument();
+    expect(screen.getByText('2 of 2 ideas on the map are in view')).toBeInTheDocument();
+    // Widening leaves you where you were looking — the follow switch's rule.
+    expect(screen.getByTestId('view-request')).toHaveTextContent(afterPick);
+  });
+
+  it('"All plans" is the named way out', async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await listUp();
+
+    await openLoadedPlans(user);
+    await user.click(plansPanel().getByRole('button', { name: new RegExp(NIGHT_BUNDLE_TITLE) }));
+    expect(screen.queryByRole('button', { name: 'Nanzen-ji' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^Plans/ }));
+    await user.click(plansPanel().getByRole('button', { name: 'All plans' }));
+
+    expect(screen.getByRole('button', { name: 'Nanzen-ji' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Plans 2$/ })).toBeInTheDocument();
+  });
+
+  it('a plan with nothing on the map narrows the list but does not move the map', async () => {
+    const user = userEvent.setup();
+    renderMap();
+    await listUp();
+
+    await openLoadedPlans(user);
+    // Every member of the market crawl is placeless.
+    await user.click(plansPanel().getByRole('button', { name: new RegExp(MARKET_BUNDLE_TITLE) }));
+
+    expect(screen.queryByRole('button', { name: 'Nanzen-ji' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Kiyamachi' })).not.toBeInTheDocument();
+    expect(
+      screen.getByText('No ideas in view. Zoom out, or clear a chip — they are all still on the board.'),
+    ).toBeInTheDocument();
+    // A fit to nothing is a jump to nowhere: the map stayed where it was.
+    expect(screen.getByTestId('view-request')).toHaveTextContent('view: none');
   });
 });
 
@@ -547,9 +726,11 @@ describe('TripMap — as a viewer', () => {
     await user.click(screen.getByRole('button', { name: 'Kiyamachi' }));
     expect(screen.getByTestId('view-request')).toHaveTextContent('view: 1:3');
 
-    // Filters still narrow.
+    // Filters still narrow — from behind the Filter button, where the chips
+    // now live.
+    await user.click(screen.getByRole('button', { name: 'Filter' }));
     await user.click(screen.getByRole('button', { name: 'Scheduled' }));
-    expect(screen.getByText(/Showing 1 of 2/)).toBeInTheDocument();
+    expect(screen.getByText('1 of 2 ideas on the map are in view')).toBeInTheDocument();
   });
 });
 
