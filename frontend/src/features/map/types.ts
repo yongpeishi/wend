@@ -1,5 +1,5 @@
 // Provider-agnostic shapes. TripMap.tsx and Library.tsx only ever import
-// these plus <MapView> and <PlaceSearch> — never `leaflet` or `react-leaflet`
+// these plus <MapView> and <MapSearch> — never `leaflet` or `react-leaflet`
 // directly. That is the seam: swapping the renderer for a keyed provider
 // (Google/Mapbox) later means rewriting the inside of this folder only.
 

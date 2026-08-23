@@ -39,9 +39,9 @@ export interface MapSearchProps {
  * The "Search the map" field that overlays the map top-left (the parent
  * positions it; this styles the card itself). One query feeds two answers at
  * two speeds: idea matching is instant and local (matchIdeas), place search is
- * debounced and abortable on top of geocode.ts's own 1/sec throttle — the same
- * idiom as PlaceSearch. The two live in labelled sections so "already yours"
- * and "not yours yet" never blur into one list.
+ * debounced and abortable on top of geocode.ts's own 1/sec throttle. The two
+ * live in labelled sections so "already yours" and "not yours yet" never blur
+ * into one list.
  */
 export function MapSearch({
   ideas,
