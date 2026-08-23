@@ -11,18 +11,42 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  /* The screen takes the height it is already being offered rather than
+     guessing at it: TripLayout's wrap is `flex: 1` inside a shell that is at
+     least a window tall, so `flex: 1` here reaches the bottom of the window on
+     any desk. min-height: 0 is the other half — without it this box refuses to
+     shrink below its content and the columns row below can never resolve
+     against it. */
+  flex: 1;
+  min-height: 0;
+  /* The paper under a page is --floor-screen (64px). Under a map, 64px of
+     paper is 64px the map could have had — the same argument the schedule
+     makes when it cancels the floor for its now bar. This screen keeps a
+     floor, but the gutter's: the map frame ends the same 20px from the bottom
+     of the window as it stands from its sides. */
+  margin-bottom: calc(var(--gutter-screen) - var(--floor-screen));
 }
 
-/* The two columns. The height is a viewport calculation, not a content one:
-   ~340px is the chrome above (shell header, trip title, tabs, this screen's
-   own control row) plus breathing room below, and the map needs a real height
-   or Leaflet paints nothing. The floor keeps a short window from crushing the
-   map into a letterbox. */
+/* The two columns take everything the screen has left under the control rows.
+   This used to be `calc(100vh - 340px)` — a single number standing in for the
+   shell header, the trip title, the filter bar and the counter row all at
+   once. None of those has a fixed height: the title wraps on a long trip, the
+   filter bar grows a second line when chips are active, and the counter row
+   comes and goes with the query. So the guess was wrong on nearly every desk,
+   and wrong in the visible direction — the map stopped short of the window
+   with a band of paper under it. `flex: 1` measures the same thing exactly,
+   because the chain above it (shell 100vh -> main -> wrap -> screen) is real
+   layout rather than arithmetic.
+
+   min-height is still a floor and not a height: on a window too short for it
+   the row keeps 480px and the page scrolls, which beats crushing the map into
+   a letterbox. min-width/min-height: 0 on the children is what lets them
+   shrink inside the row (see .listCol, .mapCol, .mapWrap). */
 .columns {
   display: flex;
   align-items: stretch;
   gap: var(--space-4);
-  height: calc(100vh - 340px);
+  flex: 1 1 auto;
   min-height: 480px;
 }
 
@@ -239,7 +263,17 @@
 /* One column on a narrow window: map above the list, each at a working
    height, the page scrolling as a whole instead of the list column. */
 @media (max-width: 900px) {
+  /* Back to a content-sized page: the screen no longer claims the window's
+     height, and the floor it traded away for the map comes back, because here
+     the map is a fixed 380px band rather than the thing filling the view. */
+  .screen {
+    flex: none;
+    min-height: 0;
+    margin-bottom: 0;
+  }
+
   .columns {
+    flex: none;
     flex-direction: column;
     height: auto;
     min-height: 0;
