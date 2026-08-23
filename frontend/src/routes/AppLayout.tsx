@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link, NavLink, Outlet, useMatch } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 import { Logo } from '../design/components/brand/Logo';
 import { useEntry } from '../api/entries';
 import { useCollaborators } from '../api/collaborators';
@@ -42,8 +43,9 @@ function initial(name: string): string {
 /**
  * Shell for every authenticated route: a fixed 246px sidebar on deep leaf, then
  * the route's own content. The sidebar is sticky full-height on desktop and
- * becomes the phone's header below 860px — the mark and the people on one line,
- * the trip's views as chips scrolling across the next. One set of markup serves
+ * becomes the phone's header below 860px — the mark and the two ways out of
+ * this screen on one line, the trip's own views as chips scrolling across the
+ * next with the people planning it at the end. One set of markup serves
  * both: the header is the same nav, the same links and the same roster, folded
  * by CSS alone (see AppLayout.module.css), so there is never a second copy of a
  * link for a screen reader to read out or for a test to have to choose between.
@@ -277,30 +279,40 @@ export function AppLayout() {
           )}
         </div>
 
-        {/* The label carries the pending state rather than a spinner: this is a
-            text control, and "Signing out…" is both the status and the reason
-            the button has stopped taking clicks. */}
-        <button type="button" className={styles.signOut} onClick={handleSignOut} disabled={isSigningOut}>
-          {isSigningOut ? 'Signing out…' : 'Sign out'}
-        </button>
+        {/* The two things that are about you rather than about the trip, kept
+            together at the end of the nav: somewhere to say how this is going,
+            and the way off the device. They share one look so they read as a
+            pair, and feedback lives here — where you go looking when you have
+            something to say — instead of floating over the page you were
+            trying to read. Sign out is last, on every width.
+
+            Feedback stays inside the authenticated shell so it always has an
+            author, and outside <Outlet> so it survives route changes and can
+            still name the screen you were on when you pressed it. */}
+        <div className={styles.utilities}>
+          <FeedbackButton
+            className={`${styles.utilityButton} ${styles.feedbackButton}`}
+            labelClassName={styles.utilityLabel}
+          />
+
+          {/* The label carries the pending state rather than a spinner: this is
+              a text control, and "Signing out…" is both the status and the
+              reason the button has stopped taking clicks. */}
+          <button
+            type="button"
+            className={`${styles.utilityButton} ${styles.signOut}`}
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+          >
+            <LogOut size={16} strokeWidth={1.5} aria-hidden="true" />
+            <span className={styles.utilityLabel}>{isSigningOut ? 'Signing out…' : 'Sign out'}</span>
+          </button>
+        </div>
       </nav>
 
       <main className={styles.main}>
         <Outlet />
       </main>
-
-      {/* Inside the authenticated shell so feedback always has an author, and
-          outside <Outlet> so it survives route changes.
-
-          The slot around it is not decoration: on a phone the button is switched
-          off there, and it has to be switched off from outside because the
-          button is shared and knows nothing about who is showing it. Feedback is
-          something you send from a desk; on the road the screen belongs to the
-          plan, and the button's fixed bottom-left corner is exactly where the
-          now bar and the thumb already are. */}
-      <div className={styles.feedbackSlot}>
-        <FeedbackButton />
-      </div>
 
       {/* The same panel the trip header opens — one screen for "who is on this
           trip", reachable from the faces that name them. It fetches nothing

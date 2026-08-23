@@ -303,16 +303,26 @@ describe('AppLayout', () => {
     expect(within(tripNav).getByRole('link', { name: 'Ideas' })).not.toHaveAttribute('aria-current');
   });
 
-  // Below 860px the sidebar folds into the phone header, and the design has no
-  // room in it for feedback: the button's fixed bottom-left corner is where the
-  // plan and the thumb already are. jsdom does not evaluate media queries, so
-  // what is provable here is that the button sits in a slot the stylesheet can
-  // switch off from outside — the button itself is shared and stays untouched.
-  it('puts the feedback button in a slot the phone header can switch off', () => {
-    const { container } = renderShell();
-    const slot = container.querySelector(`.${styles.feedbackSlot}`);
-    expect(slot).toBeInTheDocument();
-    expect(within(slot as HTMLElement).getByRole('button', { name: 'Give feedback' })).toBeInTheDocument();
+  // Feedback and sign out are one pair at the end of the nav — feedback is a
+  // nav control now, not something painted over the page, and sign out is the
+  // last thing in the sidebar on a desk and the top-right corner on a phone.
+  // Both of those come out of this one bit of DOM: same wrapper, sign out last,
+  // wrapper last in the nav. jsdom does not evaluate media queries, so the order
+  // is what is provable here, and the order is what both widths are built on.
+  it('ends the nav with feedback and sign out, sign out last', () => {
+    renderShell();
+    const sidebar = screen.getByRole('navigation', { name: 'Main' });
+    const feedback = within(sidebar).getByRole('button', { name: 'Give feedback' });
+    const signOut = within(sidebar).getByRole('button', { name: 'Sign out' });
+
+    // One wrapper holds both, and nothing in the nav comes after it.
+    const utilities = feedback.parentElement as HTMLElement;
+    expect(signOut.parentElement).toBe(utilities);
+    expect(sidebar.lastElementChild).toBe(utilities);
+
+    // Feedback, then sign out — and the composer is closed, so the pair really
+    // is the whole of the group.
+    expect(Array.from(utilities.children)).toEqual([feedback, signOut]);
   });
 
   // The mockup's phone header drops sign out; we keep it, because it is the

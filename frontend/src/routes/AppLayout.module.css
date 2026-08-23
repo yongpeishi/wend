@@ -341,10 +341,9 @@ button.avatar:focus-visible {
  * It opens upward, off the top of the cluster. Being last in the PLAN panel
  * puts the cluster low in a full-height column, and downward the list simply
  * ran out of window: at 717px tall — an ordinary laptop — the last name landed
- * below the viewport floor, and the Feedback button, fixed to that same bottom
- * band and painted over the sidebar by design, sat across the first two.
- * Neither of those is a stacking argument, so neither is answered by a bigger
- * z-index: the window cannot be out-stacked. Upward there is always room,
+ * below the viewport floor, where feedback and sign out are also sitting. That
+ * is not a stacking argument, so it is not answered by a bigger z-index: the
+ * window cannot be out-stacked. Upward there is always room,
  * because what is above the cluster is the panel's own nav rows and there are
  * always more of them than there is list. Covering those for the length of a
  * hover is the whole price, and it is a fair one.
@@ -397,28 +396,52 @@ button.avatar:focus-visible {
   border: 0;
 }
 
-/* The Feedback button is fixed to this same bottom-left corner — --space-6 up
-   from the viewport floor and --tap-min tall — so it is painted over whatever
-   the sidebar leaves at its own bottom edge. Left alone, sign out sits under it
-   and is neither visible nor clickable. The sidebar therefore reserves that
-   corner: the button's margin lifts sign out clear of the whole band, with a
-   step of air on top. This gap is load-bearing; it is not padding to tidy. */
-.signOut {
+/*
+ * Feedback and sign out, the pair at the foot of the column. `margin-top: auto`
+ * is what puts them there: everything above sizes to its content, and this eats
+ * whatever height is left. They sit in a wrapper of their own rather than
+ * standing loose in the sidebar so the gap between them can be var(--space-1)
+ * instead of the sidebar's 26px rhythm — at 26px apart they read as two
+ * unrelated controls that happen to be at the bottom, and they are meant to
+ * read as one group of things that are about you rather than about the trip.
+ *
+ * Left-aligned, not stretched: both are text buttons, and a full-width hit area
+ * on a quiet control invites a click the traveller did not aim.
+ */
+.utilities {
   margin-top: auto;
-  margin-bottom: calc(var(--space-6) + var(--tap-min) + var(--space-2));
-  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+/* One look for both: a quiet on-dark text button with its icon on the left, the
+   same pill and the same muted ink as the nav rows above, so the pair belongs
+   to the sidebar rather than sitting on top of it. Hover is opacity alone, as
+   everywhere else here — the palette never lightens or darkens. */
+.utilityButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   background: none;
   border: none;
   padding: 10px var(--space-3);
   border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
   font-size: var(--text-small-size);
   color: var(--text-on-dark-muted);
   cursor: pointer;
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-.signOut:hover {
+.utilityButton:hover {
   opacity: 0.75;
+}
+
+.utilityButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /* In flight. The label already says "Signing out…", so the button only has to
@@ -429,40 +452,34 @@ button.avatar:focus-visible {
   cursor: default;
 }
 
-.signOut:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
 /* Touch pointers get the full 48px target; pointer devices keep the design's
    tighter list rhythm. */
 @media (pointer: coarse) {
   .navItem,
-  .signOut {
+  .utilityButton {
     min-height: var(--tap-min);
   }
 }
 
-/* The Feedback button paints itself into the viewport's bottom-left corner, so
-   it needs no box of its own here — this wrapper exists only to be switched off
-   on a phone, where the corner belongs to the plan and not to us. */
-.feedbackSlot {
-  display: contents;
-}
-
 /*
  * The phone header. Below 860px the sidebar is not a sidebar lying down: it is
- * the design's own two-line header. Line one carries the mark on the left and
- * the people on the right; line two is the trip's views as chips, scrolling
- * sideways. It sticks to the top of the window because on a phone it is the
- * only chrome there is — scrolled away, there would be no way between views.
+ * the design's own two-line header. Line one carries the mark and the two ways
+ * out of this screen — feedback, then sign out in the top-right corner, the
+ * corner a phone user reaches for when they want out. Line two is the trip
+ * itself: its views as chips scrolling sideways, and the people planning it at
+ * the end of that row, where they belong to the trip they are named against
+ * rather than to the app's own chrome. It sticks to the top of the window
+ * because on a phone it is the only chrome there is — scrolled away, there
+ * would be no way between views.
  *
  * The two lines are made by flattening, not by a second set of markup: one DOM
  * serves both widths, so there is one nav, one roster and one of every link.
- * `display: contents` on the PLAN panel and its sections lifts the pieces that
- * matter — the views, the faces — up to be children of the header itself, where
- * `order` can put each on the line the design draws it on. The panel's ground,
- * its rules and its trail go with it: a panel is something to sit inside a
+ * `display: contents` on the sections, and on the utility wrapper, lifts the
+ * pieces that matter — the links, the two utility buttons — up to be children of
+ * the header itself, where `order` can put each where the design draws it. The
+ * PLAN panel stays a box, but a different one: it stops being a panel and
+ * becomes the second line, a plain row holding the views and the faces. Its
+ * ground, its rules and its trail go: a panel is something to sit inside a
  * column, and here there is no column.
  *
  * The trip's name goes too, and is not lost — TripLayout heads every trip
@@ -488,8 +505,7 @@ button.avatar:focus-visible {
   }
 
   .sections,
-  .section,
-  .tripCard {
+  .section {
     display: contents;
   }
 
@@ -510,28 +526,46 @@ button.avatar:focus-visible {
     padding: 0;
   }
 
-  /* Line one, in order: the mark, the way back out to every trip, then — pushed
-     to the far edge by sign out's auto margin — signing out and the faces. Only
-     the trip's own views become chips; the way out is a quiet text link, so the
-     line has one loud thing on it and it is the people. */
+  /* Line one, in order: the mark, then the ways out of the app itself — every
+     trip, and inspiration. Only the trip's own views become chips; these are
+     quiet text links, so the loud things on this line are the two buttons at
+     its far end. */
   .section > .navItem {
     order: 2;
     padding: var(--space-2) var(--space-3);
   }
 
-  /* Up at the top of the page, sign out is nowhere near the Feedback button, so
-     the corner that button reserves comes back out — kept, it would hang an
-     80px gap under the header. */
-  .signOut {
+  /* The pair stops being a column of its own and hands both buttons straight to
+     the header, so each can be ordered onto line one individually. Its
+     `margin-top: auto` goes with it — there is no leftover height to eat in a
+     row that is as tall as its tallest child. */
+  .utilities {
+    display: contents;
+  }
+
+  /* Pushed to the far edge by the first of the two: everything before it on the
+     line is left-aligned, and the auto margin takes all the slack at once. */
+  .feedbackButton {
     order: 3;
-    margin-top: 0;
-    margin-bottom: 0;
     margin-left: auto;
     align-self: center;
   }
 
-  .planners {
+  /* Last on the line, which on a phone is the top-right corner — the place a
+     thumb reaches for when it wants out, and the same place sign out sits at
+     the very end of the sidebar on a desk. */
+  .signOut {
     order: 4;
+    align-self: center;
+  }
+
+  /* Off line one and onto the trip's own row, at the right end of it: these are
+     the people planning THIS trip, so they read against the trip's views rather
+     than against the app's chrome, and line one is left to the mark and the two
+     ways out. */
+  .planners {
+    flex: none;
+    margin-left: auto;
     display: flex;
     align-items: center;
     padding-bottom: 0;
@@ -545,14 +579,30 @@ button.avatar:focus-visible {
     padding: 0;
   }
 
-  /* Line two. `flex: 0 0 100%` is what breaks the line: nothing else fits
-     beside a full-width item, so the views always start a row of their own, and
-     when there is no trip open there is no second row at all rather than an
-     empty strip. The run scrolls sideways and never wraps, so a fifth view
-     lengthens it instead of growing the header. */
-  .tripNav {
+  /* Line two, and the whole of it. `flex: 0 0 100%` is what breaks the line:
+     nothing else fits beside a full-width item, so the trip always starts a row
+     of its own, and when there is no trip open there is no second row at all
+     rather than an empty strip. It keeps its box here — the views and the faces
+     have to be laid out against each other, which is something only a real row
+     can do — but not its panel skin: a lifted ground and a radius say "a card
+     inside a column", and this is a strip across the top of the screen. */
+  .tripCard {
     order: 5;
     flex: 0 0 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+    background: none;
+    border-radius: 0;
+  }
+
+  /* The views take whatever the faces leave. The run scrolls sideways and never
+     wraps, so a fifth view lengthens it instead of growing the header, and
+     `min-width: 0` is what lets it shrink far enough to start scrolling at all
+     rather than shoving the faces off the screen. */
+  .tripNav {
+    flex: 1 1 auto;
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
@@ -592,10 +642,11 @@ button.avatar:focus-visible {
      direction with room.
 
      It also goes back to opening downward. Upward is what a tall column needs,
-     where the cluster sits low in it; in the header the cluster is at the very
-     top of the page and there is nothing above it to open into — the names
-     would go straight out of the window, which is the exact failure the upward
-     reveal exists to avoid. Below the header the page has only just started. */
+     where the cluster sits low in it; here the cluster is on the header's
+     second line, so everything above it is the header's own first line and then
+     the top of the window — the names would cover the mark and the way out and
+     still run off the screen, which is the exact failure the upward reveal
+     exists to avoid. Below the header the page has only just started. */
   .plannerNames {
     top: calc(100% + var(--space-1));
     bottom: auto;
@@ -604,9 +655,40 @@ button.avatar:focus-visible {
     width: max-content;
     max-width: 50vw;
   }
+}
 
-  /* Feedback is a desk-side errand. On the road the plan gets the screen. */
-  .feedbackSlot {
-    display: none;
+/*
+ * Phone width. Line one now has to carry a mark, two links and two buttons, and
+ * at 600px there is no longer room for both button labels as well — the links
+ * would be squeezed out first, and they are the navigation. So the pair drops
+ * to icons: a message with a plus, and a door with an arrow through it, both on
+ * a square target the size of a thumb. Nothing is lost to a screen reader —
+ * Feedback carries its aria-label and Sign out keeps its whole text, hidden.
+ *
+ * This sits under 860px, so everything the header rules do still applies here.
+ */
+@media (max-width: 600px) {
+  /* Read but not seen. Same technique as .srOnly, applied to a label that is
+     visible at every other width rather than to one that never shows. */
+  .utilityLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* With the label gone the pill has nothing to be long for: a square the size
+     of the minimum tap target, with the icon centred in it. */
+  .utilityButton {
+    gap: 0;
+    padding: 0;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    justify-content: center;
   }
 }
