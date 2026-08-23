@@ -25,6 +25,21 @@
      floor, but the gutter's: the map frame ends the same 20px from the bottom
      of the window as it stands from its sides. */
   margin-bottom: calc(var(--gutter-screen) - var(--floor-screen));
+  /* And the same refusal sideways. TripLayout caps every screen at a 1360px
+     reading measure, which is the right call for text and the wrong one for a
+     map: past 1360px of window the cap simply stopped handing the map desk it
+     had, and left a band of paper down the right edge to prove it. This is
+     TripLayout's own opt-out (the board takes it too), scoped to this element
+     — .head is a separate child of the wrap and keeps the 1360px measure,
+     because a trip title running the width of an ultrawide window is one
+     enormous line with nothing to relate to.
+
+     Full width, not full bleed: the wrap's --gutter-screen padding stays on
+     both sides, so the map frame stands 20px in from the right edge of the
+     window — the same 20px it keeps at the left, the top and now the bottom.
+     The board cancels that gutter with a negative inline margin; this screen
+     deliberately does not. */
+  --screen-measure: none;
 }
 
 /* The two columns take everything the screen has left under the control rows.
