@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
-import { Link, NavLink, Outlet, useMatch } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 import { Logo } from '../design/components/brand/Logo';
 import { useEntry } from '../api/entries';
 import { useCollaborators } from '../api/collaborators';
@@ -42,13 +42,23 @@ function initial(name: string): string {
 
 /**
  * Shell for every authenticated route: a fixed 246px sidebar on deep leaf, then
- * the route's own content. The sidebar is sticky full-height on desktop and
- * becomes the phone's header below 860px — the mark and the two ways out of
- * this screen on one line, the trip's own views as chips scrolling across the
- * next with the people planning it at the end. One set of markup serves
- * both: the header is the same nav, the same links and the same roster, folded
- * by CSS alone (see AppLayout.module.css), so there is never a second copy of a
- * link for a screen reader to read out or for a test to have to choose between.
+ * the route's own content. The sidebar is sticky full-height on desktop; below
+ * 860px it flattens into a single bar — a menu button in the top-left corner,
+ * the mark beside it, and the two controls that are about you rather than about
+ * the trip at the far end, sign out last so it lands in the top-right corner.
+ * Everything else in the nav goes behind the menu button, as a drawer that
+ * slides in over the page.
+ *
+ * The bar used to try to carry the whole nav: two links, five view chips and a
+ * roster, wrapped onto two lines and scrolling sideways. That is a sidebar
+ * lying down, and on a phone it cost more of the screen than the page it was
+ * there to navigate. A drawer costs one tap and gives the width back.
+ *
+ * One set of markup still serves both. The drawer is not a phone copy of the
+ * nav — it is the nav, the same links and the same roster, moved off-canvas by
+ * CSS (see AppLayout.module.css) and laid out exactly as the sidebar lays it
+ * out when it opens. So there is never a second copy of a link for a screen
+ * reader to read out or for a test to have to choose between.
  *
  * When you are inside a trip the sidebar also carries that trip's sub-nav. It
  * lives here rather than in TripLayout because the sidebar is the one piece of
@@ -63,6 +73,64 @@ function initial(name: string): string {
 export function AppLayout() {
   const { signOut, isSigningOut } = useAuth();
   const { show } = useToast();
+
+  /*
+   * The phone drawer. Closed is the only sensible starting state — it is a
+   * menu, and a menu that greets you already open is a screen you have to
+   * dismiss before you can read the one you asked for.
+   *
+   * The state is kept at every width and simply has nothing to do above 860px,
+   * where the panel is the sidebar and is open by virtue of being the page's
+   * left-hand column. Gating it on a media query would mean the layout reads
+   * the viewport in two places — CSS and here — and the two would drift.
+   */
+  const [navOpen, setNavOpen] = useState(false);
+  const closeNav = useCallback(() => setNavOpen(false), []);
+  const navPanelId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Following a link is the drawer's whole purpose, so arriving somewhere is
+  // what closes it. Keyed on the location rather than wired onto seven separate
+  // links: it also covers the ways out that are not clicks — the back button,
+  // and the redirect ProtectedRoute fires when a session ends.
+  const { pathname } = useLocation();
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  /*
+   * While it is open the drawer owns the screen: Escape closes it, and the page
+   * underneath stops scrolling so a thumb dragging over the panel cannot leave
+   * you somewhere else entirely by the time you close it. Focus moves into the
+   * panel on the way in and back to the button on the way out, so the keyboard
+   * is never left on a control that has just slid off the side of the screen.
+   *
+   * Focus is not trapped. This is a disclosure, not a dialog — the panel is the
+   * page's own navigation, and it is `visibility: hidden` when closed, which is
+   * what keeps its links out of the tab order at this width without any of this
+   * having to run.
+   */
+  useEffect(() => {
+    if (!navOpen) return;
+    panelRef.current?.focus();
+    // Read now, used on the way out. The button is the same node either way —
+    // it is on the bar, not in the panel, so nothing unmounts it — but reaching
+    // through the ref from inside the cleanup is the pattern that bites when
+    // one day something does.
+    const menu = menuButtonRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNavOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      menu?.focus();
+    };
+  }, [navOpen]);
 
   /*
    * Signing out is a request that can fail, so it is treated as one. The
@@ -113,13 +181,59 @@ export function AppLayout() {
   return (
     <div className={styles.shell}>
       <nav className={styles.sidebar} aria-label="Main">
+        {/* The way into the nav on a phone, and nothing at all on a desk, where
+            the nav is already on screen. It is first in the DOM as well as
+            first on the bar: the top-left corner is where a menu lives, and a
+            keyboard should reach it before the links it opens. `aria-expanded`
+            is the whole of its state — the panel it controls is named rather
+            than duplicated, so assistive tech reads the same nav everyone else
+            is looking at. */}
+        <button
+          type="button"
+          ref={menuButtonRef}
+          className={styles.menuButton}
+          onClick={() => setNavOpen((open) => !open)}
+          aria-expanded={navOpen}
+          aria-controls={navPanelId}
+        >
+          <Menu size={24} strokeWidth={1.5} aria-hidden="true" />
+          <span className={styles.srOnly}>Menu</span>
+        </button>
+
         <div className={styles.brandRow}>
           <Link to="/" className={styles.brandLink}>
             <Logo variant="reversed" size={28} />
           </Link>
         </div>
 
-        <div className={styles.sections}>
+        {/* Only while the drawer is out: the page dimmed behind it, and the way
+            back to the page. The close button sits beside the panel rather than
+            inside it — the panel is a column of links, and a control in its top
+            corner would read as the first of them. Out on the dimmed page it is
+            unmistakably about the panel as a whole.
+
+            Both are rendered on opening rather than hidden and revealed, because
+            both exist only for the open state; there is no closed appearance for
+            either of them to have. */}
+        {navOpen && (
+          <>
+            <div className={styles.scrim} onClick={closeNav} />
+            <button type="button" className={styles.drawerClose} onClick={closeNav}>
+              <X size={22} strokeWidth={1.5} aria-hidden="true" />
+              <span className={styles.srOnly}>Close menu</span>
+            </button>
+          </>
+        )}
+
+        {/* The nav proper, and on a phone the drawer. `tabIndex={-1}` is there
+            for the focus move on opening and for nothing else — it takes focus
+            when asked, and never sits in the tab order itself. */}
+        <div
+          id={navPanelId}
+          ref={panelRef}
+          tabIndex={-1}
+          className={[styles.sections, navOpen ? styles.sectionsOpen : ''].filter(Boolean).join(' ')}
+        >
           <div className={styles.section}>
             <div className={styles.sectionLabel}>Explore</div>
             <NavLink
@@ -284,7 +398,13 @@ export function AppLayout() {
             and the way off the device. They share one look so they read as a
             pair, and feedback lives here — where you go looking when you have
             something to say — instead of floating over the page you were
-            trying to read. Sign out is last, on every width.
+            trying to read. Sign out is last, on every width: the foot of the
+            column on a desk, the top-right corner on a phone.
+
+            The pair stays out on the bar rather than going into the drawer.
+            Signing out is the one thing you must be able to do without first
+            learning where the menu is, and on a shared device it is the only
+            way off it.
 
             Feedback stays inside the authenticated shell so it always has an
             author, and outside <Outlet> so it survives route changes and can
@@ -295,7 +415,13 @@ export function AppLayout() {
             labelClassName={styles.utilityLabel}
           />
 
-          {/* The label carries the pending state rather than a spinner: this is
+          {/* Words alone, at every width. "Sign out" is two of them and they say
+              exactly what happens; a door with an arrow through it is a picture
+              of the same two words that a fair number of people read as "log
+              in", and it only ever earned its place here while the phone bar
+              was short of room. The bar is not short of room any more.
+
+              The label carries the pending state rather than a spinner: this is
               a text control, and "Signing out…" is both the status and the
               reason the button has stopped taking clicks. */}
           <button
@@ -304,8 +430,7 @@ export function AppLayout() {
             onClick={handleSignOut}
             disabled={isSigningOut}
           >
-            <LogOut size={16} strokeWidth={1.5} aria-hidden="true" />
-            <span className={styles.utilityLabel}>{isSigningOut ? 'Signing out…' : 'Sign out'}</span>
+            {isSigningOut ? 'Signing out…' : 'Sign out'}
           </button>
         </div>
       </nav>
