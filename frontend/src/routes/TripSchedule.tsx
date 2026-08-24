@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
+import { PageTitle } from '../components/PageTitle';
 import { QueryGate } from '../components/QueryGate';
 import { useEntries } from '../api/entries';
 import { useNearby } from '../api/nearby';
@@ -242,11 +243,11 @@ export function TripSchedule() {
   return (
     <div className={styles.screen}>
       <div className={styles.head}>
-        {/* TripLayout above prints the trip's title as the page's one <h1>, so
-            this screen's own name is a section heading under it — the same
-            shape the itinerary uses. It keeps its size from .title; only the
-            level changes. */}
-        <h2 className={styles.title}>Final schedule</h2>
+        {/* The screen's own name, in the one page-title style every trip tab
+            shares. "Final schedule" rather than "Schedule", matching the
+            sidebar tab: with an itinerary next door, one word has to say which
+            of the two is the finished one. */}
+        <PageTitle>Final schedule</PageTitle>
         {/* Shown even for a one-day trip: the head always carries the strip, and
             a page whose shape depends on how long the trip is is a page that
             moves under you when you add a day. */}

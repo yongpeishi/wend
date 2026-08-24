@@ -1,63 +1,6 @@
-/* z-index sits above page content but below the Modal/Drawer overlay (100),
-   so opening the composer covers the button rather than leaving it floating
-   on top of its own dialog. */
-.fab {
-  position: fixed;
-  bottom: var(--space-6);
-  left: var(--space-6);
-  z-index: 90;
-
+.trigger {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: var(--tap-min);
-  padding: 0 var(--space-4);
-
-  background: var(--surface-inverse);
-  color: var(--text-on-dark);
-  border: var(--border-width) solid var(--surface-inverse);
-  border-radius: var(--radius-pill);
-
-  font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-small-size);
   cursor: pointer;
-
-  /* No shadow — elevation in this system is tone, and deep-leaf on paper is
-     already the strongest separation available. */
-  box-shadow: var(--shadow-none);
-  transition: background var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-.fab:hover {
-  background: var(--action-primary);
-  border-color: var(--action-primary);
-}
-
-.fab:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
-/* Below the phone breakpoint the label goes and the button becomes a circle —
-   screen edge space on a phone belongs to the plan, not to a utility. */
-@media (max-width: 600px) {
-  .fab {
-    gap: 0;
-    width: var(--tap-min);
-    padding: 0;
-    justify-content: center;
-  }
-
-  .text {
-    /* Visually hidden, still read aloud. */
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
 }

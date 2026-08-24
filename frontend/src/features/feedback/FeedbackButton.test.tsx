@@ -53,9 +53,25 @@ beforeEach(() => {
 });
 
 describe('FeedbackButton', () => {
-  it('offers a floating way in from any screen', async () => {
+  it('offers a way in from any screen', async () => {
     renderApp();
     expect(screen.getByRole('button', { name: 'Give feedback' })).toBeInTheDocument();
+  });
+
+  it('wears the classes its host gives it', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ToastProvider>
+          <MemoryRouter>
+            <FeedbackButton className="host-class" labelClassName="host-label" />
+          </MemoryRouter>
+        </ToastProvider>
+      </QueryClientProvider>,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Give feedback' });
+    expect(trigger).toHaveClass('host-class');
+    expect(screen.getByText('Feedback')).toHaveClass('host-label');
   });
 
   it('opens the composer when clicked', async () => {

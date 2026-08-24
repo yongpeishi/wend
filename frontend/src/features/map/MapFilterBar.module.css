@@ -137,13 +137,15 @@
 /* Card tone on page tone with a drawn edge — the panel is lifted the only way
    this system lifts anything. Anchored to the RIGHT edge of the trigger, which
    sits mid-row: a left-hung panel would open across the search box instead of
-   into the free space below it. z-index clears Leaflet's own stack (which tops
-   out at 1000) because on a narrow window the map has stacked above the list. */
+   into the free space below it. The z-index only has to clear the map box
+   below, which on a narrow window stacks above the list; Leaflet's own stack is
+   sealed inside MapView, so this is three and not the 1200 it used to be — a
+   number that cleared the app's chrome along with everything else. */
 .popover {
   position: absolute;
   top: calc(100% + var(--space-2));
   right: 0;
-  z-index: 1200;
+  z-index: 3;
   width: 280px;
   max-width: calc(100vw - var(--space-8));
   display: flex;

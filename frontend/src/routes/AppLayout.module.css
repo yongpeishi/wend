@@ -4,10 +4,52 @@
   background: var(--wend-paper);
 }
 
-/* 246px is the design's sidebar measure; the vertical rhythm inside it
-   (26 / 18 / 20) comes from the same source. Everything with a token uses the
-   token — no shadow, no border: the deep-leaf ground is the separation. */
+/*
+ * 246px is the design's sidebar measure; the vertical rhythm inside it
+ * (26 / 18 / 20) comes from the same source. Everything with a token uses the
+ * token — no shadow, no border: the deep-leaf ground is the separation.
+ *
+ * The column carries its own scroll, because it is exactly one viewport tall
+ * and stays there: inside a trip the PLAN panel and the people planning it can
+ * together outgrow a short window, and the page scrolling underneath rescues
+ * nothing — a sticky column pinned at 100vh does not move with it, so whatever
+ * fell off the bottom stays off the bottom for good. What falls off is the pair
+ * at the foot: feedback and sign out are last in the column, so they are the
+ * first thing the window takes, and they are the two controls that have to be
+ * reachable from every screen. Everything in here is reachable at any window
+ * height or it is not really in here at all.
+ *
+ * The scroll is on the column and nowhere inside it. A scroll container clips,
+ * and the one thing in this sidebar that paints outside its own parent is the
+ * planner reveal (see .plannerNames) — which opens upward and is inset from the
+ * panel's edges, so it stays within the column's own box and the column can
+ * hold it. Putting the scroll on .sections or .tripCard instead would cut it
+ * off, which is the fight that comment is already a record of.
+ *
+ * `scrollbar-gutter: stable` keeps the 246px measure still. The width is fixed,
+ * so without the gutter the content box narrows by a scrollbar's width the
+ * moment the column starts scrolling and every label in it steps sideways as
+ * you walk from all trips into a trip. A gutter that is always there costs the
+ * same few pixels on every screen; one that arrives costs a jump.
+ *
+ * The 20px at the foot of that rhythm is set on .utilities rather than here.
+ * The pair is pinned to the bottom of the scrollport (see .utilities), and a
+ * scroll container's own bottom padding sits below the scrollport, where a
+ * pinned element never reaches — so held here it would be air you only see once
+ * you have scrolled to the end. Carried by the pair itself it is the same 20px
+ * in both states, and it is the last child, so the column ends where it always
+ * did.
+ */
 .sidebar {
+  /* Read by the phone drawer and by the close button that sits just past its
+     edge, so the two cannot disagree about where that edge is. It is declared
+     here rather than in the media query that uses it because a custom property
+     that only exists at one width leaves the other width's declarations
+     invalid, which is a harder thing to read than one unused value. 80vw rather
+     than a flat 300 keeps the close button on screen at 320px, the narrowest
+     phone still in use. */
+  --nav-drawer-width: min(300px, 80vw);
+
   width: 246px;
   flex: none;
   position: sticky;
@@ -16,7 +58,9 @@
   display: flex;
   flex-direction: column;
   gap: 26px;
-  padding: 26px 18px 20px;
+  padding: 26px 18px 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   background: var(--wend-deep-leaf);
   color: var(--text-on-dark);
 }
@@ -71,6 +115,13 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
+}
+
+/* Focused only because the drawer just opened and the keyboard had to be put
+   somewhere inside it. A ring around the whole panel would say "this is the
+   control you are on", and it is not a control. Its children still ring. */
+.sections:focus {
+  outline: none;
 }
 
 .section {
@@ -341,10 +392,9 @@ button.avatar:focus-visible {
  * It opens upward, off the top of the cluster. Being last in the PLAN panel
  * puts the cluster low in a full-height column, and downward the list simply
  * ran out of window: at 717px tall — an ordinary laptop — the last name landed
- * below the viewport floor, and the Feedback button, fixed to that same bottom
- * band and painted over the sidebar by design, sat across the first two.
- * Neither of those is a stacking argument, so neither is answered by a bigger
- * z-index: the window cannot be out-stacked. Upward there is always room,
+ * below the viewport floor, where feedback and sign out are also sitting. That
+ * is not a stacking argument, so it is not answered by a bigger z-index: the
+ * window cannot be out-stacked. Upward there is always room,
  * because what is above the cluster is the panel's own nav rows and there are
  * always more of them than there is list. Covering those for the length of a
  * hover is the whole price, and it is a fair one.
@@ -397,28 +447,72 @@ button.avatar:focus-visible {
   border: 0;
 }
 
-/* The Feedback button is fixed to this same bottom-left corner — --space-6 up
-   from the viewport floor and --tap-min tall — so it is painted over whatever
-   the sidebar leaves at its own bottom edge. Left alone, sign out sits under it
-   and is neither visible nor clickable. The sidebar therefore reserves that
-   corner: the button's margin lifts sign out clear of the whole band, with a
-   step of air on top. This gap is load-bearing; it is not padding to tidy. */
-.signOut {
+/*
+ * Feedback and sign out, the pair at the foot of the column. `margin-top: auto`
+ * is what puts them there: everything above sizes to its content, and this eats
+ * whatever height is left. They sit in a wrapper of their own rather than
+ * standing loose in the sidebar so the gap between them can be var(--space-1)
+ * instead of the sidebar's 26px rhythm — at 26px apart they read as two
+ * unrelated controls that happen to be at the bottom, and they are meant to
+ * read as one group of things that are about you rather than about the trip.
+ *
+ * Left-aligned, not stretched: both are text buttons, and a full-width hit area
+ * on a quiet control invites a click the traveller did not aim.
+ *
+ * The pair holds its place at the foot of the scrollport. Being last is what
+ * makes it the first thing a short window takes, and these are the two controls
+ * that have to be reachable from every screen — so rather than ride to the
+ * bottom of the content and go under the fold with it, the pair stays where the
+ * column ends and the list scrolls behind it. `margin-top: auto` still does the
+ * work whenever the column has height to spare: it eats the slack, the pair
+ * already sits at the foot, and sticky has nothing to hold it back from. Only
+ * once the content outgrows the window does the pin start to matter.
+ *
+ * Its ground is the sidebar's own colour, because scrolled rows pass underneath
+ * it and this system lifts a surface with tone, not with a shadow or an edge —
+ * the same deep leaf is what makes the pair read as the floor of the column
+ * rather than a card laid on top of it. The ground spans the full content
+ * measure, which is the whole of what scrolls: the sidebar's 18px flanks hold
+ * no content at any scroll position, so there is nothing to bleed out over.
+ */
+.utilities {
   margin-top: auto;
-  margin-bottom: calc(var(--space-6) + var(--tap-min) + var(--space-2));
-  align-self: flex-start;
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding-bottom: 20px;
+  background: var(--wend-deep-leaf);
+}
+
+/* One look for both: a quiet on-dark text button with its icon on the left, the
+   same pill and the same muted ink as the nav rows above, so the pair belongs
+   to the sidebar rather than sitting on top of it. Hover is opacity alone, as
+   everywhere else here — the palette never lightens or darkens. */
+.utilityButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   background: none;
   border: none;
   padding: 10px var(--space-3);
   border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
   font-size: var(--text-small-size);
   color: var(--text-on-dark-muted);
   cursor: pointer;
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-.signOut:hover {
+.utilityButton:hover {
   opacity: 0.75;
+}
+
+.utilityButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /* In flight. The label already says "Signing out…", so the button only has to
@@ -429,45 +523,137 @@ button.avatar:focus-visible {
   cursor: default;
 }
 
-.signOut:focus-visible {
+/*
+ * The phone bar's menu button, and nothing at all above 860px — on a desk the
+ * nav it opens is already the left-hand column, so a button to reveal it would
+ * open something that never closed.
+ *
+ * It is the same quiet on-dark control as everything else in here: no ground,
+ * no edge, opacity for hover, and a full tap target under a 24px mark. The mark
+ * is Lucide's `menu` — three lines, which is the one icon a phone user reads as
+ * "the rest of it is in here" without being told.
+ */
+.menuButton {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  margin-left: calc(var(--space-2) * -1);
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--text-on-dark);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.menuButton:hover {
+  opacity: 0.75;
+}
+
+.menuButton:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/*
+ * The page behind the open drawer. Same treatment as Modal and Drawer — paper
+ * tone at 0.92 rather than a grey dim, so the page reads as still being there
+ * underneath rather than as having been navigated away from (see
+ * Overlay.module.css for the whole argument). It is a sibling of the panel
+ * inside the bar's own stacking context, which is what lets it cover the bar
+ * as well as the page: a menu that leaves its own bar undimmed looks like it
+ * has failed to open over something.
+ *
+ * Not a button, and not reachable by keyboard. Tapping outside is a pointer
+ * gesture; the keyboard has Escape and the close button, both of which do the
+ * same thing and both of which can be found.
+ */
+.scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: var(--overlay-scrim);
+  animation: navFade var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/*
+ * The close button, out on the dimmed page just past the panel's edge. It is
+ * over paper rather than over deep leaf, so it takes the page's own ink, not
+ * the sidebar's.
+ */
+.drawerClose {
+  display: none;
+  position: fixed;
+  top: var(--space-3);
+  left: calc(var(--nav-drawer-width) + var(--space-1));
+  z-index: 3;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.drawerClose:hover {
+  opacity: 0.7;
+}
+
+.drawerClose:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+@keyframes navFade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* Touch pointers get the full 48px target; pointer devices keep the design's
    tighter list rhythm. */
 @media (pointer: coarse) {
   .navItem,
-  .signOut {
+  .utilityButton {
     min-height: var(--tap-min);
   }
 }
 
-/* The Feedback button paints itself into the viewport's bottom-left corner, so
-   it needs no box of its own here — this wrapper exists only to be switched off
-   on a phone, where the corner belongs to the plan and not to us. */
-.feedbackSlot {
-  display: contents;
-}
-
 /*
- * The phone header. Below 860px the sidebar is not a sidebar lying down: it is
- * the design's own two-line header. Line one carries the mark on the left and
- * the people on the right; line two is the trip's views as chips, scrolling
- * sideways. It sticks to the top of the window because on a phone it is the
- * only chrome there is — scrolled away, there would be no way between views.
+ * The phone bar. Below 860px the sidebar is not a sidebar lying down — it is a
+ * single bar across the top, and the nav goes behind a button.
  *
- * The two lines are made by flattening, not by a second set of markup: one DOM
- * serves both widths, so there is one nav, one roster and one of every link.
- * `display: contents` on the PLAN panel and its sections lifts the pieces that
- * matter — the views, the faces — up to be children of the header itself, where
- * `order` can put each on the line the design draws it on. The panel's ground,
- * its rules and its trail go with it: a panel is something to sit inside a
- * column, and here there is no column.
+ * What is on the bar is what has to be reachable without asking: the menu, the
+ * mark, and the two controls that are about you rather than about the trip,
+ * with sign out last so it lands in the top-right corner — the corner a thumb
+ * reaches for when it wants out, and the same place sign out sits at the very
+ * end of the sidebar on a desk.
  *
- * The trip's name goes too, and is not lost — TripLayout heads every trip
- * surface with it, so on a phone it is read once, in the page, rather than
- * twice in 12 characters of chrome.
+ * Everything else — both app links, the trip's five views, its name and length,
+ * and the people planning it — is in the drawer, which is this same nav's own
+ * `.sections` moved off-canvas and slid back in. It keeps the sidebar's layout
+ * exactly: the labelled sections, the PLAN panel, the trail down its views, the
+ * roster. There is nothing to flatten and nothing to hide, because at this
+ * width the panel is still a column — a narrower one, over the page instead of
+ * beside it.
+ *
+ * That is the whole change from the two-line header this replaces. The header
+ * folded the column into a strip: labels off, rules off, trail off, views as
+ * chips scrolling sideways, roster pushed to the end of the row. It worked, and
+ * it cost the top two lines of every screen to say what one button now says.
  */
 @media (max-width: 860px) {
   .shell {
@@ -477,136 +663,205 @@ button.avatar:focus-visible {
   .sidebar {
     position: sticky;
     top: 0;
+    /*
+     * The whole of the app's chrome on a phone — the bar, and the drawer and
+     * scrim inside it — rides on this one number, and it is deliberately a
+     * small one. Nothing on it creates a stacking context above the shell, so
+     * a page that wants to float something over its own content competes with
+     * the bar directly, in the root context, and the bigger number simply wins.
+     *
+     * So the contract is: page content stays BELOW 20. Anything a route draws
+     * over its own body — a pill on a map, a popover under a filter, a bar that
+     * sticks to the bottom of a list — belongs in single or low double digits.
+     * Twenty itself is not available to it either: an equal z-index is not a
+     * tie, it is a win for whatever comes later in the document, and the page
+     * always comes after the nav. That is how the schedule's now bar, at a
+     * matching 20, drew itself across the open drawer.
+     *
+     * Above the shell there are only the four things that are meant to cover
+     * it, all of them portalled or full-screen: a phone takeover sheet (30),
+     * Modal and Drawer's overlay (100), the feedback element picker (150) and
+     * the toast stack (200). The map surfaces used to carry 1000–1200 to
+     * out-bid Leaflet, from before MapView sealed Leaflet into a stacking
+     * context of its own; all that was left of those numbers was a status pill
+     * painted over the same drawer. src/design/layers.test.ts holds the
+     * ceiling.
+     */
     z-index: 20;
     width: 100%;
     height: auto;
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-3) var(--gutter-screen);
+    padding: var(--space-2) var(--gutter-screen);
+    /* No scroll here, and the gutter goes with it. The column's own scroll is
+       for a box pinned to the window's height; this one is a single row as tall
+       as its tallest control. The drawer that opens out of it carries its own
+       scroll instead — it is the box that can outgrow a window now. */
+    overflow: visible;
+    scrollbar-gutter: auto;
   }
 
-  .sections,
-  .section,
-  .tripCard {
-    display: contents;
-  }
-
-  /* EXPLORE, PLAN and PLANNING WITH name groups that no longer stand apart from
-     one another here, the rules have nothing left to divide, and a chip says
-     "you are here" with its own edge rather than with a stop on a trail that is
-     not drawn. */
-  .sectionLabel,
-  .tripHead,
-  .rule,
-  .tripNav::before,
-  .navDot {
-    display: none;
+  .menuButton {
+    display: inline-flex;
   }
 
   .brandRow {
-    order: 1;
     padding: 0;
+    min-width: 0;
   }
 
-  /* Line one, in order: the mark, the way back out to every trip, then — pushed
-     to the far edge by sign out's auto margin — signing out and the faces. Only
-     the trip's own views become chips; the way out is a quiet text link, so the
-     line has one loud thing on it and it is the people. */
-  .section > .navItem {
-    order: 2;
-    padding: var(--space-2) var(--space-3);
+  /* Nothing on the bar gets squeezed. Every item on it is either a tap target
+     at its minimum size or two words that mean what they say, and a flex row
+     short of room would shrink all of them by default — a 40px sign out button
+     with "Sign / out" stacked inside it. The bar would rather run out of room
+     honestly, which is what the wordmark below deals with. */
+  .menuButton,
+  .utilityButton {
+    flex: none;
   }
 
-  /* Up at the top of the page, sign out is nowhere near the Feedback button, so
-     the corner that button reserves comes back out — kept, it would hang an
-     80px gap under the header. */
   .signOut {
-    order: 3;
-    margin-top: 0;
-    margin-bottom: 0;
-    margin-left: auto;
+    white-space: nowrap;
     align-self: center;
   }
 
-  .planners {
-    order: 4;
-    display: flex;
-    align-items: center;
-    padding-bottom: 0;
+  /*
+   * The drawer. `position: fixed` takes it out of the bar's row entirely — the
+   * bar is laid out as though it were not there, which is what lets one flex
+   * container be a column on a desk and a single row here without the nav's
+   * contents having to be moved, hidden or duplicated.
+   *
+   * Closed, it is translated off the left edge AND `visibility: hidden`. The
+   * transform alone would leave seven links sitting off-screen and still in the
+   * tab order, so a keyboard would walk out of the bar and into a nav nobody
+   * can see. Visibility is what takes them out of the tab order and out of the
+   * accessibility tree; it is transitioned rather than switched so it holds
+   * until the panel has finished sliding away.
+   *
+   * It carries the sidebar's own padding and rhythm, because it is the sidebar:
+   * the same 26/18 measure, the same deep-leaf ground, the same scroll for a
+   * trip whose roster outgrows a short window.
+   */
+  .sections {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 2;
+    width: var(--nav-drawer-width);
+    padding: 26px 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--wend-deep-leaf);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform var(--motion-fade-duration) var(--motion-fade-ease),
+      visibility var(--motion-fade-duration) var(--motion-fade-ease);
   }
 
-  /* Closer than they stand in the sidebar: at this size the faces read as one
-     cluster — one group of people — rather than as several separate circles. */
-  .avatars {
-    gap: var(--space-1);
-    margin: 0;
+  .sectionsOpen {
+    transform: none;
+    visibility: visible;
+  }
+
+  .scrim {
+    display: block;
+  }
+
+  .drawerClose {
+    display: inline-flex;
+  }
+
+  /* The pair stops being a column of its own and hands both buttons straight to
+     the bar, so each sits on it as its own control. Its `margin-top: auto` goes
+     with it — there is no leftover height to eat in a row as tall as its
+     tallest child — and so does the pin that holds it to the foot of the
+     scrolling column, with the ground and the bottom padding that pin needs.
+     `display: contents` draws no box, so there is nothing to stick, to paint or
+     to pad, and none of it is reset by hand: a reset here would read as though
+     one of them still applied. */
+  .utilities {
+    display: contents;
+  }
+
+  /* Pushed to the far edge by the first of the two: everything before it on the
+     bar is left-aligned, and the auto margin takes all the slack at once. */
+  .feedbackButton {
+    margin-left: auto;
+    align-self: center;
+  }
+}
+
+/*
+ * Phone width. The bar has a menu button, a mark and two controls to fit across
+ * 320-odd pixels, and feedback is the one of them whose label can go: it has a
+ * mark of its own that says the same thing, and it keeps its `aria-label`, so
+ * nothing is lost to a screen reader.
+ *
+ * Sign out keeps its words. It is the control someone reaches for when they
+ * want out of a shared device, and that is not the moment to make them read a
+ * pictogram — which is why the icon that used to sit beside those words has
+ * gone rather than the words themselves.
+ *
+ * This sits under 860px, so everything the bar rules do still applies here.
+ */
+@media (max-width: 600px) {
+  /* Read but not seen. Same technique as .srOnly, applied to a label that is
+     visible at every other width rather than to one that never shows. Only
+     feedback has a label here at all — sign out is its text. */
+  .utilityLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
     padding: 0;
-  }
-
-  /* Line two. `flex: 0 0 100%` is what breaks the line: nothing else fits
-     beside a full-width item, so the views always start a row of their own, and
-     when there is no trip open there is no second row at all rather than an
-     empty strip. The run scrolls sideways and never wraps, so a fifth view
-     lengthens it instead of growing the header. */
-  .tripNav {
-    order: 5;
-    flex: 0 0 100%;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-    overflow-x: auto;
-    /* A scroll container clips both axes, and a focus ring stands 6px proud of
-       its chip. The padding is the room it needs; the negative margin hands
-       that room straight back to the header's own rhythm. */
-    padding: var(--space-1);
-    margin: calc(var(--space-1) * -1);
-  }
-
-  /* The design's chips: outlined, bold, tall enough to hit, and never squeezed
-     — a long label runs off the side of the scroller rather than folding. */
-  .tripNavItem {
-    flex: none;
-    gap: 0;
-    padding: var(--space-2) var(--space-3);
-    min-height: var(--tap-min);
-    border: var(--border-width) solid rgb(240 243 238 / 28%);
-    font-weight: var(--weight-bold);
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
     white-space: nowrap;
+    border: 0;
   }
 
-  /* Filled and apricot-edged, as everywhere else "you are here" is apricot. */
-  .navItemActive.tripNavItem {
-    border-color: var(--wend-apricot);
-    background: rgb(240 243 238 / 10%);
+  /* With the label gone the pill has nothing to be long for: a square the size
+     of the minimum tap target, with the mark centred in it. Scoped to feedback
+     — the same rule on .utilityButton would square sign out too, and square is
+     the wrong shape for a word. */
+  .feedbackButton {
+    gap: 0;
+    padding: 0;
+    width: var(--tap-min);
+    height: var(--tap-min);
+    justify-content: center;
   }
 
-  /* The cluster is only as wide as its own faces, so the viewer's roster stops
-     borrowing its measure from it and takes the width of the longest name
-     instead — up to half the screen, past which the names wrap rather than run
-     off the edge of a phone. It hangs off the cluster's right edge because the
-     cluster is now at the screen's right edge; opening leftward is the only
-     direction with room.
-
-     It also goes back to opening downward. Upward is what a tall column needs,
-     where the cluster sits low in it; in the header the cluster is at the very
-     top of the page and there is nothing above it to open into — the names
-     would go straight out of the window, which is the exact failure the upward
-     reveal exists to avoid. Below the header the page has only just started. */
-  .plannerNames {
-    top: calc(100% + var(--space-1));
-    bottom: auto;
-    left: auto;
-    right: 0;
-    width: max-content;
-    max-width: 50vw;
+  /* The bar's own flanks come in, so two controls and a mark still fit. */
+  .sidebar {
+    gap: var(--space-2);
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
   }
 
-  /* Feedback is a desk-side errand. On the road the plan gets the screen. */
-  .feedbackSlot {
+  .signOut {
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+}
+
+/*
+ * The narrowest phones still in use. Four things have to fit across 320px — a
+ * menu button, the lock-up, and the pair — and the wordmark is the one of them
+ * that is saying something already said: the mark beside it is the same brand,
+ * and it is a link home either way. So the word goes and the trail stays.
+ *
+ * Reached through the lock-up's own `data-variant` hook rather than through
+ * Logo's class, which belongs to another module and is not ours to name. The
+ * mark keeps its `aria-label`, so the link is still "Wend" to a screen reader
+ * at every width.
+ */
+@media (max-width: 380px) {
+  .brandRow [data-variant] {
     display: none;
   }
 }

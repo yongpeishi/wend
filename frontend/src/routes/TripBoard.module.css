@@ -27,6 +27,14 @@
    history of this file for the arithmetic). It is a variable rather than a
    literal because BundlePanel reads the same number to resolve its internal
    scroller; two copies would drift the first time the title block changed. */
+/* Spacing only — the type is PageTitle.module.css's, and no route restates it.
+   .wrap in TripLayout is a gapless flex column, so the air under the title has
+   to come from here; --space-4 matches the gap the ideas column keeps between
+   its own stacked blocks. */
+.pageTitle {
+  margin-bottom: var(--space-4);
+}
+
 .board {
   --screen-measure: none;
   margin-inline: calc(var(--gutter-screen) * -1);

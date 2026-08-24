@@ -61,6 +61,11 @@
    the acting colour. Same hand-rolled small-primary as BulkBar's, for the same
    reason — the <Button> primary carries a 48px floor this bar has no room for. */
 .primary {
+  /* inline-flex so the drawn chevron centres on the label rather than sitting
+     on its baseline, the way it does in the Filter and Plans triggers. */
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   padding: 9px var(--space-4);
   border: none;
   border-radius: var(--radius-card);
@@ -102,7 +107,7 @@
 .catcher {
   position: fixed;
   inset: 0;
-  z-index: 19;
+  z-index: 9;
   border: none;
   padding: 0;
   background: none;
@@ -117,7 +122,7 @@
   /* 52px: just clear of the bar's own height, so the panel sits on top of it
      rather than starting inside it. */
   bottom: 52px;
-  z-index: 20;
+  z-index: 10;
   width: 280px;
   display: flex;
   flex-direction: column;

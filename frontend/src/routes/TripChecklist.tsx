@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
+import { PageTitle } from '../components/PageTitle';
 import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import { useEntries } from '../api/entries';
@@ -51,6 +52,12 @@ export function TripChecklist() {
       errorMessage="Your checklist didn't load. Nothing is lost — everything on it is still there."
     >
       <div className={styles.wrap}>
+        {/* The screen's own name, the same one the sidebar tab carries. It
+            stands above the composer, not beside it, so the page reads the way
+            the itinerary and the final schedule do: name first, then the things
+            you do to the list. */}
+        <PageTitle>Checklist</PageTitle>
+
         {/* Nothing rendered rather than anything made readOnly. The rule that a
             text field goes readOnly is about fields holding something to read;
             a composer holds nothing by definition — it is a button with a place to

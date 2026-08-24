@@ -36,6 +36,9 @@ export type { QueryGateProps, QueryGateSource } from './QueryGate';
 export { PageHeader } from './PageHeader';
 export type { PageHeaderProps } from './PageHeader';
 
+export { PageTitle } from './PageTitle';
+export type { PageTitleProps } from './PageTitle';
+
 export { TabBar } from './TabBar';
 export type { Tab, TabBarProps } from './TabBar';
 
