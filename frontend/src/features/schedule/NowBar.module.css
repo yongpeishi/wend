@@ -6,11 +6,18 @@
  *
  * Card tone with a rule along the top — elevation is tone, never shadow, and
  * over paper that hairline is what separates the bar from the row behind it.
+ *
+ * Ten, and below the shell's twenty on purpose. This used to be twenty itself,
+ * which is not "as high as the chrome" but "higher": nothing between the bar
+ * and the root creates a stacking context, so an equal z-index is settled by
+ * document order, and the page comes after the nav. A full-bleed bar then drew
+ * itself straight across the open phone drawer. It only ever has to clear the
+ * day's own rows. See AppLayout.module.css for the ceiling.
  */
 .bar {
   position: sticky;
   bottom: 0;
-  z-index: 20;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;

@@ -670,16 +670,21 @@ button.avatar:focus-visible {
      * a page that wants to float something over its own content competes with
      * the bar directly, in the root context, and the bigger number simply wins.
      *
-     * So the contract is: 20 is the ceiling for page content. Anything a route
-     * draws over its own body — a pill on a map, a popover under a filter, a
-     * bar that sticks to the bottom of a list — belongs in single or low double
-     * digits. Above the shell there are only the four things that are meant to
-     * cover it, all of them portalled or full-screen: a phone takeover sheet
-     * (30), Modal and Drawer's overlay (100), the feedback element picker (150)
-     * and the toast stack (200). The map surfaces used to carry 1000–1200 to
+     * So the contract is: page content stays BELOW 20. Anything a route draws
+     * over its own body — a pill on a map, a popover under a filter, a bar that
+     * sticks to the bottom of a list — belongs in single or low double digits.
+     * Twenty itself is not available to it either: an equal z-index is not a
+     * tie, it is a win for whatever comes later in the document, and the page
+     * always comes after the nav. That is how the schedule's now bar, at a
+     * matching 20, drew itself across the open drawer.
+     *
+     * Above the shell there are only the four things that are meant to cover
+     * it, all of them portalled or full-screen: a phone takeover sheet (30),
+     * Modal and Drawer's overlay (100), the feedback element picker (150) and
+     * the toast stack (200). The map surfaces used to carry 1000–1200 to
      * out-bid Leaflet, from before MapView sealed Leaflet into a stacking
      * context of its own; all that was left of those numbers was a status pill
-     * painted over the open nav drawer. src/design/layers.test.ts holds the
+     * painted over the same drawer. src/design/layers.test.ts holds the
      * ceiling.
      */
     z-index: 20;
