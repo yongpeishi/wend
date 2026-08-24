@@ -17,6 +17,12 @@
  * wrap's floor, which is the last band of paper between the two. Long days are
  * unaffected: the box was already past the bottom of the window, and the bar
  * was already riding it.
+ *
+ * That gives the bar somewhere to go; what actually sends it there is the auto
+ * margin on the bar itself (see .nowBarSlot). Height alone was never enough —
+ * sticky only ever holds an element UP, it never pushes one down, so on an
+ * empty day the bar stayed at its place in the flow, just under "Nothing placed
+ * yet", with a screen's worth of paper below it and nothing to scroll.
  */
 .screen {
   display: flex;
@@ -72,16 +78,27 @@
  * page — which is the range it needs to ride the bottom of the window over the
  * rows and then settle after the last of them.
  *
- * The margin goes on the bar itself for the same reason: it is full-bleed, so
- * it hands back the gutter TripLayout's .wrap puts on every screen and pads
- * itself by the same amount instead. `display: none` on the wrapper still takes
- * the whole subtree away, which is how the desk loses the bar.
+ * The margins go on the bar itself for the same reason — see below.
+ * `display: none` on the wrapper still takes the whole subtree away, which is
+ * how the desk loses the bar.
  */
 .nowBarSlot {
   display: contents;
 }
 
+/*
+ * `margin-top: auto` is what puts the bar on the floor of a short day. It eats
+ * whatever height the day did not use, which on a full day is none — so this is
+ * inert exactly when sticky takes over, and the two never fight over the same
+ * pixel. An empty day is not an edge case here: it is the state the screen
+ * opens in for every day nobody has planned yet.
+ *
+ * The inline margin is a separate job: the bar is full-bleed, so it hands back
+ * the gutter TripLayout's .wrap puts on every screen and pads itself by the
+ * same amount instead.
+ */
 .nowBarSlot > * {
+  margin-top: auto;
   margin-inline: calc(var(--gutter-screen) * -1);
 }
 
