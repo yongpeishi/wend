@@ -169,14 +169,17 @@
   cursor: crosshair;
 }
 
-/* Overlays sit above Leaflet's panes and controls (Leaflet's own stack tops
-   out at 1000). 14px in from the corners — the same inset MapView gives the
-   zoom control and the attribution, so the chrome reads as one family. */
+/* Overlays sit over the map, which is all they have ever had to do — MapView
+   seals Leaflet's own 400-and-up stack inside its own stacking context, so one
+   is enough and the four figures these used to carry only reached out to the
+   root and painted over the app's chrome. 14px in from the corners — the same
+   inset MapView gives the zoom control and the attribution, so the chrome reads
+   as one family. */
 .searchOverlay {
   position: absolute;
   top: 14px;
   left: 14px;
-  z-index: 1100;
+  z-index: 1;
 }
 
 /* Under the zoom pair: 14px inset + two 36px circles + the 8px between them
@@ -185,7 +188,7 @@
   position: absolute;
   top: 104px;
   right: 14px;
-  z-index: 1100;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
@@ -218,7 +221,7 @@
   top: 14px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1100;
+  z-index: 1;
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-3);
@@ -270,7 +273,7 @@
   position: absolute;
   left: 14px;
   bottom: 14px;
-  z-index: 1100;
+  z-index: 1;
   width: 340px;
   max-width: calc(100% - 28px);
 }

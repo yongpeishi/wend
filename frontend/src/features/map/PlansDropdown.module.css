@@ -72,26 +72,27 @@
 }
 
 /* Invisible, fills the viewport, sits under the panel and over everything
-   else: the next click anywhere goes here and closes the panel. Above
-   Leaflet's own stack (which tops out at 1000) so a click on the map closes
-   this rather than landing on the tiles. */
+   else on the page: the next click anywhere goes here and closes the panel. Two
+   rather than the 1199 it used to carry — that number was there to out-bid
+   Leaflet, which MapView has sealed into its own stacking context since, and
+   all it out-bid in the end was the app's own chrome. */
 .catcher {
   position: fixed;
   inset: 0;
-  z-index: 1199;
+  z-index: 2;
   border: none;
   padding: 0;
   background: none;
   cursor: default;
 }
 
-/* Left-anchored and opening downward from the control row, clear of Leaflet's
-   panes for the same reason the catcher is. */
+/* Left-anchored and opening downward from the control row, one step above the
+   catcher so the panel itself is not what the next click lands on. */
 .panel {
   position: absolute;
   top: calc(100% + var(--space-1));
   left: 0;
-  z-index: 1200;
+  z-index: 3;
   width: 280px;
   display: flex;
   flex-direction: column;

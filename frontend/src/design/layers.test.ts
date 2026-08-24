@@ -1,0 +1,89 @@
+import { describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+/*
+ * The app's stacking order, held as a rule rather than as a habit.
+ *
+ * Almost nothing in this app creates a stacking context, so a z-index written
+ * anywhere in a route's CSS is not scoped to that route — it lands in the ROOT
+ * context and competes with the app shell directly. That is how a status pill
+ * on the board's map came to be painted over the phone's open nav drawer: it
+ * carried z-index 1000, chosen long ago to out-bid Leaflet's own panes, and
+ * kept bidding after MapView sealed Leaflet inside a stacking context of its
+ * own (see MapView.module.css) and left it nothing to bid against but the
+ * chrome.
+ *
+ * So: the shell's chrome sits at 20, and page content stays at or below it.
+ * Above the shell there are only the few surfaces that are MEANT to cover it,
+ * and they are named here one at a time. A new four-figure z-index is almost
+ * always someone reaching for a number big enough to win an argument they have
+ * not actually had — and this test is where that stops.
+ */
+
+/** The shell's own chrome: the sidebar, and the phone bar it becomes. */
+const SHELL = 20;
+
+/**
+ * The only things allowed to paint over the shell, each with the reason it is.
+ * Keyed by value so a second surface arriving at the same level has to say so.
+ */
+const ABOVE_SHELL = new Map([
+  [30, 'NearbyPanel: the phone takeover sheet over the schedule'],
+  [100, "Modal and Drawer's shared overlay"],
+  [150, "the feedback element picker's highlight"],
+  [200, 'the toast stack'],
+]);
+
+/** Every .module.css under src/, walked rather than globbed. */
+function stylesheets(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) return stylesheets(path);
+    return entry.name.endsWith('.module.css') ? [path] : [];
+  });
+}
+
+interface Layer {
+  file: string;
+  value: number;
+}
+
+function declaredLayers(): Layer[] {
+  return stylesheets('src').flatMap((file) => {
+    const css = readFileSync(file, 'utf8');
+    // Declarations only. A `z-index` mentioned in a comment is prose, and
+    // several of these files explain themselves at length.
+    return Array.from(css.matchAll(/^\s*z-index:\s*(-?\d+);/gm)).map((match) => ({
+      file,
+      value: Number(match[1]),
+    }));
+  });
+}
+
+describe('stacking layers', () => {
+  it('finds the stylesheets it is meant to be policing', () => {
+    // A walk that silently found nothing would pass every assertion below.
+    expect(declaredLayers().length).toBeGreaterThan(20);
+  });
+
+  it('keeps page content at or below the shell', () => {
+    const tooHigh = declaredLayers()
+      .filter((layer) => layer.value > SHELL && !ABOVE_SHELL.has(layer.value))
+      .map((layer) => `${layer.file}: z-index ${layer.value}`);
+
+    // If this fails, the fix is almost never a bigger number on the shell. It
+    // is either a smaller number here — page content rarely needs to clear
+    // anything but its own siblings — or, if the surface really does belong
+    // over the whole app, a new entry in ABOVE_SHELL saying why.
+    expect(tooHigh).toEqual([]);
+  });
+
+  it('leaves every documented layer above the shell in use', () => {
+    const declared = new Set(declaredLayers().map((layer) => layer.value));
+    const unused = Array.from(ABOVE_SHELL.keys()).filter((value) => !declared.has(value));
+
+    // A list of exceptions nobody takes any more is a list nobody reads.
+    expect(unused).toEqual([]);
+  });
+});

@@ -663,6 +663,25 @@ button.avatar:focus-visible {
   .sidebar {
     position: sticky;
     top: 0;
+    /*
+     * The whole of the app's chrome on a phone — the bar, and the drawer and
+     * scrim inside it — rides on this one number, and it is deliberately a
+     * small one. Nothing on it creates a stacking context above the shell, so
+     * a page that wants to float something over its own content competes with
+     * the bar directly, in the root context, and the bigger number simply wins.
+     *
+     * So the contract is: 20 is the ceiling for page content. Anything a route
+     * draws over its own body — a pill on a map, a popover under a filter, a
+     * bar that sticks to the bottom of a list — belongs in single or low double
+     * digits. Above the shell there are only the four things that are meant to
+     * cover it, all of them portalled or full-screen: a phone takeover sheet
+     * (30), Modal and Drawer's overlay (100), the feedback element picker (150)
+     * and the toast stack (200). The map surfaces used to carry 1000–1200 to
+     * out-bid Leaflet, from before MapView sealed Leaflet into a stacking
+     * context of its own; all that was left of those numbers was a status pill
+     * painted over the open nav drawer. src/design/layers.test.ts holds the
+     * ceiling.
+     */
     z-index: 20;
     width: 100%;
     height: auto;
