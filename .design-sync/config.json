@@ -1,0 +1,35 @@
+{
+  "projectId": "ef4483e7-b6aa-4016-86cf-877e648be2ff",
+  "shape": "package",
+  "pkg": "frontend",
+  "globalName": "WendDesignSystem",
+  "srcDir": "src/design",
+  "tsconfig": "tsconfig.app.json",
+  "tokensPkg": "../src/design",
+  "tokensGlob": "tokens/*.css",
+  "cssEntry": "src/design/global.css",
+  "libOverrides": {
+    "css.mjs": "tokens live in the app's src/design tree, not an npm package \u2014 copyTokens must accept a package-relative tokensPkg with no package.json"
+  },
+  "componentSrcMap": {
+    "Button": "src/design/components/core/Button.tsx",
+    "Chip": "src/design/components/core/Chip.tsx",
+    "Tag": "src/design/components/core/Chip.tsx",
+    "Input": "src/design/components/core/Input.tsx",
+    "Select": "src/design/components/core/Select.tsx",
+    "Switch": "src/design/components/core/Switch.tsx",
+    "Logo": "src/design/components/brand/Logo.tsx",
+    "Trail": "src/design/components/brand/Trail.tsx"
+  },
+  "dtsPropsFor": {
+    "Button": "  /** primary is the single forward action per screen. onDark for deep-leaf surfaces. destructive is the one control allowed to be filled rust \u2014 for a click that destroys something, never for merely \"important\". */\n  variant?: 'primary' | 'secondary' | 'quiet' | 'onDark' | 'destructive';\n  /** medium is the default and covers nearly every case. small is for a button inside an already-dense row (it sits under the 48px tap minimum on purpose). large is for a single hero CTA. */\n  size?: 'small' | 'medium' | 'large';\n  /** The label. Name the outcome in ordinary words \u2014 \"Save trip\", \"Delete\" \u2014 never a movement verb. */\n  children?: React.ReactNode;\n  disabled?: boolean;\n  /** Defaults to 'button' \u2014 set 'submit' only inside a form. */\n  type?: 'button' | 'submit' | 'reset';\n  onClick?: React.MouseEventHandler<HTMLButtonElement>;\n  className?: string;\n  /** Every other <button> attribute is forwarded. Focus is handled by :focus-visible, not a prop. */\n  [key: string]: unknown;",
+    "Chip": "  /** Renders the filled leaf state and sets aria-pressed. */\n  selected?: boolean;\n  /** 'saved' renders the plum tag used for kept places. */\n  tone?: 'default' | 'saved';\n  children?: React.ReactNode;\n  onClick?: React.MouseEventHandler<HTMLButtonElement>;\n  disabled?: boolean;\n  className?: string;\n  /** Renders a real <button>; every other button attribute is forwarded. */\n  [key: string]: unknown;",
+    "Tag": "  /** 'saved' renders the plum tag used for kept places. */\n  tone?: 'default' | 'saved';\n  children?: React.ReactNode;\n  className?: string;\n  /** Static and non-interactive \u2014 renders a <span>. Use Chip when it triggers something. */\n  [key: string]: unknown;",
+    "Input": "  /** Trailing affordance, e.g. the return glyph \"\\u21b5\". */\n  hint?: string;\n  /** Renders the rust error border. Set only when the value is actually wrong \u2014 never to draw attention. Pair it with a message that names the fix. */\n  error?: boolean;\n  /** Escape hatch for the bordered wrapper \u2014 e.g. `flex: 1` inside a row. */\n  wrapperClassName?: string;\n  value?: string | number;\n  defaultValue?: string | number;\n  /** May ask a plain question, but a placeholder is never the only label. */\n  placeholder?: string;\n  onChange?: React.ChangeEventHandler<HTMLInputElement>;\n  disabled?: boolean;\n  readOnly?: boolean;\n  type?: string;\n  className?: string;\n  /** Every other <input> attribute is forwarded to the real input. */\n  [key: string]: unknown;",
+    "Select": "  /** The <option> elements. A native select \u2014 the closed control is styled, the open menu stays the OS's. */\n  children?: React.ReactNode;\n  /** Renders the rust error border. Same rule as Input: only when the selection is actually wrong. */\n  error?: boolean;\n  /** Escape hatch for the positioning wrapper \u2014 e.g. `flex: 1` inside a row. */\n  wrapperClassName?: string;\n  value?: string | number;\n  defaultValue?: string | number;\n  onChange?: React.ChangeEventHandler<HTMLSelectElement>;\n  disabled?: boolean;\n  className?: string;\n  /** Every other <select> attribute is forwarded. */\n  [key: string]: unknown;",
+    "Switch": "  /** Required. The knob's position is the primary state signal, colour only the second. */\n  checked: boolean;\n  /** Required. Fires with the NEXT value. A switch takes effect immediately \u2014 there is nothing to confirm. */\n  onCheckedChange: (checked: boolean) => void;\n  /** Required. The words beside the track ARE the accessible name \u2014 there is no separate label or aria-label. */\n  children: React.ReactNode;\n  /** Greys the track in both states and mutes the label; the knob position still carries on/off. */\n  disabled?: boolean;\n  className?: string;\n  [key: string]: unknown;",
+    "Logo": "  /** primary sits on paper; reversed sits on deep leaf. */\n  variant?: 'primary' | 'reversed';\n  /** Mark height in px. At 28 or below the stroke thickens automatically. Never below 24. */\n  size?: number;\n  /** Hide for favicons, app icons and stamps. */\n  showWordmark?: boolean;\n  className?: string;\n  style?: React.CSSProperties;\n  [key: string]: unknown;",
+    "Trail": "  /** One entry per pass, in order. Exactly one stop should be 'open' \u2014 that is where you are. */\n  stops?: Array<'decided' | 'open' | 'waiting' | 'destination'>;\n  /** Optional caption per stop, e.g. ['Brainstorm', 'Gather', 'Schedule']. */\n  labels?: string[];\n  /** Set on deep-leaf surfaces. */\n  onDark?: boolean;\n  /** SVG height in px. Default 46. */\n  height?: number;\n  /** Called with the stop index when its label is activated; supplying it makes the labels real buttons. Omit for a decorative trail. 'waiting' stops are never selectable. */\n  onSelectStop?: (index: number) => void;\n  className?: string;\n  [key: string]: unknown;"
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
