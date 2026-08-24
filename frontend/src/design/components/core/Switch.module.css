@@ -23,13 +23,33 @@
   }
 }
 
-/* Hover and press are opacity only, everywhere in this system. */
-.switch:hover {
+/* Hover and press are opacity only, everywhere in this system — and only on a
+   control that can actually be pressed. */
+.switch:hover:not(:disabled) {
   opacity: 0.82;
 }
 
-.switch:active {
+.switch:active:not(:disabled) {
   opacity: 0.7;
+}
+
+/* Disabled has to change the TRACK, not just the cursor. The knob's position is
+   this control's primary state signal, so dimming the whole button with opacity
+   would leave "on and unavailable" and "off and unavailable" reading as the same
+   washed-out object. Instead the track drops to --surface-disabled in both
+   states and the label goes muted: position still says on/off, colour now says
+   "not yours to change". Same two tokens Button's disabled variants use. */
+.switch:disabled {
+  cursor: default;
+}
+
+.switch:disabled .track,
+.switch:disabled .trackOn {
+  background: var(--surface-disabled);
+}
+
+.switch:disabled .label {
+  color: var(--action-disabled-text);
 }
 
 .switch:focus-visible {
