@@ -17,6 +17,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Toast } from '../components/Toast';
 import { Spinner } from '../components/Spinner';
 import { PageHeader } from '../components/PageHeader';
+import { PageTitle } from '../components/PageTitle';
 import { TabBar } from '../components/TabBar';
 import { TrailNav } from '../components/TrailNav';
 import type { TrailStep } from '../components/TrailNav';
@@ -350,7 +351,10 @@ export function DesignGallery() {
         </div>
       </Section>
 
-      <Section index="12" label="App" title="PageHeader & TabBar">
+      <Section index="12" label="App" title="PageHeader, PageTitle & TabBar">
+        <Specimen label="PageTitle — every trip screen's own name, one rule">
+          <PageTitle>Itinerary</PageTitle>
+        </Specimen>
         <Specimen label="PageHeader with back + actions">
           <PageHeader
             title="Six days in Kyoto"

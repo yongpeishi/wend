@@ -1,0 +1,25 @@
+/*
+ * THE page title rule. Every trip screen's own name is drawn by this one
+ * declaration and nowhere else — change the type of a page title here and all
+ * five tabs move together. Route stylesheets must not redeclare it; if a screen
+ * needs the title placed differently, that is layout and belongs on the
+ * wrapper around <PageTitle>, not on the heading itself.
+ *
+ * The style is the itinerary's, which is the one the design settled on: the
+ * same uppercase label the rest of the product gives a section heading
+ * (TripsList's .sectionLabel, BundlePanel's .heading), raised from their
+ * --text-label-size to --text-min-size — this product's floor — because caps
+ * plus the label tracking need the extra pixel to stay readable.
+ *
+ * --text-strong where those section labels are muted: they label a list that is
+ * itself the content, while this one heads a whole screen under the trip title.
+ */
+.title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+}

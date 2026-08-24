@@ -1,3 +1,4 @@
+import { PageTitle } from '../../components/PageTitle';
 import { Button } from '../../design/components/core/Button';
 import styles from './ItineraryHeader.module.css';
 
@@ -24,8 +25,9 @@ export interface ItineraryHeaderProps {
  *
  * It names a section, not the page — TripLayout above it holds the trip's
  * title as the one `<h1>` and prints the date range under it, so neither is
- * repeated here. Hence `<h2>`, styled like every other section heading in the
- * product (TripsList's .sectionLabel, BundlePanel's).
+ * repeated here. The name itself is a <PageTitle>, the same component every
+ * other trip tab heads itself with; the style this header used to declare
+ * inline now lives once in PageTitle.module.css.
  *
  * Unsettled work is signalled once and never nagged about — the split line
  * simply is not there when nothing is split, and when it is, it states the
@@ -42,7 +44,7 @@ export function ItineraryHeader({
   return (
     <header className={styles.header}>
       <div className={styles.titles}>
-        <h2 className={styles.title}>Itinerary</h2>
+        <PageTitle>Itinerary</PageTitle>
         <p className={styles.meta}>
           <span className={styles.length}>{meta}</span>
           {splitLine && <span className={styles.split}>{splitLine}</span>}
