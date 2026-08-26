@@ -52,6 +52,10 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
         # 404 and not 403. A 403 would confirm the id exists, which makes trip ids
         # enumerable and undoes the whole feature.
         assert_equal 404, response.status, "#{key} answered #{response.status} for a stranger"
+      when :forbidden
+        # Admin-only routes address no guessable record, so unlike :denied there is
+        # nothing a 403 could confirm the existence of -- the honest status is safe.
+        assert_equal 403, response.status, "#{key} answered #{response.status} for a non-admin"
       when :empty, :open
         assert response.successful?, "#{key} answered #{response.status}"
       end
@@ -168,6 +172,8 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
   #              of the other person's world in it.
   #   :open   -- deliberately reachable by anyone: signing in and out, asking who you
   #              are, signing up, and saying something about the app itself.
+  #   :forbidden -- admin-only. A signed-in non-admin is turned away at the door
+  #                 with a flat 403 and no trace of anyone's feedback.
   def probes
     {
       "api/entries#index" => [ :empty, -> { get "/api/entries" } ],
@@ -257,6 +263,11 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
       } ],
 
       "api/feedbacks#index" => [ :empty, -> { get "/api/feedbacks" } ],
+      "api/admin/feedbacks#index" => [ :forbidden, -> { get "/api/admin/feedbacks" } ],
+      "api/admin/feedbacks#update" => [ :forbidden, lambda {
+        patch "/api/admin/feedbacks/#{@feedback.id}", params: { feedback: { status: "triaged" } }, as: :json
+      } ],
+      "api/admin/feedbacks#export" => [ :forbidden, -> { get "/api/admin/feedbacks/export" } ],
       "api/feedbacks#create" => [ :open, lambda {
         post "/api/feedbacks", params: { feedback: { message: "Mine, about the app" } }, as: :json
       } ],

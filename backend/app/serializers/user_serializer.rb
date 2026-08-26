@@ -4,6 +4,7 @@ class UserSerializer
       "id" => user.id,
       "name" => user.name,
       "email" => user.email,
+      "admin" => user.admin,
       "created_at" => user.created_at.iso8601,
       "updated_at" => user.updated_at.iso8601
     }
