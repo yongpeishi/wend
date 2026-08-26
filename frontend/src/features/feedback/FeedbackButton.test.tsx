@@ -50,6 +50,10 @@ function openComposer() {
 beforeEach(() => {
   // The seeded demo user, signed in.
   db.currentUserId = db.users[0]?.id ?? null;
+  // The seed now carries feedback rows for the admin table; composing feedback
+  // starts from a blank slate so `db.feedbacks[0]` below is what was just sent.
+  // resetDb() in afterEach puts the seed back.
+  db.feedbacks = [];
 });
 
 describe('FeedbackButton', () => {

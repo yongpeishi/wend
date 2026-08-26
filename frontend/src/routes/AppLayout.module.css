@@ -510,6 +510,13 @@ button.avatar:focus-visible {
   opacity: 0.75;
 }
 
+/* The admin link wears the pair's look but is an anchor, so the UA underline
+   has to be told to go the way .navItem tells it. */
+.adminLink {
+  text-decoration: none;
+  border-bottom: none;
+}
+
 .utilityButton:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);

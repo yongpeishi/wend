@@ -1,0 +1,221 @@
+/*
+ * AppLayout's shell, recoloured and simplified. Same 246px measure, same
+ * 26/18/20 rhythm, same on-dark inks — deep plum instead of deep leaf is the
+ * one deliberate difference, and it is the whole point: the chrome itself says
+ * "admin", before any heading does.
+ */
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--wend-paper);
+}
+
+.sidebar {
+  /* The reversed Logo fills its open stop with --surface-inverse so the ring
+     reads as drawn on the sidebar. That token is deep leaf; on this ground the
+     fill has to be the ground it actually sits on. */
+  --surface-inverse: var(--wend-deep-plum);
+
+  width: 246px;
+  flex: none;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding: 26px 18px 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  background: var(--wend-deep-plum);
+  color: var(--text-on-dark);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 var(--space-2);
+}
+
+/* See AppLayout: a brand lock-up, not link text. */
+.brandLink {
+  display: inline-flex;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: none;
+  border-radius: var(--radius-card);
+}
+
+.brandLink:hover {
+  opacity: 0.75;
+}
+
+.brandLink:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The word that names the surface. Plum tint on deep plum — the same family
+   one step lighter, so it reads as part of the chrome rather than a warning.
+   The pill radius keeps it a badge, not a button; there is nothing to press. */
+.badge {
+  padding: 2px var(--space-2);
+  border: var(--border-width) solid var(--wend-plum-tint);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--wend-plum-tint);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sectionLabel {
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-on-dark-muted);
+  padding: 0 var(--space-2) 6px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-small-size);
+  color: var(--text-on-dark-muted);
+  text-decoration: none;
+  border-bottom: none;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.navItem:hover {
+  opacity: 0.75;
+}
+
+.navItem:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Two signals, as in AppLayout: colour alone tested as too quiet to find. */
+.navItemActive {
+  color: var(--text-on-dark);
+  font-weight: var(--weight-bold);
+}
+
+/* The pair at the foot — AppLayout's .utilities, on the plum ground. */
+.utilities {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding-bottom: 20px;
+  background: var(--wend-deep-plum);
+}
+
+.utilityButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-on-dark-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* "Back to app" is an anchor wearing the pair's look; the UA underline goes. */
+.utilityLink {
+  text-decoration: none;
+  border-bottom: none;
+}
+
+.utilityButton:hover {
+  opacity: 0.75;
+}
+
+.utilityButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.signOut:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Touch pointers get the full target, as everywhere. */
+@media (pointer: coarse) {
+  .navItem,
+  .utilityButton {
+    min-height: var(--tap-min);
+  }
+}
+
+/*
+ * Narrow widths: no drawer — admin work is desktop work, and out of scope to
+ * polish. The column simply stacks: a bar with the lock-up, badge, nav link
+ * and the pair all on one wrapping row, the page under it. Nothing hidden,
+ * nothing broken, nothing more.
+ */
+@media (max-width: 860px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--gutter-screen);
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
+
+  .section {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  /* A one-link nav needs no heading on a bar. */
+  .sectionLabel {
+    display: none;
+  }
+
+  /* Hands its two controls straight to the bar, sign out landing last and
+     right — the same corner it holds in the app shell. */
+  .utilities {
+    display: contents;
+  }
+
+  .utilityLink {
+    margin-left: auto;
+  }
+}

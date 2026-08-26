@@ -29,6 +29,12 @@
   --wend-plum-tint: #B497B4;
   --wend-plum-wash: #EFE7EF;
 
+  /* Deep plum: --wend-deep-leaf's counterpart in murasaki's hue family — the
+     admin area's sidebar ground, so the chrome itself says "you are not in the
+     app any more". Same tonal depth as deep leaf, so --text-on-dark and
+     --text-on-dark-muted keep their contrast on it unchanged. */
+  --wend-deep-plum: #443044;
+
   /* Feedback hues. Jade is deliberately cooler and brighter than --wend-leaf so
      that a confirmation never reads as a button; see --feedback-success below
      for the rules that keep the two greens apart. */

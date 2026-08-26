@@ -24,6 +24,13 @@ interface StoredUser extends User {
   password: string;
 }
 
+/** The `feedbacks` row: what the reporter's own GET never gets back (the
+ * user agent) still exists server-side, so it exists here too — the admin
+ * serializer is what reads it. */
+export interface StoredFeedback extends Feedback {
+  user_agent: string | null;
+}
+
 /** One person on one trip. Trip-level only — a subtree inherits its trip's row. */
 export interface StoredMembership {
   trip_id: number;
@@ -92,7 +99,7 @@ export const db = {
   scheduleItems: [] as ScheduleItem[],
   tripDays: [] as StoredTripDay[],
   dayVersions: [] as StoredDayVersion[],
-  feedbacks: [] as Feedback[],
+  feedbacks: [] as StoredFeedback[],
   memberships: [] as StoredMembership[],
   currentUserId: null as number | null,
 };
@@ -597,10 +604,12 @@ function addLink(parentId: number, childId: number, position: number) {
 
 export function seed() {
   db.users = [
-    { id: 1, name: 'Demo Traveler', email: 'demo@wend.app', password: 'password' },
+    // Admin, so the one account every dev session signs into can reach /admin.
+    { id: 1, name: 'Demo Traveler', email: 'demo@wend.app', password: 'password', admin: true },
     // A second person, so the share panel has someone real to bring along and
-    // take off again — and so the vote below stops pointing at nobody.
-    { id: 2, name: 'Sarah', email: 'sarah@wend.app', password: 'password' },
+    // take off again — and so the vote below stops pointing at nobody. Not an
+    // admin, so the guard has someone to turn away.
+    { id: 2, name: 'Sarah', email: 'sarah@wend.app', password: 'password', admin: false },
   ];
   db.currentUserId = null;
   // Links are rebuilt from scratch below. Without this the seeded links were
@@ -774,8 +783,60 @@ export function seed() {
     { id: allocateId(), title: 'Apply for visa', entry_id: null, trip_id: trip.id, done_at: null, due_on: '2026-10-01', position: 0 },
   ];
 
-  // Starts empty: feedback is something the user produces, never seed content.
-  db.feedbacks = [];
+  // Enough rows for the admin triage table to be worth looking at: two
+  // reporters, every status, a capture and a bare message, fixed ids and
+  // timestamps so ordering (newest first) is checkable. The FeedbackButton
+  // tests clear this themselves — composing feedback starts from a blank slate.
+  db.feedbacks = [
+    {
+      id: 901,
+      message: 'The checklist loses my tick when I scroll — it comes back on reload though.',
+      user_id: 2,
+      url: 'http://localhost:5173/trips/1/checklist',
+      element_selector: null,
+      element_classes: null,
+      status: 'new',
+      created_at: '2026-08-22T09:15:00.000Z',
+      updated_at: '2026-08-22T09:15:00.000Z',
+      user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) Safari/605.1.15',
+    },
+    {
+      id: 902,
+      message: 'Love the itinerary view. Could the map pins use the same colours as the categories?',
+      user_id: 1,
+      url: 'http://localhost:5173/trips/1/map',
+      element_selector: null,
+      element_classes: null,
+      status: 'new',
+      created_at: '2026-08-20T18:40:00.000Z',
+      updated_at: '2026-08-20T18:40:00.000Z',
+      user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/139.0',
+    },
+    {
+      id: 903,
+      message: 'This button says "Set aside" but nothing visibly moves.',
+      user_id: 2,
+      url: 'http://localhost:5173/trips/1/schedule',
+      element_selector: 'button[data-testid="set-aside"]',
+      element_classes: '_button_1p9dt_29 _quiet_1p9dt_44',
+      status: 'triaged',
+      created_at: '2026-08-18T11:05:00.000Z',
+      updated_at: '2026-08-19T08:00:00.000Z',
+      user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Firefox/141.0',
+    },
+    {
+      id: 904,
+      message: 'Sign-in kept rejecting my password until I retyped it by hand.',
+      user_id: 1,
+      url: 'http://localhost:5173/signin',
+      element_selector: null,
+      element_classes: null,
+      status: 'done',
+      created_at: '2026-08-15T07:30:00.000Z',
+      updated_at: '2026-08-16T10:00:00.000Z',
+      user_agent: null,
+    },
+  ];
 
   // ---- Itinerary ---------------------------------------------------------
   // Three of the trip's seven dates carry a row; the rest are untouched days,

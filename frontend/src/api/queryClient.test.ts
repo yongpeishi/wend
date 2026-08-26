@@ -11,7 +11,7 @@ import type { User } from './types';
 // now 401s" into `session: null`, which is what makes ProtectedRoute redirect
 // to /signin instead of leaving the user on silently-empty screens.
 
-const user: User = { id: 1, name: 'Demo Traveler', email: 'demo@wend.app' };
+const user: User = { id: 1, name: 'Demo Traveler', email: 'demo@wend.app', admin: true };
 
 const unauthorized = () => Promise.reject(new ApiError(401, 'Session expired'));
 const serverError = () => Promise.reject(new ApiError(500, 'Boom'));

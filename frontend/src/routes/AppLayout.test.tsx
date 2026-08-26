@@ -340,6 +340,27 @@ describe('AppLayout', () => {
     expect(await within(shell).findByRole('button', { name: 'Demo Traveler' })).toBeInTheDocument();
   });
 
+  // The door into the admin area exists only for the accounts that can open
+  // it. The demo user is the seeded admin; Sarah is the seeded non-admin.
+  it('offers an admin the way into the admin area, beside sign out', async () => {
+    await api.post('/session', { email: 'demo@wend.app', password: 'password' });
+    renderShell();
+
+    const link = await screen.findByRole('link', { name: 'Admin area' });
+    expect(link).toHaveAttribute('href', '/admin');
+    // In the pair at the foot of the nav, with the other things that are about
+    // you rather than about the trip.
+    expect(link.parentElement).toBe(screen.getByRole('button', { name: 'Sign out' }).parentElement);
+  });
+
+  it('never shows an ordinary traveller the admin area', async () => {
+    await api.post('/session', { email: 'sarah@wend.app', password: 'password' });
+    renderShell();
+
+    await waitFor(() => expect(screen.getByTestId('whoami')).toHaveTextContent('Sarah'));
+    expect(screen.queryByRole('link', { name: 'Admin area' })).not.toBeInTheDocument();
+  });
+
   it('signs out from the sidebar', async () => {
     // Sign in first: the MSW fixtures start with no session (src/mocks/db.ts).
     await api.post('/session', { email: 'demo@wend.app', password: 'password' });

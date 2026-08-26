@@ -13,5 +13,6 @@ export { useItinerary, useUpdateTripDay, useForkDay, useKeepVersion, useRestoreV
 export { useNearby } from './nearby';
 export { useMe, useSignIn, useSignUp, useSignOut } from './session';
 export { useFeedbacks, useCreateFeedback } from './feedback';
+export { useAdminFeedbacks, useUpdateAdminFeedbackStatus, ADMIN_FEEDBACK_EXPORT_URL } from './admin';
 export { useCollaborators, useAddCollaborator, useChangeCollaboratorRole, useRemoveCollaborator, useHandOverTrip } from './collaborators';
 export type { GrantableRole } from './collaborators';

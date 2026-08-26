@@ -71,7 +71,7 @@ function initial(name: string): string {
  * everything inside it belongs to the trip named at the top.
  */
 export function AppLayout() {
-  const { signOut, isSigningOut } = useAuth();
+  const { user, signOut, isSigningOut } = useAuth();
   const { show } = useToast();
 
   /*
@@ -410,6 +410,16 @@ export function AppLayout() {
             author, and outside <Outlet> so it survives route changes and can
             still name the screen you were on when you pressed it. */}
         <div className={styles.utilities}>
+          {/* The way into the admin area, for the few accounts that have one.
+              It sits with the pair because it is also about you rather than
+              about the trip — and it is a place you go, so it is a link, not a
+              button. Everyone else never sees it; the route guard is what
+              actually keeps them out. */}
+          {user?.admin && (
+            <Link to="/admin" className={`${styles.utilityButton} ${styles.adminLink}`}>
+              Admin area
+            </Link>
+          )}
           <FeedbackButton
             className={`${styles.utilityButton} ${styles.feedbackButton}`}
             labelClassName={styles.utilityLabel}
