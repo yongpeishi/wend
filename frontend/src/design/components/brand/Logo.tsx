@@ -16,8 +16,11 @@ export interface LogoProps extends HTMLAttributes<HTMLSpanElement> {
 /**
  * The Michikusa mark: three stops on a dotted trail (decided, open, waiting/destination),
  * with the WEND wordmark lock-up. Path data is identical to
- * frontend/public/brand/michikusa-mark*.svg (the v2.3 design export ships no
- * assets/ directory of its own).
+ * frontend/public/brand/michikusa-mark*.svg and to wend-design-v2.3/assets/, which
+ * ships the same four marks. Those static files carry literal hex where this
+ * component reads tokens, so they have to be re-checked whenever a stop colour
+ * moves: they were left on the retired red-family plum (#8A4A61) for the whole of
+ * the v2.3 palette change and nothing caught it.
  */
 export const Logo = forwardRef<HTMLSpanElement, LogoProps>(function Logo(
   { variant = 'primary', size = 40, showWordmark = true, className, style, ...rest },

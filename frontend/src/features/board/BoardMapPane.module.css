@@ -102,15 +102,22 @@
   cursor: grabbing;
 }
 
-/* Above Leaflet's own panes (400) and level with its controls (1000), so the
-   pill is never painted under a tile layer. Left/right rather than a width, so
-   the pill and "Widen" share the bottom edge and the attribution — which sits
-   bottom-right — keeps its corner. */
+/* One, not a thousand. This used to bid 1000 to sit level with Leaflet's own
+   controls, from before MapView sealed Leaflet inside its own stacking context
+   (see MapView.module.css). It has not needed to out-bid anything since: the
+   map beside it is an ordinary in-flow box, so any positive z-index clears it.
+   The four figures were not merely unnecessary, they were harmful — nothing
+   here creates a stacking context, so 1000 reached all the way out to the root
+   and painted this pill over the app's own chrome, including the phone nav
+   drawer. Page content stays in single digits; see AppLayout.module.css.
+
+   Left/right rather than a width, so the pill and "Widen" share the bottom edge
+   and the attribution — which sits bottom-right — keeps its corner. */
 .footer {
   position: absolute;
   left: 14px;
   bottom: 14px;
-  z-index: 1000;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--space-3);

@@ -14,6 +14,7 @@ import { useCanEdit } from '../auth/TripRoleContext';
 import { EntryRow } from '../components/EntryRow';
 import { Card } from '../components/layout/Card';
 import { EmptyState } from '../components/EmptyState';
+import { PageTitle } from '../components/PageTitle';
 import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import { useCreateEntry, useEntries, useRestoreEntry } from '../api';
@@ -544,6 +545,21 @@ export function TripBoard() {
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveDrag(null)}
     >
+      {/* The screen's own name, in the one page-title style every trip tab
+          shares. It sits OUTSIDE .board on purpose: the board is a full-bleed
+          row of columns, and a title dropped into it would head the ideas
+          column rather than the page — indented past the map whenever the map
+          pane is open. Out here it keeps the wrap's gutter and reading measure,
+          so it lines up under the trip title exactly as the other tabs' do.
+
+          It does not replace the "All ideas" crumb further down: that one is a
+          scope line saying where in the idea tree the list is standing, and it
+          turns into a trail as soon as you drill. This says what page you are
+          on, which stays true at every depth. */}
+      <div className={styles.pageTitle}>
+        <PageTitle>Ideas</PageTitle>
+      </div>
+
       <div className={styles.board}>
         {/* Rendered only while open, never merely hidden. See toggleMap. */}
         {mapOpen && (

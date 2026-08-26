@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useToast } from '../../components/Toast';
 import type { Entry } from '../../api/types';
 import { useLinkMutations } from '../board/useLinkMutations';
@@ -152,7 +153,8 @@ export function MapSelectionBar({
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((value) => !value)}
         >
-          Add to plan <span aria-hidden="true">⌄</span>
+          Add to plan
+          <ChevronDown size={16} strokeWidth={2} aria-hidden="true" />
         </button>
       </div>
 

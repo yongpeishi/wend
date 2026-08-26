@@ -1,5 +1,5 @@
-import { ChevronDown } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { Entry } from '../../api/types';
 import styles from './PlansDropdown.module.css';
 
@@ -81,7 +81,14 @@ export function PlansDropdown({ bundles, members, selectedId, onSelect }: PlansD
           one is picked, the plan count while none is. It keeps saying "Plans"
           either way — the title alone would be a control that has forgotten to
           name itself, and the word is what makes the accessible name a
-          sentence rather than a noun with no owner. */}
+          sentence rather than a noun with no owner.
+
+          The chevron is the same drawn `ChevronDown` the Filter button beside
+          it wears, in the same trailing slot, rather than the `⌄` glyph this
+          used to print: the two controls sit on one row and open the same kind
+          of panel, and a typographic caret next to a stroked icon read as two
+          different mechanisms. Label, then value, then the mark that says
+          "there is more under here" — Filter's order exactly. */}
       <button
         type="button"
         ref={triggerRef}
@@ -90,8 +97,9 @@ export function PlansDropdown({ bundles, members, selectedId, onSelect }: PlansD
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        {/* The space is explicit: JSX would swallow the newline, and without it
-            the accessible name runs together as "Plans2". */}
+        {/* The explicit space is load-bearing: flex `gap` draws the visible one,
+            but the accessible name is textContent, and without it a screen
+            reader hears "Plans2". */}
         Plans{' '}
         {selected ? (
           <span className={styles.triggerValue}>{selected.title}</span>

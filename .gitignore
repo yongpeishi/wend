@@ -6,3 +6,9 @@ temp-design-files/
 
 # a place to put wip notes (TASK_STATUS, TASK_END_SUMMARY, screenshots)
 doc/worktree-notes/
+# design-sync (claude.ai/design) — staged scripts, build output, machine state
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

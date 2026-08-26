@@ -112,7 +112,7 @@
 .catcher {
   position: fixed;
   inset: 0;
-  z-index: 19;
+  z-index: 9;
   border: none;
   padding: 0;
   background: none;
@@ -129,7 +129,7 @@
   /* 52px: just clear of the bar's own height, so the panel sits on top of it
      rather than starting inside it. */
   bottom: 52px;
-  z-index: 20;
+  z-index: 10;
   width: 280px;
   display: flex;
   flex-direction: column;

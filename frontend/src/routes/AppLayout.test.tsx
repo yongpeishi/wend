@@ -303,23 +303,33 @@ describe('AppLayout', () => {
     expect(within(tripNav).getByRole('link', { name: 'Ideas' })).not.toHaveAttribute('aria-current');
   });
 
-  // Below 860px the sidebar folds into the phone header, and the design has no
-  // room in it for feedback: the button's fixed bottom-left corner is where the
-  // plan and the thumb already are. jsdom does not evaluate media queries, so
-  // what is provable here is that the button sits in a slot the stylesheet can
-  // switch off from outside — the button itself is shared and stays untouched.
-  it('puts the feedback button in a slot the phone header can switch off', () => {
-    const { container } = renderShell();
-    const slot = container.querySelector(`.${styles.feedbackSlot}`);
-    expect(slot).toBeInTheDocument();
-    expect(within(slot as HTMLElement).getByRole('button', { name: 'Give feedback' })).toBeInTheDocument();
+  // Feedback and sign out are one pair at the end of the nav — feedback is a
+  // nav control now, not something painted over the page, and sign out is the
+  // last thing in the sidebar on a desk and the top-right corner on a phone.
+  // Both of those come out of this one bit of DOM: same wrapper, sign out last,
+  // wrapper last in the nav. jsdom does not evaluate media queries, so the order
+  // is what is provable here, and the order is what both widths are built on.
+  it('ends the nav with feedback and sign out, sign out last', () => {
+    renderShell();
+    const sidebar = screen.getByRole('navigation', { name: 'Main' });
+    const feedback = within(sidebar).getByRole('button', { name: 'Give feedback' });
+    const signOut = within(sidebar).getByRole('button', { name: 'Sign out' });
+
+    // One wrapper holds both, and nothing in the nav comes after it.
+    const utilities = feedback.parentElement as HTMLElement;
+    expect(signOut.parentElement).toBe(utilities);
+    expect(sidebar.lastElementChild).toBe(utilities);
+
+    // Feedback, then sign out — and the composer is closed, so the pair really
+    // is the whole of the group.
+    expect(Array.from(utilities.children)).toEqual([feedback, signOut]);
   });
 
-  // The mockup's phone header drops sign out; we keep it, because it is the
-  // only way off this device and there is no other menu to hide it in. It lives
-  // in the Main nav, which is what becomes that header — not somewhere the fold
-  // would leave behind.
-  it('keeps sign out inside the nav that becomes the phone header', async () => {
+  // Sign out stays out on the bar rather than going into the drawer: it is the
+  // only way off a shared device, and it must not be a thing you first have to
+  // find a menu for. It lives in the Main nav, which is what becomes the bar and
+  // the drawer both — so the nav holds the whole of the phone's chrome.
+  it('keeps sign out inside the nav that becomes the phone bar', async () => {
     await api.post('/session', { email: 'demo@wend.app', password: 'password' });
     renderShell(`/trips/${SEEDED_TRIP_ID}`);
     const shell = screen.getByRole('navigation', { name: 'Main' });
@@ -392,5 +402,127 @@ describe('AppLayout', () => {
     // Still offered, and still clickable: failing left the traveller exactly
     // where they were, with the same way out.
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeEnabled();
+  });
+
+  // The words say what happens; a door with an arrow through it is a picture of
+  // the same two words that plenty of people read as "log in".
+  it('signs out with words and no icon', () => {
+    renderShell();
+    expect(screen.getByRole('button', { name: 'Sign out' }).querySelector('svg')).toBeNull();
+  });
+
+  /*
+   * jsdom does not evaluate media queries, so every one of these runs against
+   * the desktop cascade: the drawer is laid out as the sidebar, and the two
+   * controls that exist only on a phone are `display: none` — which is exactly
+   * right. A hidden element has no accessible name to be found by, so they are
+   * reached for by their class, the same way the planner reveal above is.
+   *
+   * What is provable here is the state the phone CSS hangs off: which control
+   * opens the drawer, that it starts closed, and every way back out of it.
+   */
+  describe('the phone menu', () => {
+    /** The bar's menu button — phone-only, so not reachable by role here. */
+    function menuButton(container: HTMLElement): HTMLElement {
+      const button = container.querySelector<HTMLElement>(`.${styles.menuButton}`);
+      expect(button).toBeInTheDocument();
+      return button as HTMLElement;
+    }
+
+    it('offers a menu button that starts closed and names the nav it opens', () => {
+      const { container } = renderShell();
+      const menu = menuButton(container);
+      expect(menu).toHaveAttribute('aria-expanded', 'false');
+
+      // Named, not duplicated: the panel it points at is the one nav everyone
+      // else is reading, links and roster and all.
+      const panel = document.getElementById(menu.getAttribute('aria-controls') ?? '');
+      expect(panel).toContainElement(screen.getByRole('link', { name: 'All trips' }));
+    });
+
+    it('opens the drawer and offers the way back out of it', async () => {
+      const user = userEvent.setup();
+      const { container } = renderShell();
+
+      await user.click(menuButton(container));
+
+      expect(menuButton(container)).toHaveAttribute('aria-expanded', 'true');
+      // The dimmed page and the close button beside the panel: neither has a
+      // closed appearance, so neither exists until the drawer is out.
+      expect(container.querySelector(`.${styles.scrim}`)).toBeInTheDocument();
+      expect(container.querySelector(`.${styles.drawerClose}`)).toBeInTheDocument();
+    });
+
+    it('closes the drawer from the close button', async () => {
+      const user = userEvent.setup();
+      const { container } = renderShell();
+
+      await user.click(menuButton(container));
+      await user.click(container.querySelector<HTMLElement>(`.${styles.drawerClose}`) as HTMLElement);
+
+      expect(menuButton(container)).toHaveAttribute('aria-expanded', 'false');
+      expect(container.querySelector(`.${styles.drawerClose}`)).toBeNull();
+    });
+
+    it('closes the drawer on Escape', async () => {
+      const user = userEvent.setup();
+      const { container } = renderShell();
+
+      await user.click(menuButton(container));
+      await user.keyboard('{Escape}');
+
+      expect(menuButton(container)).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    // Tapping the dimmed page is how a phone dismisses anything laid over it.
+    it('closes the drawer when the page behind it is tapped', async () => {
+      const user = userEvent.setup();
+      const { container } = renderShell();
+
+      await user.click(menuButton(container));
+      await user.click(container.querySelector<HTMLElement>(`.${styles.scrim}`) as HTMLElement);
+
+      expect(menuButton(container)).toHaveAttribute('aria-expanded', 'false');
+      expect(container.querySelector(`.${styles.scrim}`)).toBeNull();
+    });
+
+    // Going somewhere is what the drawer is for, so arriving is what shuts it.
+    it('closes the drawer once you have gone where it sent you', async () => {
+      const user = userEvent.setup();
+      const { container } = renderShell(`/trips/${SEEDED_TRIP_ID}/map`);
+
+      await user.click(menuButton(container));
+      await user.click(screen.getByRole('link', { name: 'Itinerary' }));
+
+      expect(menuButton(container)).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    // The page cannot scroll away underneath an open drawer, and it gets its
+    // scroll back the moment the drawer closes — left set, the whole app would
+    // be frozen by a menu nobody can see any more.
+    it('holds the page still while the drawer is open and lets it go after', async () => {
+      const user = userEvent.setup();
+      const { container } = renderShell();
+
+      await user.click(menuButton(container));
+      expect(document.body.style.overflow).toBe('hidden');
+
+      await user.keyboard('{Escape}');
+      expect(document.body.style.overflow).toBe('');
+    });
+
+    // The keyboard must not be left on a button that has just slid off the side
+    // of the screen.
+    it('puts focus in the drawer and hands it back to the button on closing', async () => {
+      const user = userEvent.setup();
+      const { container } = renderShell();
+      const menu = menuButton(container);
+
+      await user.click(menu);
+      expect(document.getElementById(menu.getAttribute('aria-controls') ?? '')).toHaveFocus();
+
+      await user.keyboard('{Escape}');
+      expect(menu).toHaveFocus();
+    });
   });
 });

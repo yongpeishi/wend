@@ -10,6 +10,8 @@ import { server } from '../mocks/server';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { setRole } from '../mocks/db';
 import { TripSchedule } from './TripSchedule';
+import styles from './TripSchedule.module.css';
+import nowBarStyles from '../features/schedule/NowBar.module.css';
 import type { TripRole } from '../api/types';
 import type { MapViewProps } from '../features/map/MapView';
 
@@ -276,6 +278,41 @@ describe('TripSchedule — the now bar', () => {
     // the bar reads ahead instead.
     expect(screen.getByText('Nothing planned')).toBeInTheDocument();
     expect(screen.getByText('Next: Nanzen-ji at 09:00')).toBeInTheDocument();
+  });
+
+  /*
+   * The bar is `position: sticky; bottom: 0`, and sticky only ever holds an
+   * element UP — it never pushes one down. On a full day the rows run past the
+   * window and sticky does the work; on an empty day the bar's place in the
+   * flow is just under "Nothing placed yet", halfway up the screen, with a
+   * screen's worth of paper below it and nothing to scroll. The auto margin is
+   * what puts it on the floor in that state, and it is inert in the other, so
+   * the two never fight.
+   *
+   * Asserted through the cascade rather than by counting pixels: jsdom lays
+   * nothing out, but it does resolve the rule, and the rule is the whole fix.
+   */
+  it('keeps the bar on the floor on a day with nothing on it', async () => {
+    viewport('narrow');
+    const { container } = renderSchedule();
+    await screen.findByText('Nanzen-ji');
+
+    await userEvent.click(screen.getByRole('button', { name: 'THU 5' }));
+    await screen.findByText('Nothing placed yet. Drag something over from your ideas.');
+
+    const bar = container.querySelector<HTMLElement>(`.${nowBarStyles.bar}`);
+    expect(bar).toBeInTheDocument();
+    expect(getComputedStyle(bar as HTMLElement).marginTop).toBe('auto');
+
+    // The margin can only reach the floor from the end of the screen's own
+    // column. The slot is `display: contents`, so the bar lays out as a child
+    // of .screen — but only if the slot is last in it and the bar is alone in
+    // the slot, which is what these two check. `display: contents` is a
+    // layout-time fact, so the wrapper is still here in the DOM.
+    const screenBox = container.querySelector<HTMLElement>(`.${styles.screen}`);
+    const slot = container.querySelector<HTMLElement>(`.${styles.nowBarSlot}`);
+    expect(screenBox?.lastElementChild).toBe(slot);
+    expect(Array.from(slot?.children ?? [])).toEqual([bar]);
   });
 
   it('is the phone’s way into what is nearby, and closes again', async () => {

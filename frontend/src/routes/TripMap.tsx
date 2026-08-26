@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useCanEdit } from '../auth/TripRoleContext';
+import { PageTitle } from '../components/PageTitle';
 import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import { useArchiveEntry, useCreateEntry, useEntries, useUpdateEntry } from '../api';
@@ -524,6 +525,12 @@ export function TripMap() {
 
   return (
     <div className={styles.screen}>
+      {/* The screen's own name, above its controls, in the one page-title
+          style every trip tab shares. Outside the QueryGate below for the same
+          reason the control row is: a page that forgets what it is called while
+          it loads is a page that moves under you. */}
+      <PageTitle>Map</PageTitle>
+
       {/* The control row: which plan is being read, what narrows the map,
           whether the map may narrow the list, and how the list stacks. All
           reading-chrome, so it stands outside the QueryGate the way the board's
