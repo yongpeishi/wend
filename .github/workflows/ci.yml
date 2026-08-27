@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      # ruby-version-file and working-directory are action inputs, so they are
+      # repo-relative and not affected by defaults.run.working-directory.
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version-file: backend/.ruby-version
+          bundler-cache: true
+          working-directory: backend
+
+      - name: Prepare test database
+        run: bin/rails db:test:prepare
+        env:
+          RAILS_ENV: test
+
+      - name: Run Rails tests
+        run: bin/rails test
+
+      - name: Typecheck (Sorbet)
+        run: bin/typecheck
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v5
+
+      # cache-dependency-path is an action input, so it is repo-relative and not
+      # affected by defaults.run.working-directory.
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (tsc)
+        run: npm run typecheck
+
+      - name: Lint (oxlint)
+        run: npm run lint
+
+      - name: Run tests (Vitest)
+        run: npm test
