@@ -30,4 +30,8 @@ export const queryKeys = {
     all: ['collaborators'] as const,
     list: (tripId: number) => ['collaborators', 'list', tripId] as const,
   },
+  admin: {
+    all: ['admin'] as const,
+    feedbacks: () => ['admin', 'feedbacks'] as const,
+  },
 };

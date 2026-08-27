@@ -257,6 +257,8 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  /** Serialized everywhere users are — promotion happens in the rails console only. */
+  admin: boolean;
 }
 
 export type FeedbackStatus = 'new' | 'triaged' | 'done';
@@ -279,6 +281,16 @@ export interface Feedback {
   status: FeedbackStatus;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * A Feedback as GET /api/admin/feedbacks serializes it: everyone's, with the
+ * two things an admin needs that the reporter's own view withholds — who sent
+ * it, and the browser it came from.
+ */
+export interface AdminFeedback extends Feedback {
+  user_agent: string | null;
+  user: { id: number; name: string; email: string };
 }
 
 // ---- Request payloads --------------------------------------------------

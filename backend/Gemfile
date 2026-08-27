@@ -47,3 +47,5 @@ end
 gem "sorbet-static-and-runtime", "~> 0.6.13420", groups: [:development, :test]
 
 gem "tapioca", "~> 0.19.2", groups: [:development, :test], require: false
+
+gem "csv", "~> 3.3"

@@ -1,0 +1,168 @@
+/* Same page scaffold as Library: heading, then the working surface. */
+.wrap {
+  padding: var(--space-8) var(--gutter-screen) var(--space-16);
+  max-width: 1360px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pageTitle {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-display-size);
+  line-height: var(--text-display-line);
+  color: var(--text-strong);
+}
+
+.pageDescription {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-line);
+  color: var(--text-muted);
+  max-width: var(--measure-body);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.count {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-small-size);
+  color: var(--text-strong);
+}
+
+/*
+ * The table's card. Card radius IS button radius — var(--radius-card), never a
+ * second token. The card clips so row backgrounds meet the rounded corner, and
+ * it carries the horizontal scroll: a table has an honest minimum width, and
+ * on a narrow window it scrolls inside its own edge rather than stretching the
+ * page sideways.
+ */
+.card {
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  overflow-x: auto;
+}
+
+/* Fixed layout is what stops a long message or URL from electing itself the
+   widest thing on screen: the columns hold their shares and the text wraps. */
+.table {
+  width: 100%;
+  min-width: 720px;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-body);
+}
+
+.table th {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  border-bottom: var(--border-width) solid var(--border-subtle);
+}
+
+/* Received / From / Message / Where / Status. Message gets the room — it is
+   what the page exists to read. */
+.table th:nth-child(1) {
+  width: 12%;
+}
+
+.table th:nth-child(2) {
+  width: 17%;
+}
+
+.table th:nth-child(3) {
+  width: 34%;
+}
+
+.table th:nth-child(4) {
+  width: 22%;
+}
+
+.table th:nth-child(5) {
+  width: 15%;
+}
+
+.table td {
+  padding: var(--space-3) var(--space-4);
+  vertical-align: top;
+  border-bottom: var(--border-width) solid var(--border-subtle);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* "22 Aug 2026" is data, so it takes the data tracking and never wraps. */
+.received {
+  letter-spacing: var(--text-data-tracking);
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.reporter {
+  font-weight: var(--weight-bold);
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.reporterEmail {
+  margin-top: 2px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Wraps, never stretches: anywhere-breaking covers pasted URLs and one-word
+   rants alike, and the fixed table layout holds the column to its share. */
+.message {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.where {
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+}
+
+.url {
+  overflow-wrap: anywhere;
+}
+
+/* The capture is a grep hint — selector and classes — so it reads as code. */
+.capture {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-code-size);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* Keeps the select from towering over its row on touch screens. */
+.statusCell {
+  min-width: 110px;
+}

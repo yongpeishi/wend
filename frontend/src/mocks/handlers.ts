@@ -31,8 +31,9 @@ import {
   tripDateShiftFor,
   voteTallyFor,
 } from './db';
-import type { StoredDayVersion, StoredMembership } from './db';
+import type { StoredDayVersion, StoredFeedback, StoredMembership } from './db';
 import type {
+  AdminFeedback,
   Collaborator,
   Entry,
   EntryCategory,
@@ -47,13 +48,42 @@ import type {
 
 function currentUser(): User | null {
   const user = db.users.find((u) => u.id === db.currentUserId);
-  return user ? { id: user.id, name: user.name, email: user.email } : null;
+  return user ? { id: user.id, name: user.name, email: user.email, admin: user.admin } : null;
 }
 
 function requireAuth(): User | HttpResponse<{ error: string }> {
   const user = currentUser();
   if (!user) return HttpResponse.json({ error: 'Not signed in' }, { status: 401 });
   return user;
+}
+
+/** The admin gate: signed out is 401 as everywhere, signed in and ordinary is
+ * the contract's 403. */
+function requireAdmin(): User | HttpResponse<{ error: string }> {
+  const auth = requireAuth();
+  if (auth instanceof HttpResponse) return auth;
+  if (!auth.admin) return HttpResponse.json({ error: 'Admin access required' }, { status: 403 });
+  return auth;
+}
+
+/** The reporter's own view: `user_agent` is stored but never serialized back. */
+function toFeedback(stored: StoredFeedback): Feedback {
+  const { user_agent: _userAgent, ...feedback } = stored;
+  return feedback;
+}
+
+/** The admin view: the same row plus the user agent and who sent it. */
+function toAdminFeedback(stored: StoredFeedback): AdminFeedback {
+  const user = db.users.find((u) => u.id === stored.user_id);
+  return {
+    ...stored,
+    user: { id: stored.user_id, name: user?.name ?? 'Someone', email: user?.email ?? '' },
+  };
+}
+
+/** Everyone's feedback, newest first — `Feedback.newest_first` in the contract. */
+function feedbacksNewestFirst(): StoredFeedback[] {
+  return db.feedbacks.slice().sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id);
 }
 
 function notFound() {
@@ -137,7 +167,10 @@ export const handlers = [
     const user = db.users.find((u) => u.email === body.email && u.password === body.password);
     if (!user) return HttpResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     db.currentUserId = user.id;
-    return HttpResponse.json({ user: { id: user.id, name: user.name, email: user.email } }, { status: 201 });
+    return HttpResponse.json(
+      { user: { id: user.id, name: user.name, email: user.email, admin: user.admin } },
+      { status: 201 },
+    );
   }),
 
   http.delete('/api/session', () => {
@@ -162,10 +195,14 @@ export const handlers = [
     if (db.users.some((u) => u.email === body.email)) {
       return HttpResponse.json({ errors: { email: ['has already been taken'] } }, { status: 422 });
     }
-    const user = { id: allocateId(), name: body.name, email: body.email, password: body.password };
+    // Nobody signs up as an admin; promotion is a rails-console act.
+    const user = { id: allocateId(), name: body.name, email: body.email, password: body.password, admin: false };
     db.users.push(user);
     db.currentUserId = user.id;
-    return HttpResponse.json({ user: { id: user.id, name: user.name, email: user.email } }, { status: 201 });
+    return HttpResponse.json(
+      { user: { id: user.id, name: user.name, email: user.email, admin: user.admin } },
+      { status: 201 },
+    );
   }),
 
   // ---- Entries -------------------------------------------------------------
@@ -845,10 +882,9 @@ export const handlers = [
     const auth = requireAuth();
     if (auth instanceof HttpResponse) return auth;
 
-    const mine = db.feedbacks
+    const mine = feedbacksNewestFirst()
       .filter((f) => f.user_id === auth.id)
-      .slice()
-      .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id);
+      .map(toFeedback);
     return HttpResponse.json({ feedbacks: mine });
   }),
 
@@ -863,7 +899,7 @@ export const handlers = [
     }
 
     const selector = body.feedback?.element_selector ?? null;
-    const feedback: Feedback = {
+    const feedback: StoredFeedback = {
       id: allocateId(),
       message,
       user_id: auth.id,
@@ -874,9 +910,79 @@ export const handlers = [
       status: 'new',
       created_at: now(),
       updated_at: now(),
+      // Stored the way the server reads it off the request; never sent back to
+      // the reporter — see toFeedback.
+      user_agent: request.headers.get('user-agent'),
     };
     db.feedbacks.push(feedback);
-    return HttpResponse.json({ feedback }, { status: 201 });
+    return HttpResponse.json({ feedback: toFeedback(feedback) }, { status: 201 });
+  }),
+
+  // ---- Admin -------------------------------------------------------------
+  // The contract's three endpoints, behind requireAdmin: everyone's feedback
+  // newest first, status-only triage, and the CSV download.
+  http.get('/api/admin/feedbacks', () => {
+    const auth = requireAdmin();
+    if (auth instanceof HttpResponse) return auth;
+
+    return HttpResponse.json({ feedbacks: feedbacksNewestFirst().map(toAdminFeedback) });
+  }),
+
+  http.patch('/api/admin/feedbacks/:id', async ({ params, request }) => {
+    const auth = requireAdmin();
+    if (auth instanceof HttpResponse) return auth;
+
+    const feedback = db.feedbacks.find((f) => f.id === Number(params.id));
+    if (!feedback) return notFound();
+
+    const body = (await request.json()) as { feedback?: { status?: string } };
+    const status = body.feedback?.status;
+    if (status !== 'new' && status !== 'triaged' && status !== 'done') {
+      return HttpResponse.json({ errors: { status: ['is not included in the list'] } }, { status: 422 });
+    }
+
+    feedback.status = status;
+    feedback.updated_at = now();
+    return HttpResponse.json({ feedback: toAdminFeedback(feedback) });
+  }),
+
+  http.get('/api/admin/feedbacks/export', () => {
+    const auth = requireAdmin();
+    if (auth instanceof HttpResponse) return auth;
+
+    // Trivial by design — the real CSV is the backend's (Ruby stdlib CSV); the
+    // mock only has to be a downloadable file with the contract's header row.
+    const quote = (value: string | number | null) =>
+      value === null ? '' : `"${String(value).replaceAll('"', '""')}"`;
+    const rows = feedbacksNewestFirst().map((f) => {
+      const user = db.users.find((u) => u.id === f.user_id);
+      return [
+        f.id,
+        f.created_at,
+        user?.name ?? '',
+        user?.email ?? '',
+        f.status,
+        f.message,
+        f.url,
+        f.element_selector,
+        f.element_classes,
+        f.user_agent,
+      ]
+        .map(quote)
+        .join(',');
+    });
+    const csv = [
+      'id,created_at,user_name,user_email,status,message,url,element_selector,element_classes,user_agent',
+      ...rows,
+    ].join('\n');
+    const today = new Date().toISOString().slice(0, 10);
+    return new HttpResponse(csv, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="wend-feedback-${today}.csv"`,
+      },
+    });
   }),
 ];
 

@@ -30,6 +30,12 @@ Rails.application.routes.draw do
 
     resources :feedbacks, only: [:index, :create]
 
+    namespace :admin do
+      resources :feedbacks, only: [:index, :update] do
+        collection { get :export }
+      end
+    end
+
     get "trips/:trip_id/schedule", to: "schedule_items#index"
     post "trips/:trip_id/schedule", to: "schedule_items#create"
     patch "schedule_items/:id", to: "schedule_items#update"

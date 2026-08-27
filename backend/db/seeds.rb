@@ -26,6 +26,10 @@ anna = User.find_or_create_by!(email: "anna@example.com") do |u|
   u.password = "password123"
 end
 
+# Sarah is the demo admin. Promotion is console-only in real life; the seed is
+# that console visit, made idempotent.
+sarah.update!(admin: true) unless sarah.admin?
+
 # --- Helpers -------------------------------------------------------------
 
 def entry!(kind:, title:, created_by:, **attrs)
@@ -50,6 +54,12 @@ end
 def todo!(title:, entry: nil, trip: nil, **attrs)
   Todo.find_or_create_by!(title: title, entry: entry, trip: trip) do |t|
     attrs.each { |k, v| t.public_send("#{k}=", v) }
+  end
+end
+
+def feedback!(user:, message:, **attrs)
+  Feedback.find_or_create_by!(user: user, message: message) do |f|
+    attrs.each { |k, v| f.public_send("#{k}=", v) }
   end
 end
 
@@ -311,6 +321,33 @@ member!(trip: japan,    user: anna,  role: "viewer")
 member!(trip: malaysia, user: peter, role: "owner")
 member!(trip: malaysia, user: sarah, role: "viewer")
 
+# --- Feedback: what the admin area triages ---------------------------------
+#
+# Rows from two different users, in every status, with and without an element
+# capture -- so the admin feedback list has all its states on first run.
+
+feedback!(
+  user: peter, message: "The schedule page scrolls oddly when I drag a bundle onto a day.",
+  url: "http://localhost:5173/trips/1/schedule",
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+)
+feedback!(
+  user: peter, message: "This chip is unreadable in dark mode.",
+  url: "http://localhost:5173/trips/1/board",
+  element_selector: "#board > div:nth-child(2)", element_classes: "_chip_7ilc4_44",
+  user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+  status: "triaged"
+)
+feedback!(
+  user: anna, message: "Would love a way to print the itinerary for a day.",
+  url: "http://localhost:5173/trips/1/itinerary",
+  user_agent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15"
+)
+feedback!(
+  user: anna, message: "Signing in on my phone kept me on the wrong trip.",
+  status: "done"
+)
+
 # --- Library: saved inspiration not yet attached to any trip ---------------
 
 saigon_idea = entry!(
@@ -323,4 +360,4 @@ vote!(entry: saigon_idea, user: sarah, score: 2)
 puts "Seeded #{Entry.count} entries (#{Entry.trip.count} trips, #{Entry.bundle.count} bundles, " \
      "#{Entry.idea.count} ideas), #{EntryLink.count} links, #{Vote.count} votes, " \
      "#{Todo.count} todos, #{ScheduleItem.count} schedule items, " \
-     "#{TripMembership.count} trip memberships, #{User.count} users."
+     "#{TripMembership.count} trip memberships, #{Feedback.count} feedbacks, #{User.count} users."
