@@ -48,6 +48,124 @@
   color: var(--text-strong);
 }
 
+/* The modal body's whole contents, wrapped so files can be dropped anywhere on
+   them. Nothing but the drag state paints, so the composer looks exactly as it
+   did before screenshots existed until something is being dragged over it. */
+.dropZone {
+  display: block;
+}
+
+/* The drop state is an outline rather than a border: a border would be 1.5px of
+   new box on every side and the entire modal body would shift the moment a file
+   crossed it. Apricot because in this palette apricot means "you are here" —
+   the same thing the focus ring says — and dashed because a dashed frame is the
+   one shape a user already reads as "this will accept what you are holding".
+   Offset outward into the modal's own padding so it frames the content instead
+   of crowding it. There is no shadow and no tinted wash: the frame is the whole
+   signal. */
+.dropZoneActive {
+  outline: var(--border-width-strong) dashed var(--focus-ring);
+  outline-offset: var(--space-2);
+}
+
+.attach {
+  margin-top: var(--space-4);
+}
+
+.attachButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Clipped rather than `display: none`. A display-none input is removed from the
+   accessibility tree along with the name that tells a screen-reader user what
+   the file dialog is for, and some browsers refuse to open a picker for an
+   input that has no box at all. This keeps the box, at one pixel, out of sight. */
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hint {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}
+
+/* A list, not a row of divs: five attachments should announce themselves as a
+   list of five things, and the count is the one fact a screen-reader user
+   cannot get from the thumbnails. */
+.thumbs {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.thumb {
+  position: relative;
+  width: var(--space-16);
+  height: var(--space-16);
+}
+
+/* --radius-media, the tone reserved for imagery — not --radius-card. A
+   photograph and a control are different objects and the system draws them with
+   different corners. object-fit keeps a wide screenshot from stretching. */
+.thumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-media);
+}
+
+/* The same button as .captureClear, moved onto the corner of the image it
+   removes. It carries a card fill and an edge because it sits on a photograph
+   rather than on the modal: a bare glyph over an arbitrary screenshot is
+   legible only by luck. */
+.thumbRemove {
+  position: absolute;
+  top: calc(var(--space-1) * -1);
+  right: calc(var(--space-1) * -1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-6);
+  height: var(--space-6);
+  padding: 0;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: 50%;
+  color: var(--text-strong);
+  cursor: pointer;
+}
+
+.thumbRemove:hover {
+  background: var(--border-subtle);
+}
+
+.thumbRemove:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.thumbRemove:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
 .pickButton {
   margin-top: var(--space-4);
   display: inline-flex;
