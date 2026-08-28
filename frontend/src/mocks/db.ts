@@ -26,10 +26,22 @@ interface StoredUser extends User {
 
 /** The `feedbacks` row: what the reporter's own GET never gets back (the
  * user agent) still exists server-side, so it exists here too — the admin
- * serializer is what reads it. */
+ * serializer is what reads it. `screenshots` comes along from Feedback: the
+ * mock keeps the already-serialized shape rather than a blob record, because
+ * nothing here has a blob store to sign a URL against. */
 export interface StoredFeedback extends Feedback {
   user_agent: string | null;
 }
+
+/**
+ * A 1x1 opaque PNG, inline. Seeded screenshots point at this so a thumbnail
+ * genuinely paints in mock mode and in /design, where there is no backend to
+ * hand out a signed URL and a made-up https:// link would render as a broken
+ * image. It is also the fallback the POST handler falls back to when
+ * URL.createObjectURL is missing (jsdom).
+ */
+export const BLANK_SCREENSHOT_DATA_URI =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
 /** One person on one trip. Trip-level only — a subtree inherits its trip's row. */
 export interface StoredMembership {
@@ -787,6 +799,12 @@ export function seed() {
   // reporters, every status, a capture and a bare message, fixed ids and
   // timestamps so ordering (newest first) is checkable. The FeedbackButton
   // tests clear this themselves — composing feedback starts from a blank slate.
+  //
+  // Two of the rows carry screenshots — one with a pair, one with a single —
+  // so the admin table's gallery has both of its shapes on screen without
+  // anyone having to file a report first. Their ids follow the 90x scheme of
+  // the rows that own them (901 -> 9011, 9012), so a fixture can be pointed at
+  // by number the way the feedback rows already are.
   db.feedbacks = [
     {
       id: 901,
@@ -796,6 +814,22 @@ export function seed() {
       element_selector: null,
       element_classes: null,
       status: 'new',
+      screenshots: [
+        {
+          id: 9011,
+          filename: 'checklist-before.png',
+          content_type: 'image/png',
+          byte_size: 184320,
+          url: BLANK_SCREENSHOT_DATA_URI,
+        },
+        {
+          id: 9012,
+          filename: 'checklist-after.png',
+          content_type: 'image/png',
+          byte_size: 201113,
+          url: BLANK_SCREENSHOT_DATA_URI,
+        },
+      ],
       created_at: '2026-08-22T09:15:00.000Z',
       updated_at: '2026-08-22T09:15:00.000Z',
       user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) Safari/605.1.15',
@@ -808,6 +842,7 @@ export function seed() {
       element_selector: null,
       element_classes: null,
       status: 'new',
+      screenshots: [],
       created_at: '2026-08-20T18:40:00.000Z',
       updated_at: '2026-08-20T18:40:00.000Z',
       user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/139.0',
@@ -820,6 +855,15 @@ export function seed() {
       element_selector: 'button[data-testid="set-aside"]',
       element_classes: '_button_1p9dt_29 _quiet_1p9dt_44',
       status: 'rejected',
+      screenshots: [
+        {
+          id: 9031,
+          filename: 'set-aside.jpg',
+          content_type: 'image/jpeg',
+          byte_size: 96412,
+          url: BLANK_SCREENSHOT_DATA_URI,
+        },
+      ],
       created_at: '2026-08-18T11:05:00.000Z',
       updated_at: '2026-08-19T08:00:00.000Z',
       user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Firefox/141.0',
@@ -832,6 +876,7 @@ export function seed() {
       element_selector: null,
       element_classes: null,
       status: 'done',
+      screenshots: [],
       created_at: '2026-08-15T07:30:00.000Z',
       updated_at: '2026-08-16T10:00:00.000Z',
       user_agent: null,
