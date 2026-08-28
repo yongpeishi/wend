@@ -784,8 +784,9 @@ export function seed() {
   ];
 
   // Enough rows for the admin triage table to be worth looking at: two
-  // reporters, every status, a capture and a bare message, fixed ids and
-  // timestamps so ordering (newest first) is checkable. The FeedbackButton
+  // reporters, every status (two new, one of each of the other three), a
+  // capture and a bare message, fixed ids and timestamps so ordering (newest
+  // first) is checkable. The FeedbackButton
   // tests clear this themselves — composing feedback starts from a blank slate.
   db.feedbacks = [
     {
@@ -823,6 +824,18 @@ export function seed() {
       created_at: '2026-08-18T11:05:00.000Z',
       updated_at: '2026-08-19T08:00:00.000Z',
       user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Firefox/141.0',
+    },
+    {
+      id: 905,
+      message: 'The day picker jumps back to today whenever I edit an item.',
+      user_id: 1,
+      url: 'http://localhost:5173/trips/1/schedule',
+      element_selector: null,
+      element_classes: null,
+      status: 'in_progress',
+      created_at: '2026-08-19T14:20:00.000Z',
+      updated_at: '2026-08-21T09:00:00.000Z',
+      user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/139.0',
     },
     {
       id: 904,

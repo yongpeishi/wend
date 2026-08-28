@@ -14,13 +14,15 @@ import type { AdminFeedback as AdminFeedbackRow, FeedbackStatus } from '../api/t
 import { formatDay } from '../lib/formatDates';
 import styles from './AdminFeedback.module.css';
 
-/** In triage order: what it arrives as, and the two ways it ends. */
-const STATUSES: FeedbackStatus[] = ['new', 'rejected', 'done'];
+/** In triage order: what it arrives as, the one that says someone has picked it
+ * up, and the two ways it ends. */
+const STATUSES: FeedbackStatus[] = ['new', 'in_progress', 'rejected', 'done'];
 
 /** Sentence case for the chips and the row selects alike — one vocabulary, so
  * the filter and the thing it filters on are visibly the same words. */
 const STATUS_LABELS: Record<FeedbackStatus, string> = {
   new: 'New',
+  in_progress: 'In progress',
   rejected: 'Rejected',
   done: 'Done',
 };

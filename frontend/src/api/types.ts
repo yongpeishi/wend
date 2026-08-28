@@ -261,7 +261,7 @@ export interface User {
   admin: boolean;
 }
 
-export type FeedbackStatus = 'new' | 'rejected' | 'done';
+export type FeedbackStatus = 'new' | 'in_progress' | 'rejected' | 'done';
 
 /**
  * Feedback about the app itself. Not an Entry — see backend

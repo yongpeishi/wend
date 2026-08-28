@@ -7,11 +7,14 @@
 # thing a user wrote that this table stores is `message`, which they wrote
 # knowing it was a report.
 class Feedback < ApplicationRecord
-  # Triage in three words: unread, looked at and not being acted on, dealt with.
+  # Triage in four words: unread, being worked on, looked at and not being acted
+  # on, dealt with. `in_progress` is the one status that is neither an arrival
+  # nor an ending -- it says someone has picked the note up, so a long-running
+  # fix stops looking either untouched or already finished.
   # `rejected` replaced `triaged` (migration 20260828120000) -- "triaged" named
   # the act of reading rather than the outcome, so every note that had been read
   # sat in it forever and the column stopped sorting the pile.
-  STATUSES = %w[new rejected done].freeze
+  STATUSES = %w[new in_progress rejected done].freeze
 
   # Long enough to be a paragraph, short enough that the column stays sane.
   MESSAGE_LIMIT = 5_000
