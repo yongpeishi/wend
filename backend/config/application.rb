@@ -5,7 +5,7 @@ require "rails"
 require "active_model/railtie"
 require "active_job/railtie"
 require "active_record/railtie"
-# require "active_storage/engine"
+require "active_storage/engine"
 require "action_controller/railtie"
 require "action_mailer/railtie"
 # require "action_mailbox/engine"
@@ -44,5 +44,12 @@ module Backend
     # We authenticate via a signed cookie (cookies.signed[:user_id]), so we need
     # the cookie middleware even though this is an API-only app.
     config.middleware.use ActionDispatch::Cookies
+
+    # Active Storage is here for feedback screenshots, which are stored and served
+    # exactly as uploaded -- nothing asks for a thumbnail or a resize. Saying so
+    # out loud is the difference between an honest "we don't do variants" and the
+    # warning Rails otherwise prints on every eager-loading boot telling us to add
+    # image_processing (and, behind it, libvips) for a feature we never call.
+    config.active_storage.variant_processor = :disabled
   end
 end

@@ -84,6 +84,87 @@ class FeedbackTest < ActiveSupport::TestCase
     assert_equal 3, Feedback.with_statuses(%w[new nonsense]).count
   end
 
+  # --- Screenshots ------------------------------------------------------------
+  #
+  # Every case here attaches to an *unsaved* record and then asks whether it is
+  # valid, which is the situation the rules have to work in: if they only held on
+  # a persisted record, the file would already be in the bucket by the time it was
+  # judged, and rejecting it would be too late to matter.
+
+  test "accepts a screenshot" do
+    feedback = Feedback.new(user: @user, message: "The map pins are hard to tap")
+    feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "screenshot.png")
+
+    assert feedback.valid?, feedback.errors.full_messages.to_sentence
+    assert feedback.save
+    assert_equal 1, feedback.reload.screenshots.count
+    assert_equal "image/png", feedback.screenshots.first.content_type
+  end
+
+  test "accepts screenshots right up to the per-report limit" do
+    feedback = Feedback.new(user: @user, message: "Five angles on one bug")
+    Feedback::MAX_SCREENSHOTS.times do |i|
+      feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "shot-#{i}.png")
+    end
+
+    assert feedback.valid?, feedback.errors.full_messages.to_sentence
+  end
+
+  test "rejects more screenshots than a report is allowed" do
+    feedback = Feedback.new(user: @user, message: "Every screen in the app")
+    (Feedback::MAX_SCREENSHOTS + 1).times do |i|
+      feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "shot-#{i}.png")
+    end
+
+    assert_not feedback.valid?
+    assert_includes feedback.errors[:screenshots], "are limited to #{Feedback::MAX_SCREENSHOTS} per report"
+  end
+
+  test "rejects a screenshot over the size limit" do
+    feedback = Feedback.new(user: @user, message: "Here is the whole page")
+    feedback.screenshots.attach(io: StringIO.new(oversized_png), filename: "huge.png", content_type: "image/png")
+
+    assert_not feedback.valid?
+    assert_includes feedback.errors[:screenshots], "must be 5 MB or smaller"
+  end
+
+  test "rejects an attachment that is not one of the allowed image types" do
+    feedback = Feedback.new(user: @user, message: "Attaching my notes instead")
+    feedback.screenshots.attach(io: file_fixture("not-an-image.txt").open, filename: "notes.txt")
+
+    assert_not feedback.valid?
+    assert_includes feedback.errors[:screenshots], "must be a PNG, JPEG, WebP or GIF image"
+  end
+
+  # Six wrong files are one wrong decision, so they get one sentence. Left as its
+  # own test because the obvious implementation -- adding inside the loop -- passes
+  # every other test here while returning the same line six times to the reporter.
+  test "says what is wrong once, however many files are wrong in that way" do
+    feedback = Feedback.new(user: @user, message: "Three copies of the same mistake")
+    3.times { |i| feedback.screenshots.attach(io: file_fixture("not-an-image.txt").open, filename: "notes-#{i}.txt") }
+
+    assert_not feedback.valid?
+    assert_equal ["must be a PNG, JPEG, WebP or GIF image"], feedback.errors[:screenshots]
+  end
+
+  test "a report with no screenshots is untouched by the attachment rules" do
+    feedback = Feedback.new(user: @user, message: "Just words")
+
+    assert feedback.valid?
+    assert_empty feedback.screenshots
+  end
+
+  # The point of validating the pending set: a rejected upload must never reach
+  # storage, so nothing may have been written by the time validation fails.
+  test "an unacceptable screenshot never reaches storage" do
+    feedback = Feedback.new(user: @user, message: "Attaching my notes instead")
+    feedback.screenshots.attach(io: file_fixture("not-an-image.txt").open, filename: "notes.txt")
+
+    key = feedback.screenshots.attachments.first.blob.key
+    assert_not feedback.save
+    assert_not ActiveStorage::Blob.service.exist?(key), "the rejected file was uploaded before it was judged"
+  end
+
   test "feedback goes with the user" do
     Feedback.create!(user: @user, message: "Bye")
     assert_difference -> { Feedback.count }, -1 do

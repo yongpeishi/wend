@@ -6,7 +6,9 @@ module Api
       # Everyone's feedback, newest first, no pagination: the whole pile is the
       # point of the admin view, and its size is bounded by how much feedback a
       # small app actually gets. includes(:user) because the serializer nests the
-      # reporter on every row.
+      # reporter on every row, and the screenshot attachments and their blobs
+      # because it signs a URL for each one -- with no pagination to hide it, an
+      # N+1 here would scale with the whole table rather than with a page.
       def index
         render json: { feedbacks: ::Admin::FeedbackSerializer.list(all_feedbacks) }
       end
@@ -46,7 +48,7 @@ module Api
       private
 
       def all_feedbacks
-        policy_scope([:admin, Feedback]).newest_first.includes(:user)
+        policy_scope([:admin, Feedback]).newest_first.includes(:user, screenshots_attachments: :blob)
       end
 
       # `params[:status]` arrives as an array from `status[]=`, and as a bare

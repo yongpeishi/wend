@@ -30,7 +30,20 @@ gem "rack-cors"
 # (verify_authorized / verify_policy_scoped) that make a missed check a test failure.
 gem "pundit", "~> 2.5"
 
+# Active Storage talks to Cloudflare R2 through its S3 service, which is why an
+# AWS SDK appears in an app with nothing on AWS: R2 is S3-compatible, and this is
+# the client that speaks that dialect. `require: false` because Active Storage
+# loads it lazily, and only when the configured service is actually :r2 -- a
+# checkout with no R2 credentials runs on the Disk service and never touches it.
+gem "aws-sdk-s3", require: false
+
 group :development, :test do
+  # R2 credentials are per-machine, not per-repo, so they live in an untracked
+  # backend/.env rather than in Rails credentials. Development-and-test only:
+  # production takes its environment from the process that boots it, and a .env
+  # file there would be a second, quieter source of truth for the same secrets.
+  gem "dotenv-rails"
+
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
 

@@ -26,6 +26,22 @@ Rails.application.configure do
   # Change to :null_store to avoid any caching.
   config.cache_store = :memory_store
 
+  # Where feedback screenshots go. Read this as a question about credentials, not
+  # about environments: if the process was handed an R2 bucket, use R2; if it was
+  # not, fall back to the local disk. That single line does two jobs at once.
+  #
+  # The first is staging. The Pi runs this app with RAILS_ENV=development -- it is
+  # the deployed environment, not just a laptop -- so *this* file is what actually
+  # selects R2 in the only place uploads need to outlive a container. Putting the
+  # R2 switch only in production.rb would have meant staging quietly writing
+  # screenshots to a disk that the next deploy throws away.
+  #
+  # The second is every checkout that has no R2 account at all: a fresh clone and
+  # CI both boot with R2_BUCKET unset, land on the Disk service, and `bin/rails
+  # test` passes without anyone holding a secret. Credentials for the R2 branch
+  # come from an untracked backend/.env via dotenv-rails; see backend/.env.example.
+  config.active_storage.service = ENV["R2_BUCKET"].present? ? :r2 : :local
+
   # Don't care if the mailer can't send.
   config.action_mailer.raise_delivery_errors = false
 

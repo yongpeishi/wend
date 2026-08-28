@@ -18,6 +18,16 @@ module Api
 
     before_action :require_login!
 
+    # Attachment URLs are built by the storage service, and the Disk service
+    # builds a *route*, not a bucket address -- so it needs a host to put in
+    # front of it and raises without one. An API-only app has no default_url_options
+    # anywhere to fall back on, and hardcoding a host would be wrong in at least
+    # one of laptop / Pi / production, so the answer is the host the caller
+    # already reached us on. R2 ignores this entirely (an S3 URL is absolute),
+    # which is why it is set unconditionally rather than per-service: the
+    # serializer should not have to know which bucket it is signing against.
+    before_action :set_active_storage_url_options
+
     # An index has no single record to stand in for the collection, so its
     # authorization *is* the scope -- verify_policy_scoped below is what enforces
     # it, and the sweep in test/requests/api/authorization_test.rb asserts the
@@ -32,6 +42,10 @@ module Api
                  if: -> { listing? && UNAUDITED_SCOPE.exclude?(action_key) }
 
     private
+
+    def set_active_storage_url_options
+      ActiveStorage::Current.url_options = { host: request.base_url }
+    end
 
     def action_key = "#{self.class.name}##{action_name}"
 

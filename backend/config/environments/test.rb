@@ -22,6 +22,12 @@ Rails.application.configure do
   config.consider_all_requests_local = true
   config.cache_store = :null_store
 
+  # Uploads land in tmp/storage, which is scratch space like the test database.
+  # Pinned unconditionally rather than through the R2_BUCKET switch the other two
+  # environments use: a developer with real credentials in their .env must not
+  # have the suite start writing to the live bucket just because it is loaded.
+  config.active_storage.service = :test
+
   # Render exception templates for rescuable exceptions and raise for other exceptions.
   config.action_dispatch.show_exceptions = :rescuable
 

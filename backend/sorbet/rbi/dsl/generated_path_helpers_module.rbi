@@ -13,6 +13,12 @@ module GeneratedPathHelpersModule
   def absorb_api_entry_path(*args); end
 
   sig { params(args: T.untyped).returns(String) }
+  def api_admin_feedback_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def api_admin_feedbacks_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
   def api_entries_path(*args); end
 
   sig { params(args: T.untyped).returns(String) }
@@ -40,10 +46,28 @@ module GeneratedPathHelpersModule
   def api_users_path(*args); end
 
   sig { params(args: T.untyped).returns(String) }
+  def export_api_admin_feedbacks_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
   def fork_api_entry_path(*args); end
 
   sig { params(args: T.untyped).returns(String) }
   def lift_api_entry_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def rails_blob_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def rails_blob_representation_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def rails_blob_representation_proxy_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def rails_direct_uploads_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def rails_disk_service_path(*args); end
 
   sig { params(args: T.untyped).returns(String) }
   def rails_health_check_path(*args); end
@@ -64,8 +88,26 @@ module GeneratedPathHelpersModule
   def rails_mailers_path(*args); end
 
   sig { params(args: T.untyped).returns(String) }
+  def rails_representation_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def rails_service_blob_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def rails_service_blob_proxy_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def rails_storage_proxy_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def rails_storage_redirect_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
   def restore_api_entry_path(*args); end
 
   sig { params(args: T.untyped).returns(String) }
   def tree_api_entry_path(*args); end
+
+  sig { params(args: T.untyped).returns(String) }
+  def update_rails_disk_service_path(*args); end
 end
