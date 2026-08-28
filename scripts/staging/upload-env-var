@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# Send the secrets in ./staging.env to the Pi, where both services read them.
+#
+#   scripts/staging/upload-env-var
+#   scripts/staging/upload-env-var --yes    # don't ask before uploading
+#
+# Secrets can't ride along in git, and they can't live in /srv/wend/deploy.env
+# either: `provision` writes that file with a truncating `cat >`, so anything
+# added to it disappears the next time anyone runs scripts/staging/setup. This
+# writes /srv/wend/secrets.env instead -- a second EnvironmentFile that
+# provision never rewrites.
+#
+# That path is outside /srv/wend/app, the deployed working tree, so a deploy
+# cannot touch it. Upload once; re-run this only when a value changes.
+#
+# The file is read by systemd, not by bash, so it is checked here for the
+# things systemd would take literally or choke on -- a leading `export `, a
+# `$(...)` or a backtick -- rather than letting the services fail at boot with
+# a credential that has the word "export" glued to the front of it.
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+for arg in "$@"; do
+  case "$arg" in
+    --yes|-y) ASSUME_YES=true ;;
+    *)        die "unknown argument $arg" ;;
+  esac
+done
+
+env_file="$ROOT_DIR/staging.env"
+remote_file="$PI_ROOT/secrets.env"
+services=(wend-backend.service wend-frontend.service)
+
+# --- is there anything to send ----------------------------------------------
+# Checked before anything that talks to the Pi, so the common mistake (running
+# this in a checkout that has no staging.env yet) costs a sentence, not an ssh
+# connection and a username prompt.
+
+[ -f "$env_file" ] || die "no $env_file
+    cp staging.env.example staging.env, fill it in, then re-run this.
+    See doc/how-to/cloud-storage.md."
+
+# --- would systemd understand it --------------------------------------------
+# systemd's EnvironmentFile parser is not a shell. It accepts NAME=value,
+# blank lines and # comments, and that is close to all. Everything it doesn't
+# understand it either takes literally or refuses, and both failures show up
+# much later as a confusing 500 from the storage service.
+
+names=()
+problems=0
+blank=()
+lineno=0
+while IFS= read -r line || [ -n "$line" ]; do
+  lineno=$((lineno + 1))
+
+  # Leading whitespace is allowed by systemd; strip it so the checks below see
+  # the same thing systemd will.
+  trimmed="${line#"${line%%[![:space:]]*}"}"
+
+  case "$trimmed" in
+    ''|'#'*) continue ;;
+  esac
+
+  if [ "${trimmed#export }" != "$trimmed" ] || [ "${trimmed#export	}" != "$trimmed" ]; then
+    warn "staging.env:$lineno: drop the leading \`export \` -- systemd is not a shell"
+    problems=$((problems + 1))
+    continue
+  fi
+
+  case "$trimmed" in
+    *'$('*|*'`'*)
+      warn "staging.env:$lineno: no command substitution in an EnvironmentFile -- paste the value in"
+      problems=$((problems + 1))
+      continue
+      ;;
+  esac
+
+  if [[ ! "$trimmed" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+    warn "staging.env:$lineno: expected NAME=value, a # comment, or a blank line"
+    problems=$((problems + 1))
+    continue
+  fi
+
+  name="${trimmed%%=*}"
+  names+=("$name")
+  # An empty value is legal and is sometimes what you want (it's how you turn
+  # R2 off again), so this is a warning and not a refusal.
+  [ -n "${trimmed#*=}" ] || blank+=("$name")
+done < "$env_file"
+
+[ "$problems" -eq 0 ] || die "$problems line(s) in staging.env would break systemd's parser -- fix them and re-run"
+[ "${#names[@]}" -gt 0 ] || die "staging.env has no variables in it -- nothing to upload"
+
+# Names only, never values: this output ends up in scrollback and screenshots.
+info "staging.env holds ${#names[@]} variable(s): ${names[*]}"
+if [ "${#blank[@]}" -gt 0 ]; then
+  warn "these have no value, so the Pi will run without them: ${blank[*]}"
+fi
+
+# --- send it ----------------------------------------------------------------
+
+cd "$(git_root)"
+require_pi_remote
+
+echo
+confirm "overwrite $(pi_ssh):$remote_file with these ${#names[@]} variable(s)?" \
+  || die "nothing uploaded"
+
+info "writing $remote_file"
+# Written as the `wend` service user (the sudoers rule grants the group
+# `(wend) NOPASSWD: ALL`) so the file belongs to the account that has to read
+# it, whichever of us ran the upload. 0640 is deliberately tighter than
+# deploy.env's 0664: the service reads it, and nobody needs to write it by
+# hand.
+pi_ssh_run "sudo -n -u wend tee $remote_file >/dev/null && sudo -n -u wend chmod 0640 $remote_file" \
+  < "$env_file" \
+  || die "the upload failed -- is $PI_HOST reachable, and are you in the wend group?"
+ok "uploaded"
+
+# --- make the services notice -----------------------------------------------
+# EnvironmentFile is read at start, so a running service is still holding the
+# environment it booted with.
+
+echo
+if confirm "restart both services so they pick the new values up?"; then
+  # One unit per call: the sudoers rule names each service on its own, so a
+  # combined `systemctl restart a b` would be a command it doesn't recognise.
+  for s in "${services[@]}"; do
+    info "restarting $s"
+    pi_ssh_run "sudo -n systemctl restart $s"
+  done
+  pi_ssh_run "systemctl is-active ${services[*]}" || true
+else
+  warn "not restarted -- the services still have the old environment"
+  info "restart them later with: scripts/staging/restart"
+fi
+
+echo
+# Both units gained `EnvironmentFile=-/srv/wend/secrets.env` when this script
+# was added, and units are installed by provision -- so a Pi provisioned before
+# that change will read the file only once setup has reinstalled them.
+warn "if the values don't take effect, the Pi is still running the old units:"
+echo "     scripts/staging/setup      # one-off, reinstalls the systemd units"
+ok "done -- re-run this only when a value changes, never on a deploy"

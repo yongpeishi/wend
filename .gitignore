@@ -4,6 +4,15 @@ node_modules/
 doc/backlog/
 temp-design-files/
 
+# Environment files hold the Cloudflare R2 credentials — real secrets, never
+# committed. The *.example templates next to them are, and are the only place
+# the variable names are written down. See doc/how-to/cloud-storage.md.
+.env
+.env.*
+!.env.example
+# staging.env is the file scripts/staging/upload-env-var sends to the Pi.
+/staging.env
+
 # a place to put wip notes (TASK_STATUS, TASK_END_SUMMARY, screenshots)
 doc/worktree-notes/
 # design-sync (claude.ai/design) — staged scripts, build output, machine state

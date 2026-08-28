@@ -13,6 +13,8 @@
 #   /srv/wend/bundle     shared gem install
 #   /srv/wend/env        ruby + node, built by nix from ./env/flake.nix
 #   /srv/wend/deploy.env environment shared by the hook and both services
+#   /srv/wend/secrets.env  created empty if absent, never overwritten here --
+#                          scripts/staging/upload-env-var is what fills it
 #   wend-backend.service, wend-frontend.service
 #
 # Deliberately not here: user accounts. Those belong to whatever provisions the
@@ -141,6 +143,19 @@ EOF
 chown "$SVC_USER:$SVC_GROUP" "$ROOT/deploy.env"
 chmod 0664 "$ROOT/deploy.env"
 ok "wrote $ROOT/deploy.env"
+
+# --- secrets, which this script must never write ----------------------------
+# deploy.env above is rewritten from scratch every run, so anything appended to
+# it is destroyed the next time anyone re-provisions. Secrets therefore live in
+# a second file that only scripts/staging/upload-env-var writes. Create it if
+# it is missing -- never truncate it -- so it exists with the right owner and
+# mode, and so nobody is tempted to add a `cat >` for it up there.
+if [ -f "$ROOT/secrets.env" ]; then
+  ok "$ROOT/secrets.env kept as it is"
+else
+  install -o "$SVC_USER" -g "$SVC_GROUP" -m 0640 /dev/null "$ROOT/secrets.env"
+  ok "created an empty $ROOT/secrets.env -- fill it with scripts/staging/upload-env-var"
+fi
 
 # --- ruby + node ------------------------------------------------------------
 # Built from ./env/flake.nix rather than taken from anyone's home directory:

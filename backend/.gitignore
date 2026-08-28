@@ -7,8 +7,10 @@
 # Ignore bundler config.
 /.bundle
 
-# Ignore all environment files.
+# Ignore all environment files, but keep the committed template: it lists the
+# R2 variable names (and nothing secret) for whoever clones this next.
 /.env*
+!/.env.example
 
 # Ignore all logfiles and tempfiles.
 /log/*
