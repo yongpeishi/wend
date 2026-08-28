@@ -99,7 +99,7 @@ classDiagram
         +text message
         +string url
         +string element_selector
-        +string status = new / triaged / done
+        +string status = new / rejected / done
     }
 
     %% ── User ownership ──────────────────────────────

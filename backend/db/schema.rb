@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_26_005004) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_28_120000) do
   create_table "day_versions", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false

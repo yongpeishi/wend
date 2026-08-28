@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -70,16 +70,138 @@ describe('AdminFeedback', () => {
     const select = within(row).getByRole('combobox', { name: 'Status of feedback from Sarah' });
     expect(select).toHaveValue('new');
 
-    await user.selectOptions(select, 'triaged');
+    await user.selectOptions(select, 'rejected');
 
     // The PATCH landed on the mock store — the mutation really fired.
-    await waitFor(() => expect(db.feedbacks.find((f) => f.id === 901)?.status).toBe('triaged'));
-    expect(select).toHaveValue('triaged');
+    await waitFor(() => expect(db.feedbacks.find((f) => f.id === 901)?.status).toBe('rejected'));
+    expect(select).toHaveValue('rejected');
   });
 
   it('offers the CSV export as a button', async () => {
     renderPage();
     expect(await screen.findByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
+  });
+
+  // The seed is one of each end state and two fresh ones: 901 new, 902 new,
+  // 903 rejected, 904 done.
+  describe('the status filter', () => {
+    /** The chip of that name, not the same-named <option> in a row's select. */
+    function statusChip(label: string) {
+      return within(screen.getByRole('group', { name: 'Status' })).getByRole('button', { name: label });
+    }
+
+    it('shows the whole pile until a chip is lit, and unlighting widens again', async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.');
+      expect(statusChip('New')).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getAllByRole('row')).toHaveLength(5); // header + four
+      expect(screen.getByText('4 notes')).toBeInTheDocument();
+
+      await user.click(statusChip('New'));
+
+      expect(screen.getAllByRole('row')).toHaveLength(3); // header + the two new ones
+      expect(statusChip('New')).toHaveAttribute('aria-pressed', 'true');
+      // Filtered, not gone — the count still names the whole pile.
+      expect(screen.getByText('2 of 4 notes')).toBeInTheDocument();
+
+      // Each chip is its own way back out.
+      await user.click(statusChip('New'));
+      expect(screen.getAllByRole('row')).toHaveLength(5);
+      expect(screen.getByText('4 notes')).toBeInTheDocument();
+    });
+
+    it('takes several statuses at once, each chip independent of the others', async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.');
+      await user.click(statusChip('New'));
+      await user.click(statusChip('Rejected'));
+
+      // Everything but the one done note.
+      expect(screen.getByText('This button says "Set aside" but nothing visibly moves.')).toBeInTheDocument();
+      expect(
+        screen.queryByText('Sign-in kept rejecting my password until I retyped it by hand.'),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('3 of 4 notes')).toBeInTheDocument();
+
+      // Dropping one leaves the other lit rather than clearing the filter.
+      await user.click(statusChip('New'));
+      expect(statusChip('Rejected')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByText('1 of 4 notes')).toBeInTheDocument();
+    });
+
+    it('drops a row the moment triage moves it out of the lit statuses', async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.');
+      await user.click(statusChip('New'));
+
+      const row = screen
+        .getByText('The checklist loses my tick when I scroll — it comes back on reload though.')
+        .closest('tr') as HTMLElement;
+      await user.selectOptions(
+        within(row).getByRole('combobox', { name: 'Status of feedback from Sarah' }),
+        'done',
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText('The checklist loses my tick when I scroll — it comes back on reload though.'),
+        ).not.toBeInTheDocument(),
+      );
+      expect(screen.getByText('1 of 4 notes')).toBeInTheDocument();
+    });
+
+    it('says the statuses are empty rather than that there is nothing at all', async () => {
+      const user = userEvent.setup();
+      // A pile with nothing rejected in it, so lighting that chip empties the
+      // table while the notes themselves are all still there.
+      db.feedbacks = db.feedbacks.filter((f) => f.status !== 'rejected');
+      renderPage();
+
+      await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.');
+      await user.click(statusChip('Rejected'));
+
+      expect(
+        screen.getByText('Nothing in those statuses. The rest is still here — unlight a chip to widen again.'),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('Nothing yet. When a traveller sends feedback, it lands here.'),
+      ).not.toBeInTheDocument();
+    });
+
+    it('narrows the CSV export to match what is on screen', async () => {
+      const user = userEvent.setup();
+      const assign = vi.fn();
+      const original = window.location;
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { ...original, assign },
+      });
+
+      try {
+        renderPage();
+        await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.');
+
+        // Nothing lit: the whole pile, no query string — what the button did
+        // before there was a filter at all.
+        await user.click(screen.getByRole('button', { name: 'Export CSV' }));
+        expect(assign).toHaveBeenLastCalledWith('/api/admin/feedbacks/export');
+
+        await user.click(statusChip('New'));
+        await user.click(statusChip('Rejected'));
+        await user.click(screen.getByRole('button', { name: 'Export CSV — only the notes shown' }));
+        expect(assign).toHaveBeenLastCalledWith(
+          '/api/admin/feedbacks/export?status%5B%5D=new&status%5B%5D=rejected',
+        );
+      } finally {
+        Object.defineProperty(window, 'location', { configurable: true, value: original });
+      }
+    });
   });
 
   it('says so when there is nothing to triage', async () => {

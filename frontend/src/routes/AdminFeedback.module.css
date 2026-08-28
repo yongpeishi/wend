@@ -40,6 +40,32 @@
   flex-wrap: wrap;
 }
 
+/* The narrowing and what it left, together at one end of the toolbar — the
+   chips and their consequence read as one thing. */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Names what the chips narrow by, and is the group's accessible label. Same
+   type as a table heading, because it does the same job. */
+.filterLabel {
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .count {
   margin: 0;
   font-family: var(--font-sans);

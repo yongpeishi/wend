@@ -336,7 +336,7 @@ feedback!(
   url: "http://localhost:5173/trips/1/board",
   element_selector: "#board > div:nth-child(2)", element_classes: "_chip_7ilc4_44",
   user_agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-  status: "triaged"
+  status: "rejected"
 )
 feedback!(
   user: anna, message: "Would love a way to print the itinerary for a day.",
