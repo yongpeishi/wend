@@ -265,7 +265,7 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
       "api/feedbacks#index" => [ :empty, -> { get "/api/feedbacks" } ],
       "api/admin/feedbacks#index" => [ :forbidden, -> { get "/api/admin/feedbacks" } ],
       "api/admin/feedbacks#update" => [ :forbidden, lambda {
-        patch "/api/admin/feedbacks/#{@feedback.id}", params: { feedback: { status: "triaged" } }, as: :json
+        patch "/api/admin/feedbacks/#{@feedback.id}", params: { feedback: { status: "rejected" } }, as: :json
       } ],
       "api/admin/feedbacks#export" => [ :forbidden, -> { get "/api/admin/feedbacks/export" } ],
       "api/feedbacks#create" => [ :open, lambda {

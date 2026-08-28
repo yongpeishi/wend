@@ -7,7 +7,11 @@
 # thing a user wrote that this table stores is `message`, which they wrote
 # knowing it was a report.
 class Feedback < ApplicationRecord
-  STATUSES = %w[new triaged done].freeze
+  # Triage in three words: unread, looked at and not being acted on, dealt with.
+  # `rejected` replaced `triaged` (migration 20260828120000) -- "triaged" named
+  # the act of reading rather than the outcome, so every note that had been read
+  # sat in it forever and the column stopped sorting the pile.
+  STATUSES = %w[new rejected done].freeze
 
   # Long enough to be a paragraph, short enough that the column stays sane.
   MESSAGE_LIMIT = 5_000
@@ -18,6 +22,16 @@ class Feedback < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
 
   scope :newest_first, -> { order(created_at: :desc, id: :desc) }
+
+  # The admin list's narrowing, as a scope so the CSV export and any later
+  # reader share one definition of it. An empty list is no narrowing at all
+  # rather than an empty result: "show me none of the statuses" is not a thing
+  # anyone means, and it is what an untouched filter would otherwise ask for.
+  # Unknown values are dropped, so a hand-edited URL widens rather than 422s.
+  scope :with_statuses, lambda { |statuses|
+    wanted = Array(statuses).map(&:to_s) & STATUSES
+    wanted.empty? ? all : where(status: wanted)
+  }
 
   # An element capture is only meaningful with a selector; a class attribute on
   # its own points at nothing. Kept as a normaliser rather than a validation so

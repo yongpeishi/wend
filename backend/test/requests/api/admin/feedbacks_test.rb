@@ -14,7 +14,7 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     get "/api/admin/feedbacks"
     assert_response :unauthorized
 
-    patch "/api/admin/feedbacks/1", params: { feedback: { status: "triaged" } }, as: :json
+    patch "/api/admin/feedbacks/1", params: { feedback: { status: "rejected" } }, as: :json
     assert_response :unauthorized
 
     get "/api/admin/feedbacks/export"
@@ -29,7 +29,7 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     assert_equal({ "error" => "Admin access required" }, JSON.parse(response.body))
 
-    patch "/api/admin/feedbacks/#{feedback.id}", params: { feedback: { status: "triaged" } }, as: :json
+    patch "/api/admin/feedbacks/#{feedback.id}", params: { feedback: { status: "rejected" } }, as: :json
     assert_response :forbidden
     assert_equal "new", feedback.reload.status
 
@@ -90,13 +90,13 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     feedback = Feedback.create!(user: @reporter, message: "Please triage me")
     sign_in_as(@admin)
 
-    patch "/api/admin/feedbacks/#{feedback.id}", params: { feedback: { status: "triaged" } }, as: :json
+    patch "/api/admin/feedbacks/#{feedback.id}", params: { feedback: { status: "rejected" } }, as: :json
     assert_response :success
 
     body = JSON.parse(response.body)["feedback"]
-    assert_equal "triaged", body["status"]
+    assert_equal "rejected", body["status"]
     assert_equal @reporter.email, body.dig("user", "email")
-    assert_equal "triaged", feedback.reload.status
+    assert_equal "rejected", feedback.reload.status
   end
 
   test "update rejects an invalid status with the shared 422 shape" do
@@ -143,6 +143,69 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     assert_equal [feedback.id.to_s, feedback.created_at.iso8601, "Reporter", "reporter@example.com",
                   "new", "A message, with a comma", "http://localhost:5173/trips/1/schedule", nil, nil, "WendTest/1.0"],
                  rows.second
+  end
+
+  test "export narrows to the statuses asked for, and to nothing else" do
+    fresh = Feedback.create!(user: @reporter, message: "Still new")
+    rejected = Feedback.create!(user: @reporter, message: "Read and not acting on it", status: "rejected")
+    Feedback.create!(user: @other, message: "Dealt with", status: "done")
+    sign_in_as(@admin)
+
+    get "/api/admin/feedbacks/export", params: { status: %w[new rejected] }
+    assert_response :success
+
+    ids = CSV.parse(response.body).drop(1).map(&:first)
+    assert_equal [rejected.id.to_s, fresh.id.to_s].sort, ids.sort
+  end
+
+  test "export takes one status as a bare param too" do
+    Feedback.create!(user: @reporter, message: "Still new")
+    done = Feedback.create!(user: @other, message: "Dealt with", status: "done")
+    sign_in_as(@admin)
+
+    get "/api/admin/feedbacks/export", params: { status: "done" }
+    assert_response :success
+
+    rows = CSV.parse(response.body).drop(1)
+    assert_equal [done.id.to_s], rows.map(&:first)
+  end
+
+  # A download link has no error surface to render a 422 into, so a hand-edited
+  # or stale URL widens back to everything rather than failing or exporting an
+  # empty file that looks like "there is no feedback".
+  test "export ignores an unknown status instead of refusing or emptying the file" do
+    2.times { |i| Feedback.create!(user: @reporter, message: "Note #{i}") }
+    sign_in_as(@admin)
+
+    get "/api/admin/feedbacks/export", params: { status: %w[triaged] }
+    assert_response :success
+    assert_equal 2, CSV.parse(response.body).drop(1).length
+
+    get "/api/admin/feedbacks/export", params: { status: [] }
+    assert_response :success
+    assert_equal 2, CSV.parse(response.body).drop(1).length
+  end
+
+  test "export keeps the whole pile when no status is asked for" do
+    Feedback.create!(user: @reporter, message: "Still new")
+    Feedback.create!(user: @other, message: "Dealt with", status: "done")
+    sign_in_as(@admin)
+
+    get "/api/admin/feedbacks/export"
+    assert_response :success
+    assert_equal 2, CSV.parse(response.body).drop(1).length
+  end
+
+  # The filter narrows the file, never the screen's own list: the table filters
+  # in the browser and needs the whole pile to say "3 of 4".
+  test "index ignores the export's status filter" do
+    Feedback.create!(user: @reporter, message: "Still new")
+    Feedback.create!(user: @other, message: "Dealt with", status: "done")
+    sign_in_as(@admin)
+
+    get "/api/admin/feedbacks", params: { status: %w[new] }
+    assert_response :success
+    assert_equal 2, JSON.parse(response.body)["feedbacks"].length
   end
 
   # --- The enduser endpoint is untouched --------------------------------------

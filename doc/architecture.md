@@ -236,7 +236,7 @@ the Entry graph.
 | url | string | the full **client** URL, e.g. `http://localhost:5173/trips/3/schedule` |
 | element_selector | string | set only when the user pointed at something |
 | element_classes | string | that element's class attribute, e.g. `_chip_7ilc4_44` |
-| status | string, not null, default `new` | `new` \| `triaged` \| `done` |
+| status | string, not null, default `new` | `new` \| `rejected` \| `done` |
 | user_agent | string | captured from the request; **not serialized back** |
 | created_at/updated_at | datetime | |
 

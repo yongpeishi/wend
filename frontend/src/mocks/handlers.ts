@@ -937,7 +937,7 @@ export const handlers = [
 
     const body = (await request.json()) as { feedback?: { status?: string } };
     const status = body.feedback?.status;
-    if (status !== 'new' && status !== 'triaged' && status !== 'done') {
+    if (status !== 'new' && status !== 'rejected' && status !== 'done') {
       return HttpResponse.json({ errors: { status: ['is not included in the list'] } }, { status: 422 });
     }
 
@@ -946,15 +946,27 @@ export const handlers = [
     return HttpResponse.json({ feedback: toAdminFeedback(feedback) });
   }),
 
-  http.get('/api/admin/feedbacks/export', () => {
+  http.get('/api/admin/feedbacks/export', ({ request }) => {
     const auth = requireAdmin();
     if (auth instanceof HttpResponse) return auth;
+
+    // `?status[]=new&status[]=rejected` narrows the file the way the screen's
+    // status chips narrow the table. None asked for is no narrowing at all —
+    // `Feedback.with_statuses` in the contract, unknown values dropped there
+    // too, so a stale URL widens rather than 422s.
+    const wanted = new URL(request.url).searchParams
+      .getAll('status[]')
+      .filter((s): s is StoredFeedback['status'] => s === 'new' || s === 'rejected' || s === 'done');
 
     // Trivial by design — the real CSV is the backend's (Ruby stdlib CSV); the
     // mock only has to be a downloadable file with the contract's header row.
     const quote = (value: string | number | null) =>
       value === null ? '' : `"${String(value).replaceAll('"', '""')}"`;
-    const rows = feedbacksNewestFirst().map((f) => {
+    const exported =
+      wanted.length > 0
+        ? feedbacksNewestFirst().filter((f) => wanted.includes(f.status))
+        : feedbacksNewestFirst();
+    const rows = exported.map((f) => {
       const user = db.users.find((u) => u.id === f.user_id);
       return [
         f.id,

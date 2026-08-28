@@ -21,14 +21,20 @@ module Api
         render json: { feedback: ::Admin::FeedbackSerializer.one(feedback) }
       end
 
-      # The same pile as index, as a file. CSV via the stdlib; nils come out as
-      # empty cells, which is what a spreadsheet wants.
+      # The same pile as index, as a file, and narrowed the same way the screen
+      # is: `?status[]=new&status[]=rejected` exports exactly what those two
+      # chips leave on the table, so the file matches what the admin was
+      # looking at when they pressed the button. No param is the whole pile.
+      # See Feedback.with_statuses for what an unknown or empty value does.
+      #
+      # CSV via the stdlib; nils come out as empty cells, which is what a
+      # spreadsheet wants.
       def export
         authorize [:admin, Feedback], :export?
 
         csv = CSV.generate do |rows|
           rows << %w[id created_at user_name user_email status message url element_selector element_classes user_agent]
-          all_feedbacks.each do |f|
+          exported_feedbacks.each do |f|
             rows << [f.id, f.created_at.iso8601, f.user.name, f.user.email, f.status,
                      f.message, f.url, f.element_selector, f.element_classes, f.user_agent]
           end
@@ -41,6 +47,12 @@ module Api
 
       def all_feedbacks
         policy_scope([:admin, Feedback]).newest_first.includes(:user)
+      end
+
+      # `params[:status]` arrives as an array from `status[]=`, and as a bare
+      # string from `status=`; Array() flattens the difference so both work.
+      def exported_feedbacks
+        all_feedbacks.with_statuses(params[:status])
       end
 
       def feedback_params

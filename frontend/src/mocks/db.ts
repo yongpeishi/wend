@@ -819,7 +819,7 @@ export function seed() {
       url: 'http://localhost:5173/trips/1/schedule',
       element_selector: 'button[data-testid="set-aside"]',
       element_classes: '_button_1p9dt_29 _quiet_1p9dt_44',
-      status: 'triaged',
+      status: 'rejected',
       created_at: '2026-08-18T11:05:00.000Z',
       updated_at: '2026-08-19T08:00:00.000Z',
       user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Firefox/141.0',

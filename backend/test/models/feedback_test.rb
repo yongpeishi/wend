@@ -51,6 +51,39 @@ class FeedbackTest < ActiveSupport::TestCase
     assert_equal [newer.id, older.id], Feedback.newest_first.pluck(:id)
   end
 
+  test "triage runs new / rejected / done, and nothing else" do
+    assert_equal %w[new rejected done], Feedback::STATUSES
+    assert_equal "new", Feedback.create!(user: @user, message: "Fresh").status
+
+    %w[new rejected done].each do |status|
+      assert Feedback.new(user: @user, message: "Fine", status: status).valid?, "#{status} should be a status"
+    end
+
+    # The name `rejected` replaced -- migration 20260828120000.
+    assert_not Feedback.new(user: @user, message: "Nope", status: "triaged").valid?
+  end
+
+  test "with_statuses keeps only the statuses asked for" do
+    fresh = Feedback.create!(user: @user, message: "Fresh")
+    rejected = Feedback.create!(user: @user, message: "Not acting on it", status: "rejected")
+    Feedback.create!(user: @user, message: "Dealt with", status: "done")
+
+    assert_equal [fresh.id, rejected.id].sort, Feedback.with_statuses(%w[new rejected]).pluck(:id).sort
+    assert_equal [rejected.id], Feedback.with_statuses("rejected").pluck(:id)
+  end
+
+  # An untouched filter asks for no statuses, and nobody means "show me none of
+  # them" by that -- so an empty or unrecognised list widens instead of emptying.
+  test "with_statuses treats nothing recognisable as no narrowing at all" do
+    3.times { |i| Feedback.create!(user: @user, message: "Note #{i}") }
+
+    assert_equal 3, Feedback.with_statuses([]).count
+    assert_equal 3, Feedback.with_statuses(nil).count
+    assert_equal 3, Feedback.with_statuses(%w[triaged nonsense]).count
+    # One good value among the noise still narrows by that one.
+    assert_equal 3, Feedback.with_statuses(%w[new nonsense]).count
+  end
+
   test "feedback goes with the user" do
     Feedback.create!(user: @user, message: "Bye")
     assert_difference -> { Feedback.count }, -1 do
