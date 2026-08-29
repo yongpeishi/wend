@@ -1,4 +1,6 @@
 class UserCalendarsController < ApplicationController
+  rescue_from ActiveRecord::RecordNotFound, with: -> { head :not_found }
+
   def show
     user = User.find(params[:id])
     supplied_token = params[:auth].to_s

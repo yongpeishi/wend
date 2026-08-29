@@ -48,7 +48,9 @@ import type {
 
 function currentUser(): User | null {
   const user = db.users.find((u) => u.id === db.currentUserId);
-  return user ? { id: user.id, name: user.name, email: user.email, admin: user.admin } : null;
+  return user
+    ? { id: user.id, name: user.name, email: user.email, admin: user.admin, ical_url: `/users/${user.id}/ical?auth=mock` }
+    : null;
 }
 
 function requireAuth(): User | HttpResponse<{ error: string }> {
@@ -168,7 +170,7 @@ export const handlers = [
     if (!user) return HttpResponse.json({ error: 'Invalid email or password' }, { status: 401 });
     db.currentUserId = user.id;
     return HttpResponse.json(
-      { user: { id: user.id, name: user.name, email: user.email, admin: user.admin } },
+      { user: currentUser() },
       { status: 201 },
     );
   }),
@@ -196,11 +198,19 @@ export const handlers = [
       return HttpResponse.json({ errors: { email: ['has already been taken'] } }, { status: 422 });
     }
     // Nobody signs up as an admin; promotion is a rails-console act.
-    const user = { id: allocateId(), name: body.name, email: body.email, password: body.password, admin: false };
+    const id = allocateId();
+    const user = {
+      id,
+      name: body.name,
+      email: body.email,
+      password: body.password,
+      admin: false,
+      ical_url: `/users/${id}/ical?auth=mock`,
+    };
     db.users.push(user);
     db.currentUserId = user.id;
     return HttpResponse.json(
-      { user: { id: user.id, name: user.name, email: user.email, admin: user.admin } },
+      { user: currentUser() },
       { status: 201 },
     );
   }),

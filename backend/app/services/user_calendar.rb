@@ -14,7 +14,7 @@ class UserCalendar
     ]
     schedule_items.each { |item| lines.concat(event_lines(item)) }
     lines << "END:VCALENDAR"
-    "#{lines.join("\r\n")}\r\n"
+    "#{lines.compact.flat_map { |line| fold(line) }.join("\r\n")}\r\n"
   end
 
   private
@@ -35,8 +35,7 @@ class UserCalendar
       "BEGIN:VEVENT",
       "UID:schedule-item-#{item.id}@wend",
       "DTSTAMP:#{item.updated_at.utc.strftime("%Y%m%dT%H%M%SZ")}",
-      "DTSTART:#{local_time(item.day, item.starts_at_minutes)}",
-      "DTEND:#{local_time(item.day, item.ends_at_minutes)}",
+      *time_properties(item, entry),
       property("SUMMARY", entry.title),
       property("DESCRIPTION", entry.description),
       property("LOCATION", entry.address),
@@ -45,8 +44,24 @@ class UserCalendar
     ].compact
   end
 
+  def time_properties(item, entry)
+    if item.starts_at_minutes.nil?
+      return [
+        "DTSTART;VALUE=DATE:#{item.day.strftime("%Y%m%d")}",
+        "DTEND;VALUE=DATE:#{(item.day + 1).strftime("%Y%m%d")}"
+      ]
+    end
+
+    ends_at = item.ends_at_minutes || item.starts_at_minutes + entry.duration_minutes.to_i
+    [
+      "DTSTART:#{local_time(item.day, item.starts_at_minutes)}",
+      "DTEND:#{local_time(item.day, ends_at)}"
+    ]
+  end
+
   def local_time(day, minutes)
-    minutes ||= 0
+    day += minutes / 1.day.in_minutes
+    minutes %= 1.day.in_minutes
     day.strftime("%Y%m%d") + format("T%02d%02d00", minutes / 60, minutes % 60)
   end
 
@@ -68,5 +83,21 @@ class UserCalendar
          .gsub(/[\r\n]/, "\\n")
          .gsub(",", "\\,")
          .gsub(";", "\\;")
+  end
+
+  # RFC 5545 caps content lines at 75 octets. Continuations begin with one
+  # space, leaving 74 octets for their content; iterating characters keeps a
+  # multi-byte place name from being split into invalid UTF-8.
+  def fold(line)
+    folded = []
+    current = +""
+    line.each_char do |character|
+      if current.bytesize + character.bytesize > 75
+        folded << current
+        current = +" "
+      end
+      current << character
+    end
+    folded << current
   end
 end
