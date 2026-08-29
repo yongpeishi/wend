@@ -35,6 +35,43 @@
   margin-left: auto;
 }
 
+/* The keep-it-now row: a name box that takes the width, and the button that
+   commits it sitting on the same line. It wears card tone against the picker's
+   paper the way each .choice below does — it is a row of this list, offering
+   the one thing the list itself cannot. Wraps rather than squeezing the button
+   to nothing on a narrow day column. */
+.create {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.createInput {
+  flex: 1 1 12rem;
+  min-width: 0;
+  box-sizing: border-box;
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  /* The same 10px 12px row inset as .choice, so the box and the rows under it
+     sit on one left edge. */
+  padding: 10px 12px;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+}
+
+.createInput::placeholder {
+  color: var(--text-muted);
+}
+
+.createInput:focus,
+.createInput:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
 .empty {
   margin: 0;
   font-size: var(--text-min-size);

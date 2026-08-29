@@ -77,6 +77,20 @@
   outline-offset: var(--focus-offset);
 }
 
+/* The description box, and the one control here that is deliberately taller
+   than a line. It was a single-line <input> and read as one: a box that size
+   invites six words and truncates the seventh out of sight, which is the wrong
+   shape for the field people actually use to say what the idea IS. Four rows
+   at capture time, draggable taller, and `box-sizing` because the shared
+   `.input` padding would otherwise push a textarea past the card's width.
+   Enter still keeps the idea — Shift+Enter is the new line. */
+.textarea {
+  box-sizing: border-box;
+  min-height: 96px;
+  line-height: var(--text-body-line);
+  resize: vertical;
+}
+
 /* The name is the idea — set like an idea row's title while it is typed. */
 .nameInput {
   font-size: var(--text-body-size);

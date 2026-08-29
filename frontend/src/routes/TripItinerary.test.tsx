@@ -525,6 +525,61 @@ describe('TripItinerary — placing what is waiting', () => {
 });
 
 /**
+ * Feedback #25: "itinerary building should be able to add ideas".
+ *
+ * The picker could only ever offer what the Ideas board already held, so the
+ * thought that arrives while you are building Tuesday had to be carried to
+ * another screen, written down, and carried back. Two writes now happen behind
+ * one gesture — the idea is kept on the trip, then placed on the day — and this
+ * is the case that pins both of them, end to end through the real MSW API.
+ */
+describe('TripItinerary — keeping a new idea straight onto a day', () => {
+  it('writes the idea down and puts it on the day, in one gesture', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
+
+    await openDay(user, 'Day 1 · Mon 2');
+    await user.click(screen.getByRole('button', { name: 'Fill it' }));
+    await user.type(screen.getByLabelText('Name a new idea'), 'Nishiki fish stall{Enter}');
+
+    // On the day, over the hole's own hours — the gap was the 1 hr 20 between
+    // 09:40 and 11:00, and the new idea took exactly that, the same as anything
+    // picked off the shelf. A brand-new idea has no duration, so this is also
+    // the proof that the gap's own span wins over the default hour.
+    expect(
+      await screen.findByRole('button', {
+        name: 'Change the hours for Nishiki fish stall, now 09:40–11:00',
+      }),
+    ).toBeInTheDocument();
+
+    // It is an ordinary trip idea, created and then placed — so it never joins
+    // the queue of things waiting, and the three that were waiting still are.
+    expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
+  });
+
+  it('says so and places nothing when the idea cannot be written down', async () => {
+    const user = userEvent.setup();
+    // The create is the first of the two writes; failing it means there is no
+    // id to place, so the day must be left exactly as it was.
+    const post = vi.spyOn(api, 'post').mockRejectedValueOnce(new Error('nope'));
+    renderItinerary();
+    await screen.findByText('Not placed yet · 3');
+
+    await openDay(user, 'Day 1 · Mon 2');
+    await user.click(screen.getByRole('button', { name: 'Fill it' }));
+    await user.type(screen.getByLabelText('Name a new idea'), 'Nowhere{Enter}');
+
+    expect(
+      await screen.findByText("That didn't save. It's still here — try again."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Nowhere')).not.toBeInTheDocument();
+    // One attempt, and no schedule item behind it.
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
  * Feedback 014#2: "When there is 2 versions, dragging an idea into day only
  * append Version A. Unable to drag into version B."
  *

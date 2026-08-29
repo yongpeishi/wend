@@ -278,43 +278,46 @@ function ideas(): HTMLElement {
   return screen.getByRole('region', { name: 'Ideas' });
 }
 
-/** Wait for the map — every map assertion starts here. The board paints with
- * the map already up, so this is only the wait for the pane to arrive. */
+/** Raise the map — every map assertion starts here. The board now paints with
+ * the pane DOWN, so this presses the "Show map" chip and waits for it, and is a
+ * no-op for a caller that already has it up. */
 async function mapUp() {
+  const chip = screen.queryByRole('button', { name: 'Show map' });
+  if (chip) await userEvent.setup().click(chip);
   return screen.findByTestId('map-view');
 }
 
 describe('TripBoard — showing and hiding the map', () => {
-  // The default the board opens on. Where a trip's ideas ARE is half of what
-  // the board has to say about them, and a map behind a button is a map nobody
-  // presses. The follow switch is gone for good: the list no longer takes any
-  // cue from the viewport, so there is nothing for a switch to govern.
-  it('paints with the map already up, and without any follow switch', async () => {
+  // The default the board opens on. The ideas are the subject of this screen
+  // and the map is the companion, so arriving no longer costs a scroll past a
+  // pane nobody asked for. The follow switch is gone for good: the list takes
+  // no cue from the viewport, so there is nothing for a switch to govern.
+  it('paints with the map down, and without any follow switch', async () => {
     renderBoard();
     await screen.findByText('Nanzen-ji');
 
-    expect(screen.getByTestId('map-view')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Hide map' })).toBeInTheDocument();
+    expect(screen.queryByTestId('map-view')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show map' })).toBeInTheDocument();
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-    // While the map is up there is nothing for a "Show map" chip to do.
-    expect(screen.queryByRole('button', { name: 'Show map' })).not.toBeInTheDocument();
+    // While the map is down there is no pane header to hide it from.
+    expect(screen.queryByRole('button', { name: 'Hide map' })).not.toBeInTheDocument();
   });
 
-  it('hides via the pane, comes back via the chip', async () => {
+  it('comes up via the chip, goes back down via the pane', async () => {
     const user = userEvent.setup();
     renderBoard();
     await screen.findByText('Nanzen-ji');
+
+    await user.click(screen.getByRole('button', { name: 'Show map' }));
+
+    expect(await screen.findByTestId('map-view')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hide map' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show map' })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Hide map' }));
 
     expect(screen.queryByTestId('map-view')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show map' })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Show map' }));
-
-    expect(await mapUp()).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Hide map' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Show map' })).not.toBeInTheDocument();
   });
 });
 

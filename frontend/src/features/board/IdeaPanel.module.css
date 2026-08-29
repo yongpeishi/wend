@@ -23,12 +23,19 @@
 /* Running text, at the product's readable floor. 60ch is the design's own
    measure for this panel — a shade narrower than --measure-body (66ch), which
    is sized for full reading pages rather than a card. */
+/* `pre-wrap` because the composer's description box is a textarea now: a
+   paragraph typed across three lines has to read back as three lines rather
+   than collapsing into one. Same reason EntryDetail's .fact carries it.
+   `overflow-wrap` is for the URL somebody will paste in here one day — one
+   unbroken word, in a column with a hard edge. */
 .body {
   margin: 0;
   font-size: var(--text-min-size);
   line-height: var(--text-small-line);
   color: var(--text-strong);
   max-width: 60ch;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* Notes are the aside to the description's pitch, so they read quieter. */

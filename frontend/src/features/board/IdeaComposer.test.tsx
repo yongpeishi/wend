@@ -420,6 +420,65 @@ describe('IdeaComposer — the parent picker', () => {
   });
 });
 
+/**
+ * Feedback #23: the description box is a textarea now, and big enough to look
+ * like one. A one-line input took the sentence people actually write here and
+ * hid everything past the right edge.
+ *
+ * The cost of a textarea is that Enter belongs to it, so both halves of the
+ * split are pinned: Enter still finishes the card, Shift+Enter is the new line.
+ */
+describe('IdeaComposer — the description takes more than a line', () => {
+  it('is a textarea, so a paragraph can be seen as it is typed', () => {
+    renderComposer();
+
+    expect(screen.getByRole('textbox', { name: 'Short description' }).tagName).toBe('TEXTAREA');
+  });
+
+  it('keeps the line breaks typed into it, and hands them over intact', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer();
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Fushimi Inari');
+    await user.type(
+      screen.getByRole('textbox', { name: 'Short description' }),
+      'Torii gates{Shift>}{Enter}{/Shift}Go at dawn',
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue(
+      'Torii gates\nGo at dawn',
+    );
+    // Shift+Enter is a new line and nothing else: the card is still standing.
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ description: 'Torii gates\nGo at dawn' }));
+  });
+
+  it('finishes the card on a plain Enter, from either box', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer();
+
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Fushimi Inari{Enter}');
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ title: 'Fushimi Inari' }));
+
+    onSubmit.mockClear();
+    await user.type(screen.getByRole('textbox', { name: 'Short description' }), 'Torii gates{Enter}');
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Fushimi Inari', description: 'Torii gates' }),
+    );
+  });
+
+  it('never submits a nameless idea on Enter', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer();
+
+    await user.type(screen.getByRole('textbox', { name: 'Short description' }), 'Torii gates{Enter}');
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
 describe('IdeaComposer — submit and cancel', () => {
   it('hands the whole draft over, trimmed, in the shape the board expects', async () => {
     const user = userEvent.setup();
