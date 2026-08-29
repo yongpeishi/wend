@@ -24,7 +24,7 @@ import { Card } from '../components/layout/Card';
 import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import { api } from '../api/client';
-import { useChangeTripDates, useEntries } from '../api/entries';
+import { useChangeTripDates, useCreateEntry, useEntries } from '../api/entries';
 import { queryKeys } from '../api/queryKeys';
 import { useCreateScheduleItem, useDeleteScheduleItem } from '../api/schedule';
 import {
@@ -157,6 +157,8 @@ export function TripItinerary() {
   const [pendingDates, setPendingDates] = useState<PendingDates | null>(null);
 
   const changeDates = useChangeTripDates(trip.id);
+  // The picker's name box keeps an idea before placing it — see createAndPlace.
+  const createEntry = useCreateEntry();
   const updateTripDay = useUpdateTripDay(trip.id);
   const forkDay = useForkDay(trip.id);
   const keepVersion = useKeepVersion(trip.id);
@@ -312,10 +314,16 @@ export function TripItinerary() {
     versionId: number,
     entryId: number,
     slot: { start: number; end: number } | null,
+    /**
+     * The entry itself, for the one caller whose entry is too new to be on the
+     * shelf: an idea created seconds ago is not in `kept` until the entries
+     * query comes back, and without this the toast would name it "Kept".
+     */
+    known?: Pick<EntrySummary, 'title' | 'duration_minutes'>,
   ) {
     const version = day.versions.find((v) => v.id === versionId) ?? day.versions[0];
     const items = version?.schedule_items ?? [];
-    const entry = kept.find((choice) => choice.id === entryId);
+    const entry = known ?? kept.find((choice) => choice.id === entryId);
     const when = slot ?? nextFreeSlot(items, entry?.duration_minutes ?? null);
 
     createItem.mutate(
@@ -354,6 +362,48 @@ export function TripItinerary() {
     const version = (versionId !== null && day.versions.find((v) => v.id === versionId)) || day.versions[0];
     if (!version) return;
     placeEntry(day, version.id, entryId, null);
+  }
+
+  /**
+   * The picker's name box: write an idea down and put it on the day in one
+   * gesture.
+   *
+   * Two writes, in order, because they are two facts — the idea exists, and
+   * the idea is on Tuesday — and the second needs the first one's id. The
+   * create is `mutateAsync` for exactly that reason; `placeEntry` then runs
+   * the same path a pick from the shelf runs, so the hours, the toast and the
+   * "open the day it landed on" are all one implementation.
+   *
+   * `parent_id` is the trip, so the idea lands at the board's top level like
+   * anything typed into the capture bar. It is an ordinary trip idea from this
+   * moment on — nothing about being born on the itinerary marks it.
+   *
+   * A name and nothing else is sent. Category, address and duration are all
+   * legitimately unknown at the moment somebody thinks of a place, and writing
+   * a guess onto the entry to fill the shape of the form would be worse than
+   * leaving them unsaid: `nextFreeSlot` reads a null duration as the default
+   * hour, which is the right answer for an idea nobody has timed yet.
+   *
+   * If the create fails there is nothing to place and the house sentence says
+   * so. The picker has already closed by then — what was typed is gone, which
+   * is the honest cost of one box and one key, and the sentence is the signal
+   * to type it again.
+   */
+  async function createAndPlace(
+    day: ItineraryDay,
+    versionId: number,
+    title: string,
+    slot: { start: number; end: number } | null,
+  ) {
+    try {
+      const entry = await createEntry.mutateAsync({
+        entry: { kind: 'idea', title },
+        parent_id: trip.id,
+      });
+      placeEntry(day, versionId, entry.id, slot, { title: entry.title, duration_minutes: null });
+    } catch {
+      onError();
+    }
   }
 
   /**
@@ -509,6 +559,7 @@ export function TripItinerary() {
                     onToggle={() => toggleDay(day.day)}
                     onDropItem={(entryId, versionId) => placeOnDay(entryId, day.day, versionId)}
                     onAddItem={(versionId, entryId, slot) => placeEntry(day, versionId, entryId, slot)}
+                    onCreateItem={(versionId, title, slot) => createAndPlace(day, versionId, title, slot)}
                     onFork={() =>
                       forkDay.mutate(
                         { day: day.day },

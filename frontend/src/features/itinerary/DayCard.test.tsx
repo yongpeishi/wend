@@ -66,6 +66,7 @@ const HANDLERS = () => ({
   onFork: vi.fn(),
   onKeepVersion: vi.fn(),
   onAddItem: vi.fn(),
+  onCreateItem: vi.fn(),
   onEditTime: vi.fn(),
   onRemoveItem: vi.fn(),
   onSetLodging: vi.fn(),
@@ -204,6 +205,61 @@ describe('DayCard — placing things', () => {
 
     expect(screen.queryByText('Kept and not placed yet')).not.toBeInTheDocument();
     expect(handlers.onAddItem).not.toHaveBeenCalled();
+  });
+
+  // The shelf could only ever offer what the Ideas board already held. Building
+  // a day is exactly when the next thing occurs to you, so the picker keeps as
+  // well as picks — and what it keeps goes on THIS day, at these hours.
+  it('keeps a brand-new idea and puts it on the day, in one gesture', async () => {
+    const user = userEvent.setup();
+    const handlers = renderCard();
+
+    await user.click(screen.getByRole('button', { name: '+ add to this day' }));
+    await user.type(screen.getByLabelText('Name a new idea'), 'Nishiki fish stall');
+    await user.click(screen.getByRole('button', { name: 'Add to day' }));
+
+    expect(handlers.onCreateItem).toHaveBeenCalledWith(1, 'Nishiki fish stall', null);
+    // Placed, so the question is answered and the picker stands down — the
+    // same courtesy picking from the shelf gets.
+    expect(screen.queryByText('Kept and not placed yet')).not.toBeInTheDocument();
+  });
+
+  it('takes Enter as the same gesture, and hands the gap its own hours', async () => {
+    const user = userEvent.setup();
+    const handlers = renderCard();
+
+    await user.click(screen.getByRole('button', { name: 'Fill it' }));
+    await user.type(screen.getByLabelText('Name a new idea'), 'Coffee somewhere{Enter}');
+
+    expect(handlers.onCreateItem).toHaveBeenCalledWith(1, 'Coffee somewhere', {
+      start: 12 * 60 + 30,
+      end: 18 * 60 + 30,
+    });
+  });
+
+  it('will not keep a blank name, by either route', async () => {
+    const user = userEvent.setup();
+    const handlers = renderCard();
+
+    await user.click(screen.getByRole('button', { name: '+ add to this day' }));
+    await user.type(screen.getByLabelText('Name a new idea'), '   {Enter}');
+
+    expect(screen.getByRole('button', { name: 'Add to day' })).toBeDisabled();
+    expect(handlers.onCreateItem).not.toHaveBeenCalled();
+    // Still standing: nothing happened, so nothing has been answered.
+    expect(screen.getByText('Kept and not placed yet')).toBeInTheDocument();
+  });
+
+  // The prop is the switch. A DayCard given no way to create shows a shelf and
+  // only a shelf, rather than a box whose button cannot do anything.
+  it('offers no name box when the container gave it nowhere to create', async () => {
+    const user = userEvent.setup();
+    renderCard({ onCreateItem: undefined });
+
+    await user.click(screen.getByRole('button', { name: '+ add to this day' }));
+
+    expect(screen.getByText('Kept and not placed yet')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Name a new idea')).not.toBeInTheDocument();
   });
 });
 

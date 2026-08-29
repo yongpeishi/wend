@@ -47,6 +47,13 @@ export interface DayCardProps {
    * knows exactly which hours it is offering.
    */
   onAddItem: (versionId: number, entryId: number, slot: { start: number; end: number } | null) => void;
+  /**
+   * A name typed into the picker rather than chosen from it: keep a new idea
+   * and put it on this day in one go. Same `slot` rule as `onAddItem`.
+   * Omitted, the picker is a shelf only and offers no way to write anything
+   * down — which is what a caller with no create path wants.
+   */
+  onCreateItem?: (versionId: number, title: string, slot: { start: number; end: number } | null) => void;
   onEditTime: (itemId: number, startsAtMinutes: number | null, endsAtMinutes: number | null) => void;
   onRemoveItem: (itemId: number) => void;
   /** Both keys together: one clears the other, and both null clears the night. */
@@ -101,6 +108,7 @@ export function DayCard({
   onFork,
   onKeepVersion,
   onAddItem,
+  onCreateItem,
   onEditTime,
   onRemoveItem,
   onSetLodging,
@@ -258,6 +266,19 @@ export function DayCard({
             setPicker(null);
             onAddItem(picker.versionId, entryId, picker.slot);
           }}
+          /* Passed through only when the container gave one, so the prop stays
+             the switch that decides whether the picker can keep as well as
+             pick. Closes on submit exactly as picking does: the thing asked
+             for is on the day, and a picker still standing over it is asking
+             the question again. */
+          onCreate={
+            onCreateItem &&
+            ((title) => {
+              const target = picker;
+              setPicker(null);
+              onCreateItem(target.versionId, title, target.slot);
+            })
+          }
         />
       )}
     </div>

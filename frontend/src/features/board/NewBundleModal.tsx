@@ -75,8 +75,9 @@ export function NewBundleModal({ open, onClose, tripId, onCreated }: NewBundleMo
     );
   }
 
-  // Same reasoning as NewIdeaModal: a create dialog has no read-only form, and
-  // BulkBar — the only thing that opens this — is already gone for a viewer.
+  // A create dialog has no read-only form worth showing — an empty form nobody
+  // can submit is not content — and BulkBar, the only thing that opens this, is
+  // already gone for a viewer.
   if (!canEdit) return null;
 
   return (
