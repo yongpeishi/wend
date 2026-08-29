@@ -51,11 +51,11 @@ class FeedbackTest < ActiveSupport::TestCase
     assert_equal [newer.id, older.id], Feedback.newest_first.pluck(:id)
   end
 
-  test "triage runs new / rejected / done, and nothing else" do
-    assert_equal %w[new rejected done], Feedback::STATUSES
+  test "triage runs new / in_progress / rejected / done, and nothing else" do
+    assert_equal %w[new in_progress rejected done], Feedback::STATUSES
     assert_equal "new", Feedback.create!(user: @user, message: "Fresh").status
 
-    %w[new rejected done].each do |status|
+    %w[new in_progress rejected done].each do |status|
       assert Feedback.new(user: @user, message: "Fine", status: status).valid?, "#{status} should be a status"
     end
 
@@ -65,11 +65,13 @@ class FeedbackTest < ActiveSupport::TestCase
 
   test "with_statuses keeps only the statuses asked for" do
     fresh = Feedback.create!(user: @user, message: "Fresh")
+    picked_up = Feedback.create!(user: @user, message: "Being worked on", status: "in_progress")
     rejected = Feedback.create!(user: @user, message: "Not acting on it", status: "rejected")
     Feedback.create!(user: @user, message: "Dealt with", status: "done")
 
     assert_equal [fresh.id, rejected.id].sort, Feedback.with_statuses(%w[new rejected]).pluck(:id).sort
     assert_equal [rejected.id], Feedback.with_statuses("rejected").pluck(:id)
+    assert_equal [picked_up.id], Feedback.with_statuses("in_progress").pluck(:id)
   end
 
   # An untouched filter asks for no statuses, and nobody means "show me none of
