@@ -23,19 +23,57 @@ class UserCalendar
     trip_ids = @user.trip_memberships.select(:trip_id)
     ScheduleItem.where(trip_id: Entry.active.where(id: trip_ids).select(:id))
                 .in_final_plan
-                .includes(:entry, :chosen_entry)
+                .includes(entry: { child_links: :child })
                 .order(:day, :starts_at_minutes, :position, :id)
   end
 
   def event_lines(item)
-    entry = item.chosen_entry || item.entry
-    return [] if entry.nil?
+    entries_with_times(item).flat_map do |entry, starts_at, ends_at|
+      lines_for_event(item, entry, starts_at, ends_at)
+    end
+  end
 
+  # A bundle placed on an itinerary commits all of its members to that plan.
+  # Bundles which remain only on the board never have a ScheduleItem and never
+  # reach this method. The member spans follow the itinerary UI: proportional
+  # to estimates when every member has one, otherwise divided evenly.
+  def entries_with_times(item)
+    entry = item.entry
+    return [] if entry.nil?
+    return [ [ entry, item.starts_at_minutes, item.ends_at_minutes ] ] unless entry.bundle?
+
+    members = entry.child_links.sort_by { |link| [ link.position, link.id ] }.map(&:child)
+    return [] if members.empty?
+    return members.map { |member| [ member, nil, nil ] } if item.starts_at_minutes.nil?
+
+    ends_at = item.ends_at_minutes || item.starts_at_minutes + members.sum { |member| member.duration_minutes.to_i }
+    weights = member_weights(members)
+    total = weights.sum
+    cursor = item.starts_at_minutes
+
+    members.each_with_index.map do |member, index|
+      finish = if index == members.length - 1
+        ends_at
+      else
+        item.starts_at_minutes + ((ends_at - item.starts_at_minutes) * weights.first(index + 1).sum.to_f / total).round
+      end
+      span = [ member, cursor, finish ]
+      cursor = finish
+      span
+    end
+  end
+
+  def member_weights(members)
+    estimates = members.map(&:duration_minutes)
+    estimates.all? { |minutes| minutes.present? && minutes.positive? } ? estimates : Array.new(members.length, 1)
+  end
+
+  def lines_for_event(item, entry, starts_at, ends_at)
     [
       "BEGIN:VEVENT",
-      "UID:schedule-item-#{item.id}@wend",
+      "UID:schedule-item-#{item.id}-entry-#{entry.id}@wend",
       "DTSTAMP:#{item.updated_at.utc.strftime("%Y%m%dT%H%M%SZ")}",
-      *time_properties(item, entry),
+      *time_properties(item.day, starts_at, ends_at, entry),
       property("SUMMARY", entry.title),
       property("DESCRIPTION", entry.description),
       property("LOCATION", entry.address),
@@ -44,18 +82,18 @@ class UserCalendar
     ].compact
   end
 
-  def time_properties(item, entry)
-    if item.starts_at_minutes.nil?
+  def time_properties(day, starts_at, ends_at, entry)
+    if starts_at.nil?
       return [
-        "DTSTART;VALUE=DATE:#{item.day.strftime("%Y%m%d")}",
-        "DTEND;VALUE=DATE:#{(item.day + 1).strftime("%Y%m%d")}"
+        "DTSTART;VALUE=DATE:#{day.strftime("%Y%m%d")}",
+        "DTEND;VALUE=DATE:#{(day + 1).strftime("%Y%m%d")}"
       ]
     end
 
-    ends_at = item.ends_at_minutes || item.starts_at_minutes + entry.duration_minutes.to_i
+    ends_at ||= starts_at + entry.duration_minutes.to_i
     [
-      "DTSTART:#{local_time(item.day, item.starts_at_minutes)}",
-      "DTEND:#{local_time(item.day, ends_at)}"
+      "DTSTART:#{local_time(day, starts_at)}",
+      "DTEND:#{local_time(day, ends_at)}"
     ]
   end
 

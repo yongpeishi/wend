@@ -105,7 +105,7 @@ class UserCalendarsTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "Private dinner"
   end
 
-  test "the feed emits the chosen bundle member and only the final live version" do
+  test "a bundle in the final itinerary emits every member but not an alternate version" do
     bundle = create_bundle(title: "Dinner options", created_by: @user)
     ramen = create_idea(title: "Ramen", description: "Chosen dinner", created_by: @user)
     sushi = create_idea(title: "Sushi", created_by: @user)
@@ -121,13 +121,40 @@ class UserCalendarsTest < ActionDispatch::IntegrationTest
     )
     version_b = day.fork!
     version_b.schedule_items.sole.update!(chosen_entry: sushi)
+    alternate = create_idea(title: "Only in Version B", created_by: @user)
+    link!(parent: @trip, child: alternate)
+    version_b.schedule_items.create!(
+      trip: @trip, entry: alternate, day: day.day,
+      starts_at_minutes: 20 * 60, ends_at_minutes: 21 * 60
+    )
 
     get "/users/#{@user.id}/ical", params: { auth: token_for(@user) }
 
     assert_response :success
-    assert_includes response.body, "SUMMARY:Ramen\r\n"
-    assert_includes response.body, "DESCRIPTION:Chosen dinner\r\n"
-    assert_not_includes response.body, "SUMMARY:Sushi\r\n"
+    ramen_event = event_for("Ramen")
+    assert_includes ramen_event, "DESCRIPTION:Chosen dinner\r\n"
+    assert_includes ramen_event, "DTSTART:20261013T180000\r\n"
+    assert_includes ramen_event, "DTEND:20261013T183000\r\n"
+    sushi_event = event_for("Sushi")
+    assert_includes sushi_event, "DTSTART:20261013T183000\r\n"
+    assert_includes sushi_event, "DTEND:20261013T190000\r\n"
+    assert_not_includes response.body, "Only in Version B"
+  end
+
+  test "a bundle that has not been put in the itinerary emits none of its members" do
+    bundle = create_bundle(title: "Maybe later", created_by: @user)
+    ramen = create_idea(title: "Uncommitted ramen", created_by: @user)
+    sushi = create_idea(title: "Uncommitted sushi", created_by: @user)
+    link!(parent: @trip, child: bundle)
+    link!(parent: bundle, child: ramen)
+    link!(parent: bundle, child: sushi)
+
+    get "/users/#{@user.id}/ical", params: { auth: token_for(@user) }
+
+    assert_response :success
+    assert_not_includes response.body, "Maybe later"
+    assert_not_includes response.body, "Uncommitted ramen"
+    assert_not_includes response.body, "Uncommitted sushi"
   end
 
   test "untimed items are all-day events and missing ends use the entry duration" do
