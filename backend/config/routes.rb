@@ -3,6 +3,10 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
+  # Calendar clients cannot carry Wend's session cookie, so this deliberately
+  # lives outside /api and authenticates with the user's derived feed token.
+  get "users/:id/ical", to: "user_calendars#show"
+
   namespace :api do
     resource :session, only: [:create, :destroy], controller: "sessions"
     get "me", to: "sessions#me"
