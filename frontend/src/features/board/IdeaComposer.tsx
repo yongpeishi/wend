@@ -125,9 +125,9 @@ export interface IdeaComposerProps {
  * from another. Only the first few matches are drawn (see PICKER_LIMIT); the
  * search field, not scrolling, is how you reach the rest.
  *
- * State resets when `open` flips true — the composer stays mounted across
- * opens the way NewIdeaModal does, so a fresh Tab must not resurrect the
- * half-draft someone cancelled yesterday. The reset seeds every field from
+ * State resets when `open` flips true. The composer stays mounted whether it
+ * is open or not — TripBoard always renders it — so a fresh Tab must not
+ * resurrect the half-draft someone cancelled yesterday. The reset seeds every field from
  * the initials of that moment, and re-folds a trimmed card. While it is open,
  * the initials are deliberately NOT watched: re-seeding mid-edit would
  * overwrite typing.
@@ -173,8 +173,8 @@ export function IdeaComposer({
   const nameRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Fresh form on every open — same pattern (and same reasoning) as
-  // NewIdeaModal's reset effect. The ref keys the reset to the false→true
+  // Fresh form on every open, because this component is never unmounted to
+  // get one for free. The ref keys the reset to the false→true
   // FLIP rather than to the deps: the initials sit in the array to keep the
   // effect honest about what it reads, but a board re-render that hands down
   // a new `initialParentIds` identity mid-edit must not wipe the typing (see

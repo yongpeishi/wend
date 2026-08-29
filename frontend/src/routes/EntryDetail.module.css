@@ -44,9 +44,9 @@
   resize: vertical;
 }
 
-/* Matches <Input>: apricot border + pale wash at offset 0, one ring. See the
-   note in NewIdeaModal.module.css — an offset solid ring on top of an apricot
-   border reads as two outlines. */
+/* Matches <Input>: apricot border + pale wash at offset 0, one ring. The
+   offset ring that used to sit here read as a SECOND apricot outline with a
+   strip of paper between it and the apricot border. */
 .input:focus-visible,
 .textarea:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring-wash);

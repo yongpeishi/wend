@@ -171,8 +171,8 @@ export function TripBoard() {
 
   // A stable handle, not an inline arrow: components with focus effects
   // memoize against their close callback to keep those effects from re-firing
-  // on every board render — see NewIdeaModal.tsx's doc comment on the
-  // underlying Modal.tsx behaviour.
+  // on every board render. Modal.tsx's own doc comment has the underlying
+  // behaviour.
   const closeComposer = useCallback(() => setComposer({ open: false, initialTitle: '', at: null }), []);
 
   /**

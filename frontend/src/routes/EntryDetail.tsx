@@ -50,12 +50,19 @@ export interface EntryDetailModalProps {
 /**
  * The detail panel itself, decoupled from the route.
  *
- * It is a centred modal over whatever you were looking at — the same dialog
- * "Add an idea" opens in (see NewIdeaModal.tsx), because opening an idea and
- * writing one down are the same act at two moments and they should not arrive
- * from two different edges of the screen. It used to slide in from the right as
- * a <Drawer>; that read as a second surface parallel to the board rather than
- * the one thing you had just pointed at.
+ * It is a centred modal over whatever you were looking at. It used to slide in
+ * from the right as a <Drawer>; that read as a second surface parallel to the
+ * board rather than the one thing you had just pointed at.
+ *
+ * It is now the only dialog on this path. Writing an idea down used to open a
+ * centred "Add an idea" modal of its own, and this panel was deliberately made
+ * to match it — opening an idea and writing one down are the same act at two
+ * moments, and they should not arrive from two different edges of the screen.
+ * Capture has since moved inline, into the card under the capture bar
+ * (IdeaComposer.tsx), which is a continuation of typing rather than an
+ * interruption of it. That leaves this as the surface you go to when you mean
+ * to sit with an idea that already exists, which is the honest difference
+ * between the two.
  *
  * Being an overlay only holds if there is something underneath. Reached as a
  * route it covers an empty page, because /entries/:id renders nothing else; the
@@ -84,11 +91,11 @@ export interface EntryDetailModalProps {
  * question the panel actually raises: "Edit idea", or "Idea" for someone who
  * cannot edit and is only reading it.
  *
- * One deliberate difference from "Add an idea": focus settles on the dialog
- * itself rather than in the name field. Modal aims at the first control in its
- * body once, on open, and on open this is still the spinner — but that is where
- * it belongs anyway. A new idea opens for typing; an existing one opens for
- * reading, and a cursor sitting in a title someone already wrote invites
+ * Focus settles on the dialog itself rather than in the name field, which is
+ * the opposite of what the capture card does. Modal aims at the first control
+ * in its body once, on open, and on open this is still the spinner — but that
+ * is where it belongs anyway. A new idea opens for typing; an existing one
+ * opens for reading, and a cursor sitting in a title someone already wrote invites
  * overwriting it (and raises a keyboard over the panel on a phone). Escape, Tab
  * and the heading read the same either way.
  */

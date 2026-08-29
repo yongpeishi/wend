@@ -570,9 +570,9 @@ describe('IdeaComposer — submit and cancel', () => {
 });
 
 /**
- * The composer stays mounted across opens the way NewIdeaModal does, so a
- * fresh Tab must not resurrect the half-draft someone cancelled — the reset
- * rides on `open` flipping true, seeded from whatever the bar sends this time.
+ * The composer stays mounted whether it is open or not, so a fresh Tab must
+ * not resurrect the half-draft someone cancelled — the reset rides on `open`
+ * flipping true, seeded from whatever the bar sends this time.
  */
 describe('IdeaComposer — a fresh form every open', () => {
   it('forgets a cancelled draft and takes the new seed', async () => {

@@ -216,8 +216,8 @@ describe('EntryDetail — what it no longer asks for', () => {
  * The feedback: the labels asked questions — "What is it?", "What kind of
  * thing?" — which read as friendly once and as noise every time after that,
  * and the two forms phrased the same question two different ways. They are
- * plain nouns now, the same nouns on both surfaces (NewIdeaModal.test.tsx
- * asserts the other half).
+ * plain nouns now, the same nouns on both surfaces — IdeaComposer.test.tsx
+ * asserts the other half, where they are the capture card's aria-labels.
  */
 describe('EntryDetail — the fields are named, not asked', () => {
   const LABELS = ['Name', 'Short description', 'Category', 'Estimated duration', 'Notes'];
@@ -293,11 +293,12 @@ describe('EntryDetail — what the dialog calls itself', () => {
 /**
  * The feedback: an idea opened as a drawer off the right-hand edge while a new
  * idea opened as a centred dialog — two arrivals for what is one thing, "an
- * idea, in front of you". This panel is now the same <Modal> "Add an idea"
- * uses, and it is reached the same way from either side of the board: a row in
- * the idea list and a member in the bundle rail both hand their id to
- * TripBoard's `editingId`, which raises exactly this component (asserted from
- * the caller's side in BundleCard.test.tsx and IdeaRow.test.tsx).
+ * idea, in front of you". This panel is a centred <Modal> now (capture has
+ * since moved inline, so the dialog it was matched to is gone), and it is
+ * reached the same way from either side of the board: a row in the idea list
+ * and a member in the bundle rail both hand their id to TripBoard's
+ * `editingId`, which raises exactly this component (asserted from the caller's
+ * side in BundleCard.test.tsx and IdeaRow.test.tsx).
  */
 describe('EntryDetail — it opens as a modal', () => {
   it('gives the reader one way out in the footer, and it does not say Save', async () => {
