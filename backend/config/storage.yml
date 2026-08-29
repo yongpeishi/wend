@@ -8,11 +8,21 @@ local:
 
 # Cloudflare R2 is S3-compatible. region "auto" and the account-scoped endpoint
 # are what R2 wants; force_path_style keeps the bucket out of the hostname.
+#
+# Prefer R2_ENDPOINT, pasted whole from the dashboard, and treat R2_ACCOUNT_ID
+# as the older way of saying the same thing. Cloudflare issues a certificate per
+# account and picks it by SNI, so an account id it does not recognise gets no
+# certificate at all and the connection dies in the TLS handshake -- an
+# "SSL alert number 40" out of aws-sdk, with nothing in it about which of the
+# four variables is wrong. Copying the endpoint verbatim removes the only step
+# where that value gets retyped. It also reaches the jurisdiction-specific hosts
+# (`<account>.eu.r2.cloudflarestorage.com` and friends), which composing from an
+# account id cannot express.
 r2:
   service: S3
   access_key_id: <%= ENV["R2_ACCESS_KEY_ID"] %>
   secret_access_key: <%= ENV["R2_SECRET_ACCESS_KEY"] %>
   region: auto
   bucket: <%= ENV["R2_BUCKET"] %>
-  endpoint: <%= "https://#{ENV['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com" %>
+  endpoint: <%= ENV["R2_ENDPOINT"].presence || "https://#{ENV['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com" %>
   force_path_style: true
