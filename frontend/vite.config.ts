@@ -12,6 +12,12 @@ export default defineConfig({
     // from home -- so name both. See scripts/staging/README.md.
     allowedHosts: ['logpi.local', 'wend.anchovy-census.ts.net'],
     proxy: {
+      // Calendar clients subscribe outside the JSON API. Without this explicit
+      // proxy Vite's SPA fallback answers /users/:id/ical with index.html.
+      '/users': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,
