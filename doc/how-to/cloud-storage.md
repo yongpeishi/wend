@@ -205,6 +205,7 @@ They arrive in this order, and each means the one before it is now right:
 | `InvalidAccessKeyId` / `SignatureDoesNotMatch` | endpoint is fine; key or secret is wrong |
 | `Access Denied` on upload | credentials are fine; the token lacks **Object Read & Write**, or isn't scoped to this bucket |
 | `NoSuchBucket` | everything is fine except `R2_BUCKET` — check for the localhost/staging mix-up |
+| `InvalidRequest: You can only specify one non-default checksum at a time` | the bucket is reachable; the SDK sent its own CRC32 alongside Active Storage's MD5, which R2 refuses — `request_checksum_calculation: when_required` in `storage.yml` is what stops it, so something has removed it |
 
 ### Uploads work but nothing seems to be stored
 

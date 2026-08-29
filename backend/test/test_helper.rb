@@ -73,6 +73,27 @@ module ActiveSupport
       head + [comment.bytesize].pack("N") + "tEXt" + comment + crc + iend
     end
 
+    # A bucket that refuses an upload, for Feedback's "report and pictures go
+    # together" rule. Stubs the service rather than the blob so the refusal
+    # happens where R2's would -- after the rows are written and the request has
+    # reached storage. With a key, only that upload fails and the others land,
+    # which is what lets a test check the ones that landed are taken back out.
+    #
+    # A singleton method rather than Minitest's stub: minitest 6 no longer ships
+    # minitest/mock, and one helper is not worth a gem.
+    def with_storage_refusing(key = nil)
+      service = ActiveStorage::Blob.service
+      original = service.method(:upload)
+      service.define_singleton_method(:upload) do |upload_key, io, **options|
+        raise IOError, "bucket refused #{upload_key}" if key.nil? || upload_key == key
+
+        original.call(upload_key, io, **options)
+      end
+      yield
+    ensure
+      service.singleton_class.remove_method(:upload)
+    end
+
     # Query budget guard for the list paths. Ignores transaction control statements,
     # which say nothing about how the work scales with row count.
     def count_queries(&block)

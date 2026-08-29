@@ -186,6 +186,24 @@ class Api::FeedbacksTest < ActionDispatch::IntegrationTest
                     "Screenshots must be a PNG, JPEG, WebP or GIF image"
   end
 
+  # Through the endpoint, because the bug this guards against was found there: a
+  # bucket that refused the upload used to answer 500 *after* committing the
+  # report, so the reporter's "it failed" and the database's "it's here"
+  # disagreed. The error still surfaces -- there is no pretending a storage
+  # outage is a 422 -- but nothing is kept.
+  test "POST keeps nothing when the bucket refuses the screenshot" do
+    assert_no_difference [-> { Feedback.count }, -> { ActiveStorage::Blob.count }] do
+      with_storage_refusing do
+        assert_raises(IOError) do
+          post "/api/feedbacks", params: { feedback: {
+            message: "The chip is unreadable",
+            screenshots: [fixture_file_upload("screenshot.png", "image/png")]
+          } }
+        end
+      end
+    end
+  end
+
   test "feedback endpoints require a signed-in user" do
     delete "/api/session"
 

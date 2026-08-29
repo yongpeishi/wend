@@ -165,6 +165,52 @@ class FeedbackTest < ActiveSupport::TestCase
     assert_not ActiveStorage::Blob.service.exist?(key), "the rejected file was uploaded before it was judged"
   end
 
+  # The other half of the promise: a report and its pictures are kept together
+  # or not at all. Active Storage's own sequencing commits the rows first and
+  # uploads afterwards, which is exactly the case these guard against.
+
+  test "the screenshot is in storage by the time the report is committed" do
+    feedback = Feedback.new(user: @user, message: "The map pins are hard to tap")
+    feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "screenshot.png")
+    key = feedback.screenshots.attachments.first.blob.key
+
+    assert feedback.save
+    assert ActiveStorage::Blob.service.exist?(key), "the report was committed without its picture"
+  end
+
+  test "a screenshot the bucket refuses leaves nothing behind -- no report, no rows, no files" do
+    feedback = Feedback.new(user: @user, message: "Two angles on one bug")
+    feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "one.png")
+    feedback.screenshots.attach(io: file_fixture("screenshot-two.png").open, filename: "two.png")
+    keys = feedback.screenshots.attachments.map { |attachment| attachment.blob.key }
+
+    # The first upload lands and the second is refused, so the test also proves
+    # the one that landed is taken back out.
+    with_storage_refusing(keys.last) do
+      assert_no_difference [-> { Feedback.count }, -> { ActiveStorage::Blob.count }, -> { ActiveStorage::Attachment.count }] do
+        assert_raises(IOError) { feedback.save }
+      end
+    end
+
+    assert_not feedback.persisted?
+    keys.each do |key|
+      assert_not ActiveStorage::Blob.service.exist?(key), "#{key} was left in storage after the report was rolled back"
+    end
+  end
+
+  # The cleanup is scoped to one save. A later save of the same object that
+  # rolls back must not reach back and delete the pictures an earlier save kept.
+  test "a later rollback does not delete screenshots an earlier save kept" do
+    feedback = Feedback.new(user: @user, message: "Kept")
+    feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "screenshot.png")
+    assert feedback.save
+    key = feedback.screenshots.first.blob.key
+
+    feedback.status = "wontfix"
+    assert_not feedback.save
+    assert ActiveStorage::Blob.service.exist?(key), "a failed update deleted a picture the create had kept"
+  end
+
   test "feedback goes with the user" do
     Feedback.create!(user: @user, message: "Bye")
     assert_difference -> { Feedback.count }, -1 do

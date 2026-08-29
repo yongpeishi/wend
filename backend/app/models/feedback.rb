@@ -42,6 +42,17 @@ class Feedback < ApplicationRecord
 
   validate :screenshots_are_reasonable_images
 
+  # Active Storage writes the attachment rows inside the save transaction but
+  # only uploads the files in an after_commit -- so a bucket that refuses the
+  # upload leaves a committed feedback whose screenshots 404, and the reporter
+  # sees a 500 for a report that was in fact kept. A report and its pictures are
+  # one thing: upload while the transaction is still open, so a failed upload
+  # rolls the rows back, and on rollback delete whatever had already reached the
+  # bucket, so the failure leaves neither half behind.
+  after_save :upload_screenshots
+  after_rollback :discard_uploaded_screenshots
+  after_commit :forget_uploaded_screenshots
+
   scope :newest_first, -> { order(created_at: :desc, id: :desc) }
 
   # The admin list's narrowing, as a scope so the CSV export and any later
@@ -67,6 +78,43 @@ class Feedback < ApplicationRecord
 
   def drop_orphan_element_classes
     self.element_classes = nil if element_selector.blank?
+  end
+
+  # `pending_uploads` is the list has_many_attached's own after_commit would
+  # drain; draining it here, inside the transaction, makes that commit-time
+  # upload a no-op rather than a second copy. The blobs are recorded one by one
+  # as they land so a failure on the third still knows about the first two.
+  def upload_screenshots
+    pending = attachment_changes["screenshots"]&.pending_uploads
+    return if pending.blank?
+
+    @uploaded_screenshot_blobs = []
+    until pending.empty?
+      upload = pending.first
+      upload.upload
+      @uploaded_screenshot_blobs << upload.blob
+      pending.shift
+    end
+  end
+
+  # Best effort, and deliberately not allowed to raise: the rollback is already
+  # carrying the error that matters, and a stray object in the bucket is a
+  # smaller wrong than hiding it.
+  def discard_uploaded_screenshots
+    blobs = forget_uploaded_screenshots
+    blobs.each do |blob|
+      blob.service.delete(blob.key)
+    rescue StandardError => e
+      Rails.logger.warn("Feedback: could not remove screenshot #{blob.key} after rollback: #{e.class}: #{e.message}")
+    end
+  end
+
+  # Cleared on commit as well as on rollback: the list belongs to one save, and
+  # a later save of the same object that rolls back must not delete pictures the
+  # earlier one kept.
+  def forget_uploaded_screenshots
+    blobs, @uploaded_screenshot_blobs = @uploaded_screenshot_blobs, nil
+    Array(blobs)
   end
 
   # Reads `screenshots.attachments` rather than the persisted association on

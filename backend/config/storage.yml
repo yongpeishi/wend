@@ -18,6 +18,14 @@ local:
 # where that value gets retyped. It also reaches the jurisdiction-specific hosts
 # (`<account>.eu.r2.cloudflarestorage.com` and friends), which composing from an
 # account id cannot express.
+#
+# request_checksum_calculation: Active Storage sends a Content-MD5 with every
+# upload, and since its "flexible checksums" change aws-sdk-s3 also adds an
+# x-amz-checksum-crc32 of its own unless told otherwise. S3 proper accepts the
+# pair; R2 answers "You can only specify one non-default checksum at a time"
+# and the upload 500s. `when_required` stops the SDK's extra one and leaves the
+# MD5, which R2 does verify. response_checksum_validation is the download-side
+# twin, set to match so the SDK never asks R2 for a checksum it may not return.
 r2:
   service: S3
   access_key_id: <%= ENV["R2_ACCESS_KEY_ID"] %>
@@ -26,3 +34,5 @@ r2:
   bucket: <%= ENV["R2_BUCKET"] %>
   endpoint: <%= ENV["R2_ENDPOINT"].presence || "https://#{ENV['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com" %>
   force_path_style: true
+  request_checksum_calculation: when_required
+  response_checksum_validation: when_required
