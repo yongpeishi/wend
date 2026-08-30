@@ -31,10 +31,6 @@ live in `backend/storage/` and are as disposable as the sqlite database next to 
 | `R2_SECRET_ACCESS_KEY` | the R2 API token's secret |
 | `R2_BUCKET` | which bucket to write to — `wend-feedback-localhost` or `wend-feedback-staging` |
 
-`R2_ACCOUNT_ID` is accepted as an older alternative to `R2_ENDPOINT`, and the endpoint is
-assembled from it. Set one or the other; `R2_ENDPOINT` wins if both are set. Prefer it —
-[Troubleshooting](#troubleshooting) explains what a mistyped account id costs you.
-
 Where each side reads them from:
 
 | | File | Loaded by |
