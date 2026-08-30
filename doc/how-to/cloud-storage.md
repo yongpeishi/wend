@@ -39,10 +39,9 @@ Where each side reads them from:
 | staging | `/srv/wend/secrets.env` on the Pi | systemd, via `EnvironmentFile` in both units |
 
 Both files are secrets and neither is in git. Everything lives in one directory,
-`backend/env/`, one file per environment: the committed templates —
-`development.env.example` and `staging.env.example` — carry the names and the comments
-and never a value, and the filled-in `development.env` and `staging.env` sit next to them,
-gitignored.
+`backend/env/`: the committed template, `env.example`, carries the names and the comments
+and never a value, and the filled-in `development.env` and `staging.env` — two copies of
+it that differ only in `R2_BUCKET` — sit next to it, gitignored.
 
 ## Getting the credentials from Cloudflare
 
@@ -71,13 +70,13 @@ them apart, not the token.
 ## Local setup
 
 ```sh
-cp backend/env/development.env.example backend/env/development.env
-$EDITOR backend/env/development.env   # paste the three values; the bucket is already filled in
+cp backend/env/env.example backend/env/development.env
+$EDITOR backend/env/development.env   # paste the three values; R2_BUCKET=wend-feedback-localhost
 scripts/start-backend
 ```
 
 `backend/env/development.env` is gitignored (`backend/.gitignore` has `/env/*.env`, which
-leaves the `.example` templates committable). Nothing else is needed — `dotenv-rails`
+leaves `env.example` committable). Nothing else is needed — `dotenv-rails`
 reads `env/<RAILS_ENV>.env` (`config/application.rb` points it there) before the
 ActiveStorage config is evaluated. Only that one file: the test suite loads `env/test.env`,
 which doesn't exist, so it never sees your credentials.
@@ -87,7 +86,7 @@ To go back to disk storage, comment out `R2_BUCKET` and restart.
 ## Staging setup
 
 ```sh
-cp backend/env/staging.env.example backend/env/staging.env
+cp backend/env/env.example backend/env/staging.env
 $EDITOR backend/env/staging.env       # same values, but R2_BUCKET=wend-feedback-staging
 scripts/staging/upload-env-var
 ```

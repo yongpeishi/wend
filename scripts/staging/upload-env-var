@@ -38,7 +38,7 @@ services=(wend-backend.service wend-frontend.service)
 # connection and a username prompt.
 
 [ -f "$env_file" ] || die "no $env_file
-    cp backend/env/staging.env.example backend/env/staging.env, fill it in,
+    cp backend/env/env.example backend/env/staging.env, fill it in,
     then re-run this.
     See doc/how-to/cloud-storage.md."
 

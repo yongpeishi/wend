@@ -109,8 +109,8 @@ proxy from inside the Pi, so :3000 stays closed.
 
 Credentials (today: Cloudflare R2, for feedback screenshots) go in
 `/srv/wend/secrets.env`, a second `EnvironmentFile` on both units. Fill in
-`backend/env/staging.env` — it's gitignored, and `staging.env.example` next to it is the
-template — then:
+`backend/env/staging.env` — it's gitignored, and `env.example` next to it is the template;
+set `R2_BUCKET=wend-feedback-staging` — then:
 
 ```sh
 scripts/staging/upload-env-var

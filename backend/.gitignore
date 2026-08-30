@@ -8,9 +8,9 @@
 /.bundle
 
 # Ignore the filled-in environment files under env/, but keep the committed
-# templates next to them: they list the R2 variable names (and nothing secret)
-# for whoever clones this next. `*.env` does not match `*.env.example`, so no
-# negation is needed.
+# env.example template next to them: it lists the R2 variable names (and
+# nothing secret) for whoever clones this next. `*.env` does not match
+# `env.example`, so no negation is needed.
 /env/*.env
 # A stray backend/.env is no longer read (config/application.rb points dotenv
 # at env/), but it would hold the same secrets, so keep it out of git too.

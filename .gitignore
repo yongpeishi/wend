@@ -6,8 +6,8 @@ temp-design-files/
 
 # Environment files hold the Cloudflare R2 credentials — real secrets, never
 # committed. The filled-in ones live in backend/env/ (development.env and
-# staging.env, ignored there by backend/.gitignore); the *.example templates
-# next to them are committed and are the only place the variable names are
+# staging.env, ignored there by backend/.gitignore); the env.example template
+# next to them is committed and is the only place the variable names are
 # written down. See doc/how-to/cloud-storage.md. These rules catch a stray
 # dotfile anywhere else.
 .env
