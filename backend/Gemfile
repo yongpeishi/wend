@@ -39,7 +39,8 @@ gem "aws-sdk-s3", require: false
 
 group :development, :test do
   # R2 credentials are per-machine, not per-repo, so they live in an untracked
-  # backend/.env rather than in Rails credentials. Development-and-test only:
+  # backend/env/development.env (config/application.rb points dotenv there)
+  # rather than in Rails credentials. Development-and-test only:
   # production takes its environment from the process that boots it, and a .env
   # file there would be a second, quieter source of truth for the same secrets.
   gem "dotenv-rails"

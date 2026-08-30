@@ -35,12 +35,14 @@ Where each side reads them from:
 
 | | File | Loaded by |
 | --- | --- | --- |
-| local development | `backend/.env` | `dotenv-rails`, at boot |
+| local development | `backend/env/development.env` | `dotenv-rails`, at boot |
 | staging | `/srv/wend/secrets.env` on the Pi | systemd, via `EnvironmentFile` in both units |
 
-Both files are secrets and neither is in git. The committed templates —
-`backend/.env.example` and `staging.env.example` — carry the names and the comments, and
-never a value.
+Both files are secrets and neither is in git. Everything lives in one directory,
+`backend/env/`, one file per environment: the committed templates —
+`development.env.example` and `staging.env.example` — carry the names and the comments
+and never a value, and the filled-in `development.env` and `staging.env` sit next to them,
+gitignored.
 
 ## Getting the credentials from Cloudflare
 
@@ -69,26 +71,30 @@ them apart, not the token.
 ## Local setup
 
 ```sh
-cp backend/.env.example backend/.env
-$EDITOR backend/.env          # paste the three values; the bucket is already filled in
+cp backend/env/development.env.example backend/env/development.env
+$EDITOR backend/env/development.env   # paste the three values; the bucket is already filled in
 scripts/start-backend
 ```
 
-`backend/.env` is gitignored (`backend/.gitignore` has `/.env*`, with a `!/.env.example`
-negation so the template survives). Nothing else is needed — `dotenv-rails` reads the
-file before the ActiveStorage config is evaluated.
+`backend/env/development.env` is gitignored (`backend/.gitignore` has `/env/*.env`, which
+leaves the `.example` templates committable). Nothing else is needed — `dotenv-rails`
+reads `env/<RAILS_ENV>.env` (`config/application.rb` points it there) before the
+ActiveStorage config is evaluated. Only that one file: the test suite loads `env/test.env`,
+which doesn't exist, so it never sees your credentials.
 
 To go back to disk storage, comment out `R2_BUCKET` and restart.
 
 ## Staging setup
 
 ```sh
-cp staging.env.example staging.env
-$EDITOR staging.env           # same values, but R2_BUCKET=wend-feedback-staging
+cp backend/env/staging.env.example backend/env/staging.env
+$EDITOR backend/env/staging.env       # same values, but R2_BUCKET=wend-feedback-staging
 scripts/staging/upload-env-var
 ```
 
-`staging.env` sits at the repo root and is gitignored. `upload-env-var` checks it, sends
+`backend/env/staging.env` sits next to the development one and is gitignored; nothing on
+your machine reads it, since `dotenv-rails` only loads the file named after the current
+`RAILS_ENV`. `upload-env-var` checks it, sends
 it to `/srv/wend/secrets.env` on the Pi (written as the `wend` service user, mode `0640`),
 and offers to restart both services so they pick the new values up.
 
@@ -221,7 +227,8 @@ the one-off `scripts/staging/setup` under [Staging setup](#staging-setup).
 "Not in git" is the whole of the protection here. These files are **not encrypted at
 rest**:
 
-- `backend/.env` is a plain file in your checkout, readable by anything running as you.
+- `backend/env/development.env` and `backend/env/staging.env` are plain files in your
+  checkout, readable by anything running as you.
 - `/srv/wend/secrets.env` is mode `0640`, owned by `wend:wend` — so it is readable by
   **anyone in the `wend` group on the Pi**, which is both collaborators. That is tighter
   than `deploy.env` (`0664`) but it is not a secret store, and it is deliberately not

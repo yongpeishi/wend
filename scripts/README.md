@@ -25,7 +25,7 @@ Deploying to the shared Pi has its own folder — see [`staging/README.md`](stag
 | `scripts/staging/logs` | Follow the Pi's Rails and Vite logs |
 | `scripts/staging/console` | Rails console on the Pi's copy, from your machine |
 | `scripts/staging/restart` | Bounce the Pi's services without deploying |
-| `scripts/staging/upload-env-var` | Send the secrets in `staging.env` to the Pi. Only when a value changes. |
+| `scripts/staging/upload-env-var` | Send the secrets in `backend/env/staging.env` to the Pi. Only when a value changes. |
 | `scripts/staging/setup` | Provision (or re-provision) the Pi. Idempotent. |
 
 Seeded logins after a reset: `peter@example.com` / `sarah@example.com`, password

@@ -39,7 +39,8 @@ Rails.application.configure do
   # The second is every checkout that has no R2 account at all: a fresh clone and
   # CI both boot with R2_BUCKET unset, land on the Disk service, and `bin/rails
   # test` passes without anyone holding a secret. Credentials for the R2 branch
-  # come from an untracked backend/.env via dotenv-rails; see backend/.env.example.
+  # come from an untracked backend/env/development.env via dotenv-rails; see
+  # backend/env/development.env.example.
   config.active_storage.service = ENV["R2_BUCKET"].present? ? :r2 : :local
 
   # Don't care if the mailer can't send.

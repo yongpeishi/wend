@@ -18,6 +18,16 @@ require "rails/test_unit/railtie"
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
 
+# Environment files live under backend/env/, one per Rails environment, rather
+# than as a dotfile at the backend root: development.env for local work, and
+# staging.env for the Pi, which only ever leaves this machine through
+# scripts/staging/upload-env-var. dotenv-rails reads env/<RAILS_ENV>.env and
+# nothing else, so the test suite never sees a developer's real credentials.
+# It must be set here, before the Application class below is defined -- that
+# is when dotenv loads its files. dotenv-rails is development-and-test only,
+# hence the guard.
+Dotenv::Rails.files = ["env/#{Dotenv::Rails.env}.env"] if defined?(Dotenv::Rails)
+
 module Backend
   class Application < Rails::Application
     # Initialize configuration defaults for originally generated Rails version.

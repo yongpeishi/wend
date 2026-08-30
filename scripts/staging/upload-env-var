@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Send the secrets in ./staging.env to the Pi, where both services read them.
+# Send the secrets in backend/env/staging.env to the Pi, where both services
+# read them.
 #
 #   scripts/staging/upload-env-var
 #   scripts/staging/upload-env-var --yes    # don't ask before uploading
@@ -27,7 +28,7 @@ for arg in "$@"; do
   esac
 done
 
-env_file="$ROOT_DIR/staging.env"
+env_file="$ROOT_DIR/backend/env/staging.env"
 remote_file="$PI_ROOT/secrets.env"
 services=(wend-backend.service wend-frontend.service)
 
@@ -37,7 +38,8 @@ services=(wend-backend.service wend-frontend.service)
 # connection and a username prompt.
 
 [ -f "$env_file" ] || die "no $env_file
-    cp staging.env.example staging.env, fill it in, then re-run this.
+    cp backend/env/staging.env.example backend/env/staging.env, fill it in,
+    then re-run this.
     See doc/how-to/cloud-storage.md."
 
 # --- would systemd understand it --------------------------------------------

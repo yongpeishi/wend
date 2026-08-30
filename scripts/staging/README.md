@@ -16,7 +16,7 @@ scripts/staging/deploy      # put your branch on staging, push, restart, wait fo
 scripts/staging/logs        # follow both services' logs
 scripts/staging/console     # rails console on the staging app, from here
 scripts/staging/restart     # bounce the services without deploying
-scripts/staging/upload-env-var   # send ./staging.env to the Pi as /srv/wend/secrets.env
+scripts/staging/upload-env-var   # send backend/env/staging.env to the Pi as /srv/wend/secrets.env
 scripts/staging/setup       # (re)provision the Pi — needs sudo there
 ```
 
@@ -108,8 +108,9 @@ proxy from inside the Pi, so :3000 stays closed.
 ### Secrets
 
 Credentials (today: Cloudflare R2, for feedback screenshots) go in
-`/srv/wend/secrets.env`, a second `EnvironmentFile` on both units. Fill in `staging.env`
-at the repo root — it's gitignored, and `staging.env.example` is the template — then:
+`/srv/wend/secrets.env`, a second `EnvironmentFile` on both units. Fill in
+`backend/env/staging.env` — it's gitignored, and `staging.env.example` next to it is the
+template — then:
 
 ```sh
 scripts/staging/upload-env-var

@@ -24,8 +24,9 @@ Rails.application.configure do
 
   # Uploads land in tmp/storage, which is scratch space like the test database.
   # Pinned unconditionally rather than through the R2_BUCKET switch the other two
-  # environments use: a developer with real credentials in their .env must not
-  # have the suite start writing to the live bucket just because it is loaded.
+  # environments use: dotenv-rails only reads env/test.env here, never a
+  # developer's development.env, but credentials can still arrive through the
+  # shell, and the suite must not start writing to the live bucket if they do.
   config.active_storage.service = :test
 
   # Render exception templates for rescuable exceptions and raise for other exceptions.

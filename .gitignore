@@ -5,13 +5,14 @@ doc/backlog/
 temp-design-files/
 
 # Environment files hold the Cloudflare R2 credentials — real secrets, never
-# committed. The *.example templates next to them are, and are the only place
-# the variable names are written down. See doc/how-to/cloud-storage.md.
+# committed. The filled-in ones live in backend/env/ (development.env and
+# staging.env, ignored there by backend/.gitignore); the *.example templates
+# next to them are committed and are the only place the variable names are
+# written down. See doc/how-to/cloud-storage.md. These rules catch a stray
+# dotfile anywhere else.
 .env
 .env.*
 !.env.example
-# staging.env is the file scripts/staging/upload-env-var sends to the Pi.
-/staging.env
 
 # a place to put wip notes (TASK_STATUS, TASK_END_SUMMARY, screenshots)
 doc/worktree-notes/
