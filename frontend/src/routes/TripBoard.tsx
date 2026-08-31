@@ -38,6 +38,7 @@ import { ideaChildrenOf, otherParentTitles, pathToIdea, rootIdeas, subtreeCount 
 import { isWithinBounds } from '../features/map/bounds';
 import { entriesWithCoordinates, entryToPin } from '../features/map/pins';
 import type { Bounds, MapPin } from '../features/map/types';
+import { usePersistedFlag } from '../lib/usePersistedFlag';
 import styles from './TripBoard.module.css';
 
 /**
@@ -153,6 +154,13 @@ export function TripBoard() {
   // map wants it for a moment, deliberately; the "Show map" chip in the
   // controls row is one click away and the pane's own header puts it back down.
   const [mapOpen, setMapOpen] = useState(false);
+  // The plans rail folded to a sliver, desktop only — the map's opposite
+  // number on the other edge of the board. Unlike the map this one is
+  // remembered across visits: folding the rail is a reading-mode preference
+  // about the board itself, not a moment's errand, so it comes back the way
+  // it was left. Below the one-column breakpoint the flag is inert — the CSS
+  // that acts on it is scoped to the wide layout.
+  const [plansCollapsed, togglePlansCollapsed] = usePersistedFlag('wend:plans-collapsed', false);
   // Kept only for the pane's own report: how many located ideas sit outside
   // the current view, which is what decides whether "Widen" is worth offering.
   // The list never reads this — the viewport cut is gone.
@@ -762,7 +770,7 @@ export function TripBoard() {
           />
         </section>
 
-        <div className={styles.plans}>
+        <div className={plansCollapsed ? `${styles.plans} ${styles.plansCollapsed}` : styles.plans}>
           <BundlePanel
             tripId={trip.id}
             bundles={bundles}
@@ -771,6 +779,8 @@ export function TripBoard() {
             query={bundlesQuery}
             onOpen={openIdeaFromPlan}
             onToast={(message) => show(message, 'success')}
+            collapsed={plansCollapsed}
+            onToggleCollapsed={togglePlansCollapsed}
           />
         </div>
       </div>

@@ -566,6 +566,41 @@ button.avatar:focus-visible {
 }
 
 /*
+ * The desk's fold button — the menu button's opposite number, and the same
+ * quiet on-dark control: no ground, no edge, opacity for hover, a full tap
+ * target under a 20px chevron. `margin-left: auto` puts it at the far end of
+ * the brand row, past the lock-up; in the collapsed rail the row becomes a
+ * column (see the desktop media block below) and the margin goes with it.
+ * Phone widths hide it entirely — below 861px the hamburger is how the nav
+ * shows and hides, and a second control saying almost the same thing would
+ * only compete with it.
+ */
+.collapseToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  margin-left: auto;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--text-on-dark);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.collapseToggle:hover {
+  opacity: 0.75;
+}
+
+.collapseToggle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/*
  * The page behind the open drawer. Same treatment as Modal and Drawer — paper
  * tone at 0.92 rather than a grey dim, so the page reads as still being there
  * underneath rather than as having been navigated away from (see
@@ -636,6 +671,70 @@ button.avatar:focus-visible {
   .navItem,
   .utilityButton {
     min-height: var(--tap-min);
+  }
+}
+
+/*
+ * The collapsed rail, and only on a desk. Every rule that answers to
+ * .sidebarCollapsed lives inside this block, so below 861px the class is
+ * simply a name with nothing attached to it — a phone that last saw a desk
+ * with the sidebar folded still gets its bar and drawer exactly as they were.
+ *
+ * 64px holds the mark and nothing else: the nav sections and the pair at the
+ * foot are display: none rather than squeezed, because a 64px column has no
+ * honest way to say "Final schedule" or "Sign out" and an icon guessing at
+ * either would be a control you have to hover to read. What the rail keeps is
+ * the two things that still mean something at this width — the way home, and
+ * the way back out to the full sidebar.
+ */
+@media (min-width: 861px) {
+  /* Both directions animate, so the transition lives on the sidebar itself
+     rather than on the collapsed class — dropped there it would fold smoothly
+     and spring back in a single frame. Reduced motion is already handled at
+     :root: --motion-fade-duration is 0ms there. */
+  .sidebar {
+    transition: width var(--motion-fade-duration) var(--motion-fade-ease);
+  }
+
+  .sidebarCollapsed {
+    width: 64px;
+    padding-left: 0;
+    padding-right: 0;
+    align-items: center;
+    gap: 20px;
+    /* The stable gutter earns its keep by holding 246px of labels still; with
+       nothing left to scroll it would only shove the mark off-centre. */
+    scrollbar-gutter: auto;
+  }
+
+  /* The brand row stood upright: the mark at the top of the rail, the way back
+     out centred under it. The toggle's auto margin has no row left to push
+     along, so it is put back to keep the column centred. */
+  .sidebarCollapsed .brandRow {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 0;
+  }
+
+  .sidebarCollapsed .collapseToggle {
+    margin-left: 0;
+  }
+
+  /* Only the mark. The wordmark goes the same way it goes on the narrowest
+     phones — through the lock-up's own data-variant hook, because Logo's class
+     belongs to another module — and the mark keeps its aria-label, so the link
+     home is still "Wend" to a screen reader. */
+  .sidebarCollapsed .brandRow [data-variant] {
+    display: none;
+  }
+
+  /* Hidden whole, not shrunk. The drawer machinery never runs at this width,
+     so there is no state here to fight with — the sections come back the
+     moment the sidebar does. */
+  .sidebarCollapsed .sections,
+  .sidebarCollapsed .utilities {
+    display: none;
   }
 }
 
@@ -712,6 +811,13 @@ button.avatar:focus-visible {
 
   .menuButton {
     display: inline-flex;
+  }
+
+  /* The desk's fold button has no meaning on the bar — the hamburger is how
+     the nav shows and hides here — so it goes the way the hamburger goes on a
+     desk. */
+  .collapseToggle {
+    display: none;
   }
 
   .brandRow {

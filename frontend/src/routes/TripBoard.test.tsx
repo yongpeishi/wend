@@ -1356,3 +1356,57 @@ describe('TripBoard — the card under the cursor', () => {
     await user.keyboard('{Escape}');
   });
 });
+
+/**
+ * Folding the plans rail to its 56px sliver. jsdom applies no media queries,
+ * so nothing here asserts computed layout — what belongs to the board and IS
+ * testable is the mechanics: the flag flips, the column takes the collapsed
+ * class BundlePanel and TripBoard.module.css act on, and the choice survives a
+ * fresh mount because it lives in localStorage under 'wend:plans-collapsed'.
+ */
+describe('TripBoard — folding the plans rail', () => {
+  // The flag persists BY DESIGN, which cuts both ways: a test that leaves it
+  // behind would leak a folded rail into every later render in this file.
+  beforeEach(() => localStorage.removeItem('wend:plans-collapsed'));
+  afterEach(() => localStorage.removeItem('wend:plans-collapsed'));
+
+  /** The rail's grid column — the element whose class the collapse flag drives. */
+  function plansColumn(): HTMLElement {
+    const column = screen.getByRole('complementary', { name: 'Plans' }).parentElement;
+    if (!column) throw new Error('the plans rail has no column around it');
+    return column;
+  }
+
+  it('starts expanded, folds from the heading, and writes the choice down', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+
+    const column = plansColumn();
+    expect(column).toHaveClass(styles.plans);
+    expect(column).not.toHaveClass(styles.plansCollapsed);
+
+    await user.click(screen.getByRole('button', { name: 'Collapse plans' }));
+
+    expect(column).toHaveClass(styles.plansCollapsed);
+    expect(screen.getByRole('button', { name: 'Expand plans' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Collapse plans' })).not.toBeInTheDocument();
+    expect(localStorage.getItem('wend:plans-collapsed')).toBe('true');
+  });
+
+  it('comes back folded on a fresh render, and expanding writes the flag back', async () => {
+    localStorage.setItem('wend:plans-collapsed', 'true');
+    const user = userEvent.setup();
+    renderBoard();
+    await screen.findByText('Nanzen-ji');
+
+    const column = plansColumn();
+    expect(column).toHaveClass(styles.plansCollapsed);
+
+    await user.click(screen.getByRole('button', { name: 'Expand plans' }));
+
+    expect(column).not.toHaveClass(styles.plansCollapsed);
+    expect(screen.getByRole('button', { name: 'Collapse plans' })).toBeInTheDocument();
+    expect(localStorage.getItem('wend:plans-collapsed')).toBe('false');
+  });
+});

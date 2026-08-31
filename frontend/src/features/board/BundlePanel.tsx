@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { QueryGate } from '../../components/QueryGate';
 import type { QueryGateSource } from '../../components/QueryGate';
 import { useCanEdit } from '../../auth/TripRoleContext';
@@ -31,6 +32,20 @@ export interface BundlePanelProps {
    */
   onOpen?: (id: number) => void;
   onToast: (message: string) => void;
+  /**
+   * Desktop-only: the rail folded down to a 56px sliver. The full content
+   * stays in the DOM and CSS does the hiding, scoped to the wide layout —
+   * below the board's one-column breakpoint the panel always renders whole,
+   * because a stacked rail costs no width and a fold control there would only
+   * hide content with nothing to show for it. Default false.
+   */
+  collapsed?: boolean;
+  /**
+   * Flip collapsed. The toggle buttons render only when this is provided, so
+   * a caller that never collapses (or a test that is not about collapsing)
+   * gets the rail exactly as it was.
+   */
+  onToggleCollapsed?: () => void;
 }
 
 /**
@@ -91,7 +106,17 @@ export interface BundlePanelProps {
  * and takes nothing from it; where it is absent the cards navigate as they
  * always did.
  */
-export function BundlePanel({ tripId, bundles, archivedBundles, members, query, onOpen, onToast }: BundlePanelProps) {
+export function BundlePanel({
+  tripId,
+  bundles,
+  archivedBundles,
+  members,
+  query,
+  onOpen,
+  onToast,
+  collapsed = false,
+  onToggleCollapsed,
+}: BundlePanelProps) {
   const restoreEntry = useRestoreEntry();
   const canEdit = useCanEdit();
   const [naming, setNaming] = useState(false);
@@ -105,10 +130,54 @@ export function BundlePanel({ tripId, bundles, archivedBundles, members, query, 
   const newestFirst = useMemo(() => [...bundles].sort((a, b) => b.id - a.id), [bundles]);
 
   return (
-    <aside className={styles.panel} aria-labelledby={headingId} aria-describedby={introId}>
-      <h2 id={headingId} className={styles.heading}>
-        Plans
-      </h2>
+    <aside
+      className={collapsed ? `${styles.panel} ${styles.panelCollapsed}` : styles.panel}
+      aria-labelledby={headingId}
+      aria-describedby={introId}
+    >
+      {/* The folded rail: an expand control on top, then the region's name run
+          vertically so the sliver still says what it is. Desktop-only chrome —
+          below the one-column breakpoint the CSS never shows it — and rendered
+          only while collapsed, so the expanded rail carries no hidden extra
+          landmark furniture. The <h2> below stays in the DOM either way (CSS
+          hides it when folded), so aria-labelledby keeps resolving and the
+          vertical label can stay presentational. */}
+      {collapsed && onToggleCollapsed && (
+        <div className={styles.rail}>
+          <button
+            type="button"
+            className={styles.toggle}
+            onClick={onToggleCollapsed}
+            aria-expanded={!collapsed}
+          >
+            <ChevronLeft size={20} strokeWidth={1.5} aria-hidden="true" />
+            <span className={styles.srOnly}>Expand plans</span>
+          </button>
+          <span className={styles.railLabel} aria-hidden="true">
+            Plans
+          </span>
+        </div>
+      )}
+
+      <div className={styles.headingRow}>
+        <h2 id={headingId} className={styles.heading}>
+          Plans
+        </h2>
+        {/* The way down, on the heading it folds. Chevron points right because
+            that is where the panel goes. Outside the <h2> so the region's
+            heading stays the one word it reads as. */}
+        {!collapsed && onToggleCollapsed && (
+          <button
+            type="button"
+            className={styles.toggle}
+            onClick={onToggleCollapsed}
+            aria-expanded={!collapsed}
+          >
+            <ChevronRight size={20} strokeWidth={1.5} aria-hidden="true" />
+            <span className={styles.srOnly}>Collapse plans</span>
+          </button>
+        )}
+      </div>
 
       <p id={introId} className={styles.intro}>
         A plan groups the ideas that go together — a dinner shortlist, a day's outing, a rainy-day

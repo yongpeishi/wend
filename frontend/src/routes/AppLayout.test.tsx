@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -544,6 +544,101 @@ describe('AppLayout', () => {
 
       await user.keyboard('{Escape}');
       expect(menu).toHaveFocus();
+    });
+  });
+
+  /*
+   * The desk's fold. jsdom runs the desktop cascade, so unlike the phone menu
+   * above the toggle is visible here and reachable by its accessible name.
+   * What is provable is the state the desktop CSS hangs off: the class on the
+   * nav, the one button that points both ways, and the flag that carries the
+   * choice across visits. The 64px width itself is a media-query fact jsdom
+   * cannot see.
+   */
+  describe('collapsing the sidebar', () => {
+    // The flag is meant to persist across visits; the tests are not visits.
+    afterEach(() => {
+      localStorage.clear();
+    });
+
+    it('offers a collapse button and starts expanded', () => {
+      renderShell();
+      const toggle = screen.getByRole('button', { name: 'Collapse sidebar' });
+      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('navigation', { name: 'Main' })).not.toHaveClass(
+        styles.sidebarCollapsed,
+      );
+    });
+
+    it('folds the sidebar to the rail and offers the way back', async () => {
+      const user = userEvent.setup();
+      renderShell();
+
+      await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+
+      expect(screen.getByRole('navigation', { name: 'Main' })).toHaveClass(styles.sidebarCollapsed);
+      // The same button, renamed and pointing the other way — the keyboard is
+      // still on it, and its name now says what pressing will do.
+      const expand = screen.getByRole('button', { name: 'Expand sidebar' });
+      expect(expand).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByRole('button', { name: 'Collapse sidebar' })).not.toBeInTheDocument();
+    });
+
+    it('expands the sidebar again from the rail', async () => {
+      const user = userEvent.setup();
+      renderShell();
+
+      await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+      await user.click(screen.getByRole('button', { name: 'Expand sidebar' }));
+
+      expect(screen.getByRole('navigation', { name: 'Main' })).not.toHaveClass(
+        styles.sidebarCollapsed,
+      );
+      expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
+    });
+
+    it('remembers the fold across visits', async () => {
+      const user = userEvent.setup();
+      const { unmount } = renderShell();
+
+      await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+      expect(localStorage.getItem('wend:sidebar-collapsed')).toBe('true');
+
+      // A fresh shell — a new tab, the next morning — reads the flag back and
+      // starts on the rail rather than opening wide and snapping shut.
+      unmount();
+      renderShell();
+      expect(screen.getByRole('navigation', { name: 'Main' })).toHaveClass(styles.sidebarCollapsed);
+      expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument();
+    });
+
+    it('writes the expanded choice back too', async () => {
+      const user = userEvent.setup();
+      renderShell();
+
+      await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+      await user.click(screen.getByRole('button', { name: 'Expand sidebar' }));
+
+      expect(localStorage.getItem('wend:sidebar-collapsed')).toBe('false');
+    });
+
+    // The fold and the phone drawer are separate questions with separate
+    // answers: collapsing the desk's sidebar must not open, close or otherwise
+    // disturb the drawer state the phone bar hangs off.
+    it('leaves the phone drawer state alone', async () => {
+      const user = userEvent.setup();
+      const { container } = renderShell();
+
+      await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+
+      expect(container.querySelector(`.${styles.menuButton}`)).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+      expect(container.querySelector(`.${styles.scrim}`)).toBeNull();
     });
   });
 });
