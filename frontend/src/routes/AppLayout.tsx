@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useMatch } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
 import { Logo } from '../design/components/brand/Logo';
 import { useEntry } from '../api/entries';
 import { useCollaborators } from '../api/collaborators';
@@ -10,6 +10,7 @@ import { useToast } from '../components/Toast';
 import { FeedbackButton } from '../features/feedback/FeedbackButton';
 import { SharePanel } from '../features/trips/SharePanel';
 import { formatTripDates, formatTripLength, joinMeta } from '../lib/formatDates';
+import { usePersistedFlag } from '../lib/usePersistedFlag';
 import styles from './AppLayout.module.css';
 
 /**
@@ -86,6 +87,19 @@ export function AppLayout() {
    */
   const [navOpen, setNavOpen] = useState(false);
   const closeNav = useCallback(() => setNavOpen(false), []);
+
+  /*
+   * The desktop sidebar, folded down to a rail. Separate from `navOpen` on
+   * purpose: that state is the phone drawer and this one is the desk's own
+   * question, and neither reads or writes the other. Like the drawer state it
+   * exists at every width and simply has nothing to do below 861px — every
+   * .sidebarCollapsed rule lives inside the desktop media range, so on a phone
+   * the class is inert and the bar behaves exactly as it always has.
+   *
+   * Remembered across visits: collapsing the sidebar is a preference about how
+   * you like the app laid out, not a thing to redo every morning.
+   */
+  const [collapsed, toggleCollapsed] = usePersistedFlag('wend:sidebar-collapsed', false);
   const navPanelId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -180,7 +194,10 @@ export function AppLayout() {
 
   return (
     <div className={styles.shell}>
-      <nav className={styles.sidebar} aria-label="Main">
+      <nav
+        className={[styles.sidebar, collapsed ? styles.sidebarCollapsed : ''].filter(Boolean).join(' ')}
+        aria-label="Main"
+      >
         {/* The way into the nav on a phone, and nothing at all on a desk, where
             the nav is already on screen. It is first in the DOM as well as
             first on the bar: the top-left corner is where a menu lives, and a
@@ -204,6 +221,28 @@ export function AppLayout() {
           <Link to="/" className={styles.brandLink}>
             <Logo variant="reversed" size={28} />
           </Link>
+
+          {/* The fold. One button for both directions, so the keyboard stays on
+              the control it just pressed rather than being dropped when the
+              button it was on unmounts. Expanded it sits at the far end of the
+              brand row pointing the way the sidebar will go; collapsed the row
+              turns into a column and it sits under the mark, pointing back.
+              `aria-expanded` says which state the nav is in; the name says what
+              pressing will do. Desktop only — below 861px it is display: none,
+              where the hamburger owns showing and hiding the nav. */}
+          <button
+            type="button"
+            className={styles.collapseToggle}
+            onClick={toggleCollapsed}
+            aria-expanded={!collapsed}
+          >
+            {collapsed ? (
+              <ChevronRight size={20} strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <ChevronLeft size={20} strokeWidth={1.5} aria-hidden="true" />
+            )}
+            <span className={styles.srOnly}>{collapsed ? 'Expand sidebar' : 'Collapse sidebar'}</span>
+          </button>
         </div>
 
         {/* Only while the drawer is out: the page dimmed behind it, and the way
