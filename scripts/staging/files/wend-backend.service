@@ -11,12 +11,19 @@ User=wend
 Group=wend
 WorkingDirectory=/srv/wend/app
 EnvironmentFile=/srv/wend/deploy.env
-# Secrets (the Cloudflare R2 credentials) live in their own file, uploaded by
-# scripts/staging/upload-env-var and never in git. It is separate from
-# deploy.env because `provision` rewrites that one from scratch on every run,
-# which would silently destroy anything appended to it. The leading `-` makes
-# it optional, so the service still boots on a Pi that has never had secrets
-# uploaded -- the app then falls back to local disk storage.
+# Secrets (the Cloudflare R2 credentials) live in their own file, put there by
+# scripts/staging/deploy and never in git. It is separate from deploy.env
+# because `provision` rewrites that one from scratch on every run, which would
+# silently destroy anything appended to it.
+#
+# This line is a second reader of that file, not the main one: installing a
+# unit needs root, and a deploy must not. The deploy instead links
+# backend/env/development.env at it, which dotenv-rails reads at boot -- so a
+# collaborator without sudo can roll out a credential. This stays because it
+# costs nothing, is the same file, and would keep R2 working if staging ever
+# stopped running as RAILS_ENV=development (dotenv is a development gem).
+# The leading `-` makes it optional, so a Pi that has never had secrets
+# uploaded still boots -- the app then falls back to local disk storage.
 EnvironmentFile=-/srv/wend/secrets.env
 # The same entry point everyone uses locally, so staging can't drift from
 # `scripts/start-dev`. It runs `bin/rails dev:prepare` before booting, which is

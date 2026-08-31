@@ -36,7 +36,7 @@ Where each side reads them from:
 | | File | Loaded by |
 | --- | --- | --- |
 | local development | `backend/env/development.env` | `dotenv-rails`, at boot |
-| staging | `/srv/wend/secrets.env` on the Pi | systemd, via `EnvironmentFile` in both units |
+| staging | `/srv/wend/secrets.env` on the Pi | `dotenv-rails`, through a symlink the deploy makes |
 
 Both files are secrets and neither is in git. Everything lives in one directory,
 `backend/env/`: the committed template, `env.example`, carries the names and the comments
@@ -88,53 +88,72 @@ To go back to disk storage, comment out `R2_BUCKET` and restart.
 ```sh
 cp backend/env/env.example backend/env/staging.env
 $EDITOR backend/env/staging.env       # same values, but R2_BUCKET=wend-feedback-staging
-scripts/staging/upload-env-var
+scripts/staging/deploy
 ```
 
-`backend/env/staging.env` sits next to the development one and is gitignored; nothing on
-your machine reads it, since `dotenv-rails` only loads the file named after the current
-`RAILS_ENV`. `upload-env-var` checks it, sends
-it to `/srv/wend/secrets.env` on the Pi (written as the `wend` service user, mode `0640`),
-and offers to restart both services so they pick the new values up.
+That's it — no sudo on the Pi, no re-provision. `backend/env/staging.env` sits next to the
+development one and is gitignored; nothing on your machine reads it, since `dotenv-rails`
+only loads the file named after the current `RAILS_ENV`.
 
-**The first time, you also need a one-off re-provision:**
+The deploy checks the file, notices the Pi's copy differs (or is missing), asks once, and
+sends it to `/srv/wend/secrets.env` — written as the `wend` service user, mode `0640`. It
+does that *before* pushing, so the restart the push triggers already has the new values.
+On every later deploy the two match and it says so and moves on.
 
-```sh
-scripts/staging/setup
+`scripts/staging/upload-env-var` does the same thing on its own, for when a value changes
+and there's no code to push. `scripts/staging/deploy --no-secrets` skips the step entirely.
+
+Both validate before they send, because the file is read by parsers that are **not a
+shell**. `NAME=value`, blank lines and `#` comments are all they understand: a leading
+`export `, a `$(...)`, or a backtick would be taken literally or rejected, and the failure
+would only show up later as a confusing error from the storage service.
+
+### How the Pi actually reads it
+
+`/srv/wend/secrets.env` is not in the deployed working tree, so nothing reads it by
+accident. The deploy links it into place:
+
+```
+/srv/wend/app/backend/env/development.env -> /srv/wend/secrets.env
 ```
 
-Only because this feature added `EnvironmentFile=-/srv/wend/secrets.env` to
-`wend-backend.service` and `wend-frontend.service`, and the units are installed on the Pi
-by `provision`. Until `setup` has reinstalled them, the Pi is running units that don't
-know the file exists, and the values will appear to have no effect. This is not part of
-the normal loop — you will never need it again unless a unit file changes.
+which is exactly the path `dotenv-rails` opens: `config/application.rb` points it at
+`env/<RAILS_ENV>.env`, and the Pi runs `RAILS_ENV=development`. Making the link is
+idempotent — every deploy checks it, creates it if it's missing, and leaves it alone
+otherwise — and it happens as the `wend` user, which anyone in the `wend` group may become.
 
-The script validates before it sends, because the file is parsed by **systemd, not bash**.
-`NAME=value`, blank lines and `#` comments are all it understands: a leading `export `, a
-`$(...)`, or a backtick will be taken literally or rejected, and the failure would only
-show up later as a confusing error from the storage service. `upload-env-var` refuses
-rather than uploading such a file.
+**Why not `EnvironmentFile=` in the systemd units?** Because installing a unit needs root,
+and only one of us has it. A credential would then be un-rollable by the other person
+without asking. The units do still carry `EnvironmentFile=-/srv/wend/secrets.env` — the
+same file, optional, a spare reader that would keep R2 working if staging ever stopped
+running as `development` (`dotenv-rails` is a development-and-test gem). It is not what
+makes this work, and you never need to reinstall a unit to change a credential.
 
-## What a deploy does to all this: nothing
-
-This is the part worth being explicit about.
+## What a deploy does to all this
 
 `/srv/wend/secrets.env` is **outside `/srv/wend/app`**, the working tree a deploy checks
-out. `scripts/staging/deploy` pushes a branch, the `post-receive` hook updates that tree
-and restarts the services — and never touches anything beside it. So:
+out with `git checkout -f`. So the values are never overwritten by pushing code, and the
+symlink pointing at them isn't either — `backend/.gitignore`'s `/env/*.env` keeps it out of
+git's way.
 
-- **Upload once. Re-run `upload-env-var` only when a value actually changes** — a rolled
-  token, a new bucket. Not on every deploy, not after a `git push`.
-- A restart is enough to pick up an edit, because `EnvironmentFile` is read at start.
-  `scripts/staging/restart` does that on its own.
+What a deploy *does* do is keep the Pi in step with your `backend/env/staging.env`,
+idempotently:
 
-The reason secrets are in `secrets.env` and not in `/srv/wend/deploy.env`, which is the
-environment file everything else uses: **`provision` writes `deploy.env` with a truncating
-`cat >`**. Anything appended to it by hand is destroyed the next time anyone runs
-`scripts/staging/setup` — silently, with the app coming back up minus its credentials and
-quietly falling back to disk. `secrets.env` is a second `EnvironmentFile` that `provision`
-only ever creates-if-absent, never rewrites. The `-` in `EnvironmentFile=-` marks it
-optional, so a Pi that has never had secrets uploaded still boots.
+- the files' hashes match — it says so and does nothing;
+- they differ — it shows the variable **names** (never values) and asks before replacing;
+- the Pi has none — it sends them;
+- you have no `staging.env`, or it has a bad line — it warns and deploys the code anyway.
+  Code and credentials are separate errands.
+
+So a rolled token is: edit `backend/env/staging.env`, deploy. There is no separate thing
+to remember, and no state that quietly goes stale.
+
+The reason the credentials are in `secrets.env` and not in `/srv/wend/deploy.env`, which is
+the environment file everything else uses: **`provision` writes `deploy.env` with a
+truncating `cat >`**. Anything appended to it by hand is destroyed the next time anyone
+runs `scripts/staging/setup` — silently, with the app coming back up minus its credentials
+and quietly falling back to disk. `provision` only ever creates `secrets.env` if it's
+absent, and never writes to it.
 
 ## Looking at what's actually in the bucket
 
@@ -218,8 +237,15 @@ clone and CI both work. Ask it directly, in `bin/rails console` (or
 ActiveStorage::Blob.service.name   # => :r2, or :local if it fell back
 ```
 
-On the Pi, `:local` after an upload usually means the units haven't been reinstalled — see
-the one-off `scripts/staging/setup` under [Staging setup](#staging-setup).
+On the Pi, `:local` usually means one of two things: the backend hasn't been restarted
+since the credentials arrived (`scripts/staging/restart`), or the link that feeds them to
+dotenv isn't there. Check it:
+
+```sh
+ssh <you>@logpi.local 'ls -l /srv/wend/app/backend/env/development.env'
+```
+
+It should point at `/srv/wend/secrets.env`. A deploy remakes it if it's missing.
 
 ## Security, honestly
 
@@ -235,8 +261,9 @@ rest**:
 
 What follows from that: the token is scoped to two buckets holding screenshots people
 knowingly attached to feedback, and nothing else in the Cloudflare account. Keep it that
-way. If a value leaks, or someone leaves, roll the token in the dashboard and re-run
-`upload-env-var` — that is the whole recovery procedure, and it is short on purpose.
+way. If a value leaks, or someone leaves, roll the token in the dashboard, paste it into
+`backend/env/staging.env` and deploy — that is the whole recovery procedure, and it is
+short on purpose.
 
 Don't paste values into a terminal that's being screen-shared, and don't put them in a
 frontend `.env`: Vite inlines those into the bundle, which ships them to every browser.

@@ -5,19 +5,27 @@
 #   scripts/staging/deploy              # deploy the branch you're on
 #   scripts/staging/deploy some-branch  # deploy another branch
 #   scripts/staging/deploy --yes        # don't ask about the merge
+#   scripts/staging/deploy --no-secrets # leave the Pi's credentials alone
 #
 # The Pi only ever runs the `staging` branch. If you're on anything else this
 # offers to merge it into staging first -- your own branch is left untouched
 # and you end up back on it.
+#
+# It also brings the Pi's credentials into line with backend/env/staging.env
+# before pushing -- an idempotent step that does nothing when they already
+# match, and needs no root. See lib/secrets.sh.
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/secrets.sh"
 
 branch=""
+do_secrets=true
 for arg in "$@"; do
   case "$arg" in
-    --yes|-y) ASSUME_YES=true ;;
-    -*)       die "unknown option $arg" ;;
-    *)        branch="$arg" ;;
+    --yes|-y)    ASSUME_YES=true ;;
+    --no-secrets) do_secrets=false ;;
+    -*)          die "unknown option $arg" ;;
+    *)           branch="$arg" ;;
   esac
 done
 
@@ -77,7 +85,70 @@ if [ "$branch" != "$DEPLOY_BRANCH" ]; then
   trap - EXIT
 fi
 
+# --- credentials ------------------------------------------------------------
+# Before the push, so the restart at the end of it boots with the new values.
+# This is a no-op on all but the first deploy after a credential changes: it
+# compares hashes and only sends the file when it differs. A missing or broken
+# staging.env is a warning, not a stopped deploy -- code and credentials are
+# separate errands, and only one of them is what you asked for.
+
+secrets_uploaded=false
+secrets_warned=false
+
+if [ "$do_secrets" != true ]; then
+  info "--no-secrets: leaving the Pi's credentials as they are"
+elif [ ! -f "$SECRETS_FILE" ]; then
+  info "no backend/env/staging.env here -- the Pi keeps the credentials it has"
+elif ! secrets_validate; then
+  warn "not uploading credentials; the Pi keeps the ones it has"
+  secrets_warned=true
+else
+  local_hash="$(sha256_of "$SECRETS_FILE")"
+  remote_hash="$(secrets_remote_hash)"
+
+  if [ "$remote_hash" = "$local_hash" ]; then
+    ok "the Pi's credentials already match backend/env/staging.env"
+  else
+    echo
+    secrets_describe
+    send=true
+    if [ "$remote_hash" = missing ]; then
+      info "the Pi has no credentials yet -- sending these"
+    else
+      # The two of us can hold different tokens for the same buckets, so a
+      # difference is not necessarily staleness. Ask; a "no" is not an error.
+      warn "the Pi's credentials differ from your backend/env/staging.env"
+      confirm "  replace the Pi's with yours?" || send=false
+    fi
+    # In a subshell so that a Pi that refuses the write -- a group membership
+    # that hasn't taken effect yet, most likely -- warns and lets the code
+    # deploy, rather than taking the whole deploy down with it.
+    if [ "$send" != true ]; then
+      warn "leaving the Pi's credentials alone -- deploying the code only"
+    elif ( secrets_upload ); then
+      secrets_uploaded=true
+      ok "credentials uploaded"
+    else
+      warn "could not upload the credentials -- deploying the code anyway"
+      secrets_warned=true
+    fi
+  fi
+
+  # Idempotent, and the step that means none of this needs root: it is what
+  # makes the deployed Rails read the file.
+  ( secrets_link ) || { warn "could not link the credentials into the deployed tree"; secrets_warned=true; }
+fi
+
 # --- push, and let the Pi's hook do the rest --------------------------------
+
+# A push with nothing new in it doesn't run the hook, so nothing restarts --
+# which matters only when the credentials just changed. Worked out before the
+# push, while the remote-tracking ref still says what the Pi has.
+nothing_to_push=false
+if [ "$have_remote_deploy" = true ] &&
+   [ "$(git rev-parse "$remote_deploy_ref")" = "$(git rev-parse "$DEPLOY_BRANCH")" ]; then
+  nothing_to_push=true
+fi
 
 echo
 info "pushing $DEPLOY_BRANCH to $(pi_ssh)"
@@ -86,6 +157,17 @@ if ! git push "$PI_REMOTE" "$DEPLOY_BRANCH:$DEPLOY_BRANCH"; then
     it fetches first, so the second attempt picks their work up."
 fi
 
+if [ "$secrets_uploaded" = true ] && [ "$nothing_to_push" = true ]; then
+  echo
+  info "no new commits, so the hook restarted nothing -- restarting for the new credentials"
+  # One unit per call: the sudoers rule names each service on its own, so a
+  # combined `systemctl restart a b` would be a command it doesn't recognise.
+  for s in wend-backend.service wend-frontend.service; do
+    pi_ssh_run "sudo -n systemctl restart $s"
+  done
+fi
+
 echo
 ok "deployed -- http://$PI_HOST:$FRONTEND_PORT"
+[ "$secrets_warned" = false ] || warn "the code went up, but the credentials did not -- see the warnings above"
 info "logs: scripts/staging/logs"
