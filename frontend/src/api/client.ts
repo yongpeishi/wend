@@ -49,13 +49,21 @@ function buildQuery(params?: RequestOptions['params']): string {
 }
 
 async function request<T>(path: string, init: RequestInit = {}, options: RequestOptions = {}): Promise<T> {
+  // A FormData body is the deliberate opt-out from the JSON content type below.
+  // multipart/form-data is only parseable with the `boundary` parameter naming
+  // the delimiter between the parts, and only the browser knows the token it is
+  // about to generate; setting the header ourselves — with the wrong type or
+  // with the right type and no boundary — leaves the server unable to read the
+  // body at all. So the one encoding we must not name is checked for here,
+  // rather than every multipart caller having to remember to delete a header.
+  const isMultipart = init.body instanceof FormData;
   const response = await fetch(`/api${path}${buildQuery(options.params)}`, {
     credentials: 'include',
     signal: options.signal,
     ...init,
     headers: {
       Accept: 'application/json',
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init.body && !isMultipart ? { 'Content-Type': 'application/json' } : {}),
       ...init.headers,
     },
   });
@@ -84,6 +92,14 @@ export const api = {
   get: <T,>(path: string, options?: RequestOptions) => request<T>(path, { method: 'GET' }, options),
   post: <T,>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) }, options),
+  /**
+   * The file-upload POST. Same `request` as everything else, so a 422 arrives
+   * as the same ApiError with the same `fieldErrors` — an upload rejected for
+   * being too large is reported by exactly the code that reports a blank
+   * message. The only difference is the body, and the header it must not set.
+   */
+  postForm: <T,>(path: string, form: FormData, options?: RequestOptions) =>
+    request<T>(path, { method: 'POST', body: form }, options),
   patch: <T,>(path: string, body?: unknown, options?: RequestOptions) =>
     request<T>(path, { method: 'PATCH', body: body === undefined ? undefined : JSON.stringify(body) }, options),
   put: <T,>(path: string, body?: unknown, options?: RequestOptions) =>

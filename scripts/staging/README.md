@@ -16,6 +16,7 @@ scripts/staging/deploy      # put your branch on staging, push, restart, wait fo
 scripts/staging/logs        # follow both services' logs
 scripts/staging/console     # rails console on the staging app, from here
 scripts/staging/restart     # bounce the services without deploying
+scripts/staging/upload-env-var   # send backend/env/staging.env to the Pi as /srv/wend/secrets.env
 scripts/staging/setup       # (re)provision the Pi — needs sudo there
 ```
 
@@ -91,6 +92,7 @@ either of us writes stay readable and writable by the other and by the service:
 | `/srv/wend/bundle` | shared gem install (`BUNDLE_PATH`) |
 | `/srv/wend/env` | ruby + node, built by nix from `env/flake.nix` |
 | `/srv/wend/deploy.env` | environment shared by the hook and both services |
+| `/srv/wend/secrets.env` | credentials, uploaded by hand — see [Secrets](#secrets) |
 | `/srv/wend/state` | lockfile hashes, so deploys skip installs that aren't needed |
 
 Two systemd units, `wend-backend.service` and `wend-frontend.service`, run as a `wend`
@@ -102,6 +104,33 @@ exactly those two services with `sudo` and have no other root access.
 
 Only :5173 is open on the firewall, and only to the LAN. Rails is reached through Vite's
 proxy from inside the Pi, so :3000 stays closed.
+
+### Secrets
+
+Credentials (today: Cloudflare R2, for feedback screenshots) go in
+`/srv/wend/secrets.env`, a second `EnvironmentFile` on both units. Fill in
+`backend/env/staging.env` — it's gitignored, and `env.example` next to it is the template;
+set `R2_BUCKET=wend-feedback-staging` — then:
+
+```sh
+scripts/staging/upload-env-var
+```
+
+It validates the file against systemd's parser (which is not a shell), writes it as the
+`wend` user with mode `0640`, and offers to restart both services.
+
+`secrets.env` lives **outside** `/srv/wend/app`, so a deploy never touches it: upload
+once, and re-run only when a value changes. It is deliberately not `deploy.env` — that
+one is rewritten from scratch by `provision`, so anything added to it disappears on the
+next `setup`.
+
+The first upload also needs a one-off `scripts/staging/setup`, because the units gained
+their `EnvironmentFile=-/srv/wend/secrets.env` line when this was added and units are
+installed by `provision`. The `-` makes the file optional, so a Pi with no secrets still
+boots — the app falls back to local disk storage.
+
+Full walkthrough, including getting the credentials out of Cloudflare and looking inside
+the bucket: [`doc/how-to/cloud-storage.md`](../../doc/how-to/cloud-storage.md).
 
 ### The toolchain
 

@@ -11,6 +11,12 @@ class Feedback
   extend CommonRelationMethods
   extend GeneratedRelationMethods
 
+  sig { returns(ActiveStorage::Attached::Many) }
+  def screenshots; end
+
+  sig { params(attachable: T.untyped).returns(T.untyped) }
+  def screenshots=(attachable); end
+
   private
 
   sig { returns(NilClass) }
@@ -376,6 +382,34 @@ class Feedback
     sig { void }
     def reset_user; end
 
+    sig { returns(T::Array[T.untyped]) }
+    def screenshots_attachment_ids; end
+
+    sig { params(ids: T::Array[T.untyped]).returns(T::Array[T.untyped]) }
+    def screenshots_attachment_ids=(ids); end
+
+    # This method is created by ActiveRecord on the `Feedback` class because it declared `has_many :screenshots_attachments`.
+    # 🔗 [Rails guide for `has_many` association](https://guides.rubyonrails.org/association_basics.html#the-has-many-association)
+    sig { returns(::ActiveStorage::Attachment::PrivateCollectionProxy) }
+    def screenshots_attachments; end
+
+    sig { params(value: T::Enumerable[::ActiveStorage::Attachment]).void }
+    def screenshots_attachments=(value); end
+
+    sig { returns(T::Array[T.untyped]) }
+    def screenshots_blob_ids; end
+
+    sig { params(ids: T::Array[T.untyped]).returns(T::Array[T.untyped]) }
+    def screenshots_blob_ids=(ids); end
+
+    # This method is created by ActiveRecord on the `Feedback` class because it declared `has_many :screenshots_blobs, through: :screenshots_attachments`.
+    # 🔗 [Rails guide for `has_many_through` association](https://guides.rubyonrails.org/association_basics.html#the-has-many-through-association)
+    sig { returns(::ActiveStorage::Blob::PrivateCollectionProxy) }
+    def screenshots_blobs; end
+
+    sig { params(value: T::Enumerable[::ActiveStorage::Blob]).void }
+    def screenshots_blobs=(value); end
+
     sig { returns(T.nilable(::User)) }
     def user; end
 
@@ -535,7 +569,13 @@ class Feedback
     def with(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
+    def with_attached_screenshots(*args, &blk); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
     def with_recursive(*args, &blk); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
+    def with_statuses(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateAssociationRelation) }
     def without(*args, &blk); end
@@ -1316,7 +1356,13 @@ class Feedback
     def with(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
+    def with_attached_screenshots(*args, &blk); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
     def with_recursive(*args, &blk); end
+
+    sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
+    def with_statuses(*args, &blk); end
 
     sig { params(args: T.untyped, blk: T.untyped).returns(PrivateRelation) }
     def without(*args, &blk); end

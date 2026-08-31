@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../components/Toast';
-import { db } from '../mocks/db';
+import { BLANK_SCREENSHOT_DATA_URI, db } from '../mocks/db';
 import { AdminFeedback } from './AdminFeedback';
 
 // Integration test: the real hooks against the MSW fixtures. The admin is set
@@ -31,6 +31,24 @@ beforeEach(() => {
   db.currentUserId = 1;
 });
 
+/** The row carrying that message. Two of the seeded rows are from the same
+ * reporter, so a row is found by what it says, never by whose it is. */
+function rowFor(message: string): HTMLElement {
+  return screen.getByText(message).closest('tr') as HTMLElement;
+}
+
+/** That row's disclosure button — the only button in a row; the status control
+ * is a combobox. */
+function chevronFor(message: string): HTMLElement {
+  return within(rowFor(message)).getByRole('button');
+}
+
+/** The detail a row opens: the `<tr>` immediately after it, present in the DOM
+ * only while the row is expanded. */
+function detailOf(message: string): HTMLElement {
+  return rowFor(message).nextElementSibling as HTMLElement;
+}
+
 describe('AdminFeedback', () => {
   it('lists everyone’s feedback, newest first', async () => {
     renderPage();
@@ -55,11 +73,18 @@ describe('AdminFeedback', () => {
     expect(within(row).getByText('demo@wend.app')).toBeInTheDocument();
   });
 
-  it('shows where the feedback came from, capture and all', async () => {
+  it('shows where the feedback came from, capture and all, once the row is open', async () => {
+    // "Where" is no longer one of the always-visible columns — it moved into
+    // the disclosure, so this now asserts the same two things one click later.
+    const user = userEvent.setup();
     renderPage();
-    const row = (await screen.findByText('This button says "Set aside" but nothing visibly moves.')).closest('tr') as HTMLElement;
-    expect(within(row).getByText('http://localhost:5173/trips/1/schedule')).toBeInTheDocument();
-    expect(within(row).getByText(/button\[data-testid="set-aside"\]/)).toBeInTheDocument();
+    await screen.findByText('This button says "Set aside" but nothing visibly moves.');
+
+    await user.click(chevronFor('This button says "Set aside" but nothing visibly moves.'));
+
+    const detail = detailOf('This button says "Set aside" but nothing visibly moves.');
+    expect(within(detail).getByText('http://localhost:5173/trips/1/schedule')).toBeInTheDocument();
+    expect(within(detail).getByText(/button\[data-testid="set-aside"\]/)).toBeInTheDocument();
   });
 
   it('changes a row’s status through its select', async () => {
@@ -93,6 +118,117 @@ describe('AdminFeedback', () => {
   it('offers the CSV export as a button', async () => {
     renderPage();
     expect(await screen.findByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
+  });
+
+  // Screenshots in the seed: 901 has two, 903 has one, 902, 904 and 905 have none.
+  describe('the row disclosure', () => {
+    const CHECKLIST = 'The checklist loses my tick when I scroll — it comes back on reload though.';
+    const SET_ASIDE = 'This button says "Set aside" but nothing visibly moves.';
+    const MAP_PINS = 'Love the itinerary view. Could the map pins use the same colours as the categories?';
+
+    it('keeps the detail closed until the chevron is clicked, and closes it again', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(CHECKLIST);
+
+      // Collapsed: the table is five columns of triage and nothing else.
+      expect(screen.queryByText('http://localhost:5173/trips/1/checklist')).not.toBeInTheDocument();
+      expect(screen.queryByText('Screenshots')).not.toBeInTheDocument();
+
+      const toggle = chevronFor(CHECKLIST);
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(toggle).toHaveAccessibleName('Show details of feedback from Sarah');
+
+      await user.click(toggle);
+
+      expect(chevronFor(CHECKLIST)).toHaveAttribute('aria-expanded', 'true');
+      expect(chevronFor(CHECKLIST)).toHaveAccessibleName('Hide details of feedback from Sarah');
+      expect(screen.getByText('http://localhost:5173/trips/1/checklist')).toBeInTheDocument();
+
+      // The button says what it controls, and that row really is the detail.
+      expect(chevronFor(CHECKLIST).getAttribute('aria-controls')).toBe(detailOf(CHECKLIST).id);
+
+      await user.click(chevronFor(CHECKLIST));
+
+      expect(chevronFor(CHECKLIST)).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByText('http://localhost:5173/trips/1/checklist')).not.toBeInTheDocument();
+    });
+
+    it('holds several rows open at once, each chevron independent of the others', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(CHECKLIST);
+
+      await user.click(chevronFor(CHECKLIST));
+      await user.click(chevronFor(SET_ASIDE));
+
+      // Opening the second did not close the first — the point of the Set.
+      expect(chevronFor(CHECKLIST)).toHaveAttribute('aria-expanded', 'true');
+      expect(chevronFor(SET_ASIDE)).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('http://localhost:5173/trips/1/checklist')).toBeInTheDocument();
+      expect(screen.getByText('http://localhost:5173/trips/1/schedule')).toBeInTheDocument();
+
+      // And closing one leaves the other open rather than clearing the lot.
+      await user.click(chevronFor(CHECKLIST));
+      expect(chevronFor(CHECKLIST)).toHaveAttribute('aria-expanded', 'false');
+      expect(chevronFor(SET_ASIDE)).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('shows each screenshot as a link to the full image, named by its file', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(CHECKLIST);
+
+      await user.click(chevronFor(CHECKLIST));
+      const detail = detailOf(CHECKLIST);
+
+      const links = within(detail).getAllByRole('link');
+      expect(links).toHaveLength(2);
+      // A bare chevron's row now carries both of 901's shots, in seed order.
+      expect(links.map((a) => a.textContent)).toEqual(['checklist-before.png', 'checklist-after.png']);
+      for (const link of links) {
+        expect(link).toHaveAttribute('href', BLANK_SCREENSHOT_DATA_URI);
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      }
+
+      // The thumbnail itself is decorative beside the link that names it.
+      const images = within(detail).getAllByRole('presentation');
+      expect(images).toHaveLength(2);
+      expect(images[0]).toHaveAttribute('src', BLANK_SCREENSHOT_DATA_URI);
+
+      // One row's shots stay in that row.
+      await user.click(chevronFor(SET_ASIDE));
+      expect(within(detailOf(SET_ASIDE)).getAllByRole('link')).toHaveLength(1);
+      expect(within(detailOf(SET_ASIDE)).getByRole('link')).toHaveAccessibleName('set-aside.jpg');
+    });
+
+    it('shows where a report with no screenshots came from, and no empty gallery', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(MAP_PINS);
+
+      await user.click(chevronFor(MAP_PINS));
+      const detail = detailOf(MAP_PINS);
+
+      expect(within(detail).getByText('Where')).toBeInTheDocument();
+      expect(within(detail).getByText('http://localhost:5173/trips/1/map')).toBeInTheDocument();
+      // Not an empty heading, not an empty grid — nothing at all.
+      expect(within(detail).queryByText('Screenshots')).not.toBeInTheDocument();
+      expect(within(detail).queryAllByRole('link')).toHaveLength(0);
+      expect(within(detail).queryAllByRole('presentation')).toHaveLength(0);
+    });
+
+    it('surfaces the browser the report came from, which the table never had room for', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(CHECKLIST);
+
+      await user.click(chevronFor(CHECKLIST));
+      expect(
+        within(detailOf(CHECKLIST)).getByText(/iPhone OS 18_5 like Mac OS X\) Safari/),
+      ).toBeInTheDocument();
+    });
   });
 
   // The seed is one of each status past `new` and two fresh ones: 901 new,

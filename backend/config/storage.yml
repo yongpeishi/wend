@@ -1,0 +1,38 @@
+test:
+  service: Disk
+  root: <%= Rails.root.join("tmp/storage") %>
+
+local:
+  service: Disk
+  root: <%= Rails.root.join("storage") %>
+
+# Cloudflare R2 is S3-compatible. region "auto" and the account-scoped endpoint
+# are what R2 wants; force_path_style keeps the bucket out of the hostname.
+#
+# R2_ENDPOINT is the full URL, pasted whole from the dashboard, never assembled
+# from an account id. Cloudflare issues a certificate per account and picks it
+# by SNI, so a hostname it does not recognise gets no certificate at all and
+# the connection dies in the TLS handshake -- an "SSL alert number 40" out of
+# aws-sdk, with nothing in it about which of the four variables is wrong.
+# Copying the endpoint verbatim removes the only step where that value gets
+# retyped. It also reaches the jurisdiction-specific hosts
+# (`<account>.eu.r2.cloudflarestorage.com` and friends), which composing from
+# an account id could not express.
+#
+# request_checksum_calculation: Active Storage sends a Content-MD5 with every
+# upload, and since its "flexible checksums" change aws-sdk-s3 also adds an
+# x-amz-checksum-crc32 of its own unless told otherwise. S3 proper accepts the
+# pair; R2 answers "You can only specify one non-default checksum at a time"
+# and the upload 500s. `when_required` stops the SDK's extra one and leaves the
+# MD5, which R2 does verify. response_checksum_validation is the download-side
+# twin, set to match so the SDK never asks R2 for a checksum it may not return.
+r2:
+  service: S3
+  access_key_id: <%= ENV["R2_ACCESS_KEY_ID"] %>
+  secret_access_key: <%= ENV["R2_SECRET_ACCESS_KEY"] %>
+  region: auto
+  bucket: <%= ENV["R2_BUCKET"] %>
+  endpoint: <%= ENV["R2_ENDPOINT"] %>
+  force_path_style: true
+  request_checksum_calculation: when_required
+  response_checksum_validation: when_required

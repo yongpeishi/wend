@@ -54,6 +54,46 @@ module ActiveSupport
       TripMembership.create!(trip: trip, user: user, role: role)
     end
 
+    # An honestly-too-large screenshot, for the size half of Feedback's attachment
+    # rules. It has to be a real PNG and not merely a big file: Active Storage
+    # identifies content type from the leading bytes, so padding a text file would
+    # trip the content-type rule first and the size assertion would prove nothing.
+    #
+    # Built at run time rather than committed to test/fixtures/files, because a
+    # multi-megabyte binary in the repository is a bad trade for one assertion.
+    # The padding rides in a tEXt chunk -- an ancillary comment chunk the PNG spec
+    # allows anywhere between the header and IEND -- so the result is a picture a
+    # decoder would happily open, just an absurd one.
+    def oversized_png(at_least: Feedback::MAX_SCREENSHOT_BYTES + 1)
+      original = file_fixture("screenshot.png").binread
+      head, iend = original[0...-12], original[-12..]
+
+      comment = "Comment\0" + ("wend test padding " * (at_least / 18))
+      crc = [Zlib.crc32("tEXt" + comment)].pack("N")
+      head + [comment.bytesize].pack("N") + "tEXt" + comment + crc + iend
+    end
+
+    # A bucket that refuses an upload, for Feedback's "report and pictures go
+    # together" rule. Stubs the service rather than the blob so the refusal
+    # happens where R2's would -- after the rows are written and the request has
+    # reached storage. With a key, only that upload fails and the others land,
+    # which is what lets a test check the ones that landed are taken back out.
+    #
+    # A singleton method rather than Minitest's stub: minitest 6 no longer ships
+    # minitest/mock, and one helper is not worth a gem.
+    def with_storage_refusing(key = nil)
+      service = ActiveStorage::Blob.service
+      original = service.method(:upload)
+      service.define_singleton_method(:upload) do |upload_key, io, **options|
+        raise IOError, "bucket refused #{upload_key}" if key.nil? || upload_key == key
+
+        original.call(upload_key, io, **options)
+      end
+      yield
+    ensure
+      service.singleton_class.remove_method(:upload)
+    end
+
     # Query budget guard for the list paths. Ignores transaction control statements,
     # which say nothing about how the work scales with row count.
     def count_queries(&block)

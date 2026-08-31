@@ -37,6 +37,12 @@ Rails.application.configure do
   # Prevent health checks from clogging up the logs.
   config.silence_healthcheck_path = "/up"
 
+  # Screenshot storage, chosen by whether the process holds R2 credentials rather
+  # than by which environment it is -- the same expression as development.rb,
+  # deliberately, so the two cannot disagree about what an unset R2_BUCKET means.
+  # See the long note there for why development.rb is the one that matters today.
+  config.active_storage.service = ENV["R2_BUCKET"].present? ? :r2 : :local
+
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 

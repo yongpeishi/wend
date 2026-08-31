@@ -96,6 +96,114 @@ class Api::FeedbacksTest < ActionDispatch::IntegrationTest
     assert_equal 2, JSON.parse(response.body)["feedbacks"].length
   end
 
+  # --- Screenshots ------------------------------------------------------------
+
+  test "POST accepts screenshots and serializes them back with usable URLs" do
+    post "/api/feedbacks", params: { feedback: {
+      message: "Two angles on the same broken chip",
+      screenshots: [fixture_file_upload("screenshot.png", "image/png"),
+                    fixture_file_upload("screenshot-two.png", "image/png")]
+    } }
+    assert_response :created
+
+    screenshots = JSON.parse(response.body)["feedback"]["screenshots"]
+    assert_equal 2, screenshots.length
+    assert_equal %w[screenshot-two.png screenshot.png], screenshots.map { |s| s["filename"] }.sort
+    assert_equal ["image/png"], screenshots.map { |s| s["content_type"] }.uniq
+    assert screenshots.all? { |s| s["byte_size"].positive? }
+    assert screenshots.all? { |s| s["id"].present? }
+
+    # The signed URL is the whole point of the key and the reason Api::BaseController
+    # sets ActiveStorage::Current.url_options: without a host the Disk service raises
+    # rather than returning a link, so asserting the string is what notices.
+    assert screenshots.all? { |s| s["url"].to_s.start_with?("http") }, screenshots.map { |s| s["url"] }.inspect
+
+    assert_equal 2, Feedback.last.screenshots.count
+  end
+
+  # A report with no pictures still answers with the key, so the client renders a
+  # gallery the same way every time instead of branching on its absence.
+  test "POST without screenshots still returns an empty screenshots array" do
+    post "/api/feedbacks", params: { feedback: { message: "Words only" } }, as: :json
+    assert_response :created
+    assert_equal [], JSON.parse(response.body)["feedback"]["screenshots"]
+  end
+
+  test "GET lists the screenshots on your own feedback" do
+    feedback = Feedback.create!(user: @user, message: "With a picture")
+    feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "screenshot.png")
+
+    get "/api/feedbacks"
+    assert_response :success
+
+    row = JSON.parse(response.body)["feedbacks"].find { |f| f["id"] == feedback.id }
+    assert_equal ["screenshot.png"], row["screenshots"].map { |s| s["filename"] }
+    assert row["screenshots"].first["url"].to_s.start_with?("http")
+  end
+
+  # The three attachment rules, each through the real endpoint, because their whole
+  # job is to answer the reporter -- they reach the client through the shared
+  # RecordInvalid -> 422 rendering with no hand-written branch in the controller.
+
+  test "POST rejects more screenshots than a report is allowed" do
+    assert_no_difference -> { Feedback.count } do
+      post "/api/feedbacks", params: { feedback: {
+        message: "Every screen in the app",
+        screenshots: Array.new(Feedback::MAX_SCREENSHOTS + 1) { fixture_file_upload("screenshot.png", "image/png") }
+      } }
+    end
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body).dig("errors", "screenshots"),
+                    "Screenshots are limited to #{Feedback::MAX_SCREENSHOTS} per report"
+  end
+
+  test "POST rejects an oversized screenshot" do
+    huge = Tempfile.new(["huge", ".png"], binmode: true)
+    huge.write(oversized_png)
+    huge.rewind
+
+    assert_no_difference -> { Feedback.count } do
+      post "/api/feedbacks", params: { feedback: {
+        message: "The whole page at once",
+        screenshots: [Rack::Test::UploadedFile.new(huge.path, "image/png")]
+      } }
+    end
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body).dig("errors", "screenshots"), "Screenshots must be 5 MB or smaller"
+  ensure
+    huge&.close!
+  end
+
+  test "POST rejects an attachment that is not an image" do
+    assert_no_difference -> { Feedback.count } do
+      post "/api/feedbacks", params: { feedback: {
+        message: "Attaching my notes instead",
+        screenshots: [fixture_file_upload("not-an-image.txt", "text/plain")]
+      } }
+    end
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body).dig("errors", "screenshots"),
+                    "Screenshots must be a PNG, JPEG, WebP or GIF image"
+  end
+
+  # Through the endpoint, because the bug this guards against was found there: a
+  # bucket that refused the upload used to answer 500 *after* committing the
+  # report, so the reporter's "it failed" and the database's "it's here"
+  # disagreed. The error still surfaces -- there is no pretending a storage
+  # outage is a 422 -- but nothing is kept.
+  test "POST keeps nothing when the bucket refuses the screenshot" do
+    assert_no_difference [-> { Feedback.count }, -> { ActiveStorage::Blob.count }] do
+      with_storage_refusing do
+        assert_raises(IOError) do
+          post "/api/feedbacks", params: { feedback: {
+            message: "The chip is unreadable",
+            screenshots: [fixture_file_upload("screenshot.png", "image/png")]
+          } }
+        end
+      end
+    end
+  end
+
   test "feedback endpoints require a signed-in user" do
     delete "/api/session"
 

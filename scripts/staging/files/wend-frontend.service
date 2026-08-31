@@ -11,6 +11,13 @@ User=wend
 Group=wend
 WorkingDirectory=/srv/wend/app
 EnvironmentFile=/srv/wend/deploy.env
+# Secrets (the Cloudflare R2 credentials) live in their own file, uploaded by
+# scripts/staging/upload-env-var and never in git. It is separate from
+# deploy.env because `provision` rewrites that one from scratch on every run,
+# which would silently destroy anything appended to it. The leading `-` makes
+# it optional, so the service still boots on a Pi that has never had secrets
+# uploaded -- the app then falls back to local disk storage.
+EnvironmentFile=-/srv/wend/secrets.env
 # --host binds every interface so the Pi is reachable from the LAN; without it
 # Vite listens on localhost only. It proxies /api to the Rails service, so the
 # browser only ever talks to this port.

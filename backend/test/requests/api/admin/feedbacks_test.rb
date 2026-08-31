@@ -66,6 +66,7 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
         "element_selector" => "#board > div:nth-child(2)",
         "element_classes" => "_chip_7ilc4_44",
         "status" => "new",
+        "screenshots" => [],
         "created_at" => older.created_at.iso8601,
         "updated_at" => older.updated_at.iso8601,
         "user_agent" => "WendTest/1.0",
@@ -75,13 +76,20 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     )
   end
 
-  test "index does not run one user query per row" do
-    5.times { |i| Feedback.create!(user: [@reporter, @other][i % 2], message: "Note #{i}") }
+  # The budget is a constant, not a small number: whatever it is, adding rows and
+  # adding pictures must not move it. Every row here carries a screenshot so the
+  # attachment and blob preloads are actually exercised -- without them this is the
+  # shape that would cost two more queries per row, on a list with no pagination.
+  test "index does not run one query per row, or per picture" do
+    5.times do |i|
+      feedback = Feedback.create!(user: [@reporter, @other][i % 2], message: "Note #{i}")
+      feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "shot-#{i}.png")
+    end
     sign_in_as(@admin)
 
     queries = count_queries { get "/api/admin/feedbacks" }
     assert_response :success
-    assert_operator queries, :<=, 4, "index should preload users, not fetch one per feedback"
+    assert_operator queries, :<=, 6, "index should preload users, attachments and blobs, not fetch them per row"
   end
 
   # --- Update -----------------------------------------------------------------
@@ -121,6 +129,28 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     assert_equal "done", feedback.status
     assert_equal "Original message", feedback.message
     assert_equal @reporter.id, feedback.user_id
+  end
+
+  # Triage is mostly looking at the picture, so the admin shape carries the same
+  # screenshots the reporter's own view does -- inherited from FeedbackSerializer
+  # rather than assembled again here, which is what keeps the two from drifting.
+  test "index carries the screenshots on a row that has them" do
+    with_picture = Feedback.create!(user: @reporter, message: "Look at this")
+    with_picture.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "broken-chip.png")
+    without = Feedback.create!(user: @other, message: "Words only")
+    sign_in_as(@admin)
+
+    get "/api/admin/feedbacks"
+    assert_response :success
+
+    rows = JSON.parse(response.body)["feedbacks"].index_by { |f| f["id"] }
+    shot = rows[with_picture.id]["screenshots"].sole
+    assert_equal "broken-chip.png", shot["filename"]
+    assert_equal "image/png", shot["content_type"]
+    assert_operator shot["byte_size"], :>, 0
+    assert shot["url"].to_s.start_with?("http"), shot["url"].inspect
+
+    assert_equal [], rows[without.id]["screenshots"]
   end
 
   # --- Export -----------------------------------------------------------------

@@ -5,8 +5,12 @@ module Api
     # Deliberately NOT everyone's feedback: who may read the whole pile is a
     # product question, and scoping to the author is the answer that cannot be
     # wrong. See `.claude/interaction/wend-mvp/decisions.md` §8.
+    # The screenshot preload is not an optimisation so much as a bound: the
+    # serializer signs a URL per attachment, and without it every row would cost
+    # two more queries (its attachments, then their blobs) on a list that can
+    # return up to MAX_LIMIT rows.
     def index
-      feedbacks = policy_scope(Feedback).newest_first.limit(limit)
+      feedbacks = policy_scope(Feedback).newest_first.limit(limit).includes(screenshots_attachments: :blob)
       render json: { feedbacks: FeedbackSerializer.list(feedbacks) }
     end
 
@@ -34,8 +38,15 @@ module Api
 
     # `status` is not permitted: triage is not the reporter's call, and there is
     # no update endpoint yet. `user_id` is not permitted either -- see create.
+    #
+    # `screenshots: []` is the array form strong params needs for a repeated
+    # multipart field. Nothing else about create changes: a JSON body with no
+    # screenshots key attaches nothing and behaves exactly as it did before.
+    # What may be attached is Feedback's business, not the controller's -- the
+    # count, size and content-type rules live in the model so they fail through
+    # the shared RecordInvalid -> 422 path rather than being hand-rendered here.
     def feedback_params
-      params.require(:feedback).permit(:message, :url, :element_selector, :element_classes)
+      params.require(:feedback).permit(:message, :url, :element_selector, :element_classes, screenshots: [])
     end
   end
 end

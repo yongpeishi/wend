@@ -1,5 +1,11 @@
 import { http, HttpResponse } from 'msw';
 import {
+  FEEDBACK_SCREENSHOT_CONTENT_TYPES,
+  FEEDBACK_SCREENSHOT_MAX_BYTES,
+  FEEDBACK_SCREENSHOT_MAX_COUNT,
+} from '../api/feedback';
+import {
+  BLANK_SCREENSHOT_DATA_URI,
   addDayVersion,
   allocateId,
   applyTripDateShift,
@@ -39,6 +45,7 @@ import type {
   EntryCategory,
   EntryKind,
   Feedback,
+  FeedbackScreenshot,
   ScheduleItem,
   Todo,
   TripDayWritePayload,
@@ -78,6 +85,103 @@ function toAdminFeedback(stored: StoredFeedback): AdminFeedback {
   return {
     ...stored,
     user: { id: stored.user_id, name: user?.name ?? 'Someone', email: user?.email ?? '' },
+  };
+}
+
+/**
+ * What a POST /api/feedbacks body says, whichever encoding it arrived in. The
+ * two paths converge here so the rest of the handler — the blank-message check,
+ * the orphan-classes normaliser, the row it builds — stays single-track, the
+ * way the Rails controller sees one `params[:feedback]` either way.
+ */
+interface FeedbackSubmission {
+  message: string | null;
+  url: string | null;
+  element_selector: string | null;
+  element_classes: string | null;
+  files: File[];
+}
+
+/**
+ * A multipart submission. Empty strings are read as absent: FormData has no
+ * null, so the composer omitting a field and the composer sending an empty one
+ * are the same request on the wire, and Rails' own blank-to-nil handling treats
+ * them alike.
+ */
+async function readMultipartFeedback(request: Request): Promise<FeedbackSubmission> {
+  const form = await request.formData();
+  const text = (field: string) => {
+    const value = form.get(`feedback[${field}]`);
+    return typeof value === 'string' && value.trim() !== '' ? value : null;
+  };
+  return {
+    message: text('message'),
+    url: text('url'),
+    element_selector: text('element_selector'),
+    element_classes: text('element_classes'),
+    // A part is a string or a file, and "not a string" is the test that holds
+    // in both realms: under Vitest the parsed file comes from undici while the
+    // `File` global is jsdom's, so `instanceof File` is false for a file that
+    // is unmistakably one, and an instanceof filter would silently drop every
+    // upload in the test suite.
+    files: form.getAll('feedback[screenshots][]').filter((part): part is File => typeof part !== 'string'),
+  };
+}
+
+/**
+ * The signed URL's stand-in. A blob URL is the closest thing a browser has to
+ * "an address this image can be fetched from", so the thumbnail the composer
+ * just uploaded really does render in mock mode. jsdom implements neither
+ * createObjectURL nor a blob registry, so tests fall back to the inline PNG
+ * rather than getting a URL that resolves to nothing.
+ */
+function screenshotUrlFor(file: File): string {
+  if (typeof URL.createObjectURL === 'function') {
+    try {
+      return URL.createObjectURL(file);
+    } catch {
+      // jsdom throws rather than 404s; the data URI below is the honest answer.
+    }
+  }
+  return BLANK_SCREENSHOT_DATA_URI;
+}
+
+/**
+ * The upload limits, mirrored from the client constants so mock mode rejects
+ * exactly what the backend rejects — an oversized file that sails through here
+ * would be a composer bug discovered only in production.
+ *
+ * The sentences are `Feedback#screenshots_are_reasonable_images` word for word,
+ * because they surface verbatim to the reporter: whatever the composer renders
+ * an error into, mock mode has to be showing it the same string production
+ * will. Every violation is collected and then de-duplicated, the way that
+ * validator does — a six-file drop of PDFs says so once, not six times.
+ */
+function screenshotErrors(files: File[]): string[] {
+  if (files.length === 0) return [];
+
+  const messages: string[] = [];
+  if (files.length > FEEDBACK_SCREENSHOT_MAX_COUNT) {
+    messages.push(`are limited to ${FEEDBACK_SCREENSHOT_MAX_COUNT} per report`);
+  }
+  for (const file of files) {
+    if (!FEEDBACK_SCREENSHOT_CONTENT_TYPES.includes(file.type)) {
+      messages.push('must be a PNG, JPEG, WebP or GIF image');
+    }
+    if (file.size > FEEDBACK_SCREENSHOT_MAX_BYTES) {
+      messages.push(`must be ${FEEDBACK_SCREENSHOT_MAX_BYTES / (1024 * 1024)} MB or smaller`);
+    }
+  }
+  return [...new Set(messages)];
+}
+
+function toStoredScreenshot(file: File): FeedbackScreenshot {
+  return {
+    id: allocateId(),
+    filename: file.name,
+    content_type: file.type,
+    byte_size: file.size,
+    url: screenshotUrlFor(file),
   };
 }
 
@@ -906,22 +1010,49 @@ export const handlers = [
     const auth = requireAuth();
     if (auth instanceof HttpResponse) return auth;
 
-    const body = (await request.json()) as { feedback?: Partial<Feedback> };
-    const message = body.feedback?.message?.trim();
-    if (!message) {
-      return HttpResponse.json({ errors: { message: ["can't be blank"] } }, { status: 422 });
+    // Two encodings, one contract: JSON when the report is words alone,
+    // multipart when it carries files, because JSON cannot hold a file without
+    // base64-inflating it. Which one arrived is read off the request rather
+    // than guessed, and everything downstream sees the same submission.
+    const submission: FeedbackSubmission = (request.headers.get('content-type') ?? '').includes(
+      'multipart/form-data',
+    )
+      ? await readMultipartFeedback(request)
+      : await (async () => {
+          const body = (await request.json()) as { feedback?: Partial<Feedback> };
+          return {
+            message: body.feedback?.message ?? null,
+            url: body.feedback?.url ?? null,
+            element_selector: body.feedback?.element_selector ?? null,
+            element_classes: body.feedback?.element_classes ?? null,
+            files: [],
+          };
+        })();
+
+    // Both validations answer in one body, the way a single RecordInvalid does:
+    // a report that is blank *and* over the file limit is two things wrong with
+    // one submission, and telling the reporter about them one round trip at a
+    // time is how a form makes someone fix a thing twice.
+    const message = submission.message?.trim();
+    const errors: Record<string, string[]> = {};
+    if (!message) errors.message = ["can't be blank"];
+    const screenshotProblems = screenshotErrors(submission.files);
+    if (screenshotProblems.length > 0) errors.screenshots = screenshotProblems;
+    if (!message || screenshotProblems.length > 0) {
+      return HttpResponse.json({ errors }, { status: 422 });
     }
 
-    const selector = body.feedback?.element_selector ?? null;
+    const selector = submission.element_selector;
     const feedback: StoredFeedback = {
       id: allocateId(),
       message,
       user_id: auth.id,
-      url: body.feedback?.url ?? null,
+      url: submission.url,
       element_selector: selector,
       // Mirrors the model's normaliser: classes with no selector point at nothing.
-      element_classes: selector ? (body.feedback?.element_classes ?? null) : null,
+      element_classes: selector ? submission.element_classes : null,
       status: 'new',
+      screenshots: submission.files.map(toStoredScreenshot),
       created_at: now(),
       updated_at: now(),
       // Stored the way the server reads it off the request; never sent back to

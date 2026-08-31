@@ -264,6 +264,22 @@ export interface User {
 export type FeedbackStatus = 'new' | 'in_progress' | 'rejected' | 'done';
 
 /**
+ * One image attached to a report. The file itself lives in the backend's blob
+ * store, so `url` is not a stable address: it is a signed link that expires
+ * fifteen minutes after the response was serialized. Render it, never persist
+ * it — a screenshot URL held in state across a long-lived admin session will
+ * have gone dead by the time anyone clicks it, and the fix is to refetch the
+ * feedback rather than to cache the link harder.
+ */
+export interface FeedbackScreenshot {
+  id: number;
+  filename: string;
+  content_type: string;
+  byte_size: number;
+  url: string;
+}
+
+/**
  * Feedback about the app itself. Not an Entry — see backend
  * `app/models/feedback.rb`. `user_agent` is stored server-side for diagnosis
  * but deliberately not serialized back, so it is absent here too.
@@ -279,6 +295,11 @@ export interface Feedback {
   /** The element's raw class attribute, e.g. "_chip_7ilc4_44" — a grep hint. */
   element_classes: string | null;
   status: FeedbackStatus;
+  /**
+   * Always an array, `[]` when the report carries no images — the serializer
+   * emits the key unconditionally so no reader has to guard for undefined.
+   */
+  screenshots: FeedbackScreenshot[];
   created_at: string;
   updated_at: string;
 }
@@ -379,9 +400,18 @@ export type ScheduleItemWritePayload = Partial<
  */
 export type TripDayWritePayload = Partial<Pick<TripDay, 'lodging_entry_id' | 'lodging_label'>>;
 
-/** Only what the reporter may set — `status` and `user_id` are server-owned. */
+/**
+ * Only what the reporter may set — `status` and `user_id` are server-owned.
+ *
+ * `screenshots` is the one field that is not the mirror of its serialized
+ * counterpart: going out it is the raw `File`s picked in the composer, coming
+ * back it is the stored blobs with their signed URLs. Its presence is also what
+ * decides the encoding — see `useCreateFeedback`.
+ */
 export type FeedbackWritePayload = Pick<Feedback, 'message'> &
-  Partial<Pick<Feedback, 'url' | 'element_selector' | 'element_classes'>>;
+  Partial<Pick<Feedback, 'url' | 'element_selector' | 'element_classes'>> & {
+    screenshots?: File[];
+  };
 
 export interface NearbyQuery {
   lat: number;

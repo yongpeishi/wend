@@ -7,7 +7,8 @@
 # Ignore bundler config.
 /.bundle
 
-# Ignore all environment files.
+# Ignore all environment files (the filled-in ones live under env/).
+/env/*.env
 /.env*
 
 # Ignore all default key files.
