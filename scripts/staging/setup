@@ -17,7 +17,10 @@ dest="$(pi_ssh)"
 remote_dir=".cache/wend-staging"
 
 info "copying scripts/staging to $dest:~/$remote_dir"
-run rsync -az --delete "$STAGING_DIR/" "$dest:$remote_dir/"
+# --rsync-path smuggles in a mkdir: rsync creates the last path component but
+# not its parents, and a fresh account on the Pi has no ~/.cache yet.
+run rsync -az --delete --rsync-path="mkdir -p '$remote_dir' && rsync" \
+  "$STAGING_DIR/" "$dest:$remote_dir/"
 
 echo
 info "running provision on the Pi (sudo)"
