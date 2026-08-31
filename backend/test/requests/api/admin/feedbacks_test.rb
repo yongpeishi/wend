@@ -226,14 +226,19 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     assert_equal 2, CSV.parse(response.body).drop(1).length
   end
 
-  # The filter narrows the file, never the screen's own list: the table filters
-  # in the browser and needs the whole pile to say "3 of 4".
-  test "index ignores the export's status filter" do
-    Feedback.create!(user: @reporter, message: "Still new")
+  # The admin screen filters in the browser and sends no param, so it keeps
+  # getting the whole pile; the param is for callers with no browser to filter
+  # in, and narrows the list exactly as it narrows the file.
+  test "index narrows to the statuses asked for, and keeps the whole pile without the param" do
+    fresh = Feedback.create!(user: @reporter, message: "Still new")
     Feedback.create!(user: @other, message: "Dealt with", status: "done")
     sign_in_as(@admin)
 
     get "/api/admin/feedbacks", params: { status: %w[new] }
+    assert_response :success
+    assert_equal [fresh.id], JSON.parse(response.body)["feedbacks"].map { |f| f["id"] }
+
+    get "/api/admin/feedbacks"
     assert_response :success
     assert_equal 2, JSON.parse(response.body)["feedbacks"].length
   end
@@ -248,5 +253,116 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     get "/api/feedbacks"
     assert_response :success
     assert_equal [mine.id], JSON.parse(response.body)["feedbacks"].map { |f| f["id"] }
+  end
+
+  # --- Bearer token ------------------------------------------------------------
+
+  test "a valid bearer token reads the list and the export without a session" do
+    feedback = Feedback.create!(user: @reporter, message: "Fetched by a script",
+                                user_agent: "WendTest/1.0")
+
+    with_admin_api_token("s3cret") do
+      get "/api/admin/feedbacks", headers: { "Authorization" => "Bearer s3cret" }
+      assert_response :success
+      row = JSON.parse(response.body)["feedbacks"].sole
+      assert_equal feedback.id, row["id"]
+      assert_equal "new", row["status"]
+      assert_equal "reporter@example.com", row.dig("user", "email")
+
+      get "/api/admin/feedbacks/export", headers: { "Authorization" => "Bearer s3cret" }
+      assert_response :success
+      assert_equal "text/csv", response.media_type
+      assert_equal [feedback.id.to_s], CSV.parse(response.body).drop(1).map(&:first)
+    end
+  end
+
+  test "the token narrows the list the same way a signed-in admin can" do
+    fresh = Feedback.create!(user: @reporter, message: "Still new")
+    Feedback.create!(user: @other, message: "Dealt with", status: "done")
+
+    with_admin_api_token("s3cret") do
+      get "/api/admin/feedbacks", params: { status: %w[new] },
+                                  headers: { "Authorization" => "Bearer s3cret" }
+      assert_response :success
+      assert_equal [fresh.id], JSON.parse(response.body)["feedbacks"].map { |f| f["id"] }
+    end
+  end
+
+  test "a wrong or missing token stops at the first door" do
+    with_admin_api_token("s3cret") do
+      get "/api/admin/feedbacks", headers: { "Authorization" => "Bearer wrong" }
+      assert_response :unauthorized
+
+      get "/api/admin/feedbacks"
+      assert_response :unauthorized
+
+      get "/api/admin/feedbacks/export", headers: { "Authorization" => "Bearer wrong" }
+      assert_response :unauthorized
+    end
+  end
+
+  test "the token opens the read actions only, never triage" do
+    feedback = Feedback.create!(user: @reporter, message: "Not writable by script")
+
+    with_admin_api_token("s3cret") do
+      patch "/api/admin/feedbacks/#{feedback.id}",
+            params: { feedback: { status: "done" } }, as: :json,
+            headers: { "Authorization" => "Bearer s3cret" }
+      assert_response :unauthorized
+      assert_equal "new", feedback.reload.status
+    end
+  end
+
+  test "with no ADMIN_API_TOKEN configured, bearer auth does not exist" do
+    with_admin_api_token(nil) do
+      get "/api/admin/feedbacks", headers: { "Authorization" => "Bearer anything" }
+      assert_response :unauthorized
+    end
+  end
+
+  test "a blank secret never matches a blank header" do
+    with_admin_api_token("") do
+      get "/api/admin/feedbacks", headers: { "Authorization" => "Bearer " }
+      assert_response :unauthorized
+
+      get "/api/admin/feedbacks", headers: { "Authorization" => "Bearer" }
+      assert_response :unauthorized
+    end
+  end
+
+  test "the token does not loosen the cookie doors" do
+    sign_in_as(@reporter)
+
+    with_admin_api_token("s3cret") do
+      get "/api/admin/feedbacks"
+      assert_response :forbidden
+
+      # A session, when present, stays the identity: the token never upgrades
+      # a signed-in non-admin.
+      get "/api/admin/feedbacks", headers: { "Authorization" => "Bearer s3cret" }
+      assert_response :forbidden
+    end
+  end
+
+  private
+
+  # The suite has no ENV stubbing helper, so the variable is set and restored by
+  # hand. Parallel workers are processes, not threads, so the mutation is
+  # invisible to other workers; the ensure keeps it from leaking into the next
+  # test in this one.
+  def with_admin_api_token(value)
+    original = ENV["ADMIN_API_TOKEN"]
+    if value.nil?
+      ENV.delete("ADMIN_API_TOKEN")
+    else
+      ENV["ADMIN_API_TOKEN"] = value
+    end
+    yield
+  ensure
+    if original.nil?
+      ENV.delete("ADMIN_API_TOKEN")
+    else
+      ENV["ADMIN_API_TOKEN"] = original
+    end
   end
 end
