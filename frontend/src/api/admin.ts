@@ -65,3 +65,19 @@ export function useUpdateAdminFeedbackStatus() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
   });
 }
+
+/**
+ * DELETE /api/admin/feedbacks/:id — gone for good, screenshots and all. The
+ * server only takes this for done or rejected feedback and answers 204.
+ *
+ * Not optimistic, unlike the status change above: a delete stands behind a
+ * confirm dialog, so there is no control snapping back mid-request to paper
+ * over — the invalidation's refetch is all the UI needs.
+ */
+export function useDeleteAdminFeedback() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.delete<void>(`/admin/feedbacks/${id}`),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.all }),
+  });
+}

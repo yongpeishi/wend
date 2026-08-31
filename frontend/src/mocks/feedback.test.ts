@@ -144,6 +144,48 @@ describe('POST /api/feedbacks with screenshots', () => {
   });
 });
 
+describe('DELETE /api/admin/feedbacks/:id', () => {
+  function destroy(id: number) {
+    return fetch(`/api/admin/feedbacks/${id}`, { method: 'DELETE', headers: { Accept: 'application/json' } });
+  }
+
+  it('removes a rejected note and answers 204 with no body', async () => {
+    const response = await destroy(903);
+
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe('');
+    expect(db.feedbacks.some((f) => f.id === 903)).toBe(false);
+  });
+
+  it('takes a done note too — the other finished status', async () => {
+    expect((await destroy(904)).status).toBe(204);
+    expect(db.feedbacks.some((f) => f.id === 904)).toBe(false);
+  });
+
+  it('refuses a note triage has not finished with, in the contract words', async () => {
+    const response = await destroy(901);
+
+    expect(response.status).toBe(422);
+    expect(await response.json()).toEqual({ error: 'Only done or rejected feedback can be deleted' });
+    // Refused means kept: the row is exactly where it was.
+    expect(db.feedbacks.some((f) => f.id === 901)).toBe(true);
+  });
+
+  it('is 404 for an id that was never here', async () => {
+    expect((await destroy(999)).status).toBe(404);
+  });
+
+  it('turns an ordinary signed-in user away, note untouched', async () => {
+    signIn(SARAH);
+
+    const response = await destroy(903);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: 'Admin access required' });
+    expect(db.feedbacks.some((f) => f.id === 903)).toBe(true);
+  });
+});
+
 describe('screenshots on the way out', () => {
   it('reaches the reporter through GET /api/feedbacks', async () => {
     signIn(SARAH);
