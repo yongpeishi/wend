@@ -85,9 +85,21 @@ export function DatesGate({
 }: DatesGateProps) {
   const [start, setStart] = useState(initialStart ?? '');
   const [end, setEnd] = useState(initialEnd ?? '');
+  // The tried-vs-live split TimeEditor uses, in miniature. A backwards range is
+  // live — two whole dates in the wrong order are already wrong, so the message
+  // shows as you pick and the button holds shut. A missing date is not wrong
+  // yet, only not done: the button stays pressable, and pressing it is what
+  // asks for the errors. Each field's message hangs off the emptiness itself,
+  // so filling a field clears its own message without touching the other's.
+  const [tried, setTried] = useState(false);
 
   const backwards = Boolean(start && end && end < start);
-  const ready = Boolean(start && end) && !backwards;
+  const startError = tried && !start ? 'Pick a first day.' : undefined;
+  const endError = backwards
+    ? 'The last day comes before the first.'
+    : tried && !end
+      ? 'Pick a last day.'
+      : undefined;
 
   // Arriving with dates already set means this gate was reopened by "Change
   // dates" over a day list that exists — so backing out of it lands on those
@@ -95,6 +107,14 @@ export function DatesGate({
   // nowhere to go back to but the ideas the days will be filled from, and the
   // button has to say which of the two it is doing.
   const reopened = Boolean(initialStart && initialEnd);
+
+  function open() {
+    if (!start || !end) {
+      setTried(true);
+      return;
+    }
+    onConfirm(start, end);
+  }
 
   function setLength(days: number) {
     const from = start || todayIso();
@@ -146,6 +166,7 @@ export function DatesGate({
             type="date"
             className={styles.dateInput}
             value={start}
+            error={startError}
             onChange={(event) => setStart(event.target.value)}
           />
           <Field
@@ -153,7 +174,7 @@ export function DatesGate({
             type="date"
             className={styles.dateInput}
             value={end}
-            error={backwards ? 'The last day comes before the first.' : undefined}
+            error={endError}
             onChange={(event) => setEnd(event.target.value)}
           />
         </div>
@@ -173,7 +194,10 @@ export function DatesGate({
           <Button variant="secondary" onClick={onBack}>
             {reopened ? 'Back to your days' : 'Back to ideas'}
           </Button>
-          <Button disabled={!ready || saving} aria-busy={saving || undefined} onClick={() => onConfirm(start, end)}>
+          {/* Dead only while saving or for the one error shown before it is
+              pressed — the backwards range. With a date still missing the
+              button stays worth pressing: pressing is what says which date. */}
+          <Button disabled={backwards || saving} aria-busy={saving || undefined} onClick={open}>
             Open the days
           </Button>
         </div>
