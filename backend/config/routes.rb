@@ -31,7 +31,7 @@ Rails.application.routes.draw do
     resources :feedbacks, only: [:index, :create]
 
     namespace :admin do
-      resources :feedbacks, only: [:index, :update] do
+      resources :feedbacks, only: [:index, :update, :destroy] do
         collection { get :export }
       end
     end

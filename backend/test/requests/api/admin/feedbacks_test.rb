@@ -17,6 +17,9 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     patch "/api/admin/feedbacks/1", params: { feedback: { status: "rejected" } }, as: :json
     assert_response :unauthorized
 
+    delete "/api/admin/feedbacks/1"
+    assert_response :unauthorized
+
     get "/api/admin/feedbacks/export"
     assert_response :unauthorized
   end
@@ -32,6 +35,10 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     patch "/api/admin/feedbacks/#{feedback.id}", params: { feedback: { status: "rejected" } }, as: :json
     assert_response :forbidden
     assert_equal "new", feedback.reload.status
+
+    delete "/api/admin/feedbacks/#{feedback.id}"
+    assert_response :forbidden
+    assert Feedback.exists?(feedback.id)
 
     get "/api/admin/feedbacks/export"
     assert_response :forbidden
@@ -151,6 +158,66 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     assert shot["url"].to_s.start_with?("http"), shot["url"].inspect
 
     assert_equal [], rows[without.id]["screenshots"]
+  end
+
+  # --- Destroy ----------------------------------------------------------------
+
+  test "destroy removes a dealt-with feedback and its screenshots, bucket included" do
+    feedback = Feedback.create!(user: @reporter, message: "Dealt with", status: "done")
+    feedback.screenshots.attach(fixture_file_upload("screenshot.png", "image/png"))
+    key = feedback.screenshots.sole.blob.key
+    sign_in_as(@admin)
+
+    assert_difference [-> { Feedback.count }, -> { ActiveStorage::Attachment.count }, -> { ActiveStorage::Blob.count }], -1 do
+      delete "/api/admin/feedbacks/#{feedback.id}"
+    end
+
+    assert_response :no_content
+    assert_empty response.body
+    assert_not ActiveStorage::Blob.service.exist?(key), "the screenshot outlived its feedback"
+  end
+
+  test "destroy removes a rejected feedback too" do
+    feedback = Feedback.create!(user: @reporter, message: "Read and not acting on it", status: "rejected")
+    sign_in_as(@admin)
+
+    delete "/api/admin/feedbacks/#{feedback.id}"
+    assert_response :no_content
+    assert_not Feedback.exists?(feedback.id)
+  end
+
+  # Deletion is for the endings only -- a note still in triage carries a decision
+  # nobody has made yet, and the endpoint refuses to make it by accident.
+  test "destroy refuses feedback that is still in triage" do
+    fresh = Feedback.create!(user: @reporter, message: "Still new")
+    picked_up = Feedback.create!(user: @other, message: "Being worked on", status: "in_progress")
+    sign_in_as(@admin)
+
+    [fresh, picked_up].each do |feedback|
+      delete "/api/admin/feedbacks/#{feedback.id}"
+      assert_response :unprocessable_entity
+      assert_equal({ "error" => "Only done or rejected feedback can be deleted" }, JSON.parse(response.body))
+      assert Feedback.exists?(feedback.id), "#{feedback.status} feedback was deleted"
+    end
+  end
+
+  test "destroy answers 404 for an id that does not exist" do
+    sign_in_as(@admin)
+
+    delete "/api/admin/feedbacks/999999"
+    assert_response :not_found
+    assert_equal({ "error" => "Not found" }, JSON.parse(response.body))
+  end
+
+  # The 403 comes from the door, not from deletability: even a feedback that an
+  # admin could delete stays put when a non-admin asks.
+  test "destroy turns a non-admin away even for dealt-with feedback" do
+    feedback = Feedback.create!(user: @reporter, message: "Dealt with", status: "done")
+    sign_in_as(@reporter)
+
+    delete "/api/admin/feedbacks/#{feedback.id}"
+    assert_response :forbidden
+    assert Feedback.exists?(feedback.id)
   end
 
   # --- Export -----------------------------------------------------------------
@@ -301,8 +368,9 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "the token opens the read actions only, never triage" do
+  test "the token opens the read actions only, never triage or deletion" do
     feedback = Feedback.create!(user: @reporter, message: "Not writable by script")
+    dealt_with = Feedback.create!(user: @other, message: "Not deletable by script", status: "done")
 
     with_admin_api_token("s3cret") do
       patch "/api/admin/feedbacks/#{feedback.id}",
@@ -310,6 +378,14 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
             headers: { "Authorization" => "Bearer s3cret" }
       assert_response :unauthorized
       assert_equal "new", feedback.reload.status
+
+      # Even a feedback an admin could delete: destroy is outside TOKEN_ACTIONS,
+      # so the token leaves the request with no identity at all and it stops at
+      # the first door.
+      delete "/api/admin/feedbacks/#{dealt_with.id}",
+             headers: { "Authorization" => "Bearer s3cret" }
+      assert_response :unauthorized
+      assert Feedback.exists?(dealt_with.id)
     end
   end
 

@@ -219,4 +219,63 @@ class FeedbackTest < ActiveSupport::TestCase
       @user.destroy
     end
   end
+
+  # --- Deletion ---------------------------------------------------------------
+  #
+  # The admin hard delete. Only a note that has reached an ending may go, and
+  # when it goes its pictures go with it -- rows and bucket both.
+
+  test "only the two endings are deletable" do
+    assert_equal %w[rejected done], Feedback::DELETABLE_STATUSES
+
+    { "new" => false, "in_progress" => false, "rejected" => true, "done" => true }.each do |status, expected|
+      feedback = Feedback.new(user: @user, message: "Fine", status: status)
+      assert_equal expected, feedback.deletable?, "#{status} deletable? should be #{expected}"
+    end
+  end
+
+  test "destroy_and_remove_screenshots! takes the record, the rows and the files" do
+    feedback = Feedback.new(user: @user, message: "Dealt with", status: "done")
+    feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "one.png")
+    feedback.screenshots.attach(io: file_fixture("screenshot-two.png").open, filename: "two.png")
+    feedback.save!
+    keys = feedback.screenshots.blobs.map(&:key)
+
+    assert_difference [-> { ActiveStorage::Attachment.count }, -> { ActiveStorage::Blob.count }], -2 do
+      assert_difference -> { Feedback.count }, -1 do
+        feedback.destroy_and_remove_screenshots!
+      end
+    end
+
+    keys.each do |key|
+      assert_not ActiveStorage::Blob.service.exist?(key), "#{key} outlived the feedback it belonged to"
+    end
+  end
+
+  # The bargain from the class comment on the method: the row goes first and the
+  # bucket is best effort, so a service that refuses the delete leaves a stray
+  # file and a log line, never a half-deleted feedback.
+  test "a bucket that refuses the delete does not resurrect the feedback" do
+    feedback = Feedback.new(user: @user, message: "Dealt with", status: "done")
+    feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "screenshot.png")
+    feedback.save!
+    blob = feedback.screenshots.sole.blob
+
+    log = StringIO.new
+    original_logger = Rails.logger
+    Rails.logger = ActiveSupport::Logger.new(log)
+    begin
+      with_storage_refusing_delete(blob.key) do
+        feedback.destroy_and_remove_screenshots!
+      end
+    ensure
+      Rails.logger = original_logger
+    end
+
+    assert_not Feedback.exists?(feedback.id)
+    assert_not ActiveStorage::Attachment.exists?(record: feedback), "attachment rows survived the delete"
+    assert_not ActiveStorage::Blob.exists?(blob.id), "the blob row survived the delete"
+    assert_includes log.string, blob.key, "the refused delete left no trace in the log"
+    assert_includes log.string, "IOError"
+  end
 end
