@@ -27,7 +27,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const wrapperClasses = [styles.wrapper, error ? styles.error : '', wrapperClassName]
     .filter(Boolean)
     .join(' ');
-  const inputClasses = [styles.input, className].filter(Boolean).join(' ');
+  // An empty native date input still paints ghost text in the full value
+  // colour (Safari shows today's date, Chrome "mm/dd/yyyy"), so an empty field
+  // is indistinguishable from a filled one. Every date field here is controlled
+  // (value comes in as '' when unset), so emptiness is read straight off the
+  // prop and .emptyDate restyles the ghost as the placeholder it really is.
+  const emptyDate = rest.type === 'date' && rest.value === '';
+  const inputClasses = [styles.input, emptyDate ? styles.emptyDate : '', className]
+    .filter(Boolean)
+    .join(' ');
   return (
     <div className={wrapperClasses}>
       <input ref={ref} className={inputClasses} aria-invalid={error || undefined} {...rest} />

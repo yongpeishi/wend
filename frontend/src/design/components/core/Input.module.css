@@ -47,6 +47,19 @@
   color: var(--text-muted);
 }
 
+/* A native date input has no ::placeholder: while empty it paints ghost text
+   (Safari today's date, Chrome mm/dd/yyyy) in the same strong colour as a real
+   value, so an empty field looks filled. Input.tsx adds .emptyDate only while
+   the field is empty; muted + italic makes the ghost read as a placeholder,
+   and a filled date stays upright in --text-strong. The colour must also land
+   on ::-webkit-datetime-edit — WebKit paints the segments there, not on the
+   input itself. */
+.emptyDate,
+.emptyDate::-webkit-datetime-edit {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .input:disabled {
   color: var(--action-disabled-text);
   cursor: default;
