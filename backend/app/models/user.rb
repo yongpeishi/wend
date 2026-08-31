@@ -1,4 +1,6 @@
 class User < ApplicationRecord
+  require "digest/sha1"
+
   has_secure_password
 
   # entries.created_by_id is NOT NULL, so :nullify could never work -- destroying a
@@ -24,4 +26,11 @@ class User < ApplicationRecord
   validates :password, length: { minimum: 8 }, allow_nil: true
 
   before_save { self.email = email.downcase.strip if email.present? }
+
+  # A password change rotates this without another credential column. The
+  # password digest is already a salted secret, so the resulting URL cannot be
+  # derived from the public user id alone.
+  def calendar_token
+    Digest::SHA1.hexdigest("#{id}#{password_digest}")
+  end
 end

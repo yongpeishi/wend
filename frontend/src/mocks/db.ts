@@ -617,11 +617,25 @@ function addLink(parentId: number, childId: number, position: number) {
 export function seed() {
   db.users = [
     // Admin, so the one account every dev session signs into can reach /admin.
-    { id: 1, name: 'Demo Traveler', email: 'demo@wend.app', password: 'password', admin: true },
+    {
+      id: 1,
+      name: 'Demo Traveler',
+      email: 'demo@wend.app',
+      password: 'password',
+      admin: true,
+      ical_url: '/users/1/ical?auth=mock',
+    },
     // A second person, so the share panel has someone real to bring along and
     // take off again — and so the vote below stops pointing at nobody. Not an
     // admin, so the guard has someone to turn away.
-    { id: 2, name: 'Sarah', email: 'sarah@wend.app', password: 'password', admin: false },
+    {
+      id: 2,
+      name: 'Sarah',
+      email: 'sarah@wend.app',
+      password: 'password',
+      admin: false,
+      ical_url: '/users/2/ical?auth=mock',
+    },
   ];
   db.currentUserId = null;
   // Links are rebuilt from scratch below. Without this the seeded links were

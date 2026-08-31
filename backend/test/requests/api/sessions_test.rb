@@ -17,6 +17,16 @@ class Api::SessionsTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "GET /api/me gives the user their private calendar subscription URL" do
+    user = create_user
+    sign_in_as(user)
+
+    get "/api/me"
+
+    assert_response :success
+    assert_equal "/users/#{user.id}/ical?auth=#{user.calendar_token}", JSON.parse(response.body).dig("user", "ical_url")
+  end
+
   # A session says who you are, not what you may reach: signing in is the start of
   # the question, never the answer to it.
   test "a session reaches only its own user's world" do

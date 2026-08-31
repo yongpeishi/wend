@@ -259,6 +259,8 @@ export interface User {
   email: string;
   /** Serialized everywhere users are — promotion happens in the rails console only. */
   admin: boolean;
+  /** Private subscription path for this user's combined itinerary calendar. */
+  ical_url: string;
 }
 
 export type FeedbackStatus = 'new' | 'in_progress' | 'rejected' | 'done';
