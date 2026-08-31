@@ -15,6 +15,7 @@ deploy.
 scripts/staging/deploy      # put your branch on staging, push, restart, wait for it to answer
 scripts/staging/logs        # follow both services' logs
 scripts/staging/console     # rails console on the staging app, from here
+scripts/staging/feedback    # the staging app's user feedback, as JSON on stdout
 scripts/staging/restart     # bounce the services without deploying
 scripts/staging/upload-env-var   # send backend/env/staging.env to the Pi as /srv/wend/secrets.env
 scripts/staging/setup       # (re)provision the Pi — needs sudo there
@@ -46,6 +47,20 @@ A push is refused if the other person deployed something you haven't fetched. Re
 
 The database is **not** reset by a deploy. It lives in `/srv/wend/app/backend/storage/`,
 untracked, and survives every deploy — so demo data you set up by hand stays put.
+
+## Reading feedback
+
+`scripts/staging/feedback` prints the staging app's user feedback as JSON on stdout —
+nothing else lands there, so it pipes straight into `jq`. Filter by status with a
+repeatable flag:
+
+```sh
+scripts/staging/feedback --status new --status seen
+```
+
+It authenticates with the `ADMIN_API_TOKEN` line in `backend/env/staging.env` — the same
+gitignored file [Secrets](#secrets) describes, so the token you call with is the one the
+Pi checks. If the token isn't set, or the Pi doesn't answer, the script says what to fix.
 
 ## Working on the Pi itself
 

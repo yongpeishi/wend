@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Print the staging app's user feedback as JSON on stdout.
+#
+#   scripts/staging/feedback                              # everything
+#   scripts/staging/feedback --status new                 # just the new ones
+#   scripts/staging/feedback --status new --status seen   # either
+#
+# Auth is a bearer token read from backend/env/staging.env -- the same
+# gitignored file upload-env-var sends to the Pi, so the token used here and
+# the token the services check are one value. That file is systemd's
+# NAME=value format, so it is grepped rather than sourced: sourcing would
+# hand every line in it to the shell.
+#
+# Only the JSON body lands on stdout -- everything this script has to say
+# goes to stderr -- so the output pipes straight into jq. (Don't add `info`
+# calls: unlike warn/die, info prints to stdout.)
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/common.sh"
+
+usage="usage: scripts/staging/feedback [--status <s>]..."
+
+# One --data-urlencode pair per --status flag; the backend reads status[] as
+# an array. The array may legitimately stay empty (no filter), and bash 3.2
+# (which is what macOS ships) treats an empty "${arr[@]}" as an unbound
+# variable under `set -u` -- hence the ${arr[@]+...} expansion at the call.
+filters=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --status)
+      [ "$#" -ge 2 ] || die "--status needs a value -- $usage"
+      filters+=(--data-urlencode "status[]=$2")
+      shift 2
+      ;;
+    *) die "unknown argument $1 -- $usage" ;;
+  esac
+done
+
+env_file="$ROOT_DIR/backend/env/staging.env"
+[ -f "$env_file" ] || die "no $env_file -- add ADMIN_API_TOKEN=<value> there, then send it with scripts/staging/upload-env-var"
+
+# Read the line the way the Pi's systemd will: leading whitespace allowed,
+# first match wins. The value is a credential -- it is never printed, only
+# handed to curl.
+token="$(grep -m1 '^[[:space:]]*ADMIN_API_TOKEN=' "$env_file" || true)"
+token="${token#*=}"
+[ -n "$token" ] || die "no ADMIN_API_TOKEN in staging.env -- add ADMIN_API_TOKEN=<value> there, then send it with scripts/staging/upload-env-var"
+
+# -G turns the --data-urlencode pairs into query parameters instead of a POST
+# body. :5173 because /api is reached through Vite's proxy -- :3000 is closed
+# on the Pi's firewall.
+curl -fsS -G \
+  -H "Authorization: Bearer $token" \
+  ${filters[@]+"${filters[@]}"} \
+  "http://$PI_HOST:$FRONTEND_PORT/api/admin/feedbacks" \
+  || die "the request failed -- is $PI_HOST reachable, and has the token been uploaded (scripts/staging/upload-env-var) and the services restarted?"
