@@ -39,6 +39,32 @@ describe('NewTripModal', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('does not scold an untouched Name field for merely losing focus', async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    // The modal opens with focus in Name; clicking "+ Add dates" straight away
+    // blurs it while still empty and never typed in. That must not raise the
+    // "needs a name" error — the user hasn't done anything wrong yet.
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Name')));
+    await user.click(screen.getByRole('button', { name: '+ Add dates' }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText('A trip needs a name.')).not.toBeInTheDocument();
+  });
+
+  it('shows the error on blur once the user typed a name and cleared it', async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    const nameField = screen.getByLabelText('Name');
+    await user.type(nameField, 'Malaysia');
+    await user.clear(nameField);
+    await user.click(screen.getByLabelText('Short description'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('A trip needs a name.');
+  });
+
   it('cancels cleanly, clearing the draft without creating anything', async () => {
     const user = userEvent.setup();
     let closed = false;
