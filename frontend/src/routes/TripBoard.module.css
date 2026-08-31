@@ -83,6 +83,23 @@
   min-width: 0;
 }
 
+/* Folding the rail is a wide-layout affair — stacked (≤900px) the rail costs
+   no width and the flag must change nothing, which the media scope guarantees
+   without a single undo rule in the stacked block. The 56px track is the
+   sliver BundlePanel draws when collapsed: an expand control and the region's
+   name run vertically. The transition rides flex-basis because that is the
+   one property that changes; reduced-motion zeroes the fade tokens globally,
+   so nothing extra is needed here. */
+@media (min-width: 901px) {
+  .plans {
+    transition: flex-basis var(--motion-fade-duration) var(--motion-fade-ease);
+  }
+
+  .plansCollapsed {
+    flex-basis: 56px;
+  }
+}
+
 /* The scope line above the list: "All ideas", or the trail down into the idea
    being read. One row, baseline-aligned, wrapping when a deep path or a long
    title asks it to. */
