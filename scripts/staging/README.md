@@ -16,8 +16,8 @@ scripts/staging/deploy      # put your branch on staging, push, restart, wait fo
 scripts/staging/logs        # follow both services' logs
 scripts/staging/console     # rails console on the staging app, from here
 scripts/staging/restart     # bounce the services without deploying
-scripts/staging/upload-env-var   # send backend/env/staging.env to the Pi as /srv/wend/secrets.env
-scripts/staging/setup       # (re)provision the Pi — needs sudo there
+scripts/staging/upload-env-var   # send backend/env/staging.env to the Pi, without deploying
+scripts/staging/setup       # (re)provision the Pi — the one thing that needs sudo there
 ```
 
 The first time you run any of them you'll be asked for your username on the Pi. It's
@@ -33,7 +33,9 @@ Run `scripts/staging/deploy` from any branch and it will:
 1. fetch `pi`, so it knows what the other person has already deployed;
 2. if you're not on `staging`, ask before merging your branch into it — answer no and
    nothing happens. Your own branch is never modified, and you're left back on it;
-3. push `staging` to the Pi.
+3. bring the Pi's credentials into line with `backend/env/staging.env`, if they differ —
+   see [Secrets](#secrets). Nothing to do on most deploys, and `--no-secrets` skips it;
+4. push `staging` to the Pi.
 
 Everything after the push happens on the Pi, and its output comes back to your terminal
 prefixed `remote:`: check out the new commit, `bundle install` / `npm ci` **only if the
@@ -92,7 +94,7 @@ either of us writes stay readable and writable by the other and by the service:
 | `/srv/wend/bundle` | shared gem install (`BUNDLE_PATH`) |
 | `/srv/wend/env` | ruby + node, built by nix from `env/flake.nix` |
 | `/srv/wend/deploy.env` | environment shared by the hook and both services |
-| `/srv/wend/secrets.env` | credentials, uploaded by hand — see [Secrets](#secrets) |
+| `/srv/wend/secrets.env` | credentials, put there by a deploy — see [Secrets](#secrets) |
 | `/srv/wend/state` | lockfile hashes, so deploys skip installs that aren't needed |
 
 Two systemd units, `wend-backend.service` and `wend-frontend.service`, run as a `wend`
@@ -107,27 +109,48 @@ proxy from inside the Pi, so :3000 stays closed.
 
 ### Secrets
 
-Credentials (today: Cloudflare R2, for feedback screenshots) go in
-`/srv/wend/secrets.env`, a second `EnvironmentFile` on both units. Fill in
-`backend/env/staging.env` — it's gitignored, and `env.example` next to it is the template;
-set `R2_BUCKET=wend-feedback-staging` — then:
+Credentials (today: Cloudflare R2, for feedback screenshots) live in `/srv/wend/secrets.env`
+on the Pi. Fill in `backend/env/staging.env` — it's gitignored, and `env.example` next to
+it is the template; set `R2_BUCKET=wend-feedback-staging` — and **deploy**:
 
 ```sh
-scripts/staging/upload-env-var
+scripts/staging/deploy
 ```
 
-It validates the file against systemd's parser (which is not a shell), writes it as the
-`wend` user with mode `0640`, and offers to restart both services.
+Every deploy compares your `backend/env/staging.env` with what's on the Pi and, when they
+differ, offers to send it. When they already match it says so and moves on, so this costs
+nothing on the deploys where no credential has changed. It happens *before* the push, so
+the restart at the end of the deploy is already running with the new values.
 
-`secrets.env` lives **outside** `/srv/wend/app`, so a deploy never touches it: upload
-once, and re-run only when a value changes. It is deliberately not `deploy.env` — that
-one is rewritten from scratch by `provision`, so anything added to it disappears on the
-next `setup`.
+`scripts/staging/upload-env-var` is the same steps on their own, for when a value changes
+and there's no code to push. Both validate the file first — it must be plain `NAME=value`
+lines — and write it as the `wend` user with mode `0640`.
 
-The first upload also needs a one-off `scripts/staging/setup`, because the units gained
-their `EnvironmentFile=-/srv/wend/secrets.env` line when this was added and units are
-installed by `provision`. The `-` makes the file optional, so a Pi with no secrets still
-boots — the app falls back to local disk storage.
+**None of it needs root**, which is the point: only one of us can run `setup`, and both of
+us have to be able to roll a credential. What makes that possible:
+
+| Step | What allows it |
+| --- | --- |
+| write `/srv/wend/secrets.env` as `wend` | `%wend ALL=(wend) NOPASSWD: ALL` in the sudoers rule |
+| link `app/backend/env/development.env` → it | same — the link is made as `wend` |
+| restart the two services | the `WEND_SERVICES` sudoers alias |
+
+That middle row is the part worth knowing. Rails reads its environment through
+`dotenv-rails`, which `config/application.rb` points at `env/<RAILS_ENV>.env` — and the Pi
+runs `RAILS_ENV=development`. So the deploy links
+`/srv/wend/app/backend/env/development.env` at `/srv/wend/secrets.env`, and the backend
+picks the credentials up on its next restart. The alternative — an `EnvironmentFile=` line
+in the systemd units — would mean a re-`provision`, and therefore root, every time a
+person without sudo needed to change a credential.
+
+The units *do* also carry `EnvironmentFile=-/srv/wend/secrets.env`, pointed at the very
+same file. It's a spare reader, not a second source of truth: the file is optional (`-`),
+and it would keep R2 working if staging ever stopped running as `development`, since
+`dotenv-rails` is a development-and-test gem.
+
+The file itself lives **outside** `/srv/wend/app`, so a deploy's `git checkout -f` never
+touches it — and neither does it touch the symlink, which is ignored by
+`backend/.gitignore`'s `/env/*.env`.
 
 Full walkthrough, including getting the credentials out of Cloudflare and looking inside
 the bucket: [`doc/how-to/cloud-storage.md`](../../doc/how-to/cloud-storage.md).
