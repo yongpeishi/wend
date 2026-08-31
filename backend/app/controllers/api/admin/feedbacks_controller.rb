@@ -5,12 +5,16 @@ module Api
     class FeedbacksController < Api::Admin::BaseController
       # Everyone's feedback, newest first, no pagination: the whole pile is the
       # point of the admin view, and its size is bounded by how much feedback a
-      # small app actually gets. includes(:user) because the serializer nests the
+      # small app actually gets. The admin screen filters in the browser and
+      # sends no `status` param, so it still gets everything; the param narrows
+      # the list for callers with no browser to filter in, the same way it
+      # narrows the export -- see Feedback.with_statuses for what an unknown or
+      # empty value does. includes(:user) because the serializer nests the
       # reporter on every row, and the screenshot attachments and their blobs
       # because it signs a URL for each one -- with no pagination to hide it, an
       # N+1 here would scale with the whole table rather than with a page.
       def index
-        render json: { feedbacks: ::Admin::FeedbackSerializer.list(all_feedbacks) }
+        render json: { feedbacks: ::Admin::FeedbackSerializer.list(narrowed_feedbacks) }
       end
 
       # Triage only: `status` is the single permitted field. Invalid statuses fall
@@ -23,11 +27,11 @@ module Api
         render json: { feedback: ::Admin::FeedbackSerializer.one(feedback) }
       end
 
-      # The same pile as index, as a file, and narrowed the same way the screen
-      # is: `?status[]=new&status[]=rejected` exports exactly what those two
-      # chips leave on the table, so the file matches what the admin was
-      # looking at when they pressed the button. No param is the whole pile.
-      # See Feedback.with_statuses for what an unknown or empty value does.
+      # The same pile as index, as a file, and narrowed the same way:
+      # `?status[]=new&status[]=rejected` exports exactly what those two chips
+      # leave on the table, so the file matches what the admin was looking at
+      # when they pressed the button. No param is the whole pile. See
+      # Feedback.with_statuses for what an unknown or empty value does.
       #
       # CSV via the stdlib; nils come out as empty cells, which is what a
       # spreadsheet wants.
@@ -36,7 +40,7 @@ module Api
 
         csv = CSV.generate do |rows|
           rows << %w[id created_at user_name user_email status message url element_selector element_classes user_agent]
-          exported_feedbacks.each do |f|
+          narrowed_feedbacks.each do |f|
             rows << [f.id, f.created_at.iso8601, f.user.name, f.user.email, f.status,
                      f.message, f.url, f.element_selector, f.element_classes, f.user_agent]
           end
@@ -53,7 +57,7 @@ module Api
 
       # `params[:status]` arrives as an array from `status[]=`, and as a bare
       # string from `status=`; Array() flattens the difference so both work.
-      def exported_feedbacks
+      def narrowed_feedbacks
         all_feedbacks.with_statuses(params[:status])
       end
 
