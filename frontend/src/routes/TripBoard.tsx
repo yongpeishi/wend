@@ -146,11 +146,13 @@ export function TripBoard() {
   const [activeDrag, setActiveDrag] = useState<{ entryId: number; title: string } | null>(null);
   const lastSelectedId = useRef<number | null>(null);
 
-  // The map starts open: where a trip's ideas ARE is half of what the board has
-  // to say about them, and a map behind a button is one nobody presses. Hiding
-  // it is a single click on the pane's own header, and the way back is the
-  // "Show map" chip that appears in the controls row only while it is down.
-  const [mapOpen, setMapOpen] = useState(true);
+  // The map starts DOWN. It used to start open, on the argument that where a
+  // trip's ideas are is half of what the board says about them — but the board
+  // is a list you read and add to, and a map above it pushed the ideas
+  // themselves below the fold on arrival every single time. Whoever wants the
+  // map wants it for a moment, deliberately; the "Show map" chip in the
+  // controls row is one click away and the pane's own header puts it back down.
+  const [mapOpen, setMapOpen] = useState(false);
   // Kept only for the pane's own report: how many located ideas sit outside
   // the current view, which is what decides whether "Widen" is worth offering.
   // The list never reads this — the viewport cut is gone.
@@ -169,8 +171,8 @@ export function TripBoard() {
 
   // A stable handle, not an inline arrow: components with focus effects
   // memoize against their close callback to keep those effects from re-firing
-  // on every board render — see NewIdeaModal.tsx's doc comment on the
-  // underlying Modal.tsx behaviour.
+  // on every board render. Modal.tsx's own doc comment has the underlying
+  // behaviour.
   const closeComposer = useCallback(() => setComposer({ open: false, initialTitle: '', at: null }), []);
 
   /**

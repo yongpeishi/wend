@@ -53,7 +53,7 @@ describe('AdminFeedback', () => {
   it('lists everyone’s feedback, newest first', async () => {
     renderPage();
 
-    // All four seeded rows, from both reporters.
+    // All five seeded rows, from both reporters.
     expect(
       await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.'),
     ).toBeInTheDocument();
@@ -61,9 +61,9 @@ describe('AdminFeedback', () => {
 
     // Newest first: the seed's created_at ordering, not its array order.
     const rows = screen.getAllByRole('row').slice(1); // drop the header row
-    expect(rows).toHaveLength(4);
+    expect(rows).toHaveLength(5);
     expect(rows[0]).toHaveTextContent('The checklist loses my tick');
-    expect(rows[3]).toHaveTextContent('Sign-in kept rejecting my password');
+    expect(rows[4]).toHaveTextContent('Sign-in kept rejecting my password');
   });
 
   it('names the reporter with their address', async () => {
@@ -102,12 +102,25 @@ describe('AdminFeedback', () => {
     expect(select).toHaveValue('rejected');
   });
 
+  it('picks a note up — new to in progress — through its select', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const row = (await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.')).closest('tr') as HTMLElement;
+    const select = within(row).getByRole('combobox', { name: 'Status of feedback from Sarah' });
+
+    await user.selectOptions(select, 'in_progress');
+
+    await waitFor(() => expect(db.feedbacks.find((f) => f.id === 901)?.status).toBe('in_progress'));
+    expect(select).toHaveValue('in_progress');
+  });
+
   it('offers the CSV export as a button', async () => {
     renderPage();
     expect(await screen.findByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
   });
 
-  // Screenshots in the seed: 901 has two, 903 has one, 902 and 904 have none.
+  // Screenshots in the seed: 901 has two, 903 has one, 902, 904 and 905 have none.
   describe('the row disclosure', () => {
     const CHECKLIST = 'The checklist loses my tick when I scroll — it comes back on reload though.';
     const SET_ASIDE = 'This button says "Set aside" but nothing visibly moves.';
@@ -218,8 +231,8 @@ describe('AdminFeedback', () => {
     });
   });
 
-  // The seed is one of each end state and two fresh ones: 901 new, 902 new,
-  // 903 rejected, 904 done.
+  // The seed is one of each status past `new` and two fresh ones: 901 new,
+  // 902 new, 905 in progress, 903 rejected, 904 done.
   describe('the status filter', () => {
     /** The chip of that name, not the same-named <option> in a row's select. */
     function statusChip(label: string) {
@@ -232,20 +245,20 @@ describe('AdminFeedback', () => {
 
       await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.');
       expect(statusChip('New')).toHaveAttribute('aria-pressed', 'false');
-      expect(screen.getAllByRole('row')).toHaveLength(5); // header + four
-      expect(screen.getByText('4 notes')).toBeInTheDocument();
+      expect(screen.getAllByRole('row')).toHaveLength(6); // header + five
+      expect(screen.getByText('5 notes')).toBeInTheDocument();
 
       await user.click(statusChip('New'));
 
       expect(screen.getAllByRole('row')).toHaveLength(3); // header + the two new ones
       expect(statusChip('New')).toHaveAttribute('aria-pressed', 'true');
       // Filtered, not gone — the count still names the whole pile.
-      expect(screen.getByText('2 of 4 notes')).toBeInTheDocument();
+      expect(screen.getByText('2 of 5 notes')).toBeInTheDocument();
 
       // Each chip is its own way back out.
       await user.click(statusChip('New'));
-      expect(screen.getAllByRole('row')).toHaveLength(5);
-      expect(screen.getByText('4 notes')).toBeInTheDocument();
+      expect(screen.getAllByRole('row')).toHaveLength(6);
+      expect(screen.getByText('5 notes')).toBeInTheDocument();
     });
 
     it('takes several statuses at once, each chip independent of the others', async () => {
@@ -256,17 +269,36 @@ describe('AdminFeedback', () => {
       await user.click(statusChip('New'));
       await user.click(statusChip('Rejected'));
 
-      // Everything but the one done note.
+      // Everything but the in-progress note and the done one.
       expect(screen.getByText('This button says "Set aside" but nothing visibly moves.')).toBeInTheDocument();
       expect(
         screen.queryByText('Sign-in kept rejecting my password until I retyped it by hand.'),
       ).not.toBeInTheDocument();
-      expect(screen.getByText('3 of 4 notes')).toBeInTheDocument();
+      expect(
+        screen.queryByText('The day picker jumps back to today whenever I edit an item.'),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('3 of 5 notes')).toBeInTheDocument();
 
       // Dropping one leaves the other lit rather than clearing the filter.
       await user.click(statusChip('New'));
       expect(statusChip('Rejected')).toHaveAttribute('aria-pressed', 'true');
-      expect(screen.getByText('1 of 4 notes')).toBeInTheDocument();
+      expect(screen.getByText('1 of 5 notes')).toBeInTheDocument();
+    });
+
+    it('lights the in-progress pile on its own', async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.');
+      await user.click(statusChip('In progress'));
+
+      expect(
+        screen.getByText('The day picker jumps back to today whenever I edit an item.'),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('The checklist loses my tick when I scroll — it comes back on reload though.'),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('1 of 5 notes')).toBeInTheDocument();
     });
 
     it('drops a row the moment triage moves it out of the lit statuses', async () => {
@@ -289,7 +321,7 @@ describe('AdminFeedback', () => {
           screen.queryByText('The checklist loses my tick when I scroll — it comes back on reload though.'),
         ).not.toBeInTheDocument(),
       );
-      expect(screen.getByText('1 of 4 notes')).toBeInTheDocument();
+      expect(screen.getByText('1 of 5 notes')).toBeInTheDocument();
     });
 
     it('says the statuses are empty rather than that there is nothing at all', async () => {

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { Entry, EntryCategory } from '../../api/types';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from './filters';
 import { pathToIdea } from './tree';
@@ -124,9 +125,9 @@ export interface IdeaComposerProps {
  * from another. Only the first few matches are drawn (see PICKER_LIMIT); the
  * search field, not scrolling, is how you reach the rest.
  *
- * State resets when `open` flips true — the composer stays mounted across
- * opens the way NewIdeaModal does, so a fresh Tab must not resurrect the
- * half-draft someone cancelled yesterday. The reset seeds every field from
+ * State resets when `open` flips true. The composer stays mounted whether it
+ * is open or not — TripBoard always renders it — so a fresh Tab must not
+ * resurrect the half-draft someone cancelled yesterday. The reset seeds every field from
  * the initials of that moment, and re-folds a trimmed card. While it is open,
  * the initials are deliberately NOT watched: re-seeding mid-edit would
  * overwrite typing.
@@ -172,8 +173,8 @@ export function IdeaComposer({
   const nameRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Fresh form on every open — same pattern (and same reasoning) as
-  // NewIdeaModal's reset effect. The ref keys the reset to the false→true
+  // Fresh form on every open, because this component is never unmounted to
+  // get one for free. The ref keys the reset to the false→true
   // FLIP rather than to the deps: the initials sit in the array to keep the
   // effect honest about what it reads, but a board re-render that hands down
   // a new `initialParentIds` identity mid-edit must not wipe the typing (see
@@ -259,6 +260,26 @@ export function IdeaComposer({
     });
   }
 
+  /**
+   * Enter finishes the card; Shift+Enter is a literal new line.
+   *
+   * The description is a <textarea> (see below), and a textarea's Enter is its
+   * own — so the shortcut has to be taken back explicitly, and taken back the
+   * same way in the name field beside it, or one box would submit on Enter and
+   * the box under it would not. `preventDefault` is what stops the newline
+   * being typed into the value we are about to submit.
+   *
+   * IME composition is the one Enter that must pass through untouched: while a
+   * Japanese or Chinese candidate list is open, Enter chooses the candidate,
+   * and swallowing it would submit a half-typed name — on a trip planner whose
+   * seed data is Kyoto, that is not a hypothetical.
+   */
+  function submitOnEnter(event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    submit();
+  }
+
   return (
     <div className={[styles.card, hostTitle ? styles.cardNested : ''].filter(Boolean).join(' ')}>
       {hostTitle && (
@@ -282,15 +303,28 @@ export function IdeaComposer({
         placeholder="Name it — even vaguely"
         aria-label="Name"
         onChange={(event) => setTitle(event.target.value)}
+        onKeyDown={submitOnEnter}
       />
 
-      <input
-        type="text"
-        className={styles.input}
+      {/* A textarea, not the single-line box this was. What people write here
+          is the sentence they would say if asked what the idea is, and that is
+          regularly two lines and sometimes a pasted fragment — a one-line input
+          took them and hid everything past the right edge. Four rows visible,
+          draggable taller, and the paragraph it holds survives the round trip
+          because the field it saves into keeps its line breaks.
+
+          The cost of a textarea is that Enter belongs to it, and Enter is how
+          this card is finished. So Enter keeps the idea, exactly as it does in
+          the name field above, and Shift+Enter is the new line — the split
+          every message box has trained people to expect. */}
+      <textarea
+        rows={4}
+        className={[styles.input, styles.textarea].join(' ')}
         value={description}
         placeholder="Short description"
         aria-label="Short description"
         onChange={(event) => setDescription(event.target.value)}
+        onKeyDown={submitOnEnter}
       />
 
       {revealed && (

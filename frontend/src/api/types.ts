@@ -261,7 +261,7 @@ export interface User {
   admin: boolean;
 }
 
-export type FeedbackStatus = 'new' | 'rejected' | 'done';
+export type FeedbackStatus = 'new' | 'in_progress' | 'rejected' | 'done';
 
 /**
  * One image attached to a report. The file itself lives in the backend's blob

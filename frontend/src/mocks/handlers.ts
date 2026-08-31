@@ -237,6 +237,20 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** The owner is load-bearing: someone has to be able to hand the trip on. */
 const OWNER_IS_STUCK = 'You started this trip, so it needs you until someone else takes it on.';
 
+/** `Feedback::STATUSES`, in the backend's order — triage and the export filter
+ * both read from this one list, so adding a status here is all the mock needs. */
+const FEEDBACK_STATUSES: readonly StoredFeedback['status'][] = [
+  'new',
+  'in_progress',
+  'rejected',
+  'done',
+];
+
+/** Narrow an arbitrary query or body value to a status the contract knows. */
+function isFeedbackStatus(value: unknown): value is StoredFeedback['status'] {
+  return FEEDBACK_STATUSES.some((s) => s === value);
+}
+
 /** The `:day` routes take a YYYY-MM-DD segment; anything else is a 404, the
  * same constraint the real routes put on the parameter. */
 function isIsoDate(value: unknown): value is string {
@@ -1068,7 +1082,7 @@ export const handlers = [
 
     const body = (await request.json()) as { feedback?: { status?: string } };
     const status = body.feedback?.status;
-    if (status !== 'new' && status !== 'rejected' && status !== 'done') {
+    if (!isFeedbackStatus(status)) {
       return HttpResponse.json({ errors: { status: ['is not included in the list'] } }, { status: 422 });
     }
 
@@ -1087,7 +1101,7 @@ export const handlers = [
     // too, so a stale URL widens rather than 422s.
     const wanted = new URL(request.url).searchParams
       .getAll('status[]')
-      .filter((s): s is StoredFeedback['status'] => s === 'new' || s === 'rejected' || s === 'done');
+      .filter(isFeedbackStatus);
 
     // Trivial by design — the real CSV is the backend's (Ruby stdlib CSV); the
     // mock only has to be a downloadable file with the contract's header row.
