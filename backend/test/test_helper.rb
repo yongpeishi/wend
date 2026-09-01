@@ -94,6 +94,23 @@ module ActiveSupport
       service.singleton_class.remove_method(:upload)
     end
 
+    # The delete-side twin, for the feedback hard delete's "row deletion wins"
+    # rule: a bucket that refuses to give a file back must not resurrect the
+    # feedback the admin just removed. Same singleton-redefinition shape as
+    # with_storage_refusing, for the same minitest-6-has-no-mock reason.
+    def with_storage_refusing_delete(key = nil)
+      service = ActiveStorage::Blob.service
+      original = service.method(:delete)
+      service.define_singleton_method(:delete) do |delete_key|
+        raise IOError, "bucket refused to delete #{delete_key}" if key.nil? || delete_key == key
+
+        original.call(delete_key)
+      end
+      yield
+    ensure
+      service.singleton_class.remove_method(:delete)
+    end
+
     # Query budget guard for the list paths. Ignores transaction control statements,
     # which say nothing about how the work scales with row count.
     def count_queries(&block)

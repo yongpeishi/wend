@@ -267,6 +267,7 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
       "api/admin/feedbacks#update" => [ :forbidden, lambda {
         patch "/api/admin/feedbacks/#{@feedback.id}", params: { feedback: { status: "rejected" } }, as: :json
       } ],
+      "api/admin/feedbacks#destroy" => [ :forbidden, -> { delete "/api/admin/feedbacks/#{@feedback.id}" } ],
       "api/admin/feedbacks#export" => [ :forbidden, -> { get "/api/admin/feedbacks/export" } ],
       "api/feedbacks#create" => [ :open, lambda {
         post "/api/feedbacks", params: { feedback: { message: "Mine, about the app" } }, as: :json

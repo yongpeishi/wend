@@ -1064,8 +1064,8 @@ export const handlers = [
   }),
 
   // ---- Admin -------------------------------------------------------------
-  // The contract's three endpoints, behind requireAdmin: everyone's feedback
-  // newest first, status-only triage, and the CSV download.
+  // The contract's four endpoints, behind requireAdmin: everyone's feedback
+  // newest first, status-only triage, the delete, and the CSV download.
   http.get('/api/admin/feedbacks', () => {
     const auth = requireAdmin();
     if (auth instanceof HttpResponse) return auth;
@@ -1089,6 +1089,25 @@ export const handlers = [
     feedback.status = status;
     feedback.updated_at = now();
     return HttpResponse.json({ feedback: toAdminFeedback(feedback) });
+  }),
+
+  http.delete('/api/admin/feedbacks/:id', ({ params }) => {
+    const auth = requireAdmin();
+    if (auth instanceof HttpResponse) return auth;
+
+    const feedback = db.feedbacks.find((f) => f.id === Number(params.id));
+    if (!feedback) return notFound();
+
+    // The contract's guard, word for word: triage has to finish a note before
+    // anyone may destroy it, and the error names the two statuses that count.
+    if (feedback.status !== 'done' && feedback.status !== 'rejected') {
+      return HttpResponse.json({ error: 'Only done or rejected feedback can be deleted' }, { status: 422 });
+    }
+
+    // The backend deletes the R2 screenshots with the row; here they simply go
+    // when the row does, which is the same observable truth.
+    db.feedbacks = db.feedbacks.filter((f) => f.id !== feedback.id);
+    return new HttpResponse(null, { status: 204 });
   }),
 
   http.get('/api/admin/feedbacks/export', ({ request }) => {
