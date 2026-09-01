@@ -73,6 +73,15 @@
   font-size: var(--text-body-size);
 }
 
+/* Input renders an aria-hidden `dd/mm/yyyy` overlay after an empty date input;
+   the mono face lands on the input via .dateInput above, so the sibling
+   overlay must be told to match or it would show the placeholder in sans and
+   jump to mono on focus. The aria-hidden guard keeps the hint span (also a
+   sibling) out of reach. */
+.dateInput ~ span[aria-hidden='true'] {
+  font-family: var(--font-mono);
+}
+
 .lengths {
   display: flex;
   align-items: center;

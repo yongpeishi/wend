@@ -48,6 +48,14 @@ export function NewTripModal({ open, onClose, onCreated }: NewTripModalProps) {
   const [startsOn, setStartsOn] = useState('');
   const [endsOn, setEndsOn] = useState('');
   const [touched, setTouched] = useState(false);
+  // Whether the user has ever typed in Name. Blur alone must not raise the
+  // "needs a name" error on a field that was never entered — the modal opens
+  // with focus in Name, so clicking "+ Add dates" immediately would blur it
+  // and scold before anything was typed. Same spirit as the tried-vs-live
+  // split in TimeEditor/DatesGate: an empty field is not wrong yet, only not
+  // done. Blur turns accusatory only after typing (typed-then-cleared is a
+  // real mistake); pressing Add trip still asks for the error regardless.
+  const [dirty, setDirty] = useState(false);
   const [datesOpen, setDatesOpen] = useState(false);
 
   const trimmedName = name.trim();
@@ -79,6 +87,7 @@ export function NewTripModal({ open, onClose, onCreated }: NewTripModalProps) {
     setStartsOn('');
     setEndsOn('');
     setTouched(false);
+    setDirty(false);
     setDatesOpen(false);
   }
 
@@ -136,8 +145,13 @@ export function NewTripModal({ open, onClose, onCreated }: NewTripModalProps) {
           placeholder="Where are you going?"
           hint="↵"
           value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => setTouched(true)}
+          onChange={(e) => {
+            setName(e.target.value);
+            setDirty(true);
+          }}
+          onBlur={() => {
+            if (dirty) setTouched(true);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') submit();
           }}

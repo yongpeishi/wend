@@ -23,6 +23,22 @@ describe('Input', () => {
     expect(screen.getByRole('textbox')).toHaveAttribute('aria-invalid', 'true');
   });
 
+  it('overlays a literal dd/mm/yyyy placeholder on an empty date field (the native ghost text is browser chrome — Safari paints today\'s date)', () => {
+    render(<Input type="date" value="" onChange={() => {}} />);
+    const overlay = screen.getByText('dd/mm/yyyy');
+    expect(overlay).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('drops the overlay once the date field has a value', () => {
+    render(<Input type="date" value="2026-09-01" onChange={() => {}} />);
+    expect(screen.queryByText('dd/mm/yyyy')).not.toBeInTheDocument();
+  });
+
+  it('never overlays non-date inputs, even empty ones', () => {
+    render(<Input value="" onChange={() => {}} />);
+    expect(screen.queryByText('dd/mm/yyyy')).not.toBeInTheDocument();
+  });
+
   it('is disableable and forwards a ref to the input element', () => {
     let ref: HTMLInputElement | null = null;
     render(

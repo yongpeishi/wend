@@ -63,20 +63,62 @@ describe('DatesGate — what it asks for', () => {
 });
 
 describe('DatesGate — setting the dates', () => {
-  it('will not open the days until both ends are known', async () => {
+  it('opens the days once both ends are known', async () => {
     const user = userEvent.setup();
     const { onConfirm } = renderGate();
     const open = screen.getByRole('button', { name: 'Open the days' });
 
-    expect(open).toBeDisabled();
-
     setDate('First day', '2026-10-12');
-    expect(open).toBeDisabled();
-
     setDate('Last day', '2026-10-17');
-    expect(open).toBeEnabled();
 
     await user.click(open);
+    expect(onConfirm).toHaveBeenCalledWith('2026-10-12', '2026-10-17');
+  });
+
+  // The button is not held shut over a missing date — pressing it is what says
+  // which date is missing. Nothing is said before it is pressed: an empty form
+  // is not yet wrong, only not done.
+  it('asks for both dates when pressed with neither, and does not open', async () => {
+    const user = userEvent.setup();
+    const { onConfirm } = renderGate();
+    const open = screen.getByRole('button', { name: 'Open the days' });
+
+    expect(open).toBeEnabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    await user.click(open);
+
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(screen.getByText('Pick a first day.')).toBeInTheDocument();
+    expect(screen.getByText('Pick a last day.')).toBeInTheDocument();
+  });
+
+  it('names only the missing date when the other is set', async () => {
+    const user = userEvent.setup();
+    const { onConfirm } = renderGate();
+
+    setDate('First day', '2026-10-12');
+    await user.click(screen.getByRole('button', { name: 'Open the days' }));
+
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(screen.queryByText('Pick a first day.')).not.toBeInTheDocument();
+    expect(screen.getByText('Pick a last day.')).toBeInTheDocument();
+  });
+
+  it("clears a field's message the moment that field gains a date, leaving the other's", async () => {
+    const user = userEvent.setup();
+    const { onConfirm } = renderGate();
+
+    await user.click(screen.getByRole('button', { name: 'Open the days' }));
+    setDate('First day', '2026-10-12');
+
+    expect(screen.queryByText('Pick a first day.')).not.toBeInTheDocument();
+    expect(screen.getByText('Pick a last day.')).toBeInTheDocument();
+
+    setDate('Last day', '2026-10-17');
+    expect(screen.queryByText('Pick a last day.')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Open the days' }));
     expect(onConfirm).toHaveBeenCalledWith('2026-10-12', '2026-10-17');
   });
 
