@@ -78,6 +78,14 @@ export interface DayCardProps {
    * what lets it be handed straight down to them.
    */
   readOnly?: boolean;
+  /**
+   * The item that just landed on this day untimed, still being asked "when?".
+   * The container owns it — the answer outlives any one card — and this card
+   * only works out which day name the prompt should say and hands all of it
+   * down to whichever branch is drawing the rows.
+   */
+  promptItemId?: number | null;
+  onPromptDismiss?: () => void;
 }
 
 /**
@@ -115,6 +123,8 @@ export function DayCard({
   onSwapDay,
   onDropItem,
   readOnly = false,
+  promptItemId = null,
+  onPromptDismiss,
 }: DayCardProps) {
   const { setNodeRef, isOver, dropId } = useDayDrop(day.day, onDropItem);
   const [lodgingOpen, setLodgingOpen] = useState(false);
@@ -122,6 +132,10 @@ export function DayCard({
 
   const split = day.versions.length > 1;
   const firstVersion = day.versions[0];
+  // "Day 3 · Wed 15" → "Wed 15": the prompt asks about a date, and the count is
+  // already said by the card's own heading right above it. A label without the
+  // house separator is taken whole rather than guessed at.
+  const promptDayName = day.label.split('·')[1]?.trim() ?? day.label;
 
   return (
     <div
@@ -230,6 +244,9 @@ export function DayCard({
           onFill={(versionId, slot) => setPicker({ versionId, slot })}
           onDropItem={onDropItem}
           readOnly={readOnly}
+          promptItemId={promptItemId}
+          promptDayName={promptDayName}
+          onPromptDismiss={onPromptDismiss}
         />
       ) : (
         firstVersion && (
@@ -240,6 +257,9 @@ export function DayCard({
               onRemoveItem={onRemoveItem}
               onFill={(slot) => setPicker({ versionId: firstVersion.id, slot })}
               readOnly={readOnly}
+              promptItemId={promptItemId}
+              promptDayName={promptDayName}
+              onPromptDismiss={onPromptDismiss}
             />
             {!readOnly && (
               <button

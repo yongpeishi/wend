@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DndContext } from '@dnd-kit/core';
 import type { DayVersion, EntrySummary, ItineraryItem } from '../../api/types';
@@ -283,6 +283,101 @@ describe('DayCard — editing what is on the day', () => {
     await user.click(screen.getByRole('button', { name: 'Take Nishiki Market off this day' }));
 
     expect(handlers.onRemoveItem).toHaveBeenCalledWith(51);
+  });
+});
+
+/**
+ * Option A of 034-itinerary-time: a thing just placed lands untimed, and the
+ * container hands the card `promptItemId` so the "when?" prompt opens in place
+ * under that row. The card's own share of the work is small — derive the day
+ * name from its label and pass everything down whichever branch is drawing —
+ * and these tests pin exactly that share, plus the wiring under it.
+ */
+describe('DayCard — the "when?" prompt', () => {
+  it('opens under the row it was asked about, and no other', () => {
+    renderCard({ promptItemId: 51, onPromptDismiss: vi.fn() });
+
+    // The prompt names the row's own thing in its fields, so it could only be
+    // about Nishiki Market — and there is exactly one question on the day.
+    expect(screen.getByText('On the day. When on Tue 13?')).toBeInTheDocument();
+    expect(screen.getByLabelText('Starts for Nishiki Market')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Starts for Tuesday south')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/On the day\. When on/)).toHaveLength(1);
+  });
+
+  it('asks under a bundle band the same way it asks under a line', () => {
+    renderCard({ promptItemId: 50, onPromptDismiss: vi.fn() });
+
+    expect(screen.getByText('On the day. When on Tue 13?')).toBeInTheDocument();
+    expect(screen.getByLabelText('Starts for Tuesday south')).toBeInTheDocument();
+  });
+
+  it('reaches into the right column of a split day', () => {
+    renderCard({
+      promptItemId: 51,
+      onPromptDismiss: vi.fn(),
+      day: day({
+        versions: [version(1, 'Version A', [BUNDLE_ITEM]), version(2, 'Version B', [LOOSE_ITEM], 1)],
+      }),
+    });
+
+    // Item ids are unique across versions, so only Version B's column asks.
+    const columnB = screen.getByRole('heading', { name: 'Version B' }).closest('[data-drop-id]') as HTMLElement;
+    expect(within(columnB).getByText('On the day. When on Tue 13?')).toBeInTheDocument();
+    const columnA = screen.getByRole('heading', { name: 'Version A' }).closest('[data-drop-id]') as HTMLElement;
+    expect(within(columnA).queryByText(/On the day\. When on/)).not.toBeInTheDocument();
+  });
+
+  // "Day 2 · Tue 13" → "Tue 13": the caption asks about a date; the count is
+  // already in the card's heading right above it.
+  it('takes a label with no separator whole rather than guessing at it', () => {
+    renderCard({ promptItemId: 51, onPromptDismiss: vi.fn(), day: day({ label: 'Extra day' }) });
+
+    expect(screen.getByText('On the day. When on Extra day?')).toBeInTheDocument();
+  });
+
+  it('saves the chosen hours onto the asked-about item, and stands down', async () => {
+    const user = userEvent.setup();
+    const onPromptDismiss = vi.fn();
+    const handlers = renderCard({ promptItemId: 51, onPromptDismiss });
+
+    // The first suggestion — right after the 08:00–12:30 band, for a 2-hour
+    // thing — is pre-selected, so saving is one press.
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(handlers.onEditTime).toHaveBeenCalledWith(51, 12 * 60 + 30, 14 * 60 + 30);
+    expect(onPromptDismiss).toHaveBeenCalled();
+  });
+
+  it('writes nothing for "no time yet" — the item is already loose', async () => {
+    const user = userEvent.setup();
+    const onPromptDismiss = vi.fn();
+    const handlers = renderCard({ promptItemId: 51, onPromptDismiss });
+
+    await user.click(screen.getByRole('button', { name: 'no time yet' }));
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(handlers.onEditTime).not.toHaveBeenCalled();
+    expect(onPromptDismiss).toHaveBeenCalled();
+  });
+
+  it('closes on "Leave it loose" without writing anything', async () => {
+    const user = userEvent.setup();
+    const onPromptDismiss = vi.fn();
+    const handlers = renderCard({ promptItemId: 51, onPromptDismiss });
+
+    await user.click(screen.getByRole('button', { name: 'Leave it loose' }));
+
+    expect(handlers.onEditTime).not.toHaveBeenCalled();
+    expect(onPromptDismiss).toHaveBeenCalled();
+  });
+
+  // A viewer can never have placed anything, so there is never a question for
+  // them to be asked — whatever stale id a container might hand down.
+  it('never asks a viewer', () => {
+    renderCard({ promptItemId: 51, onPromptDismiss: vi.fn(), readOnly: true });
+
+    expect(screen.queryByText(/On the day\. When on/)).not.toBeInTheDocument();
   });
 });
 

@@ -289,6 +289,118 @@ export function daySummary(items: ItineraryItem[]): string {
     .join(' · ');
 }
 
+/** Where the evening starts for suggestion purposes: 18:00. */
+const EVENING_START_MINUTES = 18 * 60;
+
+/** One clickable answer to "when?" — a concrete span and the reason it is offered. */
+export interface SlotSuggestion {
+  /** Minutes from midnight. */
+  start: number;
+  /** Always after `start`, and never past 23:59. */
+  end: number;
+  /** `fits this hole` | `right after <title>` | `morning` | `evening`. */
+  label: string;
+}
+
+/**
+ * The one-click answers the "when?" prompt offers for a thing just placed
+ * untimed. Like `nextFreeSlot` these are suggestions, not rules — the time
+ * editor stays one click away, and nothing here refuses a full day.
+ *
+ * The candidates, in the order they are offered:
+ *
+ * - Each hole the day already shows — the same holes `withGaps` finds, so the
+ *   prompt never names a gap the list does not draw — but only when the thing
+ *   actually fits in it whole. A chip that starts in a hole and spills onto
+ *   the next plan would be advice to double-book.
+ * - Right after the last placed thing, named after it, because "after the
+ *   castle" is how people actually reason about the day. Dropped when it
+ *   would run past 23:59 — minutes cannot say "tomorrow".
+ * - The evening, when the day winds down before 18:00 and nothing above
+ *   already starts then — a duplicate chip at the same minute would be two
+ *   buttons for one choice.
+ *
+ * At most three come back: the prompt is a nudge, not a menu. Only timed items
+ * count — an untimed thing has no edges to suggest around — and a day with no
+ * timed items at all gets the one honest answer: the morning, at the same
+ * 09:00 an empty day starts at everywhere else.
+ */
+export function suggestSlots(
+  items: ItineraryItem[],
+  durationMinutes: number | null,
+): SlotSuggestion[] {
+  const span = durationMinutes && durationMinutes > 0 ? durationMinutes : DEFAULT_SLOT_MINUTES;
+  const timed = sorted(items).filter((item) => item.starts_at_minutes !== null);
+
+  if (timed.length === 0) {
+    return [
+      {
+        start: DEFAULT_START_MINUTES,
+        end: Math.min(DEFAULT_START_MINUTES + span, LAST_MINUTE_OF_DAY),
+        label: 'morning',
+      },
+    ];
+  }
+
+  const suggestions: SlotSuggestion[] = [];
+
+  // The holes, read exactly the way withGaps reads them: measured from the
+  // latest occupied minute so far, counted only at MIN_GAP_MINUTES or more,
+  // never before the first thing or after the last. A hole earns a chip only
+  // when the whole span fits inside it.
+  let occupiedUntil: number | null = null;
+  for (const item of timed) {
+    const start = item.starts_at_minutes as number;
+    if (occupiedUntil !== null) {
+      const hole = start - occupiedUntil;
+      if (hole >= MIN_GAP_MINUTES && hole >= span) {
+        suggestions.push({ start: occupiedUntil, end: occupiedUntil + span, label: 'fits this hole' });
+      }
+    }
+    // A timed item always has an occupied end — itemEnd falls back to the start.
+    const end = itemEnd(item) as number;
+    occupiedUntil = occupiedUntil === null ? end : Math.max(occupiedUntil, end);
+  }
+
+  // The thing the day ends on: the latest occupied end, and on a tie the item
+  // placed later — position is the order the user built, so it is the one
+  // they would call "the last thing".
+  let lastEnd = -1;
+  let lastItem: ItineraryItem | null = null;
+  for (const item of timed) {
+    const end = itemEnd(item) as number;
+    if (end > lastEnd || (end === lastEnd && lastItem !== null && item.position > lastItem.position)) {
+      lastEnd = end;
+      lastItem = item;
+    }
+  }
+
+  if (lastEnd + span <= LAST_MINUTE_OF_DAY) {
+    const title = lastItem?.entry?.title;
+    suggestions.push({
+      start: lastEnd,
+      end: lastEnd + span,
+      label: title ? `right after ${title}` : 'right after the last thing',
+    });
+  }
+
+  // The evening, when the plan winds down before it and no chip above already
+  // starts there. The end clamps at 23:59 rather than dropping the chip — a
+  // shortened evening is still an evening.
+  if (
+    lastEnd < EVENING_START_MINUTES &&
+    !suggestions.some((slot) => slot.start === EVENING_START_MINUTES)
+  ) {
+    suggestions.push({
+      start: EVENING_START_MINUTES,
+      end: Math.min(EVENING_START_MINUTES + span, LAST_MINUTE_OF_DAY),
+      label: 'evening',
+    });
+  }
+
+  return suggestions.slice(0, 3);
+}
+
 /**
  * Where the next thing lands: after everything already placed, else 09:00.
  * It is a suggestion, not a rule — the time editor is one click away, and

@@ -1,0 +1,53 @@
+/* The prompt opens under the row that just landed, so it wears card tone with
+   its own hairline against the day around it — elevation is tone, never a
+   shadow, and it is a panel in the flow rather than a popover so it can never
+   sit half off the edge of a narrow day column. */
+.prompt {
+  background: var(--surface-card);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The design sets this caption at 13px; raised to the 15px floor. */
+.caption {
+  margin: 0;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* Times are data, so a chip's span is set in the mono face like every other
+   time on the screen; the label beside it stays in the sans. */
+.chipTime {
+  font-family: var(--font-mono);
+}
+
+.fields {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.fields > * {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.timeInput {
+  font-family: var(--font-mono);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}

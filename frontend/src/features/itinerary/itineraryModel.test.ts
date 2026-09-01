@@ -8,6 +8,7 @@ import {
   formatDuration,
   formatSpan,
   nextFreeSlot,
+  suggestSlots,
   versionSpan,
   UNSAVED_VERSION_ID,
   withGaps,
@@ -448,5 +449,148 @@ describe('nextFreeSlot', () => {
 
     expect(slot.end).toBe(at('23:59'));
     expect(slot.start).toBe(at('23:59') - 120);
+  });
+});
+
+describe('suggestSlots', () => {
+  it('offers just the morning on an empty day', () => {
+    expect(suggestSlots([], 90)).toEqual([{ start: at('09:00'), end: at('10:30'), label: 'morning' }]);
+  });
+
+  it('offers just the morning when nothing on the day carries a time', () => {
+    const slots = suggestSlots([item(), item()], 60);
+
+    expect(slots).toEqual([{ start: at('09:00'), end: at('10:00'), label: 'morning' }]);
+  });
+
+  it('gives an hour to something that says nothing about how long it takes', () => {
+    expect(suggestSlots([], null)).toEqual([{ start: at('09:00'), end: at('10:00'), label: 'morning' }]);
+    expect(suggestSlots([], 0)).toEqual([{ start: at('09:00'), end: at('10:00'), label: 'morning' }]);
+  });
+
+  it('offers a hole it fits in and stays quiet about one it does not', () => {
+    // 10:00–12:00 takes an hour whole; the 20 minutes at 12:30 cannot.
+    const slots = suggestSlots(
+      [
+        item({ starts_at_minutes: at('09:00'), ends_at_minutes: at('10:00'), entry: summary({ title: 'Shrine' }) }),
+        item({ starts_at_minutes: at('12:00'), ends_at_minutes: at('12:30'), entry: summary({ title: 'Lunch' }) }),
+        item({ starts_at_minutes: at('12:50'), ends_at_minutes: at('13:30'), entry: summary({ title: 'Market' }) }),
+      ],
+      60,
+    );
+
+    expect(slots).toEqual([
+      { start: at('10:00'), end: at('11:00'), label: 'fits this hole' },
+      { start: at('13:30'), end: at('14:30'), label: 'right after Market' },
+      { start: at('18:00'), end: at('19:00'), label: 'evening' },
+    ]);
+  });
+
+  it('offers no hole chips when the thing is longer than every hole', () => {
+    // A two-hour hole cannot take three hours; only after-last and evening remain.
+    const slots = suggestSlots(
+      [
+        item({ starts_at_minutes: at('09:00'), ends_at_minutes: at('10:00'), entry: summary({ title: 'Shrine' }) }),
+        item({ starts_at_minutes: at('12:00'), ends_at_minutes: at('13:00'), entry: summary({ title: 'Lunch' }) }),
+      ],
+      180,
+    );
+
+    expect(slots).toEqual([
+      { start: at('13:00'), end: at('16:00'), label: 'right after Lunch' },
+      { start: at('18:00'), end: at('21:00'), label: 'evening' },
+    ]);
+  });
+
+  it('names the after-last chip for the thing the day ends on', () => {
+    const slots = suggestSlots(
+      [item({ starts_at_minutes: at('10:00'), ends_at_minutes: at('12:00'), entry: summary({ title: 'Nishiki Market' }) })],
+      60,
+    );
+
+    expect(slots[0]).toEqual({ start: at('12:00'), end: at('13:00'), label: 'right after Nishiki Market' });
+  });
+
+  it('falls back to "the last thing" when that item has no entry any more', () => {
+    const slots = suggestSlots([item({ starts_at_minutes: at('10:00'), ends_at_minutes: at('12:00'), entry: null })], 60);
+
+    expect(slots[0]?.label).toBe('right after the last thing');
+  });
+
+  it('follows the latest end, not the last item in the list', () => {
+    const slots = suggestSlots(
+      [
+        item({ starts_at_minutes: at('10:00'), ends_at_minutes: at('16:00'), entry: summary({ title: 'Long museum' }) }),
+        item({ starts_at_minutes: at('11:00'), ends_at_minutes: at('12:00'), entry: summary({ title: 'Quick lunch' }) }),
+      ],
+      60,
+    );
+
+    expect(slots[0]).toEqual({ start: at('16:00'), end: at('17:00'), label: 'right after Long museum' });
+  });
+
+  it('breaks a tie on the same end minute toward the later-placed thing', () => {
+    const slots = suggestSlots(
+      [
+        item({ starts_at_minutes: at('09:00'), ends_at_minutes: at('12:00'), position: 0, entry: summary({ title: 'First placed' }) }),
+        item({ starts_at_minutes: at('10:00'), ends_at_minutes: at('12:00'), position: 1, entry: summary({ title: 'Second placed' }) }),
+      ],
+      60,
+    );
+
+    expect(slots[0]?.label).toBe('right after Second placed');
+  });
+
+  it('offers the evening only while the day still winds down before 18:00', () => {
+    const early = suggestSlots(
+      [item({ starts_at_minutes: at('10:00'), ends_at_minutes: at('12:00'), entry: summary({ title: 'Shrine' }) })],
+      60,
+    );
+    const late = suggestSlots(
+      [item({ starts_at_minutes: at('17:00'), ends_at_minutes: at('18:30'), entry: summary({ title: 'Dinner' }) })],
+      60,
+    );
+
+    expect(early.map((slot) => slot.label)).toContain('evening');
+    expect(late.map((slot) => slot.label)).not.toContain('evening');
+  });
+
+  it('drops the evening when the after-last chip already starts at 18:00', () => {
+    // A day ending exactly at 18:00 would otherwise offer two buttons for one minute.
+    const slots = suggestSlots(
+      [item({ starts_at_minutes: at('16:00'), ends_at_minutes: at('18:00'), entry: summary({ title: 'Castle' }) })],
+      60,
+    );
+
+    expect(slots).toEqual([{ start: at('18:00'), end: at('19:00'), label: 'right after Castle' }]);
+  });
+
+  it('stops at three — the prompt is a nudge, not a menu', () => {
+    // Two fitting holes, an after-last and an evening make four; the evening loses.
+    const slots = suggestSlots(
+      [
+        item({ starts_at_minutes: at('08:00'), ends_at_minutes: at('09:00'), entry: summary({ title: 'Breakfast' }) }),
+        item({ starts_at_minutes: at('11:00'), ends_at_minutes: at('12:00'), entry: summary({ title: 'Shrine' }) }),
+        item({ starts_at_minutes: at('14:00'), ends_at_minutes: at('15:00'), entry: summary({ title: 'Market' }) }),
+      ],
+      60,
+    );
+
+    expect(slots).toEqual([
+      { start: at('09:00'), end: at('10:00'), label: 'fits this hole' },
+      { start: at('12:00'), end: at('13:00'), label: 'fits this hole' },
+      { start: at('15:00'), end: at('16:00'), label: 'right after Market' },
+    ]);
+  });
+
+  it('drops an after-last that would run past 23:59, and clamps the evening there', () => {
+    // Eight hours after 17:00 is tomorrow, so that chip goes; the evening
+    // still stands, shortened to end at 23:59 rather than spilling over.
+    const slots = suggestSlots(
+      [item({ starts_at_minutes: at('15:00'), ends_at_minutes: at('17:00'), entry: summary({ title: 'Onsen' }) })],
+      480,
+    );
+
+    expect(slots).toEqual([{ start: at('18:00'), end: at('23:59'), label: 'evening' }]);
   });
 });

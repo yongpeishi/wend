@@ -28,6 +28,15 @@ export interface VersionColumnsProps {
    * where the same word already means the same thing.
    */
   readOnly?: boolean;
+  /**
+   * The just-landed item still being asked "when?", with the prompt's day name
+   * and its way of closing. Handed through to every column's VersionItems
+   * verbatim — item ids are unique across versions, so only the column that
+   * holds the item draws the prompt.
+   */
+  promptItemId?: number | null;
+  promptDayName?: string;
+  onPromptDismiss?: () => void;
 }
 
 /**
@@ -60,6 +69,9 @@ export function VersionColumns({
   onDropItem,
   dayLabel,
   readOnly = false,
+  promptItemId = null,
+  promptDayName,
+  onPromptDismiss,
 }: VersionColumnsProps) {
   return (
     <div className={styles.columns}>
@@ -76,6 +88,9 @@ export function VersionColumns({
           onDropItem={onDropItem}
           dayLabel={dayLabel}
           readOnly={readOnly}
+          promptItemId={promptItemId}
+          promptDayName={promptDayName}
+          onPromptDismiss={onPromptDismiss}
         />
       ))}
     </div>
@@ -96,6 +111,9 @@ function VersionColumn({
   onDropItem,
   dayLabel,
   readOnly = false,
+  promptItemId = null,
+  promptDayName,
+  onPromptDismiss,
 }: VersionColumnProps) {
   const { setNodeRef, isOver, dropId } = useVersionDrop(day, version.id, onDropItem);
   const items = version.schedule_items;
@@ -122,6 +140,9 @@ function VersionColumn({
           onEditTime={onEditTime}
           onRemoveItem={onRemoveItem}
           readOnly={readOnly}
+          promptItemId={promptItemId}
+          promptDayName={promptDayName}
+          onPromptDismiss={onPromptDismiss}
         />
       )}
 

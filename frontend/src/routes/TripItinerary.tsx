@@ -46,7 +46,6 @@ import {
   UnplacedRail,
   UNSAVED_VERSION_ID,
   buildDayList,
-  nextFreeSlot,
 } from '../features/itinerary';
 import type { ArchivedVersion, ItineraryDay, ItineraryDragData } from '../features/itinerary';
 // Not through the barrel: these are the drag machinery the DndContext itself
@@ -148,6 +147,14 @@ export function TripItinerary() {
   const [datesOpen, setDatesOpen] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [dragging, setDragging] = useState<ItineraryDragData | null>(null);
+  /**
+   * The item that just landed on a day untimed, and is being asked "when?" by
+   * the prompt under its row. One at a time across the whole screen: placing
+   * something else moves the question to the newest arrival, which is the one
+   * whose hours are actually being decided. Screen state, not data — a reload
+   * simply forgets the question, and the item stays loose, which is legal.
+   */
+  const [promptItemId, setPromptItemId] = useState<number | null>(null);
   /**
    * The dates the server refused, and what it said refusing them. Set from the
    * 422, cleared by either answer. Holding the dates here is what lets
@@ -306,8 +313,11 @@ export function TripItinerary() {
    * leaves `day_version_id` out and lets the API create the trip day and its
    * "Version A" (contract §2). Sending the placeholder id would 422.
    *
-   * The slot is the gap's own span when the request came from "Fill it", and
-   * otherwise the next free hour after everything already on that version.
+   * The slot is the gap's own span when the request came from "Fill it" — its
+   * hours were chosen before anything was picked, so it lands timed and there
+   * is nothing left to ask. Every other way onto a day arrives with no slot,
+   * and no time is invented for it: the item lands untimed and the "when?"
+   * prompt opens under its row instead, with "no time yet" a legal answer.
    */
   function placeEntry(
     day: ItineraryDay,
@@ -319,24 +329,27 @@ export function TripItinerary() {
      * shelf: an idea created seconds ago is not in `kept` until the entries
      * query comes back, and without this the toast would name it "Kept".
      */
-    known?: Pick<EntrySummary, 'title' | 'duration_minutes'>,
+    known?: Pick<EntrySummary, 'title'>,
   ) {
     const version = day.versions.find((v) => v.id === versionId) ?? day.versions[0];
     const items = version?.schedule_items ?? [];
     const entry = known ?? kept.find((choice) => choice.id === entryId);
-    const when = slot ?? nextFreeSlot(items, entry?.duration_minutes ?? null);
 
     createItem.mutate(
       {
         entry_id: entryId,
         day: day.day,
         ...(versionId === UNSAVED_VERSION_ID ? {} : { day_version_id: versionId }),
-        starts_at_minutes: when.start,
-        ends_at_minutes: when.end,
+        starts_at_minutes: slot ? slot.start : null,
+        ends_at_minutes: slot ? slot.end : null,
         position: items.length,
       },
       {
-        onSuccess: () => {
+        onSuccess: (created) => {
+          // Untimed on arrival, so the question is put where the answer goes:
+          // the created row's id anchors the prompt on that row. A gap's fill
+          // already answered it, so no prompt opens over those hours.
+          if (slot === null) setPromptItemId(created.id);
           // Opened on arrival: a thing dropped onto a closed row is otherwise
           // placed out of sight.
           openDay(day.day);
@@ -381,8 +394,8 @@ export function TripItinerary() {
    * A name and nothing else is sent. Category, address and duration are all
    * legitimately unknown at the moment somebody thinks of a place, and writing
    * a guess onto the entry to fill the shape of the form would be worse than
-   * leaving them unsaid: `nextFreeSlot` reads a null duration as the default
-   * hour, which is the right answer for an idea nobody has timed yet.
+   * leaving them unsaid: an idea nobody has timed yet lands untimed, and the
+   * "when?" prompt reads a null duration as the default hour when it suggests.
    *
    * If the create fails there is nothing to place and the house sentence says
    * so. The picker has already closed by then — what was typed is gone, which
@@ -400,7 +413,7 @@ export function TripItinerary() {
         entry: { kind: 'idea', title },
         parent_id: trip.id,
       });
-      placeEntry(day, versionId, entry.id, slot, { title: entry.title, duration_minutes: null });
+      placeEntry(day, versionId, entry.id, slot, { title: entry.title });
     } catch {
       onError();
     }
@@ -584,12 +597,19 @@ export function TripItinerary() {
                     onRemoveItem={(itemId) =>
                       deleteItem.mutate(itemId, {
                         // Off the day, not out of the trip: it lands back on the rail.
-                        onSuccess: () => show("Taken off the day. It's waiting on the right.", 'success'),
+                        onSuccess: () => {
+                          // A question about a row that no longer exists is not
+                          // left waiting for a row it could reattach to.
+                          if (itemId === promptItemId) setPromptItemId(null);
+                          show("Taken off the day. It's waiting on the right.", 'success');
+                        },
                         onError,
                       })
                     }
                     onSetLodging={(value) => updateTripDay.mutate({ day: day.day, ...value }, { onError })}
                     readOnly={readOnly}
+                    promptItemId={promptItemId}
+                    onPromptDismiss={() => setPromptItemId(null)}
                   />
                 ) : (
                   <DayRow
