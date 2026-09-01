@@ -16,6 +16,11 @@ class Feedback < ApplicationRecord
   # sat in it forever and the column stopped sorting the pile.
   STATUSES = %w[new in_progress rejected done].freeze
 
+  # The two endings, and only the endings: deletion is for clearing the pile of
+  # notes that have already been dealt with, not a shortcut past triage. A `new`
+  # or `in_progress` note still carries a decision nobody has made yet.
+  DELETABLE_STATUSES = %w[rejected done].freeze
+
   # Long enough to be a paragraph, short enough that the column stays sane.
   MESSAGE_LIMIT = 5_000
 
@@ -75,6 +80,36 @@ class Feedback < ApplicationRecord
 
   def element?
     element_selector.present?
+  end
+
+  def deletable?
+    DELETABLE_STATUSES.include?(status)
+  end
+
+  # The hard delete, and the one place a *kept* screenshot leaves the bucket.
+  # The row goes first and the files after, in that order on purpose: a feedback
+  # that failed to delete must keep its pictures, and a picture that failed to
+  # delete must not resurrect the feedback. So `destroy!` raises like any other
+  # DB failure, and only then does each blob's file get removed -- best effort,
+  # same bargain as discard_uploaded_screenshots: a stray object in the bucket
+  # is a smaller wrong than a delete that looks like it failed.
+  #
+  # The attachment rows are taken out with delete_all inside the transaction
+  # rather than left to `dependent: :purge_later`, whose after_destroy_commit
+  # would enqueue purge jobs -- this app has no queue to run them, and the
+  # synchronous purge below is already the whole cleanup.
+  def destroy_and_remove_screenshots!
+    blobs = screenshots.map(&:blob)
+    transaction do
+      screenshots_attachments.delete_all
+      destroy!
+    end
+
+    blobs.each do |blob|
+      blob.purge
+    rescue StandardError => e
+      Rails.logger.error("Feedback: could not remove screenshot #{blob.key} after delete: #{e.class}: #{e.message}")
+    end
   end
 
   private

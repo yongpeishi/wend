@@ -4,11 +4,13 @@ import { Button } from '../design/components/core/Button';
 import { Chip } from '../design/components/core/Chip';
 import { Select } from '../design/components/core/Select';
 import { EmptyState } from '../components/EmptyState';
+import { Modal } from '../components/Modal';
 import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
 import {
   adminFeedbackExportUrl,
   useAdminFeedbacks,
+  useDeleteAdminFeedback,
   useUpdateAdminFeedbackStatus,
 } from '../api/admin';
 import type { AdminFeedback as AdminFeedbackRow, FeedbackStatus } from '../api/types';
@@ -38,14 +40,41 @@ function noteCount(n: number): string {
   return n === 1 ? '1 note' : `${n} notes`;
 }
 
-/** Open or close one row, leaving every other row however it was — the whole
- * point of holding a set rather than a single "which row is open". A new Set
- * each time, because React compares by identity and a mutated one never
- * re-renders. */
-function toggleExpanded(expanded: Set<number>, id: number): Set<number> {
-  const next = new Set(expanded);
+/** The delete gate, the server's rule mirrored so the checkbox never offers
+ * what the request would refuse: only feedback triage has finished with —
+ * done or rejected — may be destroyed. */
+function deletable(status: FeedbackStatus): boolean {
+  return status === 'done' || status === 'rejected';
+}
+
+const NOT_DELETABLE = 'Only done or rejected feedback can be deleted';
+
+/** Flip one id in or out, leaving every other member however it was — the
+ * whole point of holding a set rather than a single "which row". The open
+ * disclosures and the delete selection are both sets of row ids, so both
+ * toggles are this one. A new Set each time, because React compares by
+ * identity and a mutated one never re-renders. */
+function toggleId(ids: Set<number>, id: number): Set<number> {
+  const next = new Set(ids);
   if (!next.delete(id)) next.add(id);
   return next;
+}
+
+/**
+ * Everything the confirm dialog says, singular and plural written out rather
+ * than pluralised with an "(s)" — DateShiftWarningModal's rule: one note going
+ * is a different sentence from three. Unexported for the same reason as that
+ * modal's copy: a second export costs a Fast Refresh warning for something the
+ * test already reads through the rendered dialog.
+ */
+function deleteFeedbackCopy(count: number) {
+  const one = count === 1;
+  return {
+    title: `Delete ${one ? '1 note' : `${count} notes`}?`,
+    line: `${one ? 'It comes' : 'They come'} off the server, screenshots and all, and there is no undo.`,
+    cancelLabel: one ? 'No, keep it' : 'No, keep them',
+    confirmLabel: one ? 'Yes, delete it' : 'Yes, delete them',
+  };
 }
 
 /** Add or drop one status, keeping STATUSES' order however they were clicked —
@@ -87,13 +116,24 @@ function toggleStatus(selected: FeedbackStatus[], status: FeedbackStatus): Feedb
  * people who hit the same bug, the note and the note that answers it — and a
  * disclosure that closes the row you were reading to open the next one makes
  * that impossible by construction.
+ *
+ * Deleting is triage's other ending: once a note is done or rejected it may be
+ * cleared out, screenshots and all, and nothing in any other status may be —
+ * the server refuses, so the checkboxes refuse first. Selection is another Set
+ * of ids, pruned whenever the filter changes so "Delete selected" can never
+ * quietly include a row the admin can no longer see, and the destructive
+ * button stands behind the house confirm dialog because there is no undo.
  */
 export function AdminFeedback() {
   const { show } = useToast();
   const feedbacksQuery = useAdminFeedbacks();
   const updateStatus = useUpdateAdminFeedbackStatus();
+  const deleteFeedback = useDeleteAdminFeedback();
   const [selected, setSelected] = useState<FeedbackStatus[]>([]);
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
+  const [checked, setChecked] = useState<Set<number>>(() => new Set());
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const filterLabelId = useId();
   // One prefix for the page, one detail id per row off it: `aria-controls` has
   // to point somewhere unique in the document, and `useId` cannot be called
@@ -105,6 +145,47 @@ export function AdminFeedback() {
   const shown: AdminFeedbackRow[] = narrowed
     ? feedbacks.filter((f) => selected.includes(f.status))
     : feedbacks;
+
+  // What "Delete selected" would actually delete: the checked set read through
+  // what is on screen and still deletable. The set is pruned when the filter
+  // moves, but a row can also leave through triage — its select turning it back
+  // to `new` mid-selection — and reading through `shown` keeps the count, the
+  // header checkbox and the confirm dialog honest without chasing every path.
+  const deletableShown = shown.filter((f) => deletable(f.status));
+  const chosen = deletableShown.filter((f) => checked.has(f.id));
+  const allChosen = deletableShown.length > 0 && chosen.length === deletableShown.length;
+
+  /** The chips' handler, grown a second job: whatever the new narrowing hides
+   * leaves the selection too, so nothing off screen can be deleted. */
+  function toggleFilter(status: FeedbackStatus) {
+    const next = toggleStatus(selected, status);
+    const visible = next.length > 0 ? feedbacks.filter((f) => next.includes(f.status)) : feedbacks;
+    const keep = new Set(visible.filter((f) => deletable(f.status)).map((f) => f.id));
+    setSelected(next);
+    setChecked((current) => new Set([...current].filter((id) => keep.has(id))));
+  }
+
+  /** BulkBar's shape: every delete in flight at once, one toast either way. On
+   * failure the selection stays — whatever survived is still checked, so the
+   * admin can simply try again — and the invalidation the hook already does
+   * refreshes the table to show what did go. */
+  async function deleteChosen() {
+    const ids = chosen.map((f) => f.id);
+    setDeleting(true);
+    try {
+      await Promise.all(ids.map((id) => deleteFeedback.mutateAsync(id)));
+    } catch {
+      show("That didn't all delete. Whatever remains is still here, still selected — try again.", 'error');
+      return;
+    } finally {
+      setDeleting(false);
+      setConfirming(false);
+    }
+    setChecked(new Set());
+    show(`Deleted ${noteCount(ids.length)} and ${ids.length === 1 ? 'its' : 'their'} screenshots.`);
+  }
+
+  const confirmCopy = deleteFeedbackCopy(chosen.length);
 
   return (
     <div className={styles.wrap}>
@@ -129,7 +210,7 @@ export function AdminFeedback() {
               <Chip
                 key={status}
                 selected={selected.includes(status)}
-                onClick={() => setSelected((current) => toggleStatus(current, status))}
+                onClick={() => toggleFilter(status)}
               >
                 {STATUS_LABELS[status]}
               </Chip>
@@ -141,13 +222,20 @@ export function AdminFeedback() {
             {narrowed ? `${shown.length} of ${noteCount(feedbacks.length)}` : noteCount(feedbacks.length)}
           </p>
         </div>
-        <Button
-          variant="secondary"
-          aria-label={narrowed ? 'Export CSV — only the notes shown' : 'Export CSV'}
-          onClick={() => window.location.assign(adminFeedbackExportUrl(selected))}
-        >
-          Export CSV
-        </Button>
+        <div className={styles.toolbarActions}>
+          {chosen.length > 0 && (
+            <Button variant="destructive" onClick={() => setConfirming(true)}>
+              Delete selected ({chosen.length})
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            aria-label={narrowed ? 'Export CSV — only the notes shown' : 'Export CSV'}
+            onClick={() => window.location.assign(adminFeedbackExportUrl(selected))}
+          >
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       <QueryGate
@@ -168,6 +256,26 @@ export function AdminFeedback() {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  {/* The column's header is its control: one checkbox that
+                      takes or releases every deletable row the filter is
+                      showing, indeterminate while it holds only some of them —
+                      which a checkbox can only say through the DOM property,
+                      hence the ref. Its own label names the column too. */}
+                  <th scope="col" className={styles.selectCell}>
+                    <input
+                      type="checkbox"
+                      className={styles.selectBox}
+                      checked={allChosen}
+                      disabled={deletableShown.length === 0}
+                      ref={(el) => {
+                        if (el) el.indeterminate = chosen.length > 0 && !allChosen;
+                      }}
+                      aria-label="Select all deletable notes shown"
+                      onChange={() =>
+                        setChecked(allChosen ? new Set() : new Set(deletableShown.map((f) => f.id)))
+                      }
+                    />
+                  </th>
                   {/* The chevron column has no name worth printing over it, but
                       a nameless header cell leaves the whole column unlabelled
                       in a screen reader's table mode — so it gets its name
@@ -184,10 +292,31 @@ export function AdminFeedback() {
               <tbody>
                 {shown.map((feedback) => {
                   const open = expanded.has(feedback.id);
+                  const canDelete = deletable(feedback.status);
                   const detailId = `${detailIdPrefix}-${feedback.id}`;
                   return (
                     <Fragment key={feedback.id}>
                       <tr className={open ? styles.rowOpen : undefined}>
+                        <td className={styles.selectCell}>
+                          {/* The LibraryRow checkbox, named for whose note it
+                              takes. A row triage has not finished with cannot
+                              be selected at all — the server would refuse the
+                              delete, so the checkbox refuses first and says
+                              why in the same words the API would. */}
+                          <input
+                            type="checkbox"
+                            className={styles.selectBox}
+                            checked={canDelete && checked.has(feedback.id)}
+                            disabled={!canDelete}
+                            aria-label={
+                              canDelete
+                                ? `Select feedback from ${feedback.user.name}`
+                                : `Select feedback from ${feedback.user.name} — ${NOT_DELETABLE.toLowerCase()}`
+                            }
+                            title={canDelete ? undefined : NOT_DELETABLE}
+                            onChange={() => setChecked((current) => toggleId(current, feedback.id))}
+                          />
+                        </td>
                         <td className={styles.toggleCell}>
                           {/* A bare chevron announces nothing, so the button
                               carries the row's own name — which reporter's
@@ -199,7 +328,7 @@ export function AdminFeedback() {
                             aria-expanded={open}
                             aria-controls={detailId}
                             aria-label={`${open ? 'Hide' : 'Show'} details of feedback from ${feedback.user.name}`}
-                            onClick={() => setExpanded((current) => toggleExpanded(current, feedback.id))}
+                            onClick={() => setExpanded((current) => toggleId(current, feedback.id))}
                           >
                             {open ? (
                               <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" />
@@ -238,7 +367,7 @@ export function AdminFeedback() {
                       </tr>
                       {open && (
                         <tr id={detailId} className={styles.detailRow}>
-                          <td className={styles.detail} colSpan={5}>
+                          <td className={styles.detail} colSpan={6}>
                             <div className={styles.detailInner}>
                               {/* Where, verbatim from the column it used to be:
                                   the URL, and when the reporter pointed at
@@ -322,6 +451,32 @@ export function AdminFeedback() {
           </div>
         )}
       </QueryGate>
+
+      {/* The house confirm idiom, DateShiftWarningModal's shape: nothing has
+          happened yet, so cancelling has nothing to undo. Nothing to confirm
+          with nothing chosen — the button that opens this is gone by then. */}
+      <Modal
+        open={confirming && chosen.length > 0}
+        onClose={() => setConfirming(false)}
+        title={confirmCopy.title}
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setConfirming(false)}>
+              {confirmCopy.cancelLabel}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={deleteChosen}
+              disabled={deleting}
+              aria-busy={deleting || undefined}
+            >
+              {confirmCopy.confirmLabel}
+            </Button>
+          </>
+        }
+      >
+        <p className={styles.confirmLine}>{confirmCopy.line}</p>
+      </Modal>
     </div>
   );
 }

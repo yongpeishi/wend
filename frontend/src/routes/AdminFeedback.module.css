@@ -74,6 +74,15 @@
   color: var(--text-strong);
 }
 
+/* The toolbar's other end: the delete button, when a selection has earned one,
+   beside the export. Buttons carry their own radius — var(--radius-card), the
+   card's token, never a new one. */
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /*
  * The table's card. Card radius IS button radius — var(--radius-card), never a
  * second token. The card clips so row backgrounds meet the rounded corner, and
@@ -92,7 +101,7 @@
    widest thing on screen: the columns hold their shares and the text wraps. */
 .table {
   width: 100%;
-  min-width: 720px;
+  min-width: 760px;
   table-layout: fixed;
   border-collapse: collapse;
   font-family: var(--font-sans);
@@ -111,28 +120,33 @@
   border-bottom: var(--border-width) solid var(--border-subtle);
 }
 
-/* Chevron / Received / From / Message / Status. The chevron column is one
-   16px icon plus the cell padding and nothing else, so it is the one fixed
-   width here; the rest share what is left, and Message still gets the room —
-   it is what the page exists to read. Where has moved into the detail row,
-   and its share went to Message and From. */
+/* Select / Chevron / Received / From / Message / Status. The two leading
+   columns are one control each — a 20px checkbox, a 16px icon — plus the cell
+   padding and nothing else, so they are the fixed widths here; the rest share
+   what is left, and Message still gets the room — it is what the page exists
+   to read. Where has moved into the detail row, and its share went to Message
+   and From. */
 .table th:nth-child(1) {
-  width: 48px;
+  width: 44px;
 }
 
 .table th:nth-child(2) {
-  width: 13%;
+  width: 48px;
 }
 
 .table th:nth-child(3) {
-  width: 20%;
+  width: 13%;
 }
 
 .table th:nth-child(4) {
-  width: 47%;
+  width: 20%;
 }
 
 .table th:nth-child(5) {
+  width: 45%;
+}
+
+.table th:nth-child(6) {
   width: 16%;
 }
 
@@ -202,6 +216,32 @@
    them is dropped and the detail row's own bottom border closes the pair. */
 .rowOpen td {
   border-bottom: none;
+}
+
+/* Like the chevron, the checkbox sits on the row's first text line rather than
+   centred in a cell a long message may have made four lines tall. */
+.selectCell {
+  padding-right: 0;
+}
+
+/* The LibraryRow checkbox, sized to be hit. A disabled one keeps the arrow
+   cursor — it is not refusing to work, it has nothing to offer — and dims to
+   say so. */
+.selectBox {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--wend-leaf);
+  cursor: pointer;
+}
+
+.selectBox:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.selectBox:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /* The chevron sits on the row's first text line, not centred in a cell that a
@@ -325,6 +365,13 @@
 .detailEmpty {
   margin: 0;
   color: var(--text-muted);
+}
+
+/* One fact in the confirm dialog. Modal.module.css sets the body's size and
+   colour; this only holds the line to a readable measure. */
+.confirmLine {
+  margin: 0;
+  max-width: var(--measure-body);
 }
 
 .srOnly {

@@ -27,6 +27,25 @@ module Api
         render json: { feedback: ::Admin::FeedbackSerializer.one(feedback) }
       end
 
+      # A hard delete, like todos: the find is scoped rather than merely
+      # authorized afterwards, so an id outside the scope 404s before anything
+      # irreversible can be asked of it. Only feedback that has reached an
+      # ending -- done or rejected -- may go; anything still in triage answers
+      # 422 and stays. The model removes the screenshots from the bucket after
+      # the row is gone; see Feedback#destroy_and_remove_screenshots! for the
+      # ordering and why a failed file delete only logs.
+      def destroy
+        feedback = policy_scope([:admin, Feedback]).find(params[:id])
+        authorize [:admin, feedback]
+
+        unless feedback.deletable?
+          return render json: { error: "Only done or rejected feedback can be deleted" }, status: :unprocessable_entity
+        end
+
+        feedback.destroy_and_remove_screenshots!
+        head :no_content
+      end
+
       # The same pile as index, as a file, and narrowed the same way:
       # `?status[]=new&status[]=rejected` exports exactly what those two chips
       # leave on the table, so the file matches what the admin was looking at

@@ -372,6 +372,160 @@ describe('AdminFeedback', () => {
     });
   });
 
+  // The seed's deletable pile: 903 rejected (Sarah) and 904 done (Demo). The
+  // other three — 901, 902 new, 905 in progress — are what the gate refuses.
+  describe('deleting feedback', () => {
+    const CHECKLIST = 'The checklist loses my tick when I scroll — it comes back on reload though.';
+    const SET_ASIDE = 'This button says "Set aside" but nothing visibly moves.';
+    const DAY_PICKER = 'The day picker jumps back to today whenever I edit an item.';
+    const SIGNIN = 'Sign-in kept rejecting my password until I retyped it by hand.';
+
+    function checkboxFor(message: string): HTMLInputElement {
+      return within(rowFor(message)).getByRole('checkbox') as HTMLInputElement;
+    }
+
+    function headerCheckbox(): HTMLInputElement {
+      return screen.getByRole('checkbox', { name: 'Select all deletable notes shown' }) as HTMLInputElement;
+    }
+
+    function statusChip(label: string) {
+      return within(screen.getByRole('group', { name: 'Status' })).getByRole('button', { name: label });
+    }
+
+    it('offers the checkbox only where the server would take the delete', async () => {
+      renderPage();
+      await screen.findByText(CHECKLIST);
+
+      // Finished notes can be taken; the rest are refused with the reason in
+      // the checkbox's own name — the API's words, so nothing has to be learnt
+      // twice.
+      expect(checkboxFor(SET_ASIDE)).toBeEnabled();
+      expect(checkboxFor(SIGNIN)).toBeEnabled();
+      expect(checkboxFor(CHECKLIST)).toBeDisabled();
+      expect(checkboxFor(DAY_PICKER)).toBeDisabled();
+      expect(checkboxFor(CHECKLIST)).toHaveAccessibleName(
+        'Select feedback from Sarah — only done or rejected feedback can be deleted',
+      );
+
+      // No selection, no delete button — the toolbar stays triage until then.
+      expect(screen.queryByRole('button', { name: /Delete selected/ })).not.toBeInTheDocument();
+    });
+
+    it('takes and releases every deletable row through the header checkbox', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(CHECKLIST);
+
+      await user.click(headerCheckbox());
+
+      expect(checkboxFor(SET_ASIDE)).toBeChecked();
+      expect(checkboxFor(SIGNIN)).toBeChecked();
+      expect(checkboxFor(CHECKLIST)).not.toBeChecked();
+      expect(screen.getByRole('button', { name: 'Delete selected (2)' })).toBeInTheDocument();
+
+      await user.click(headerCheckbox());
+
+      expect(checkboxFor(SET_ASIDE)).not.toBeChecked();
+      expect(checkboxFor(SIGNIN)).not.toBeChecked();
+      expect(screen.queryByRole('button', { name: /Delete selected/ })).not.toBeInTheDocument();
+    });
+
+    it('sits indeterminate while it holds only some of the deletable rows', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(CHECKLIST);
+
+      await user.click(checkboxFor(SET_ASIDE));
+
+      expect(headerCheckbox()).not.toBeChecked();
+      expect(headerCheckbox().indeterminate).toBe(true);
+
+      await user.click(checkboxFor(SIGNIN));
+
+      expect(headerCheckbox()).toBeChecked();
+      expect(headerCheckbox().indeterminate).toBe(false);
+    });
+
+    it('deletes the chosen notes once the dialog has said what goes', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(CHECKLIST);
+
+      await user.click(headerCheckbox());
+      await user.click(screen.getByRole('button', { name: 'Delete selected (2)' }));
+
+      // The dialog carries the count, the screenshots, and the no-undo.
+      const dialog = await screen.findByRole('dialog', { name: 'Delete 2 notes?' });
+      expect(
+        within(dialog).getByText('They come off the server, screenshots and all, and there is no undo.'),
+      ).toBeInTheDocument();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Yes, delete them' }));
+
+      await waitFor(() => expect(screen.queryByText(SET_ASIDE)).not.toBeInTheDocument());
+      expect(screen.queryByText(SIGNIN)).not.toBeInTheDocument();
+      // The rest of the pile is untouched, and both DELETEs landed on the store.
+      expect(screen.getByText(CHECKLIST)).toBeInTheDocument();
+      expect(db.feedbacks.map((f) => f.id).sort()).toEqual([901, 902, 905]);
+      expect(await screen.findByText('Deleted 2 notes and their screenshots.')).toBeInTheDocument();
+    });
+
+    it('says it in the singular for one note', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(SET_ASIDE);
+
+      await user.click(checkboxFor(SET_ASIDE));
+      await user.click(screen.getByRole('button', { name: 'Delete selected (1)' }));
+
+      const dialog = await screen.findByRole('dialog', { name: 'Delete 1 note?' });
+      await user.click(within(dialog).getByRole('button', { name: 'Yes, delete it' }));
+
+      await waitFor(() => expect(screen.queryByText(SET_ASIDE)).not.toBeInTheDocument());
+      expect(screen.getByText(SIGNIN)).toBeInTheDocument();
+      expect(await screen.findByText('Deleted 1 note and its screenshots.')).toBeInTheDocument();
+    });
+
+    it('cancels without deleting anything, selection kept', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(SET_ASIDE);
+
+      await user.click(checkboxFor(SET_ASIDE));
+      await user.click(screen.getByRole('button', { name: 'Delete selected (1)' }));
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'No, keep it' }),
+      );
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(screen.getByText(SET_ASIDE)).toBeInTheDocument();
+      expect(db.feedbacks.some((f) => f.id === 903)).toBe(true);
+      // Still chosen — cancelling declines the delete, not the selection.
+      expect(checkboxFor(SET_ASIDE)).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Delete selected (1)' })).toBeInTheDocument();
+    });
+
+    it('drops hidden rows from the selection when the filter narrows', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText(CHECKLIST);
+
+      await user.click(headerCheckbox());
+      expect(screen.getByRole('button', { name: 'Delete selected (2)' })).toBeInTheDocument();
+
+      // Narrowing to Done hides the rejected note, and hidden means unchosen —
+      // "Delete selected" must never include a row the admin cannot see.
+      await user.click(statusChip('Done'));
+      expect(screen.getByRole('button', { name: 'Delete selected (1)' })).toBeInTheDocument();
+
+      // Widening again does not quietly re-arm it.
+      await user.click(statusChip('Done'));
+      expect(screen.getByRole('button', { name: 'Delete selected (1)' })).toBeInTheDocument();
+      expect(checkboxFor(SET_ASIDE)).not.toBeChecked();
+      expect(checkboxFor(SIGNIN)).toBeChecked();
+    });
+  });
+
   it('says so when there is nothing to triage', async () => {
     db.feedbacks = [];
     renderPage();
