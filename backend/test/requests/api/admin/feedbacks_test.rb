@@ -22,6 +22,9 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
 
     get "/api/admin/feedbacks/export"
     assert_response :unauthorized
+
+    get "/api/admin/feedbacks/1/screenshots/1"
+    assert_response :unauthorized
   end
 
   test "a signed-in non-admin is turned away with a flat 403" do
@@ -41,6 +44,10 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
     assert Feedback.exists?(feedback.id)
 
     get "/api/admin/feedbacks/export"
+    assert_response :forbidden
+    assert_equal({ "error" => "Admin access required" }, JSON.parse(response.body))
+
+    get "/api/admin/feedbacks/#{feedback.id}/screenshots/1"
     assert_response :forbidden
     assert_equal({ "error" => "Admin access required" }, JSON.parse(response.body))
   end
@@ -235,11 +242,77 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
                  response.headers["Content-Disposition"]
 
     rows = CSV.parse(response.body)
-    assert_equal %w[id created_at user_name user_email status message url element_selector element_classes user_agent],
+    assert_equal %w[id created_at user_name user_email status message url element_selector element_classes user_agent screenshots],
                  rows.first
     assert_equal [feedback.id.to_s, feedback.created_at.iso8601, "Reporter", "reporter@example.com",
-                  "new", "A message, with a comma", "http://localhost:5173/trips/1/schedule", nil, nil, "WendTest/1.0"],
+                  "new", "A message, with a comma", "http://localhost:5173/trips/1/schedule", nil, nil, "WendTest/1.0", nil],
                  rows.second
+  end
+
+  # The file is opened days after it was made, so its links are this app's own
+  # screenshot route rather than the fifteen-minute bucket URLs the JSON
+  # carries -- one link per picture, space separated in a single cell, absolute
+  # on the host the export was fetched from.
+  test "export links every screenshot through the admin screenshot route" do
+    with_pictures = Feedback.create!(user: @reporter, message: "Two pictures")
+    with_pictures.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "before.png")
+    with_pictures.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "after.png")
+    without = Feedback.create!(user: @other, message: "No pictures")
+    sign_in_as(@admin)
+
+    get "/api/admin/feedbacks/export"
+    assert_response :success
+
+    cells = CSV.parse(response.body, headers: true).to_h { |row| [row["id"].to_i, row["screenshots"]] }
+    assert_nil cells[without.id]
+
+    expected = with_pictures.screenshots.map do |shot|
+      "http://www.example.com/api/admin/feedbacks/#{with_pictures.id}/screenshots/#{shot.id}"
+    end
+    assert_equal 2, expected.length
+    assert_equal expected.join(" "), cells[with_pictures.id]
+  end
+
+  # --- Screenshots ------------------------------------------------------------
+
+  # The link in the CSV, followed: the route checks the caller and only then
+  # mints a fresh signed URL and sends them on to it. With the test's Disk
+  # service that URL is a route on this host, so the redirect can be followed
+  # all the way to the bytes.
+  test "a screenshot link redirects an admin to the picture itself" do
+    feedback = Feedback.create!(user: @reporter, message: "With a picture")
+    feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "broken-chip.png")
+    shot = feedback.screenshots.sole
+    sign_in_as(@admin)
+
+    get "/api/admin/feedbacks/#{feedback.id}/screenshots/#{shot.id}"
+    assert_response :redirect
+    # The Disk service's signed route, on the host the caller came in on -- the
+    # same address the JSON serializer would have handed the admin screen.
+    assert_match %r{\Ahttp://www\.example\.com/rails/active_storage/disk/}, response.location
+
+    follow_redirect!
+    assert_response :success
+    assert_equal file_fixture("screenshot.png").binread, response.body.b
+  end
+
+  # An attachment id paired with a feedback it does not belong to is a 404, not
+  # someone else's picture: the lookup is scoped to the addressed feedback's own
+  # attachments rather than to the attachments table.
+  test "a screenshot link answers 404 for a missing feedback or a picture that is not its own" do
+    mine = Feedback.create!(user: @reporter, message: "Mine")
+    mine.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "mine.png")
+    other = Feedback.create!(user: @other, message: "Someone else's")
+    sign_in_as(@admin)
+
+    get "/api/admin/feedbacks/#{other.id}/screenshots/#{mine.screenshots.sole.id}"
+    assert_response :not_found
+
+    get "/api/admin/feedbacks/#{mine.id}/screenshots/0"
+    assert_response :not_found
+
+    get "/api/admin/feedbacks/0/screenshots/#{mine.screenshots.sole.id}"
+    assert_response :not_found
   end
 
   test "export narrows to the statuses asked for, and to nothing else" do
@@ -340,6 +413,32 @@ class Api::Admin::FeedbacksTest < ActionDispatch::IntegrationTest
       assert_response :success
       assert_equal "text/csv", response.media_type
       assert_equal [feedback.id.to_s], CSV.parse(response.body).drop(1).map(&:first)
+    end
+  end
+
+  # The export the token can fetch prints screenshot links; the same token has
+  # to be able to follow them, or the file is half an export.
+  test "a valid bearer token follows the export's screenshot links without a session" do
+    feedback = Feedback.create!(user: @reporter, message: "Fetched by a script, with a picture")
+    feedback.screenshots.attach(io: file_fixture("screenshot.png").open, filename: "shot.png")
+
+    with_admin_api_token("s3cret") do
+      get "/api/admin/feedbacks/export", headers: { "Authorization" => "Bearer s3cret" }
+      assert_response :success
+      link = CSV.parse(response.body, headers: true).first["screenshots"]
+      assert_equal "http://www.example.com/api/admin/feedbacks/#{feedback.id}/screenshots/#{feedback.screenshots.sole.id}",
+                   link
+
+      get link, headers: { "Authorization" => "Bearer s3cret" }
+      assert_response :redirect
+      follow_redirect!
+      assert_response :success
+
+      get link, headers: { "Authorization" => "Bearer wrong" }
+      assert_response :unauthorized
+
+      get link
+      assert_response :unauthorized
     end
   end
 

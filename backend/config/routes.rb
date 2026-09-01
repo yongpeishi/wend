@@ -33,6 +33,9 @@ Rails.application.routes.draw do
     namespace :admin do
       resources :feedbacks, only: [:index, :update, :destroy] do
         collection { get :export }
+        # One screenshot, by its attachment id, behind the admin doors: the
+        # durable address the CSV export prints. See Admin::ScreenshotsController.
+        resources :screenshots, only: [:show]
       end
     end
 
