@@ -54,14 +54,25 @@ module Api
       #
       # CSV via the stdlib; nils come out as empty cells, which is what a
       # spreadsheet wants.
+      #
+      # `screenshots` is one cell per row holding every picture's link, space
+      # separated -- a URL cannot contain a bare space, so the cell splits back
+      # into links unambiguously, and a row with no pictures is an empty cell
+      # like any other nil. The links are this app's own screenshot route, not
+      # the bucket's signed URLs: the file outlives those by days, and a link
+      # that lasts that long has to be checked at the door rather than trusted
+      # on sight. See Admin::ScreenshotsController. Absolute, on the host the
+      # caller reached us through, since a file has no page to resolve a path
+      # against.
       def export
         authorize [:admin, Feedback], :export?
 
         csv = CSV.generate do |rows|
-          rows << %w[id created_at user_name user_email status message url element_selector element_classes user_agent]
+          rows << %w[id created_at user_name user_email status message url element_selector element_classes user_agent screenshots]
           narrowed_feedbacks.each do |f|
             rows << [f.id, f.created_at.iso8601, f.user.name, f.user.email, f.status,
-                     f.message, f.url, f.element_selector, f.element_classes, f.user_agent]
+                     f.message, f.url, f.element_selector, f.element_classes, f.user_agent,
+                     screenshot_links(f)]
           end
         end
 
@@ -69,6 +80,13 @@ module Api
       end
 
       private
+
+      # nil rather than "" for a row with no pictures, so the CSV writes the
+      # same empty cell it writes for a missing selector or user agent.
+      def screenshot_links(feedback)
+        links = feedback.screenshots.map { |shot| api_admin_feedback_screenshot_url(feedback, shot) }
+        links.join(" ").presence
+      end
 
       def all_feedbacks
         policy_scope([:admin, Feedback]).newest_first.includes(:user, screenshots_attachments: :blob)

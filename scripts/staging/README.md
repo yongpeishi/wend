@@ -62,6 +62,17 @@ It authenticates with the `ADMIN_API_TOKEN` line in `backend/env/staging.env` â€
 gitignored file [Secrets](#secrets) describes, so the token you call with is the one the
 Pi checks. If the token isn't set, or the Pi doesn't answer, the script says what to fix.
 
+The CSV export (`/api/admin/feedbacks/export`, the admin screen's **Export CSV** button)
+carries a `screenshots` column: one link per picture, space separated. Those links are the
+app's own `/api/admin/feedbacks/:id/screenshots/:id` route, not the bucket's signed URLs â€”
+a saved file has to still work days later, so the link is checked at the door and only then
+redirects to a fresh short-lived URL. A signed-in admin can click one from a spreadsheet;
+a script follows it with the same token, letting curl chase the redirect:
+
+```sh
+curl -fsSL -H "Authorization: Bearer $token" "$link" -o screenshot.png
+```
+
 ## Working on the Pi itself
 
 `ssh <you>@logpi.local`, then `cd /srv/wend/app`. Ruby and node are on your `PATH`, and

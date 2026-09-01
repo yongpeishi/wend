@@ -14,10 +14,14 @@ module Api
     class BaseController < Api::BaseController
       # The token stands in for an admin on exactly these actions and no others --
       # an allowlist rather than "any GET", so a new route starts outside it
-      # until someone decides otherwise. Both are reads; the token never writes.
+      # until someone decides otherwise. All three are reads; the token never
+      # writes. The screenshot route is here because the export the token can
+      # already fetch prints its links, and a file whose links the same caller
+      # cannot follow is half an export.
       TOKEN_ACTIONS = %w[
         Api::Admin::FeedbacksController#index
         Api::Admin::FeedbacksController#export
+        Api::Admin::ScreenshotsController#show
       ].freeze
 
       # What the token authenticates as: not a User -- there is no row behind

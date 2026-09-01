@@ -1124,8 +1124,16 @@ export const handlers = [
 
     // Trivial by design — the real CSV is the backend's (Ruby stdlib CSV); the
     // mock only has to be a downloadable file with the contract's header row.
+    // `screenshots` is the backend's shape too: one cell, the admin screenshot
+    // route per picture, space separated, empty when there are none. The mock
+    // does not serve that route — the file is what is being checked, not the
+    // links in it.
     const quote = (value: string | number | null) =>
       value === null ? '' : `"${String(value).replaceAll('"', '""')}"`;
+    const screenshotLinks = (f: (typeof db.feedbacks)[number]) =>
+      f.screenshots
+        .map((s) => `${location.origin}/api/admin/feedbacks/${f.id}/screenshots/${s.id}`)
+        .join(' ') || null;
     const exported =
       wanted.length > 0
         ? feedbacksNewestFirst().filter((f) => wanted.includes(f.status))
@@ -1143,12 +1151,13 @@ export const handlers = [
         f.element_selector,
         f.element_classes,
         f.user_agent,
+        screenshotLinks(f),
       ]
         .map(quote)
         .join(',');
     });
     const csv = [
-      'id,created_at,user_name,user_email,status,message,url,element_selector,element_classes,user_agent',
+      'id,created_at,user_name,user_email,status,message,url,element_selector,element_classes,user_agent,screenshots',
       ...rows,
     ].join('\n');
     const today = new Date().toISOString().slice(0, 10);
