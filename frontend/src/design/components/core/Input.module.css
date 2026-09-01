@@ -1,4 +1,5 @@
 .wrapper {
+  position: relative; /* anchors .datePlaceholder */
   background: var(--surface-card);
   border: var(--border-width) solid var(--border-strong);
   border-radius: var(--radius-card);
@@ -58,6 +59,41 @@
 .emptyDate::-webkit-datetime-edit {
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* Muted-italic alone still leaves the ghost's TEXT to the browser — Chrome
+   shows a dd/mm/yyyy mask but Safari shows today's actual date, which reads
+   date-like even when muted. So while the field is empty AND unfocused the
+   ghost goes fully transparent and Input.tsx's literal `dd/mm/yyyy` overlay
+   shows instead. Transparency must land both on the input (Safari's ghost
+   follows the input's `color` — the original bug) and on
+   ::-webkit-datetime-edit (where Chrome paints the segments). While focused
+   these rules stop matching, the overlay hides (below), and the muted-italic
+   ghost above returns so segment typing stays visible. */
+.emptyDate:not(:focus),
+.emptyDate:not(:focus)::-webkit-datetime-edit {
+  color: transparent;
+}
+
+/* The stand-in placeholder. Absolutely positioned over the wrapper, with the
+   wrapper's own horizontal padding so its text starts where the input's text
+   does (the input itself has no padding beyond the UA's ~1px). Never
+   interactive: clicks fall through to the input underneath. */
+.datePlaceholder {
+  position: absolute;
+  inset: 0;
+  padding: 0 16px; /* mirrors .wrapper's horizontal padding */
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-body-size);
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.emptyDate:focus ~ .datePlaceholder {
+  display: none;
 }
 
 .input:disabled {

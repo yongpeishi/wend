@@ -39,6 +39,18 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   return (
     <div className={wrapperClasses}>
       <input ref={ref} className={inputClasses} aria-invalid={error || undefined} {...rest} />
+      {/* The ghost's TEXT is browser chrome — Chrome paints a dd/mm/yyyy mask
+          but Safari paints today's actual date, which still reads like a value.
+          While the field is empty and unfocused the CSS hides the native ghost
+          and this literal overlay stands in, so every browser shows the same
+          placeholder. On focus the overlay hides (`.emptyDate:focus ~`) and the
+          muted-italic native ghost returns, keeping typing visible. Sighted-only
+          by design: aria-hidden, and pointer-events pass through to the input. */}
+      {emptyDate && (
+        <span className={styles.datePlaceholder} aria-hidden="true">
+          dd/mm/yyyy
+        </span>
+      )}
       {hint && <span className={styles.hint}>{hint}</span>}
     </div>
   );
