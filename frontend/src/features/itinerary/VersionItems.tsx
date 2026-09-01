@@ -1,8 +1,10 @@
+import { Fragment } from 'react';
 import type { ItineraryItem } from '../../api/types';
 import { BundleBand } from './BundleBand';
 import { GapRow } from './GapRow';
 import { ItemLine } from './ItemLine';
-import { withGaps } from './itineraryModel';
+import { suggestSlots, withGaps } from './itineraryModel';
+import { TimePrompt } from './TimePrompt';
 import styles from './VersionItems.module.css';
 
 export interface VersionItemsProps {
@@ -13,6 +15,16 @@ export interface VersionItemsProps {
   onRemoveItem?: (itemId: number) => void;
   /** Archived versions are shown, not edited. */
   readOnly?: boolean;
+  /**
+   * The item that just landed untimed, still waiting to be asked "when?". Its
+   * row gets the TimePrompt opened under it, in place. Null or absent, no row
+   * is being asked anything.
+   */
+  promptItemId?: number | null;
+  /** e.g. "Wed 15" — the prompt's caption names the day it is asking about. */
+  promptDayName?: string;
+  /** Closes the prompt. Its absence keeps the prompt from rendering at all. */
+  onPromptDismiss?: () => void;
 }
 
 /**
@@ -27,6 +39,9 @@ export function VersionItems({
   onEditTime,
   onRemoveItem,
   readOnly = false,
+  promptItemId = null,
+  promptDayName,
+  onPromptDismiss,
 }: VersionItemsProps) {
   return (
     <div className={styles.rows}>
@@ -43,27 +58,55 @@ export function VersionItems({
         }
 
         const { item } = row;
-        if (item.entry?.kind === 'bundle') {
-          return (
+        const line =
+          item.entry?.kind === 'bundle' ? (
             <BundleBand
-              key={item.id}
+              item={item}
+              readOnly={readOnly}
+              onEditTime={onEditTime && ((start, end) => onEditTime(item.id, start, end))}
+              onRemove={onRemoveItem && (() => onRemoveItem(item.id))}
+            />
+          ) : (
+            <ItemLine
               item={item}
               readOnly={readOnly}
               onEditTime={onEditTime && ((start, end) => onEditTime(item.id, start, end))}
               onRemove={onRemoveItem && (() => onRemoveItem(item.id))}
             />
           );
+
+        // The row that just landed, still being asked "when?". The prompt opens
+        // directly under it — band or line alike — and the wrap rings the pair
+        // so the question is visibly about this row and no other. A viewer is
+        // never asked: they cannot have placed anything, and without an
+        // onEditTime there would be nothing to save an answer with.
+        if (item.id === promptItemId && !readOnly && onEditTime && onPromptDismiss) {
+          return (
+            <div key={item.id} className={styles.promptWrap}>
+              {line}
+              <TimePrompt
+                title={item.entry?.title ?? 'Something kept'}
+                dayName={promptDayName ?? ''}
+                // The landed row is excluded from its own suggestions: it is
+                // untimed, but its optimistic twin from a refetch race must
+                // never be an edge the prompt suggests around.
+                suggestions={suggestSlots(
+                  items.filter((other) => other.id !== promptItemId),
+                  item.entry?.duration_minutes ?? null,
+                )}
+                onSave={(start, end) => {
+                  // A pair of nulls is "leave it loose" — the item is already
+                  // untimed, so there is nothing to write, only a prompt to close.
+                  if (start !== null || end !== null) onEditTime(item.id, start, end);
+                  onPromptDismiss();
+                }}
+                onDismiss={onPromptDismiss}
+              />
+            </div>
+          );
         }
 
-        return (
-          <ItemLine
-            key={item.id}
-            item={item}
-            readOnly={readOnly}
-            onEditTime={onEditTime && ((start, end) => onEditTime(item.id, start, end))}
-            onRemove={onRemoveItem && (() => onRemoveItem(item.id))}
-          />
-        );
+        return <Fragment key={item.id}>{line}</Fragment>;
       })}
     </div>
   );

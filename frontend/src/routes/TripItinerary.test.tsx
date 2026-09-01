@@ -504,7 +504,7 @@ describe('TripItinerary — the day list', () => {
 });
 
 describe('TripItinerary — placing what is waiting', () => {
-  it('places a kept idea on a day from the rail, with no dragging at all', async () => {
+  it('places a kept idea on a day from the rail, untimed, and asks when', async () => {
     const user = userEvent.setup();
     renderItinerary();
     expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
@@ -513,14 +513,94 @@ describe('TripItinerary — placing what is waiting', () => {
     await user.click(screen.getByRole('button', { name: 'Add to Day 4 · Thu 5' }));
 
     // The day had no row on the server at all: the API makes it, and its first
-    // version, on the way in. It opens so the placement is visible.
-    expect(
-      await screen.findByRole('button', { name: 'Change the hours for Kiyamachi, now 09:00–10:30' }),
-    ).toBeInTheDocument();
+    // version, on the way in. It opens so the placement is visible. No hour is
+    // invented for it any more: the item lands loose, and the prompt under its
+    // row is where the hours get decided — or declined.
+    expect(await screen.findByRole('button', { name: 'Set the hours for Kiyamachi' })).toBeInTheDocument();
+    expect(screen.getByText('On the day. When on Thu 5?')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { name: 'Day 4 · Thu 5' })).toBeInTheDocument();
     // Placed somewhere, so it stops waiting — but nothing was consumed: the
     // other two are still on the rail.
     expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Option A of 034-itinerary-time: placing stops inventing a time. Everything
+ * that lands on a day without hours of its own — the picker, the rail, a drag
+ * — arrives untimed, and the "when?" prompt opens in place under the landed
+ * row. The one path that keeps its hours is a gap's "Fill it", whose hours
+ * were chosen before anything was picked.
+ */
+describe('TripItinerary — asked on arrival', () => {
+  /** Opens Day 1 and places Kiyamachi on it from the picker's shelf. */
+  async function placeFromThePicker(user: ReturnType<typeof userEvent.setup>) {
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await openDay(user, 'Day 1 · Mon 2');
+    await user.click(screen.getByRole('button', { name: '+ add to this day' }));
+    await user.click(screen.getByRole('button', { name: /^Kiyamachi/ }));
+    // Untimed on the day, with the prompt open under its row.
+    await screen.findByRole('button', { name: 'Set the hours for Kiyamachi' });
+    return screen.findByText('On the day. When on Mon 2?');
+  }
+
+  it('lands a pick from the shelf untimed, and asks when in place', async () => {
+    const user = userEvent.setup();
+    await placeFromThePicker(user);
+
+    expect(screen.getByRole('button', { name: 'Set the hours for Kiyamachi' })).toBeInTheDocument();
+    expect(screen.getByText('On the day. When on Mon 2?')).toBeInTheDocument();
+    // The prompt's fields are the placed thing's own, so two open questions
+    // could never read as one.
+    expect(screen.getByLabelText('Starts for Kiyamachi')).toBeInTheDocument();
+  });
+
+  it('writes the hours the prompt saves onto the item, and stands down', async () => {
+    const user = userEvent.setup();
+    await placeFromThePicker(user);
+
+    await user.clear(screen.getByLabelText('Starts for Kiyamachi'));
+    await user.type(screen.getByLabelText('Starts for Kiyamachi'), '19:00');
+    await user.clear(screen.getByLabelText('Ends for Kiyamachi'));
+    await user.type(screen.getByLabelText('Ends for Kiyamachi'), '20:00');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    // PATCHed through the real MSW API: the row comes back timed.
+    expect(
+      await screen.findByRole('button', { name: 'Change the hours for Kiyamachi, now 19:00–20:00' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/On the day\. When on/)).not.toBeInTheDocument();
+  });
+
+  it('leaves the item loose on the day when the prompt is waved away', async () => {
+    const user = userEvent.setup();
+    await placeFromThePicker(user);
+
+    await user.click(screen.getByRole('button', { name: 'Leave it loose' }));
+
+    // No write happened — the item was already untimed — so the row stays
+    // exactly as it landed, on the day, with its hours still unset.
+    expect(screen.queryByText(/On the day\. When on/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Set the hours for Kiyamachi' })).toBeInTheDocument();
+    expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+  });
+
+  it('keeps a gap’s "Fill it" timed over the gap’s own hours, with nothing to ask', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await openDay(user, 'Day 1 · Mon 2');
+
+    await user.click(screen.getByRole('button', { name: 'Fill it' }));
+    await user.click(screen.getByRole('button', { name: /^Kiyamachi/ }));
+
+    // The hole's hours were chosen before anything was picked, so the item
+    // lands timed and the "when?" question was answered before it was asked.
+    expect(
+      await screen.findByRole('button', { name: 'Change the hours for Kiyamachi, now 09:40–11:00' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/On the day\. When on/)).not.toBeInTheDocument();
   });
 });
 
@@ -680,9 +760,10 @@ describe('TripItinerary — dragging onto a split day', () => {
       'Day 4 · Thu 5',
     );
 
-    expect(
-      await screen.findByRole('button', { name: 'Change the hours for Kiyamachi, now 09:00–10:30' }),
-    ).toBeInTheDocument();
+    // Landed untimed — a drop is one more way onto the day, so it too is asked
+    // rather than handed an invented hour — and the prompt opened on the row.
+    expect(await screen.findByRole('button', { name: 'Set the hours for Kiyamachi' })).toBeInTheDocument();
+    expect(screen.getByText('On the day. When on Thu 5?')).toBeInTheDocument();
     expect(screen.queryByText("That didn't save. It's still here — try again.")).not.toBeInTheDocument();
     expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
   });

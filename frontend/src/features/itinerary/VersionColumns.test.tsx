@@ -71,6 +71,9 @@ function renderColumns(props: Partial<Parameters<typeof VersionColumns>[0]> = {}
         onRemoveItem={props.onRemoveItem}
         onAdd={props.onAdd}
         readOnly={props.readOnly}
+        promptItemId={props.promptItemId}
+        promptDayName={props.promptDayName}
+        onPromptDismiss={props.onPromptDismiss}
       />
     </DndContext>,
   );
@@ -174,6 +177,27 @@ describe('VersionColumns', () => {
     expect(screen.queryByRole('button', { name: 'Fill it' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /off this day$/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /the hours for/ })).not.toBeInTheDocument();
+  });
+
+  // 034-itinerary-time, Option A: a thing just placed lands untimed and the
+  // "when?" prompt opens under its row. The columns hand the prompt props
+  // through verbatim — item ids are unique across versions, so only the
+  // column actually holding the item asks the question.
+  it('opens the "when?" prompt in the column that holds the asked-about item', () => {
+    renderColumns({
+      promptItemId: 201,
+      promptDayName: 'Wed 15',
+      onPromptDismiss: vi.fn(),
+      onEditTime: vi.fn(),
+    });
+
+    const columnB = document.querySelector(`[data-drop-id="${versionDroppableId(DAY, 2)}"]`) as HTMLElement;
+    expect(within(columnB).getByText('On the day. When on Wed 15?')).toBeInTheDocument();
+    expect(within(columnB).getByLabelText('Starts for Kinkaku-ji')).toBeInTheDocument();
+
+    // And in no other column: one question, asked where its row is.
+    const columnA = document.querySelector(`[data-drop-id="${versionDroppableId(DAY, 1)}"]`) as HTMLElement;
+    expect(within(columnA).queryByText(/On the day\. When on/)).not.toBeInTheDocument();
   });
 
   // Feedback 014#2: with one drop target per day, a split day could only ever

@@ -14,3 +14,17 @@
   container-type: inline-size;
   container-name: itinerary-rows;
 }
+
+/* The row that just landed and the "when?" prompt asked under it, ringed
+   together in the apricot focus ring. Apricot is "you are here, deciding now"
+   — and a thing placed with no hours yet is exactly that moment, so the pair
+   wears the same ring the keyboard's focus does. An outline rather than a
+   border so nothing inside shifts by a pixel when the prompt closes. */
+.promptWrap {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: 3px;
+  border-radius: var(--radius-card);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
