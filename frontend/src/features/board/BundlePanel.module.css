@@ -96,11 +96,15 @@
    same line as "Add an idea…" across the gutter. One number, borrowed rather
    than derived — if the capture line ever changes height, this row changes
    with it or the two visibly drift, which is the honest failure mode. */
-.heading {
-  margin: 0;
+.headingRow {
   min-height: 56px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+}
+
+.heading {
+  margin: 0;
   font-family: var(--font-sans);
   font-weight: var(--weight-bold);
   font-size: var(--text-label-size);
@@ -193,7 +197,116 @@
   /* Stacked, there is no capture line beside the rail to sit level with — the
      bar is a full column away above — so the heading hands back its 56px slot
      and the panel's own top padding (restored just above) does the spacing. */
-  .heading {
+  .headingRow {
     min-height: 0;
   }
+
+  /* Stacked, the rail costs no width, so there is nothing for collapsing to
+     buy: the panel always renders whole and both fold controls go away —
+     every .panelCollapsed hiding rule is scoped to the wide range below, so
+     the class changes nothing at this width. */
+  .toggle,
+  .rail {
+    display: none;
+  }
+}
+
+/* ---- Collapsing (desktop only) ------------------------------------------ */
+
+/* Fold/unfold, the house icon-button recipe: square tap target, pill radius,
+   no ground of its own, opacity-only hover — the icon never changes colour,
+   per the interaction rules every icon button on the board follows. */
+.toggle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.toggle:hover {
+  opacity: 0.7;
+}
+
+.toggle:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The folded sliver's content. It only exists in the DOM while collapsed, is
+   laid out by the wide-range block below, and the stacked block above hides
+   it outright — narrow windows always get the whole panel, whatever classes
+   the JS applies. (No base display rule on purpose: jsdom applies base rules
+   but no media queries, and hiding the expand control from the accessibility
+   tree there would blind every test to it.)
+
+   The region's name, run down the sliver so 56px of width still says what
+   the column is. Same token pairing as .heading — it IS that label, turned.
+   Presentational (aria-hidden): the real <h2> stays in the DOM and keeps the
+   landmark named. */
+.railLabel {
+  writing-mode: vertical-rl;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-label-size);
+  letter-spacing: var(--text-label-tracking);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* The wide layout is where collapsing exists at all. Scoping the hiding rules
+   to this range (the complement of the stacked block above) is what makes the
+   stacked rail immune to a collapsed flag persisted on desktop: below 901px
+   these rules simply are not there. */
+@media (min-width: 901px) {
+  .panelCollapsed {
+    /* The 24px side padding would leave a 48px button 8px of room in a 56px
+       track; the sliver centers its content instead. Everything else about
+       the rail contract — sticky, the hairline on the leading edge, the row's
+       floor height — stays exactly the expanded panel's. */
+    padding: 0 0 var(--space-6);
+    /* TripBoard sets --board-rail-height on the row (tokens.test.ts wants the
+       cross-file dependency owned): the fallback keeps the declaration valid
+       — a content-tall sliver — if this rail ever renders outside the board. */
+    height: var(--board-rail-height, auto);
+  }
+
+  /* One rule hides the whole expanded anatomy — heading row, intro, new-plan,
+     stack, set-aside — rather than five that would drift as children come and
+     go. The sliver is the only child spared. */
+  .panelCollapsed > :not(.rail) {
+    display: none;
+  }
+
+  .panelCollapsed .rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    /* (56px heading row − 48px button) / 2: the expand chevron sits centered
+       on the same capture line the expanded heading centers on, so folding
+       does not bounce the control vertically. */
+    padding-top: var(--space-1);
+  }
+}
+
+/* The toggle buttons' accessible names — same recipe as BundleCard's. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

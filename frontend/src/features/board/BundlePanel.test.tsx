@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../components/Toast';
 import { TripRoleProvider } from '../../auth/TripRoleContext';
 import { BundlePanel } from './BundlePanel';
+import styles from './BundlePanel.module.css';
 import type { Entry } from '../../api/types';
 
 function entry(id: number, title: string, kind: Entry['kind'] = 'idea', scheduled = false): Entry {
@@ -186,6 +187,71 @@ describe('BundlePanel — the plans-only rail', () => {
   it('invites a first plan rather than showing an empty column', () => {
     renderPanel({ bundles: [], members: new Map() });
     expect(screen.getByText(/an empty plan is a fine place to start/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * Folding the rail to its 56px sliver. The fold is desktop-only and CSS does
+ * the geometry, which jsdom cannot see — what the component owns and these
+ * tests pin down is the contract: the toggles exist only when the board hands
+ * down a way to toggle, the collapsed prop applies the class the stylesheet
+ * acts on, and the landmark keeps its name in both states because the <h2>
+ * never leaves the DOM.
+ */
+describe('BundlePanel — folding the rail', () => {
+  it('shows no fold control at all when the board gives it no toggle', () => {
+    renderPanel();
+    expect(screen.queryByRole('button', { name: 'Collapse plans' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Expand plans' })).not.toBeInTheDocument();
+  });
+
+  it('offers "Collapse plans" on the heading row, and clicking it calls back', async () => {
+    const user = userEvent.setup();
+    const onToggleCollapsed = vi.fn();
+    renderPanel({ onToggleCollapsed });
+
+    const collapse = screen.getByRole('button', { name: 'Collapse plans' });
+    expect(collapse).toHaveAttribute('aria-expanded', 'true');
+    // The expanded rail carries no expand control waiting in the wings.
+    expect(screen.queryByRole('button', { name: 'Expand plans' })).not.toBeInTheDocument();
+
+    await user.click(collapse);
+    expect(onToggleCollapsed).toHaveBeenCalledTimes(1);
+  });
+
+  it('collapsed: wears the folded class and swaps to "Expand plans"', async () => {
+    const user = userEvent.setup();
+    const onToggleCollapsed = vi.fn();
+    renderPanel({ collapsed: true, onToggleCollapsed });
+
+    expect(screen.getByRole('complementary', { name: 'Plans' })).toHaveClass(styles.panelCollapsed);
+
+    const expand = screen.getByRole('button', { name: 'Expand plans' });
+    expect(expand).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: 'Collapse plans' })).not.toBeInTheDocument();
+
+    await user.click(expand);
+    expect(onToggleCollapsed).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the whole panel in the DOM while collapsed — the stacked layout depends on it', () => {
+    renderPanel({ collapsed: true, onToggleCollapsed: () => {} });
+
+    // Below the one-column breakpoint the fold is inert and the panel renders
+    // whole; the hiding is media-scoped CSS, so everything must still be here.
+    expect(screen.getByRole('complementary', { name: 'Plans' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Plans' })).toBeInTheDocument();
+    expect(screen.getByText(/A plan groups the ideas that go together/)).toBeInTheDocument();
+    expect(screen.getByText(BUNDLE.title)).toBeInTheDocument();
+  });
+
+  it('expanded with a toggle, the rail reads exactly as it always did', () => {
+    renderPanel({ onToggleCollapsed: () => {} });
+
+    const rail = screen.getByRole('complementary', { name: 'Plans' });
+    expect(rail).not.toHaveClass(styles.panelCollapsed);
+    expect(screen.getByRole('heading', { name: 'Plans' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '+ New plan' })).toBeInTheDocument();
   });
 });
 
