@@ -1,6 +1,8 @@
 /* The dropped-pin confirmation card, floated over the map by the parent. Card
-   tone, 1.5px border, card radius — no shadow. */
+   tone, 1.5px border, card radius — no shadow. Relative so the shared
+   CloseButton can sit in its top-right corner. */
 .card {
+  position: relative;
   box-sizing: border-box;
   width: 280px;
   max-width: 100%;
@@ -14,9 +16,12 @@
 }
 
 /* The sanctioned 12px: uppercase, tracked — same pairing as every section
-   label in the product. */
+   label in the product. The right padding keeps the heading clear of the X:
+   with the card's 16px padding the text stops 48px from the edge, past the
+   X's 32px box (inset 8px) and its 48px coarse-pointer box alike. */
 .heading {
   margin: 0;
+  padding-right: var(--space-8);
   font-family: var(--font-sans);
   font-weight: var(--weight-bold);
   font-size: var(--text-label-size);

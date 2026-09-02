@@ -1,3 +1,4 @@
+import { CloseButton } from '../../components/CloseButton';
 import { Button } from '../../design/components/core/Button';
 import { Input } from '../../design/components/core/Input';
 import styles from './DroppedPinCard.module.css';
@@ -38,6 +39,11 @@ export function DroppedPinCard({
 }: DroppedPinCardProps) {
   return (
     <div className={styles.card}>
+      {/* The same X every panel wears, so the way out is in the same place
+          everywhere. It is the card's existing dismiss and nothing more — the
+          same exit Escape and the Cancel button take, so a pin stood down by
+          any of the three ends up in the same state. */}
+      <CloseButton onClick={onCancel} />
       <h3 className={styles.heading}>{heading}</h3>
 
       {nameEditable ? (
