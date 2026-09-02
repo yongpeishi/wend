@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../../design/components/core/Button';
 import { Field } from '../../components/Field';
+import { CloseButton } from '../../components/CloseButton';
 import { formatMinutes } from '../../api/schedule';
 import styles from './TimeEditor.module.css';
 
@@ -145,6 +146,10 @@ export function TimeEditor({ startsAtMinutes, endsAtMinutes, onSave, onCancel, t
         }
       }}
     >
+      {/* The X is Escape made visible — the same way out "Leave it" offers,
+          and nothing more. Every panel carries one in the same corner, so a
+          pointer finds the exit here without reading the buttons. */}
+      <CloseButton onClick={onCancel} />
       <div className={styles.fields}>
         <Field
           label={`Starts${suffix}`}
