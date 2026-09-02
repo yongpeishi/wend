@@ -5,11 +5,39 @@ import { chipIcon, clusterIcon, dotIcon, faintIcon, labelIcon, pinIcon } from '.
 // The icons are HTML strings handed to Leaflet, so the only thing worth
 // asserting is the contract that string carries: which classes the stylesheet
 // will match on, and that nothing user-typed reaches the markup unescaped.
-// (Colours are deliberately absent from these files — see MapView.module.css.)
+// (Colour values are deliberately absent from these files — pins name design
+// tokens via var() and nothing more; the values live in MapView.module.css.)
 
 function html(icon: DivIcon): string {
   return String(icon.options.html);
 }
+
+describe('pinIcon', () => {
+  it('rings the potential pin in leaf so its pale fill has a legible edge', () => {
+    const markup = html(pinIcon('potential', false, 'Fushimi Inari'));
+    expect(markup).toContain('fill="var(--stop-waiting)"');
+    expect(markup).toContain('stroke="var(--stop-decided)"');
+    expect(markup).toContain('stroke-width="2"');
+  });
+
+  it('keeps the scheduled pin solid leaf with the card-tone halo', () => {
+    const markup = html(pinIcon('scheduled', false, 'Fushimi Inari'));
+    expect(markup).toContain('fill="var(--stop-decided)"');
+    expect(markup).toContain('stroke="var(--surface-card)"');
+  });
+
+  it('keeps the destination pin solid with the card-tone halo', () => {
+    const markup = html(pinIcon('destination', false, 'Fushimi Inari'));
+    expect(markup).toContain('fill="var(--stop-destination)"');
+    expect(markup).toContain('stroke="var(--surface-card)"');
+  });
+
+  it('draws the apricot selection ring only around the selected pin', () => {
+    expect(html(pinIcon('potential', true, 'A'))).toContain('stroke="var(--stop-open)"');
+    expect(html(pinIcon('potential', false, 'A'))).not.toContain('stroke="var(--stop-open)"');
+    expect(html(pinIcon('scheduled', false, 'A'))).not.toContain('stroke="var(--stop-open)"');
+  });
+});
 
 describe('labelIcon', () => {
   it('shows the entry title as the pill text', () => {
@@ -126,7 +154,7 @@ describe('faintIcon', () => {
     const markup = html(faintIcon('Fushimi Inari'));
     expect(markup).toContain('wend-pin-dot');
     expect(markup).toContain('wend-pin-faint');
-    expect(markup).toContain('opacity: 0.55');
+    expect(markup).toContain('opacity: 0.6');
   });
 
   it('names the place for a screen reader without drawing the name', () => {
