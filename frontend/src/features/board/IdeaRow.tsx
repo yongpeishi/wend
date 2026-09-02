@@ -321,6 +321,11 @@ export function IdeaRow({
     // that came to fix its name — `category` rides the draft through to the
     // PATCH, which has always taken null.
     //
+    // The pin rides the same way. The composer has already decided what the
+    // draft's `lat`/`lng` mean — a picked suggestion's point, the idea's own
+    // when the address was merely retyped, nulls when it was emptied — so the
+    // row writes them as given rather than second-guessing an address change.
+    //
     // The entry write first, then the link diff in parallel — the links need
     // nothing from the PATCH, but a failed title save with moved parents would
     // be half an edit. Any failure lands on the house sentence and STAYS in
@@ -332,6 +337,8 @@ export function IdeaRow({
             title: draft.title,
             description: draft.description || null,
             address: draft.address || null,
+            lat: draft.lat,
+            lng: draft.lng,
             category: draft.category,
           },
         });
@@ -356,6 +363,8 @@ export function IdeaRow({
         initialTitle={entry.title}
         initialDescription={entry.description ?? ''}
         initialAddress={entry.address ?? ''}
+        initialLat={entry.lat}
+        initialLng={entry.lng}
         initialCategory={entry.category ?? null}
         initialParentIds={initialParentIds}
         parentChoices={parentChoices}

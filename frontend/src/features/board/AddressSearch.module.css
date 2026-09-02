@@ -1,0 +1,102 @@
+/*
+ * The wrapper is a column, not a positioning context for a floating dropdown:
+ * the suggestion list sits in flow under the input and the composer card
+ * grows to hold it. `position: relative` is kept so a caller that ever does
+ * need to float something (a badge, a clear button) has an anchor, but nothing
+ * here is absolutely positioned — an overlay inside a card inside a scrolling
+ * list is exactly the clipping trouble in-flow avoids.
+ */
+.field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/*
+ * The list wears the composer's picker vocabulary: paper on card, hairline,
+ * card radius, no shadow — a pocket that opened under the field, not another
+ * card arriving in the column. Own rules rather than an import of the
+ * composer's stylesheet, so this component can be dropped anywhere the
+ * composer is not.
+ */
+.list {
+  list-style: none;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  background: var(--surface-page);
+  border: var(--border-width) solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  padding: var(--space-2);
+}
+
+/* Full-width rows, left-aligned, transparent: each carries a name and a
+   what-it-is line, and the tone of the list behind them is the frame. They
+   are <li role="option">, not buttons — focus never leaves the input in a
+   combobox, so they need no focus style of their own; the highlighted state
+   below is the keyboard's cursor. */
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  background: transparent;
+  /* A transparent hairline of the same weight the highlight will colour in,
+     so the cursor landing on a row never nudges its neighbours. */
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-card);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.option:hover {
+  opacity: 0.7;
+}
+
+.option:active {
+  opacity: 0.5;
+}
+
+/* The row the arrow keys are on. A tone step back UP to card — one shade off
+   the paper list — with the strong hairline drawn in, rather than a fill in
+   the acting colour, because the highlight is a cursor, not a choice made. */
+.optionOn {
+  background: var(--surface-card);
+  border-color: var(--border-strong);
+}
+
+.optionName {
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-strong);
+}
+
+/* The one line allowed under the 15px floor: the provider's kind
+   ('attraction', 'restaurant'), read only to tell two same-named places
+   apart, and set at the name's size it would make every row look like two. */
+.optionMeta {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Muted, not red: the typed address is still the address. */
+.empty {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+/* Focus ring for anything inside the field that can take focus — the input
+   when the caller does not hand down its own class. Same tokens as every ring
+   in the product. */
+.field :focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
