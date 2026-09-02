@@ -6,6 +6,7 @@ import { ToastProvider } from '../../components/Toast';
 import { api } from '../../api';
 import { allocateId, db } from '../../mocks/db';
 import { IdeaTodos } from './IdeaTodos';
+import styles from './IdeaTodos.module.css';
 
 const ENTRY_ID = 4001;
 const OTHER_ENTRY_ID = 4002;
@@ -173,6 +174,85 @@ describe('IdeaTodos — adding one', () => {
     ).toBeInTheDocument();
     expect(screen.getByLabelText(ADD_LABEL)).toHaveValue('Reserve the ryokan');
     post.mockRestore();
+  });
+});
+
+/**
+ * Feedback #40: a long to-do title must wrap, not truncate or push the row wide.
+ *
+ * What jsdom can and cannot prove here. Vitest processes the module
+ * (`css: true`, vitest.config.ts) and jsdom's getComputedStyle copies the
+ * declared properties of matching stylesheet rules onto the element, so the
+ * checks below see the real rules: `overflow-wrap: anywhere` and `min-width: 0`
+ * on the title, `align-items: flex-start` on the line, and no `nowrap` /
+ * `ellipsis` / `overflow: hidden` on either. What jsdom does not do is layout —
+ * nothing here measures that the text actually breaks across lines or that the
+ * row stays inside the card; that is a browser's to show. The class check pins
+ * the span to the rule that carries the wrap, so a swapped class is caught even
+ * if the declarations move.
+ */
+describe('IdeaTodos — long titles', () => {
+  const PROSE =
+    'Book the 7:40 shinkansen from Tokyo to Kyoto for all four of us, reserved seats on the left side for the Fuji view, and print the tickets';
+  const URL =
+    'https://reservations.example-rail.co.jp/booking/confirm?journey=tokyo-kyoto&date=2026-10-12&depart=0740&seats=4&side=left&class=reserved&ref=WEND';
+
+  /** The `<span>` that names the checkbox — the element the wrap rule sits on. */
+  function titleAndLine(title: string) {
+    const box = screen.getByRole('checkbox', { name: title });
+    const span = screen.getByText(title);
+    expect(span.tagName).toBe('SPAN');
+    expect(box.getAttribute('aria-labelledby')).toBe(span.id);
+    const li = span.closest('li');
+    expect(li).not.toBeNull();
+    return { span, li: li as HTMLLIElement };
+  }
+
+  /** No truncation styling on the element: not a nowrap, not an ellipsis, not clipped. */
+  function expectNoTruncation(el: HTMLElement) {
+    const computed = getComputedStyle(el);
+    expect(computed.whiteSpace).not.toBe('nowrap');
+    expect(computed.textOverflow).not.toBe('ellipsis');
+    expect(computed.overflow).not.toBe('hidden');
+  }
+
+  /** The declarations that make a wrap possible, on the elements that carry them. */
+  function expectWrapRules(span: HTMLElement, li: HTMLElement) {
+    expect(span).toHaveClass(styles.title);
+    const title = getComputedStyle(span);
+    expect(title.overflowWrap).toBe('anywhere');
+    // jsdom returns the declared text unnormalised ('0'), a browser says '0px'.
+    expect(title.minWidth).toMatch(/^0(px)?$/);
+    expect(getComputedStyle(li).alignItems).toBe('flex-start');
+  }
+
+  it('renders a ~120-character prose title in full as the checkbox label, with the wrap rules and no truncation styling', async () => {
+    expect(PROSE.length).toBeGreaterThanOrEqual(120);
+    db.todos.push({ id: allocateId(), title: PROSE, entry_id: ENTRY_ID, trip_id: null, done_at: null, due_on: null, position: 2 });
+    renderTodos();
+
+    const span = await screen.findByText(PROSE);
+    expect(span.textContent).toBe(PROSE);
+    const { li } = titleAndLine(PROSE);
+
+    expectWrapRules(span, li);
+    expectNoTruncation(span);
+    expectNoTruncation(li);
+  });
+
+  it('renders a 140-character unbroken URL in full as the checkbox label, with the wrap rules and no truncation styling', async () => {
+    expect(URL).not.toMatch(/\s/);
+    expect(URL.length).toBeGreaterThanOrEqual(140);
+    db.todos.push({ id: allocateId(), title: URL, entry_id: ENTRY_ID, trip_id: null, done_at: null, due_on: null, position: 2 });
+    renderTodos();
+
+    const span = await screen.findByText(URL);
+    expect(span.textContent).toBe(URL);
+    const { li } = titleAndLine(URL);
+
+    expectWrapRules(span, li);
+    expectNoTruncation(span);
+    expectNoTruncation(li);
   });
 });
 
