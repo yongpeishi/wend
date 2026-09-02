@@ -164,6 +164,7 @@
    The asymmetric padding leaves the extra left step for the dot and lets the
    32px icon buttons on the right set the chip's height themselves. */
 .member {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -173,12 +174,108 @@
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-/* The drop target while dragging another member over this row. The row has no
-   border of its own, so a solid ring here is unambiguous — it cannot double up
-   with an edge that is already apricot. */
-.dropTarget {
+/* The insertion indicator while a member is being reordered: a 2px apricot
+   line in the seam where the dragged row will land. It used to be an outline
+   on the row under the pointer, which said "you are over this row" and left
+   "above or below?" to the imagination — the whole point of the preview is
+   to answer that. The line is a pseudo-element on the neighbouring row, drawn
+   in the centre of the list's --space-2 gap: absolute, so the list does not
+   open or shift a pixel as the pointer moves, and the row's own opacity fade
+   is untouched. `.insertBefore` marks the row the item lands above;
+   `.insertAfter` is only ever the last row, for the gap below it — every
+   other gap is some row's "before". */
+.insertBefore::before,
+.insertAfter::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--focus-ring);
+  pointer-events: none;
+}
+
+.insertBefore::before {
+  top: calc(-1 * var(--space-2) / 2 - 1px);
+}
+
+.insertAfter::after {
+  bottom: calc(-1 * var(--space-2) / 2 - 1px);
+}
+
+/* The row being moved — under the pointer, or held by the keyboard grip. It
+   stays in place at reduced opacity so the list keeps its shape and the line
+   above shows where it is going; both states ride `.member`'s opacity
+   transition, which is the only motion this system allows. */
+.lifted {
+  opacity: 0.6;
+}
+
+/* This row's link write is in flight — it has already moved (or arrived), the
+   server has not said so yet. A touch fainter than lifted so the two do not
+   read as the same state when a drop lands mid-drag; it lifts back to full on
+   settle with no spinner and nothing that shifts layout. */
+.pending {
+  opacity: 0.5;
+}
+
+/* The reorder handle at the head of the row: IdeaRow's `.gripSlot`, seated in
+   a plan. 22px visible so it sits on the dot's scale, with the 32px pointer
+   floor (48px on touch) met by the invisible `::before` target, not by
+   growing the glyph. It is the keyboard path's whole surface — Space lifts,
+   arrows step, Space drops — so it takes the standard focus ring. */
+.grip {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: grab;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.grip::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+}
+
+@media (pointer: coarse) {
+  .grip::before {
+    width: var(--tap-min);
+    height: var(--tap-min);
+  }
+}
+
+.grip:hover {
+  opacity: 0.85;
+}
+
+.grip:active {
+  opacity: 0.7;
+}
+
+.grip:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: 0;
+  outline-offset: var(--focus-offset);
+}
+
+/* Holding a row (aria-pressed). Colour steps up to strong and the cursor
+   closes, so the eye and the hand both know the grip is live. */
+.gripOn {
+  color: var(--text-strong);
+  cursor: grabbing;
 }
 
 /* 9px, from the design — a status mark, not spacing, so it sits off the space

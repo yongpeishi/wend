@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DragEvent } from 'react';
+import type { DragEvent, KeyboardEvent } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { ChevronDown, ChevronUp, CircleDashed, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, CircleDashed, GripVertical, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/layout/Card';
 import { Input } from '../../design/components/core/Input';
@@ -12,13 +12,36 @@ import {
   useCreateEntry,
   useCreateLink,
   useDeleteLink,
+  usePendingLinkChildIds,
   useReorderLinks,
   useUpdateEntry,
-  useUpdateLinkPosition,
 } from '../../api';
 import type { Entry } from '../../api/types';
 import { useLinkMutations } from './useLinkMutations';
+import {
+  applyInsertion,
+  insertionIndexFromPointer,
+  isNoopInsertion,
+  landingIndex,
+  stepInsertion,
+} from './reorderPreview';
+import type { InsertionIndex } from './reorderPreview';
 import styles from './BundleCard.module.css';
+
+const SAVE_FAILED = "That didn't save. It's still here — try again.";
+
+/**
+ * A member reorder in progress — by pointer (native drag) or by the keyboard
+ * grip. `fromId` rather than an index because the list can re-render under a
+ * drag (a refetch settling, a sibling's optimistic move) and the row is looked
+ * up by id at each step. `insertAt` is a gap in reorderPreview's sense: 0 is
+ * above the first row, `members.length` below the last.
+ */
+interface DragState {
+  fromId: number;
+  insertAt: InsertionIndex | null;
+  mode: 'pointer' | 'keyboard';
+}
 
 export interface BundleCardProps {
   bundle: Entry;
@@ -82,13 +105,33 @@ export interface BundleCardProps {
  *   new idea's id — and a failure at either step keeps the field open with the
  *   name still in it, so "It's still here — try again" stays literally true.
  *
- * Members reorder two ways, per screens.md's "every drag interaction needs a
- * keyboard and pointer-free equivalent": native HTML5 drag-and-drop on each
- * row (an accelerator — useReorderLinks posts the whole new order at once),
- * and Move up / Move down buttons that always work with a mouse, keyboard or
- * switch device (useUpdateLinkPosition, swapping just the two affected
- * links' positions). Remove unlinks one member (useDeleteLink) — it must
- * never archive or touch the idea itself, only the entry_links row.
+ * Members reorder three ways, per screens.md's "every drag interaction needs a
+ * keyboard and pointer-free equivalent", and every one of them ends in the
+ * same single write — useReorderLinks posts the whole new order at once, so
+ * the row moves on screen the moment the gesture ends and slides back (with
+ * the house error toast) only if the server refuses:
+ *
+ *   Native HTML5 drag-and-drop on each row, the accelerator. While a row is
+ *   held, a 2px line shows the gap it will land in — the upper half of the row
+ *   under the pointer means "above it", the lower half "below" — so the answer
+ *   to "where will this end up?" is on screen before the drop, not after the
+ *   round trip. The held row stays in place at reduced opacity so the list
+ *   keeps its shape.
+ *
+ *   The grip at the head of each row is the keyboard path to the same
+ *   preview: Space (or Enter) lifts the row, the arrows step it through the
+ *   gaps with the same line following, Space drops it, Escape (or focus
+ *   leaving the grip) puts it back without a request. A polite live region
+ *   reads out where it will land after every step.
+ *
+ *   Move up / Move down are the buttons that always work — mouse, keyboard or
+ *   switch device — for anyone who does not want to hold anything.
+ *
+ * The gap maths for all three live in reorderPreview.ts. While the save is
+ * out, the moved row fades (usePendingLinkChildIds) rather than the plan
+ * freezing or a spinner appearing; it lifts back to full when the server
+ * agrees. Remove unlinks one member (useDeleteLink) — it must never archive or
+ * touch the idea itself, only the entry_links row.
  *
  * The design's card carries state our model does not have, so every part of it
  * that looks like metadata is derived from a real serialized field rather than
@@ -155,8 +198,16 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
   const createLink = useCreateLink(bundle.id);
   const deleteLink = useDeleteLink(bundle.id);
   const reorderLinks = useReorderLinks(bundle.id);
-  const updateLinkPosition = useUpdateLinkPosition(bundle.id);
-  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const pendingIds = usePendingLinkChildIds(bundle.id);
+  // The reorder in progress, held twice: state for rendering, and a ref the
+  // handlers read and write synchronously. dragover fires many times a second
+  // and the drop can follow the last one before React has flushed it, so the
+  // commit must not depend on a closure over the last rendered state.
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  // What the live region says. Only the keyboard path speaks — a pointer user
+  // is looking at the line — and it is empty whenever nothing is held.
+  const [liveText, setLiveText] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(bundle.title);
   const [addingIdea, setAddingIdea] = useState(false);
@@ -169,6 +220,14 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
   const returnFocus = useRef(false);
   // The add-idea field strikes the same bargain for the "+ add idea" button.
   const returnFocusToAdd = useRef(false);
+  // A keyboard drop moves the row: React relocates the <li> (same node, new
+  // place), and a node that leaves the document for even an instant loses
+  // focus to <body>. React DOM does put focus back after its commit in the
+  // common case; the card does not lean on that. The grips are kept by member
+  // id so the one that was just dropped is focused again, explicitly, once the
+  // list has re-rendered in the new order — see the effect on `members`.
+  const gripRefs = useRef(new Map<number, HTMLButtonElement>());
+  const refocusGripId = useRef<number | null>(null);
   // A read-only card is not a drop target. Styling alone would not stop it:
   // dnd-kit resolves a drop against every registered droppable, so without this
   // a viewer could still land an idea here and watch the request be refused.
@@ -191,6 +250,16 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
       addIdeaButtonRef.current?.focus();
     }
   }, [addingIdea]);
+
+  // Runs on every new `members` order; acts only after a keyboard drop set the
+  // id. The order changes optimistically the moment the drop is committed, so
+  // this is the render that moved the row — and blurred its grip.
+  useEffect(() => {
+    const id = refocusGripId.current;
+    if (id === null) return;
+    refocusGripId.current = null;
+    gripRefs.current.get(id)?.focus();
+  }, [members]);
 
   // One string rather than assembled in JSX, so the meta is a single text node:
   // one phrase to a screen reader, and one thing to assert on in a test.
@@ -221,7 +290,7 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
         onSuccess: () => onToast(`Renamed to ${trimmed}.`),
         onError: () => {
           setNameDraft(bundle.title);
-          show("That didn't save. It's still here — try again.", 'error');
+          show(SAVE_FAILED, 'error');
         },
       },
     );
@@ -244,7 +313,7 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
       await Promise.all(members.map((member) => removeLink.mutateAsync({ parentId: bundle.id, childId: member.id })));
       await archiveEntry.mutateAsync(bundle.id);
     } catch {
-      show("That didn't save. It's still here — try again.", 'error');
+      show(SAVE_FAILED, 'error');
       return;
     }
     onToast(
@@ -254,23 +323,136 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
     );
   }
 
-  function moveMember(index: number, direction: -1 | 1) {
-    const targetIndex = index + direction;
-    const moving = members[index];
-    const other = members[targetIndex];
-    if (!moving || !other) return;
-    // Swap the two links' positions directly — members is already in
-    // position order, so the two array indices ARE the two target position
-    // values. No need to know the underlying integer positions of anyone else.
-    updateLinkPosition.mutate(
-      { childId: moving.id, position: targetIndex },
-      { onError: () => show("That didn't save. It's still here — try again.", 'error') },
-    );
-    updateLinkPosition.mutate(
-      { childId: other.id, position: index },
-      { onError: () => show("That didn't save. It's still here — try again.", 'error') },
+  /**
+   * The one write every reorder path ends in. No success toast: the row moving
+   * is the confirmation. mutateAsync rather than mutate(vars, { onError }):
+   * TanStack Query keeps only the LATEST mutate's per-call callbacks on an
+   * observer, so a second reorder before the first settled would leave the
+   * first to slide back with no toast. The promise is this call's alone; the
+   * rejection handler is always attached, so nothing escapes unhandled.
+   */
+  function sendOrder(next: Entry[], movedId: number) {
+    void reorderLinks.mutateAsync({ childIds: next.map((m) => m.id), movedId }).then(
+      () => {},
+      () => show(SAVE_FAILED, 'error'),
     );
   }
+
+  function moveMember(index: number, direction: -1 | 1) {
+    const moving = members[index];
+    const target = index + direction;
+    if (!moving || target < 0 || target >= members.length) return;
+    // In gap terms: up is the gap above the row before this one, down is the
+    // gap below the row after it. One request for the whole order, the same
+    // as a drop — not a swap of two positions racing each other.
+    sendOrder(applyInsertion(members, index, direction === -1 ? index - 1 : index + 2), moving.id);
+  }
+
+  function updateDrag(next: DragState | null) {
+    dragRef.current = next;
+    setDrag(next);
+  }
+
+  function cancelDrag() {
+    updateDrag(null);
+    setLiveText('');
+  }
+
+  function announceLanding(title: string, from: number, insertAt: InsertionIndex) {
+    setLiveText(
+      `Moving ${title}. Will land at ${landingIndex(from, insertAt) + 1} of ${members.length}. Space to drop, Escape to cancel.`,
+    );
+  }
+
+  /**
+   * Ends a drag from either path: reads the state, clears it, and posts the
+   * new order once — or nothing at all when the row is going back where it
+   * came from, since a request that changes nothing still fades the row and
+   * still has a way to fail.
+   */
+  function commitReorder() {
+    const current = dragRef.current;
+    updateDrag(null);
+    if (!current || current.insertAt === null) return;
+    const from = members.findIndex((m) => m.id === current.fromId);
+    if (from === -1 || isNoopInsertion(from, current.insertAt)) {
+      if (current.mode === 'keyboard') setLiveText('');
+      return;
+    }
+    if (current.mode === 'keyboard') {
+      setLiveText(`Moved ${members[from]?.title ?? ''} to ${landingIndex(from, current.insertAt) + 1} of ${members.length}.`);
+      // The drag state is already cleared above, so the blur the relocation
+      // causes finds nothing to cancel; the effect on `members` then puts
+      // focus back on this grip in its new place.
+      refocusGripId.current = current.fromId;
+    }
+    sendOrder(applyInsertion(members, from, current.insertAt), current.fromId);
+  }
+
+  function startPointerDrag(event: DragEvent<HTMLLIElement>, member: Entry, index: number) {
+    // jsdom has no DataTransfer, hence the guard. Firefox will not start a
+    // native drag that carries no data, hence the setData.
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', String(member.id));
+    }
+    updateDrag({ fromId: member.id, insertAt: index, mode: 'pointer' });
+  }
+
+  function pointerOverRow(event: DragEvent<HTMLLIElement>, index: number) {
+    // Always allowed, as before: a native drop of anything onto a row must
+    // never be left to the browser, which would navigate. The line, though,
+    // follows only a pointer drag of one of this list's own rows — an idea
+    // coming over from the list rides dnd-kit, not native DnD, and never
+    // reaches here.
+    event.preventDefault();
+    const current = dragRef.current;
+    if (!current || current.mode !== 'pointer') return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const insertAt = insertionIndexFromPointer(index, event.clientY - rect.top, rect.height);
+    if (insertAt !== current.insertAt) updateDrag({ ...current, insertAt });
+  }
+
+  /**
+   * The grip's whole keyboard surface. Space or Enter lifts, and drops when
+   * already lifted; the arrows step the landing gap; Escape puts the row back.
+   * Every handled key is prevented: Space would otherwise click the button on
+   * keyup and the arrows would scroll the page.
+   */
+  function gripKeyDown(event: KeyboardEvent<HTMLButtonElement>, member: Entry, index: number) {
+    const current = dragRef.current;
+    const lifted = current?.mode === 'keyboard' && current.fromId === member.id;
+    if (event.key === ' ' || event.key === 'Enter') {
+      event.preventDefault();
+      if (lifted) {
+        commitReorder();
+      } else {
+        updateDrag({ fromId: member.id, insertAt: index, mode: 'keyboard' });
+        announceLanding(member.title, index, index);
+      }
+      return;
+    }
+    if (!lifted || !current || current.insertAt === null) return;
+    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      const insertAt = stepInsertion(index, current.insertAt, event.key === 'ArrowUp' ? -1 : 1, members.length);
+      updateDrag({ ...current, insertAt });
+      announceLanding(member.title, index, insertAt);
+    } else if (event.key === 'Escape') {
+      // Ours to cancel, not a panel's to close.
+      event.preventDefault();
+      event.stopPropagation();
+      cancelDrag();
+    }
+  }
+
+  // Where the line goes, if anywhere: the held gap, unless it is one of the
+  // two hugging the held row — going home draws nothing and sends nothing.
+  const fromIndex = drag ? members.findIndex((m) => m.id === drag.fromId) : -1;
+  const indicatorAt =
+    drag && drag.insertAt !== null && fromIndex !== -1 && !isNoopInsertion(fromIndex, drag.insertAt)
+      ? drag.insertAt
+      : null;
 
   function openMember(member: Entry) {
     if (onOpen) onOpen(member.id);
@@ -278,10 +460,11 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
   }
 
   function removeMember(member: Entry) {
-    deleteLink.mutate(member.id, {
-      onSuccess: () => onToast(`Removed ${member.title} from ${bundle.title}. Still kept.`),
-      onError: () => show("That didn't save. It's still here — try again.", 'error'),
-    });
+    // Same per-call promise as sendOrder: two quick removes each keep their toast.
+    void deleteLink.mutateAsync(member.id).then(
+      () => onToast(`Removed ${member.title} from ${bundle.title}. Still kept.`),
+      () => show(SAVE_FAILED, 'error'),
+    );
   }
 
   function closeAddIdea() {
@@ -310,30 +493,11 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
       const idea = await createEntry.mutateAsync({ entry: { kind: 'idea', title: trimmed }, parent_id: tripId });
       await createLink.mutateAsync({ child_id: idea.id });
     } catch {
-      show("That didn't save. It's still here — try again.", 'error');
+      show(SAVE_FAILED, 'error');
       return;
     }
     closeAddIdea();
     onToast(`Added ${trimmed} to ${bundle.title}.`);
-  }
-
-  function handleDrop(targetId: number) {
-    if (draggedId === null || draggedId === targetId) {
-      setDraggedId(null);
-      return;
-    }
-    const fromIndex = members.findIndex((m) => m.id === draggedId);
-    const toIndex = members.findIndex((m) => m.id === targetId);
-    setDraggedId(null);
-    if (fromIndex === -1 || toIndex === -1) return;
-    const reordered = members.slice();
-    const [moved] = reordered.splice(fromIndex, 1);
-    if (!moved) return;
-    reordered.splice(toIndex, 0, moved);
-    reorderLinks.mutate(
-      reordered.map((m) => m.id),
-      { onError: () => show("That didn't save. It's still here — try again.", 'error') },
-    );
   }
 
   return (
@@ -420,83 +584,148 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
         {todoLine}
       </p>
 
+      {/* Where the keyboard path speaks: "Moving X. Will land at 2 of 3…" on
+          lift and on every arrow step, empty when nothing is held. Always in
+          the tree, so assistive tech is already listening when it fills. */}
+      {canEdit && (
+        <div role="status" aria-live="polite" className={styles.srOnly}>
+          {liveText}
+        </div>
+      )}
+
       {members.length === 0 ? (
         /* An empty plan still says it is empty for a viewer — but without the
            hint below, which names gestures they do not have. The sentence
            reports the state instead of instructing. */
         !canEdit && <p className={styles.emptyDrop}>Nothing in here yet.</p>
       ) : (
-        <ul className={styles.memberList}>
-          {members.map((member, index) => (
-            <li
-              key={member.id}
-              className={[styles.member, draggedId !== null && draggedId !== member.id ? styles.dropTarget : '']
-                .filter(Boolean)
-                .join(' ')}
-              /* The native reorder accelerator, dropped whole for a viewer —
-                 the attribute AND its handlers, because `draggable` is what the
-                 browser reads and leaving the handlers on a row that cannot
-                 start a drag is dead wiring. */
-              draggable={canEdit || undefined}
-              onDragStart={canEdit ? () => setDraggedId(member.id) : undefined}
-              onDragOver={canEdit ? (event: DragEvent<HTMLLIElement>) => event.preventDefault() : undefined}
-              onDrop={
-                canEdit
-                  ? (event: DragEvent<HTMLLIElement>) => {
-                      event.preventDefault();
-                      handleDrop(member.id);
-                    }
-                  : undefined
-              }
-              onDragEnd={canEdit ? () => setDraggedId(null) : undefined}
-            >
-              <span
-                className={[styles.dot, member.address ? styles.dotPlaced : styles.dotBare].join(' ')}
-                aria-hidden="true"
-              />
-              <span className={styles.srOnly}>{member.address ? 'Has an address:' : 'No address yet:'}</span>
-              <button type="button" className={styles.memberTitle} onClick={() => openMember(member)}>
-                {member.title}
-              </button>
-              {member.todos_open_count > 0 && (
-                <span className={styles.memberTodos}>
-                  {`${member.todos_open_count} ${member.todos_open_count === 1 ? 'to-do' : 'to-dos'}`}
-                </span>
-              )}
-              {/* The member itself — its dot, its name, its to-do count — is
-                  content and stays. Only the three verbs on the end go. */}
-              {canEdit && (
-                <span className={styles.memberActions}>
+        <ul
+          className={styles.memberList}
+          /* The list itself catches a drop that lands in the gap between two
+             rows — the seam the line is drawn in, and exactly where a careful
+             pointer aims. Only while one of our rows is held: anything else
+             dropped on the gap stays the browser's business. */
+          onDragOver={
+            canEdit
+              ? (event: DragEvent<HTMLUListElement>) => {
+                  if (dragRef.current?.mode === 'pointer') event.preventDefault();
+                }
+              : undefined
+          }
+          onDrop={
+            canEdit
+              ? (event: DragEvent<HTMLUListElement>) => {
+                  if (!dragRef.current) return;
+                  event.preventDefault();
+                  commitReorder();
+                }
+              : undefined
+          }
+        >
+          {members.map((member, index) => {
+            const grabbed = drag?.mode === 'keyboard' && drag.fromId === member.id;
+            return (
+              <li
+                key={member.id}
+                className={[
+                  styles.member,
+                  drag?.fromId === member.id ? styles.lifted : '',
+                  pendingIds.has(member.id) ? styles.pending : '',
+                  indicatorAt === index ? styles.insertBefore : '',
+                  indicatorAt === members.length && index === members.length - 1 ? styles.insertAfter : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                /* The native reorder accelerator, dropped whole for a viewer —
+                   the attribute AND its handlers, because `draggable` is what the
+                   browser reads and leaving the handlers on a row that cannot
+                   start a drag is dead wiring. */
+                draggable={canEdit || undefined}
+                onDragStart={canEdit ? (event: DragEvent<HTMLLIElement>) => startPointerDrag(event, member, index) : undefined}
+                onDragOver={canEdit ? (event: DragEvent<HTMLLIElement>) => pointerOverRow(event, index) : undefined}
+                onDrop={
+                  canEdit
+                    ? (event: DragEvent<HTMLLIElement>) => {
+                        event.preventDefault();
+                        // Handled here; the list's own onDrop is for the gaps.
+                        event.stopPropagation();
+                        commitReorder();
+                      }
+                    : undefined
+                }
+                onDragEnd={canEdit ? cancelDrag : undefined}
+              >
+                {/* The keyboard path's whole surface — see the doc comment.
+                    First in the row so it is the first thing a Tab reaches, as
+                    IdeaRow's grip is; aria-pressed carries "held". Blur cancels:
+                    a row left lifted while focus is elsewhere would swallow the
+                    next Space pressed anywhere. */}
+                {canEdit && (
                   <button
+                    ref={(node) => {
+                      if (node) gripRefs.current.set(member.id, node);
+                      else gripRefs.current.delete(member.id);
+                    }}
                     type="button"
-                    className={styles.iconButton}
-                    aria-label={`Move ${member.title} up`}
-                    disabled={index === 0}
-                    onClick={() => moveMember(index, -1)}
+                    className={[styles.grip, grabbed ? styles.gripOn : ''].filter(Boolean).join(' ')}
+                    aria-label={`Reorder ${member.title}`}
+                    aria-pressed={grabbed}
+                    onKeyDown={(event) => gripKeyDown(event, member, index)}
+                    onBlur={() => {
+                      if (dragRef.current?.mode === 'keyboard' && dragRef.current.fromId === member.id) cancelDrag();
+                    }}
                   >
-                    <ChevronUp size={16} strokeWidth={1.5} aria-hidden="true" />
+                    <GripVertical size={16} strokeWidth={1.5} aria-hidden="true" />
                   </button>
-                  <button
-                    type="button"
-                    className={styles.iconButton}
-                    aria-label={`Move ${member.title} down`}
-                    disabled={index === members.length - 1}
-                    onClick={() => moveMember(index, 1)}
-                  >
-                    <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.iconButton}
-                    aria-label={`Remove ${member.title} from ${bundle.title}`}
-                    onClick={() => removeMember(member)}
-                  >
-                    <X size={16} strokeWidth={1.5} aria-hidden="true" />
-                  </button>
-                </span>
-              )}
-            </li>
-          ))}
+                )}
+                <span
+                  className={[styles.dot, member.address ? styles.dotPlaced : styles.dotBare].join(' ')}
+                  aria-hidden="true"
+                />
+                <span className={styles.srOnly}>{member.address ? 'Has an address:' : 'No address yet:'}</span>
+                <button type="button" className={styles.memberTitle} onClick={() => openMember(member)}>
+                  {member.title}
+                </button>
+                {member.todos_open_count > 0 && (
+                  <span className={styles.memberTodos}>
+                    {`${member.todos_open_count} ${member.todos_open_count === 1 ? 'to-do' : 'to-dos'}`}
+                  </span>
+                )}
+                {/* The member itself — its dot, its name, its to-do count — is
+                    content and stays. Only the three verbs on the end go. */}
+                {canEdit && (
+                  <span className={styles.memberActions}>
+                    <button
+                      type="button"
+                      className={styles.iconButton}
+                      aria-label={`Move ${member.title} up`}
+                      disabled={index === 0}
+                      onClick={() => moveMember(index, -1)}
+                    >
+                      <ChevronUp size={16} strokeWidth={1.5} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.iconButton}
+                      aria-label={`Move ${member.title} down`}
+                      disabled={index === members.length - 1}
+                      onClick={() => moveMember(index, 1)}
+                    >
+                      <ChevronDown size={16} strokeWidth={1.5} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.iconButton}
+                      aria-label={`Remove ${member.title} from ${bundle.title}`}
+                      onClick={() => removeMember(member)}
+                    >
+                      <X size={16} strokeWidth={1.5} aria-hidden="true" />
+                    </button>
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
