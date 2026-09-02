@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
 import overlayStyles from './Overlay.module.css';
 import styles from './Drawer.module.css';
+import { CloseButton } from './CloseButton';
 
 export interface DrawerProps {
   open: boolean;
@@ -48,9 +48,7 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
         aria-labelledby={titleId}
         tabIndex={-1}
       >
-        <button type="button" className={overlayStyles.closeButton} onClick={onClose} aria-label="Close">
-          <X size={20} strokeWidth={1.5} aria-hidden="true" />
-        </button>
+        <CloseButton onClick={onClose} />
         <h2 className={styles.title} id={titleId}>
           {title}
         </h2>

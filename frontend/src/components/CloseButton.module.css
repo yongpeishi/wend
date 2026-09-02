@@ -1,0 +1,45 @@
+/* The host is the containing block (position: relative) and reserves room in
+   its own layout so no text sits under the X: at the default inset the box
+   spans 8–40px from the corner, and 0–48px on coarse pointers. A host with
+   deeper padding pushes the button in with --close-button-inset (Modal and
+   Drawer set it to 24px so the icon's centre sits 40px from the corner, where
+   it always has). The visible 20px icon stays centred whatever the box does. */
+
+.closeButton {
+  position: absolute;
+  top: var(--close-button-inset, var(--space-2));
+  right: var(--close-button-inset, var(--space-2));
+  /* 32px: the pointer floor. */
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--text-strong);
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.closeButton:hover {
+  opacity: 0.7;
+}
+
+.closeButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* On a touch screen the hit box grows to the 48px tap minimum around the same
+   icon centre: 8px wider on every side, so the inset comes in by 8px. */
+@media (pointer: coarse) {
+  .closeButton {
+    width: var(--tap-min);
+    height: var(--tap-min);
+    top: calc(var(--close-button-inset, var(--space-2)) - var(--space-2));
+    right: calc(var(--close-button-inset, var(--space-2)) - var(--space-2));
+  }
+}
