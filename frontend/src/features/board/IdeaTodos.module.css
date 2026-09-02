@@ -32,9 +32,13 @@
   gap: var(--space-2);
 }
 
+/* `flex-start`, not `center`: a title long enough to wrap is two or three
+   lines tall, and a box centred on the block would float between them, tied
+   to none. Pinned to the top it sits on the first line, where a checkbox
+   sits in every list anyone has read. */
 .item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
 }
 
@@ -42,6 +46,11 @@
  * The box. 20px against the row title's 15px — big enough to be aimed at,
  * small enough that a list of five does not turn into a column of controls
  * with some words beside it.
+ *
+ * No nudge to centre it on the title's first line: that line box is 15px
+ * (--text-min-size) × 1.4 = 21px, so a 20px box pinned to the top is half a
+ * pixel off — a half-pixel margin would only hand the rounding to the browser.
+ * The 32px target below is positioned from the box's centre and moves with it.
  */
 .box {
   position: relative;
@@ -134,9 +143,22 @@
   color: var(--wend-paper);
 }
 
-/* The mockup sets these lines smaller; architecture.md fixes 15px as this
-   product's readable floor and --text-min-size encodes it, so they come up. */
+/*
+ * The mockup sets these lines smaller; architecture.md fixes 15px as this
+ * product's readable floor and --text-min-size encodes it, so they come up.
+ *
+ * The title takes whatever width the box leaves. `min-width: 0` lets it go
+ * narrower than its longest word — a flex item's floor is otherwise its own
+ * content, which for one unbroken token is the whole token. `overflow-wrap`
+ * is for that token, the booking URL somebody pastes as a to-do. `anywhere`
+ * rather than `break-word`, because only `anywhere` lets the break count for
+ * min-content sizing too — with `break-word` the URL still pushes the card
+ * wide. IdeaPanel.module.css's .body carries the same rule for the same paste.
+ */
 .title {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--text-min-size);
   line-height: 1.4;
   color: var(--text-body);

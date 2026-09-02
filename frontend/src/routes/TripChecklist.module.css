@@ -29,9 +29,15 @@
   gap: var(--gap-list-row);
 }
 
+/* Everything on the row hangs off the title's first line, not off the middle
+   of the row. Centred, a three-line title left the circle floating beside its
+   second line, which reads as belonging to nothing; a checkbox belongs beside
+   the first words of what it checks. flex-start puts every cell's top edge on
+   the body's top edge, and the cells with a 48px tap box (.toggle, .meta) pull
+   themselves up by the same amount so their centres land on that first line. */
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-4);
   background: var(--surface-card);
   border-radius: var(--radius-card);
@@ -45,12 +51,22 @@
 }
 
 /* The keep-toggle idiom from the board: ringed when open, filled when done.
-   Visually 28px, but the tap target is a full 48. */
+   Visually 28px, but the tap target is a full 48. The all-sides margin pulls
+   the 48px box in by (48 - 28) / 2 = 10px so it takes up only the circle's
+   28px in the row.
+
+   margin-top is different: it centres the circle on the title's first line.
+   That line box is --text-body-size × --text-body-line = 17px × 1.7 = 28.9px,
+   and the circle is centred in its 48px box, so the box's top edge sits at
+   (28.9 - 48) / 2 = -9.55px — the line box minus the tap box, halved. Written
+   from the tokens so a change to body type or tap size keeps the circle on the
+   line. */
 .toggle {
   flex: none;
   width: var(--tap-min);
   height: var(--tap-min);
   margin: calc((var(--tap-min) - 28px) / -2);
+  margin-top: calc((var(--text-body-size) * var(--text-body-line) - var(--tap-min)) / 2);
   background: none;
   border: none;
   cursor: pointer;
@@ -89,14 +105,17 @@
   border-radius: 50%;
 }
 
-/* The title takes the line and the meta cells hang off its right edge. The row
-   centres everything against the circle, so there is nothing left to fake with
-   padding here. */
+/* The title takes the line and the meta cells hang off its right edge.
+   flex-start rather than center for the same reason as .row: centred, the
+   deadline's 48px tap box made the body 48px tall and floated the one-line
+   title 9.55px down the middle of it, out from under the circle. With the top
+   edges aligned the title's first line is the body's first line, and .meta
+   does its own arithmetic to sit on it. */
 .body {
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-2) var(--space-4);
 }
 
@@ -105,10 +124,19 @@
    long title wants to be very wide, so without a floor it absorbs nearly all of
    the shortfall and collapses to nothing while the idea name keeps its cap.
    16ch is about three words a line at body size — below that a wrapped title
-   reads as a column of single words, which is exactly the shape we were fixing. */
+   reads as a column of single words, which is exactly the shape we were fixing.
+
+   overflow-wrap is for the title that is one word: a pasted URL, or anything
+   else with no space in it. Prose wraps at its spaces and needs no help; an
+   unbroken token cannot break at all, so it holds the line at its full width
+   and shoves .meta out past the card's right edge. `anywhere` rather than
+   `break-word`: only `anywhere` also lets the break count when the title's
+   min-content width is worked out, so the 16ch floor above stays the floor —
+   with `break-word` the unbroken token would still set it. */
 .title {
   flex: 1;
   min-width: 16ch;
+  overflow-wrap: anywhere;
   font-family: var(--font-sans);
   font-size: var(--text-body-size);
   line-height: var(--text-body-line);
@@ -121,10 +149,23 @@
    allowed to go narrower than them, so an unshrinkable cell here left
    .source's text-overflow dead and pushed the pair out past the card's right
    edge. min-width: 0 is the other half of that — without it the cell floors at
-   the idea name's own width and shrinks no further. */
+   the idea name's own width and shrinks no further.
+
+   The vertical part is the toggle's idiom applied to the pair. The deadline
+   trigger is a 48px-tall tap target around one small line of text; left alone
+   it made the pair 48px tall and, once .body stopped centring, hung its text
+   9.55px below the title's first line. So the pair is held to the same 48px
+   (min-height, so the read-only span and the open date input get the same
+   treatment as the trigger), centres its contents in that, and pulls itself in
+   top and bottom by (28.9 - 48) / 2 = -9.55px — the figure .toggle uses. Its
+   outer size is then exactly one title line and its centre that line's centre.
+   The 9.55px it overhangs stays inside the card's 12px padding, as the circle's
+   10px already does. */
 .meta {
   flex: 0 1 auto;
   min-width: 0;
+  min-height: var(--tap-min);
+  margin-block: calc((var(--text-body-size) * var(--text-body-line) - var(--tap-min)) / 2);
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -194,8 +235,13 @@
 }
 
 /* Narrow enough that the title and its two cells stop fitting on one line, so
-   the pair drops under the title. The circle stays centred against the whole
-   group either way, which is why it lives outside .body. */
+   the pair drops under the title. The circle sits on the title's first line in
+   both layouts — it is aligned to the body's top edge, not to the pair, which
+   is why it lives outside .body and needs nothing here when the pair moves.
+   The pair keeps its negative margin-block too: stacked, that is what makes
+   "by 3 Oct" read as one more line under the title rather than a 48px strip;
+   the tap box's overhang lands in the card's padding below and in the title's
+   leading above, under the descenders, where there is nothing to press. */
 @media (max-width: 640px) {
   .body {
     flex-direction: column;
