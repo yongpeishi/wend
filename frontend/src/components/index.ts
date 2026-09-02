@@ -18,6 +18,9 @@ export type { ModalProps } from './Modal';
 export { Drawer } from './Drawer';
 export type { DrawerProps } from './Drawer';
 
+export { CloseButton } from './CloseButton';
+export type { CloseButtonProps } from './CloseButton';
+
 export { ReadOnly } from './ReadOnly';
 export type { ReadOnlyProps } from './ReadOnly';
 

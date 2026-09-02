@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../../design/components/core/Button';
 import { Chip } from '../../design/components/core/Chip';
 import { Field } from '../../components/Field';
+import { CloseButton } from '../../components/CloseButton';
 import { formatMinutes } from '../../api/schedule';
 import type { SlotSuggestion } from './itineraryModel';
 import { formatSpan } from './itineraryModel';
@@ -155,6 +156,10 @@ export function TimePrompt({ title, dayName, suggestions, onSave, onDismiss }: T
         }
       }}
     >
+      {/* The X is Escape made visible — the same dismissal "Leave it loose"
+          offers, and nothing more. Every panel carries one in the same corner,
+          so a pointer finds the way out here without reading the buttons. */}
+      <CloseButton onClick={onDismiss} />
       <p className={styles.caption}>On the day. When on {dayName}?</p>
 
       <div className={styles.chips}>

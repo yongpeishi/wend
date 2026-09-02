@@ -300,6 +300,16 @@ describe('TimeEditor', () => {
     expect(onCancel).toHaveBeenCalled();
     expect(onSave).not.toHaveBeenCalled();
   });
+
+  it('leaves the hours alone from the X in the corner too, once', async () => {
+    const user = userEvent.setup();
+    const { onCancel, onSave } = renderEditor();
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
+  });
 });
 
 /**

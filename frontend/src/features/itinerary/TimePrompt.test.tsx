@@ -147,6 +147,16 @@ describe('TimePrompt', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
+  it('dismisses from the X in the corner, once, without saving', async () => {
+    const user = userEvent.setup();
+    const { onDismiss, onSave } = renderPrompt();
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('still offers "no time yet" on a day with no openings, with the fields empty', () => {
     renderPrompt({ suggestions: [] });
 

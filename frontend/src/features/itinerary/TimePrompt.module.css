@@ -3,6 +3,8 @@
    shadow, and it is a panel in the flow rather than a popover so it can never
    sit half off the edge of a narrow day column. */
 .prompt {
+  /* The containing block for the CloseButton in the corner. */
+  position: relative;
   background: var(--surface-card);
   border: var(--border-width) solid var(--border-subtle);
   border-radius: var(--radius-card);
@@ -12,9 +14,13 @@
   gap: 10px;
 }
 
-/* The design sets this caption at 13px; raised to the 15px floor. */
+/* The design sets this caption at 13px; raised to the 15px floor.
+   The right padding keeps the caption clear of the X: its hit box reaches
+   40px in from the corner, and 12px of panel padding plus this 32px stops
+   the text at 44px, so a long day name wraps rather than running under it. */
 .caption {
   margin: 0;
+  padding-right: var(--space-8);
   font-size: var(--text-min-size);
   color: var(--text-muted);
 }
