@@ -143,6 +143,22 @@ class Api::ScheduleItemsTest < ActionDispatch::IntegrationTest
     assert_equal 1, ScheduleItem.where(trip_id: @trip.id, day: "2026-04-01").distinct.count(:day_version_id)
   end
 
+  # The itinerary rail offers already-placed ideas for a second day, so one entry
+  # must be allowed to hold a placement on several days of the same trip.
+  test "POST the same entry onto two different days keeps both placements" do
+    ["2026-04-01", "2026-04-02"].each do |day|
+      post "/api/trips/#{@trip.id}/schedule",
+           params: { schedule_item: { entry_id: @idea.id, day: day, starts_at_minutes: 540 } },
+           as: :json
+      assert_response :created
+    end
+
+    rows = ScheduleItem.where(trip_id: @trip.id, entry_id: @idea.id)
+    assert_equal 2, rows.count
+    assert_equal 2, rows.distinct.count(:day_version_id)
+    assert_equal Set[@idea.id], ScheduleItem.placed_entry_ids(trip_id: @trip.id, among: [@idea.id])
+  end
+
   test "POST with an explicit day_version_id uses it and fills in the day" do
     trip_day = TripDay.ensure!(trip_id: @trip.id, day: "2026-04-01")
     version = trip_day.fork!

@@ -46,6 +46,7 @@ import {
   UnplacedRail,
   UNSAVED_VERSION_ID,
   buildDayList,
+  buildPool,
 } from '../features/itinerary';
 import type { ArchivedVersion, ItineraryDay, ItineraryDragData } from '../features/itinerary';
 // Not through the barrel: these are the drag machinery the DndContext itself
@@ -76,7 +77,7 @@ const NO_SENSORS: SensorDescriptor<SensorOptions>[] = [];
 /** The rail's sentence, which depends on whether the reader has the two ways in. */
 const RAIL_LINE = {
   edit: 'Drag one onto a day, or use its ⋯ menu to pick the day.',
-  read: 'Kept for this trip, not on a day yet.',
+  read: 'Kept for this trip. Anything already on a day says which.',
 };
 
 /** Dates the server refused, held until the warning modal is answered. */
@@ -188,24 +189,14 @@ export function TripItinerary() {
   );
 
   /**
-   * Every entry sitting in a live version of any day. Read from the fetched
-   * rows rather than from `days` so a day outside the trip's current dates —
-   * which happens the moment someone shortens a trip — still counts as placed.
-   * An archived version is not live, so something only in one comes back here.
+   * What the rail and every day's picker offer: everything kept, placed or
+   * not, each saying where it already sits. Lodging is left out — each day has
+   * its own editor for that (buildPool). Placement is read off `tripDays`, so a
+   * day outside the trip's current dates still counts.
    */
-  const placedEntryIds = useMemo(
-    () =>
-      new Set(
-        tripDays
-          .flatMap((tripDay) => tripDay.versions)
-          .flatMap((version) => version.schedule_items)
-          .map((item) => item.entry_id)
-          .filter((id): id is number => id !== null),
-      ),
-    [tripDays],
-  );
-
-  const unplaced = useMemo(() => kept.filter((entry) => !placedEntryIds.has(entry.id)), [kept, placedEntryIds]);
+  const pool = useMemo(() => buildPool(kept, tripDays, days), [kept, tripDays, days]);
+  /** The rail's count: only what is on no day at all still needs placing. */
+  const toPlace = pool.filter((entry) => entry.placedOn.length === 0).length;
   const lodgingChoices = useMemo(() => kept.filter((entry) => entry.category === 'lodging'), [kept]);
   // Every day, labelled as the screen labels it. Each day's own menu drops
   // itself out — nothing swaps with itself.
@@ -566,7 +557,7 @@ export function TripItinerary() {
                     key={day.day}
                     day={day}
                     lodgingChoices={lodgingChoices}
-                    addChoices={unplaced}
+                    addChoices={pool}
                     swapChoices={swapChoices}
                     onSwapDay={(otherDay) => swapWithDay(day.day, otherDay)}
                     onToggle={() => toggleDay(day.day)}
@@ -627,12 +618,12 @@ export function TripItinerary() {
           </div>
 
           <UnplacedRail
-            title={`Not placed yet · ${unplaced.length}`}
+            title={`${toPlace} to place`}
             // The editable sentence names a grip and a ⋯ menu, neither of which a
             // viewer has; theirs says what the list IS instead, which is the part
             // that was always worth knowing.
             line={canEdit ? RAIL_LINE.edit : RAIL_LINE.read}
-            items={unplaced}
+            items={pool}
             days={days}
             onAddToDay={placeOnDay}
             readOnly={readOnly}

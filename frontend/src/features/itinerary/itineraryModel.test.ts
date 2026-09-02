@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { DayVersion, EntrySummary, ItineraryItem, TripDay } from '../../api/types';
 import {
   buildDayList,
+  buildPool,
   bundleMemberSpans,
   dayHours,
   daySummary,
@@ -132,6 +133,105 @@ describe('buildDayList', () => {
     const days = buildDayList({ starts_on: '2026-01-01', ends_on: '2126-01-01' }, []);
 
     expect(days).toHaveLength(366);
+  });
+});
+
+/**
+ * The pool is the rail's whole list, placed things included — an idea on Day 1
+ * can go on Day 2 too. What these pin down is who is in it, in what order, and
+ * what the marker beside a placed thing says.
+ */
+describe('buildPool', () => {
+  const trip = { starts_on: '2026-10-12', ends_on: '2026-10-14' };
+
+  /** A live version holding one item per entry id given. */
+  function versionWith(...entryIds: (number | null)[]): DayVersion {
+    return version({ schedule_items: entryIds.map((entry_id) => item({ entry_id })) });
+  }
+
+  it('leaves lodging out — each day has its own editor for that', () => {
+    const hotel = summary({ title: 'Machiya near Yasaka', category: 'lodging' });
+    const shrine = summary({ title: 'Fushimi Inari' });
+
+    const pool = buildPool([hotel, shrine], [], buildDayList(trip, []));
+
+    expect(pool.map((entry) => entry.id)).toEqual([shrine.id]);
+  });
+
+  it('lists unplaced things first, each group in kept order', () => {
+    const a = summary({ title: 'A' });
+    const b = summary({ title: 'B' });
+    const c = summary({ title: 'C' });
+    const d = summary({ title: 'D' });
+    const tripDays = [tripDay({ day: '2026-10-12', versions: [versionWith(a.id, c.id)] })];
+
+    const pool = buildPool([a, b, c, d], tripDays, buildDayList(trip, tripDays));
+
+    expect(pool.map((entry) => entry.title)).toEqual(['B', 'D', 'A', 'C']);
+  });
+
+  it('dedupes a day the thing sits on twice, and lists the dates ascending', () => {
+    const shrine = summary();
+    const tripDays = [
+      tripDay({ day: '2026-10-14', versions: [versionWith(shrine.id), versionWith(shrine.id)] }),
+      tripDay({ day: '2026-10-12', versions: [versionWith(shrine.id)] }),
+    ];
+
+    const [only] = buildPool([shrine], tripDays, buildDayList(trip, tripDays));
+
+    expect(only?.placedOn).toEqual(['2026-10-12', '2026-10-14']);
+    expect(only?.placedMarker).toBe('placed · 2 days');
+  });
+
+  it('names the day when a thing sits on just one the trip still covers', () => {
+    const shrine = summary();
+    const tripDays = [tripDay({ day: '2026-10-13', versions: [versionWith(shrine.id)] })];
+
+    const [only] = buildPool([shrine], tripDays, buildDayList(trip, tripDays));
+
+    expect(only?.placedOn).toEqual(['2026-10-13']);
+    expect(only?.placedMarker).toBe('placed · Day 2');
+  });
+
+  it('still counts a day the trip no longer covers, but cannot name it', () => {
+    // The trip was shortened; the saved day is outside its dates now.
+    const shrine = summary();
+    const tripDays = [tripDay({ day: '2026-10-20', versions: [versionWith(shrine.id)] })];
+
+    const [only] = buildPool([shrine], tripDays, buildDayList(trip, tripDays));
+
+    expect(only?.placedOn).toEqual(['2026-10-20']);
+    expect(only?.placedMarker).toBe('placed · 1 day');
+  });
+
+  it('does not count a thing that sits only on an archived version', () => {
+    const shrine = summary();
+    const tripDays = [
+      tripDay({
+        day: '2026-10-12',
+        versions: [versionWith()],
+        archived_versions: [version({ archived_at: 'now', schedule_items: [item({ entry_id: shrine.id })] })],
+      }),
+    ];
+
+    const [only] = buildPool([shrine], tripDays, buildDayList(trip, tripDays));
+
+    expect(only?.placedOn).toEqual([]);
+    expect(only?.placedMarker).toBeNull();
+  });
+
+  it('ignores an item with no entry', () => {
+    const shrine = summary();
+    const tripDays = [tripDay({ day: '2026-10-12', versions: [versionWith(null)] })];
+
+    const [only] = buildPool([shrine], tripDays, buildDayList(trip, tripDays));
+
+    expect(only?.placedOn).toEqual([]);
+    expect(only?.placedMarker).toBeNull();
+  });
+
+  it('has nothing to say about an empty keep', () => {
+    expect(buildPool([], [], [])).toEqual([]);
   });
 });
 

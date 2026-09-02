@@ -4,8 +4,8 @@
  * so the whole shape of a day is unit-testable without rendering anything.
  */
 import { formatMinutes } from '../../api/schedule';
-import type { DayVersion, Entry, ItineraryItem, TripDay } from '../../api/types';
-import { formatDayTab } from '../../lib/formatDates';
+import type { DayVersion, Entry, EntrySummary, ItineraryItem, TripDay } from '../../api/types';
+import { formatDayTab, MIDDOT } from '../../lib/formatDates';
 import { addDays } from '../schedule/scheduleModel';
 
 /** An en-dash with no spaces around it — house style for ranges. */
@@ -110,6 +110,70 @@ export function buildDayList(
   }
 
   return days;
+}
+
+/** A kept entry as the rail lists it: the summary plus where it already sits. */
+export interface PoolEntry extends EntrySummary {
+  /** ISO dates of every LIVE-version day this entry sits on; ascending, deduped. [] = not placed. */
+  placedOn: string[];
+  /**
+   * `placed · Day 1` (one day, found in `days`), `placed · 1 day` (one day
+   * not in `days`), `placed · N days` (several). Null when `placedOn` is empty.
+   */
+  placedMarker: string | null;
+}
+
+/**
+ * The rail's pool: every kept entry that could still go on a day, placed or
+ * not. An idea placed on Day 1 stays listed so it can be placed on Day 2 too —
+ * the API puts no uniqueness on schedule items per entry, and a lunch spot you
+ * would happily eat at twice should not vanish after the first time. Placed
+ * ones are marked and sink below the unplaced ones, but both groups keep the
+ * order `kept` arrived in, so nothing jumps around as things are placed.
+ *
+ * Lodging is left out altogether: each day has its own lodging editor, and a
+ * hotel sitting in the rail as if it were a thing to do at 14:00 is a wrong
+ * answer to "where next?".
+ *
+ * Placement is read from `tripDays`, not `days`, so a day the trip no longer
+ * covers (after shortening) still counts — the item is still saved there, and
+ * saying "unplaced" about it would be a lie. Live versions only: an archived
+ * version is a plan not chosen, and a thing on one of those is not on the day.
+ * `days` serves only to name the day number in the marker; a date it cannot
+ * name falls back to "1 day".
+ */
+export function buildPool(kept: EntrySummary[], tripDays: TripDay[], days: ItineraryDay[]): PoolEntry[] {
+  const placedDays = new Map<number, Set<string>>();
+  for (const tripDay of tripDays) {
+    for (const version of tripDay.versions) {
+      for (const item of version.schedule_items) {
+        if (item.entry_id === null) continue;
+        let dates = placedDays.get(item.entry_id);
+        if (!dates) placedDays.set(item.entry_id, (dates = new Set()));
+        dates.add(tripDay.day);
+      }
+    }
+  }
+
+  const numberByDay = new Map(days.map((day) => [day.day, day.number]));
+
+  const pool = kept
+    .filter((entry) => entry.category !== 'lodging')
+    .map((entry): PoolEntry => {
+      const placedOn = [...(placedDays.get(entry.id) ?? [])].sort();
+      let placedMarker: string | null = null;
+      if (placedOn.length === 1) {
+        const number = numberByDay.get(placedOn[0] as string);
+        placedMarker = `placed${MIDDOT}${number === undefined ? '1 day' : `Day ${number}`}`;
+      } else if (placedOn.length > 1) {
+        placedMarker = `placed${MIDDOT}${placedOn.length} days`;
+      }
+      return { ...entry, placedOn, placedMarker };
+    });
+
+  // Two passes rather than a sort: it keeps the within-group order by
+  // construction instead of relying on the sort being stable.
+  return [...pool.filter((entry) => entry.placedOn.length === 0), ...pool.filter((entry) => entry.placedOn.length > 0)];
 }
 
 /**
