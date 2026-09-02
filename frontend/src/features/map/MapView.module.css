@@ -312,27 +312,31 @@
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
+/* The edge borrows the muted ink tone, not --border-strong. The old
+   --border-strong hairline was a near-paper tint (1.48:1 on paper) that
+   vanished on OSM tiles — feedback #14 — so the mark reads at 4.32:1 now.
+   Still neutral: no state colour, the chip/dot split stays the message. */
 :global(.wend-pin-dot span) {
   box-sizing: border-box;
   width: 12px;
   height: 12px;
   border-radius: var(--radius-pill);
   background: var(--surface-card);
-  border: var(--border-width) solid var(--border-strong);
+  border: var(--border-width) solid var(--text-muted);
 }
 
 :global(.wend-pin-dot:hover) {
   opacity: 0.8;
 }
 
-/* The faint dot (MapPin.mark='faint') — dimmed, not gone. The dot's own edge
-   (--border-strong) is a near-paper hairline that disappears completely under
-   the extra fade, so the faint mark borrows the muted ink tone instead: still
-   neutral — no state colour sneaks back in — but dark enough to survive the
-   0.55 opacity over OSM tiles, while the regular dot stays the louder of the
+/* The faint dot (MapPin.mark='faint') — dimmed, not gone. At the 0.6 opacity
+   markerIcon.ts applies, the dot's muted edge would sink back under the 3:1
+   graphical floor, so the faint mark borrows the strong ink tone instead: still
+   neutral — no state colour sneaks back in — and its edge still reads at
+   3.11:1 over OSM tiles, while the full-opacity dot stays the louder of the
    two. */
 :global(.wend-pin-faint span) {
-  border-color: var(--text-muted);
+  border-color: var(--text-strong);
 }
 
 /* The ring hugs the 12px mark, not the invisible 32px hit box — a ring around
