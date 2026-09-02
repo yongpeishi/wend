@@ -220,6 +220,14 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
   const returnFocus = useRef(false);
   // The add-idea field strikes the same bargain for the "+ add idea" button.
   const returnFocusToAdd = useRef(false);
+  // A keyboard drop moves the row: React relocates the <li> (same node, new
+  // place), and a node that leaves the document for even an instant loses
+  // focus to <body>. React DOM does put focus back after its commit in the
+  // common case; the card does not lean on that. The grips are kept by member
+  // id so the one that was just dropped is focused again, explicitly, once the
+  // list has re-rendered in the new order — see the effect on `members`.
+  const gripRefs = useRef(new Map<number, HTMLButtonElement>());
+  const refocusGripId = useRef<number | null>(null);
   // A read-only card is not a drop target. Styling alone would not stop it:
   // dnd-kit resolves a drop against every registered droppable, so without this
   // a viewer could still land an idea here and watch the request be refused.
@@ -242,6 +250,16 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
       addIdeaButtonRef.current?.focus();
     }
   }, [addingIdea]);
+
+  // Runs on every new `members` order; acts only after a keyboard drop set the
+  // id. The order changes optimistically the moment the drop is committed, so
+  // this is the render that moved the row — and blurred its grip.
+  useEffect(() => {
+    const id = refocusGripId.current;
+    if (id === null) return;
+    refocusGripId.current = null;
+    gripRefs.current.get(id)?.focus();
+  }, [members]);
 
   // One string rather than assembled in JSX, so the meta is a single text node:
   // one phrase to a screen reader, and one thing to assert on in a test.
@@ -305,11 +323,18 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
     );
   }
 
-  /** The one write every reorder path ends in. No success toast: the row moving is the confirmation. */
+  /**
+   * The one write every reorder path ends in. No success toast: the row moving
+   * is the confirmation. mutateAsync rather than mutate(vars, { onError }):
+   * TanStack Query keeps only the LATEST mutate's per-call callbacks on an
+   * observer, so a second reorder before the first settled would leave the
+   * first to slide back with no toast. The promise is this call's alone; the
+   * rejection handler is always attached, so nothing escapes unhandled.
+   */
   function sendOrder(next: Entry[], movedId: number) {
-    reorderLinks.mutate(
-      { childIds: next.map((m) => m.id), movedId },
-      { onError: () => show(SAVE_FAILED, 'error') },
+    void reorderLinks.mutateAsync({ childIds: next.map((m) => m.id), movedId }).then(
+      () => {},
+      () => show(SAVE_FAILED, 'error'),
     );
   }
 
@@ -356,6 +381,10 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
     }
     if (current.mode === 'keyboard') {
       setLiveText(`Moved ${members[from]?.title ?? ''} to ${landingIndex(from, current.insertAt) + 1} of ${members.length}.`);
+      // The drag state is already cleared above, so the blur the relocation
+      // causes finds nothing to cancel; the effect on `members` then puts
+      // focus back on this grip in its new place.
+      refocusGripId.current = current.fromId;
     }
     sendOrder(applyInsertion(members, from, current.insertAt), current.fromId);
   }
@@ -431,10 +460,11 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
   }
 
   function removeMember(member: Entry) {
-    deleteLink.mutate(member.id, {
-      onSuccess: () => onToast(`Removed ${member.title} from ${bundle.title}. Still kept.`),
-      onError: () => show(SAVE_FAILED, 'error'),
-    });
+    // Same per-call promise as sendOrder: two quick removes each keep their toast.
+    void deleteLink.mutateAsync(member.id).then(
+      () => onToast(`Removed ${member.title} from ${bundle.title}. Still kept.`),
+      () => show(SAVE_FAILED, 'error'),
+    );
   }
 
   function closeAddIdea() {
@@ -632,6 +662,10 @@ export function BundleCard({ bundle, tripId, members, onOpen, onToast }: BundleC
                     next Space pressed anywhere. */}
                 {canEdit && (
                   <button
+                    ref={(node) => {
+                      if (node) gripRefs.current.set(member.id, node);
+                      else gripRefs.current.delete(member.id);
+                    }}
                     type="button"
                     className={[styles.grip, grabbed ? styles.gripOn : ''].filter(Boolean).join(' ')}
                     aria-label={`Reorder ${member.title}`}

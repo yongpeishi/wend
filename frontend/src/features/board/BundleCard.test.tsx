@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -9,6 +10,7 @@ import { ToastProvider } from '../../components/Toast';
 import { TripRoleProvider } from '../../auth/TripRoleContext';
 import { BundleCard } from './BundleCard';
 import { useBundleMembers } from './useBundleMembers';
+import { useLinkMutations } from './useLinkMutations';
 import { api, queryKeys } from '../../api';
 import { server } from '../../mocks/server';
 import type { Entry, EntryDetailResponse } from '../../api/types';
@@ -213,15 +215,22 @@ function CardFromCache() {
   return <BundleCard bundle={BUNDLE} tripId={TRIP_ID} members={members} onToast={() => {}} />;
 }
 
-function renderCardFromCache() {
+/**
+ * `alongside` renders next to the card inside the same providers — a stand-in
+ * for another part of the board writing to the same plan; `seed` gets the
+ * query client before render for anything else the cache must already hold.
+ */
+function renderCardFromCache(alongside?: ReactNode, seed?: (queryClient: QueryClient) => void) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   queryClient.setQueryData(queryKeys.entries.detail(BUNDLE.id), detailOf(MEMBERS));
+  seed?.(queryClient);
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>
         <ToastProvider>
           <DndContext>
             <CardFromCache />
+            {alongside}
           </DndContext>
         </ToastProvider>
       </MemoryRouter>
@@ -229,7 +238,20 @@ function renderCardFromCache() {
   );
 }
 
-const MEMBER_NAME = /^(Ramen alley|Kaiseki counter|Standing sushi)$/;
+/**
+ * TripBoard's drop handler, reduced to its write: the same hook and the same
+ * variables a drag onto the plan sends, reachable from a button here.
+ */
+function DropIntoPlan({ childId }: { childId: number }) {
+  const { addLink } = useLinkMutations();
+  return (
+    <button type="button" onClick={() => addLink.mutate({ parentId: BUNDLE.id, childId })}>
+      Drop into plan
+    </button>
+  );
+}
+
+const MEMBER_NAME = /^(Ramen alley|Kaiseki counter|Standing sushi|Yakitori bar)$/;
 
 /** The members as the DOM shows them, top to bottom. */
 function memberTitles(): string[] {
@@ -297,6 +319,26 @@ function stubRowRects() {
  */
 function dragOverAt(target: Element, clientY: number) {
   fireEvent(target, new MouseEvent('dragover', { bubbles: true, cancelable: true, clientY }));
+}
+
+/**
+ * What a browser does that jsdom does not: moving a focused node (React
+ * relocates a keyed <li> with insertBefore) takes it out of the document for
+ * an instant, and the focus fixup rule hands focus to <body> — firing blur on
+ * the way. jsdom leaves focus where it was, so the loss is staged here: it
+ * proves the grip's blur-cancel finds nothing to cancel by then, and that
+ * focus ends on the moved grip (React DOM restores it after the commit; the
+ * card's own effect on `members` guarantees it either way).
+ */
+function simulateBrowserFocusFixup() {
+  const original = Node.prototype.insertBefore;
+  return vi
+    .spyOn(Node.prototype, 'insertBefore')
+    .mockImplementation(function <T extends Node>(this: Node, node: T, child: Node | null): T {
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && node.isConnected && node.contains(focused)) focused.blur();
+      return original.call(this, node, child) as T;
+    });
 }
 
 /** The card's own announcer — dnd-kit's DndContext mounts a status region of its own. */
@@ -386,9 +428,13 @@ describe('BundleCard — reordering and unlinking members', () => {
   });
 
   // The grip is the keyboard's route to the same preview: lift, step, drop.
+  // Fed from the cache so the drop really relocates the row — which is what
+  // costs a grip its focus, and what the card has to give back.
   it('lifts a row from its grip, steps it with the arrows, and drops it with Space', async () => {
     const { bodies } = serveReorder();
-    renderCard();
+    const fixup = simulateBrowserFocusFixup();
+    renderCardFromCache();
+    await screen.findAllByRole('listitem');
     const grip = screen.getByRole('button', { name: 'Reorder Ramen alley' });
     grip.focus();
 
@@ -414,6 +460,17 @@ describe('BundleCard — reordering and unlinking members', () => {
     expect(bodies[0]).toEqual([92, 91, 93]);
     expect(liveRegion()).toHaveTextContent('Moved Ramen alley to 2 of 3.');
     expect(grip).toHaveAttribute('aria-pressed', 'false');
+
+    // The row has moved on screen, and the grip that dropped it is still the
+    // thing in hand — not <body>, where a relocated node's focus falls.
+    await waitFor(() => expect(memberTitles()).toEqual(['Kaiseki counter', 'Ramen alley', 'Standing sushi']));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reorder Ramen alley' })));
+    // One drop, one request, and the announcement stands — the blur the
+    // relocation caused found nothing left to cancel.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(bodies).toHaveLength(1);
+    expect(liveRegion()).toHaveTextContent('Moved Ramen alley to 2 of 3.');
+    fixup.mockRestore();
   });
 
   it('puts a lifted row back on Escape without asking the server anything', async () => {
@@ -499,6 +556,46 @@ describe('BundleCard — reordering and unlinking members', () => {
     expect(ramen).not.toHaveClass(styles.pending);
     saving.release();
     await waitFor(() => expect(kaiseki).not.toHaveClass(styles.pending));
+  });
+
+  // The add path gets the same cue: an idea dropped onto the plan is in the
+  // list at once, faded until its POST lands, then at full — and only it.
+  it('fades a row dropped into the plan until its save lands', async () => {
+    const user = userEvent.setup();
+    const newcomer = entry(94, 'Yakitori bar');
+    const detailOfNewcomer: EntryDetailResponse = {
+      entry: newcomer,
+      parents: [],
+      children: [],
+      todos: [],
+      votes: [],
+      collaborators_count: 0,
+    };
+    const saving = gate();
+    server.use(
+      http.get(`/api/entries/${BUNDLE.id}`, () => HttpResponse.json(detailOf([...MEMBERS, newcomer]))),
+      http.get(`/api/entries/${newcomer.id}`, () => HttpResponse.json({ ...detailOfNewcomer, parents: [BUNDLE] })),
+      http.post(`/api/entries/${BUNDLE.id}/links`, async () => {
+        await saving.opened;
+        return HttpResponse.json({ link: { id: 1, parent_id: BUNDLE.id, child_id: newcomer.id, position: 3 } });
+      }),
+    );
+    renderCardFromCache(<DropIntoPlan childId={newcomer.id} />, (queryClient) => {
+      // The optimistic insert copies the idea from wherever the cache has it.
+      queryClient.setQueryData(queryKeys.entries.detail(newcomer.id), detailOfNewcomer);
+    });
+    await screen.findAllByRole('listitem');
+
+    await user.click(screen.getByRole('button', { name: 'Drop into plan' }));
+
+    const row = (await screen.findByRole('button', { name: 'Yakitori bar' })).closest('li') as HTMLElement;
+    await waitFor(() => expect(row).toHaveClass(styles.pending));
+    for (const other of screen.getAllByRole('listitem')) {
+      if (other !== row) expect(other).not.toHaveClass(styles.pending);
+    }
+    saving.release();
+    await waitFor(() => expect(row).not.toHaveClass(styles.pending));
+    expect(memberTitles()).toEqual(['Ramen alley', 'Kaiseki counter', 'Standing sushi', 'Yakitori bar']);
   });
 
   it('does not offer to move the first member up or the last one down', () => {
