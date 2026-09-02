@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { Button } from '../../design/components/core/Button';
-import type { EntrySummary } from '../../api/types';
 import { joinMeta } from '../../lib/formatDates';
 // The itinerary's own short duration form ("30 min", "1 hr 30"), not
 // lib/formatDates' longer one — one screen, one convention.
 import { formatDuration } from './itineraryModel';
+import type { PoolEntry } from './itineraryModel';
 import styles from './AddPicker.module.css';
 
 export interface AddPickerProps {
-  /** Kept ideas and bundles that sit in no live version yet. */
-  choices: EntrySummary[];
+  /** Everything kept for this trip, placed or not — the rail's pool. */
+  choices: PoolEntry[];
+  /** ISO date of the day this picker sits on, so a row can say "already on this day". */
+  day: string;
   onPick: (entryId: number) => void;
   /**
    * Keep a brand-new idea and put it straight on this day. Optional: without
@@ -23,10 +25,12 @@ export interface AddPickerProps {
 }
 
 /**
- * The pointer-free way onto a day: pick from what is kept and not placed yet.
+ * The pointer-free way onto a day: pick from what is kept for this trip.
  * Nothing is consumed by choosing — the same bundle may sit in two days at
  * once — so this list is a shelf, not a queue, and picking does not remove the
- * row from it here; the day's data is what decides that.
+ * row from it. A row already on some day says so quietly; one already on THIS
+ * day says that instead, and stays clickable — a deliberate second helping on
+ * the same day is allowed, and the API permits it.
  *
  * It also KEEPS. Everything on the shelf had to be written down on the Ideas
  * board first, which is the wrong shape for how a day actually gets built:
@@ -42,7 +46,7 @@ export interface AddPickerProps {
  * never reaches a control below it. Being first also costs the person who came
  * here to pick exactly one line to read past.
  */
-export function AddPicker({ choices, onPick, onCreate, onClose, slotLabel }: AddPickerProps) {
+export function AddPicker({ choices, day, onPick, onCreate, onClose, slotLabel }: AddPickerProps) {
   const [title, setTitle] = useState('');
 
   function create() {
@@ -65,7 +69,7 @@ export function AddPicker({ choices, onPick, onCreate, onClose, slotLabel }: Add
       }}
     >
       <div className={styles.head}>
-        <p className={styles.title}>Kept and not placed yet</p>
+        <p className={styles.title}>Kept for this trip</p>
         {slotLabel && <p className={styles.slot}>{slotLabel}</p>}
         <Button size="small" variant="quiet" className={styles.close} onClick={onClose}>
           Not now
@@ -111,21 +115,27 @@ export function AddPicker({ choices, onPick, onCreate, onClose, slotLabel }: Add
            somewhere to do it. */
         <p className={styles.empty}>
           {onCreate
-            ? "Everything you've kept is already on a day. Name a new one above and it goes straight on."
-            : "Everything you've kept is already on a day. Keep something new and it lands here."}
+            ? 'Nothing kept for this trip yet. Name a new one above and it goes straight on.'
+            : 'Nothing kept for this trip yet. Keep something on the Ideas board and it lands here.'}
         </p>
       ) : (
-        choices.map((choice) => (
-          <button key={choice.id} type="button" className={styles.choice} onClick={() => onPick(choice.id)}>
-            <span className={styles.choiceTitle}>{choice.title}</span>
-            <span className={styles.choiceMeta}>
-              {joinMeta(
-                choice.kind === 'bundle' ? 'Plan' : null,
-                formatDuration(choice.duration_minutes),
-              )}
-            </span>
-          </button>
-        ))
+        choices.map((choice) => {
+          // This day wins over the general marker: "placed · Day 2" on Day 2's
+          // own picker would send the reader looking for a second Day 2.
+          const marker = choice.placedOn.includes(day) ? 'already on this day' : choice.placedMarker;
+          return (
+            <button key={choice.id} type="button" className={styles.choice} onClick={() => onPick(choice.id)}>
+              <span className={styles.choiceTitle}>{choice.title}</span>
+              <span className={styles.choiceMeta}>
+                {joinMeta(
+                  choice.kind === 'bundle' ? 'Plan' : null,
+                  formatDuration(choice.duration_minutes),
+                )}
+              </span>
+              {marker && <span className={styles.choicePlaced}>{marker}</span>}
+            </button>
+          );
+        })
       )}
     </div>
   );

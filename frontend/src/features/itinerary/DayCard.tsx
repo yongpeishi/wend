@@ -6,7 +6,7 @@ import type { EntrySummary } from '../../api/types';
 import { AddPicker } from './AddPicker';
 import { DayStateDot } from './DayStateDot';
 import { formatSpan } from './itineraryModel';
-import type { ItineraryDay } from './itineraryModel';
+import type { ItineraryDay, PoolEntry } from './itineraryModel';
 import { LodgingEditor } from './LodgingEditor';
 import { LodgingPill } from './LodgingPill';
 import { SwapDayMenu } from './SwapDayMenu';
@@ -31,8 +31,8 @@ export interface DayCardProps {
   day: ItineraryDay;
   /** Kept places the lodging editor offers. */
   lodgingChoices?: EntrySummary[];
-  /** Kept ideas and bundles that sit in no live version yet. */
-  addChoices?: EntrySummary[];
+  /** Everything kept for this trip, placed or not — the rail's pool, for the picker. */
+  addChoices?: PoolEntry[];
   /** Every day of the trip, for the swap menu. Omitted, no swap is offered. */
   swapChoices?: SwapDayChoice[];
   /** The container's own reading of the drag — the card also lights up on its own. */
@@ -280,6 +280,7 @@ export function DayCard({
       {picker && !readOnly && (
         <AddPicker
           choices={addChoices}
+          day={day.day}
           slotLabel={picker.slot ? formatSpan(picker.slot.start, picker.slot.end) : undefined}
           onClose={() => setPicker(null)}
           onPick={(entryId) => {

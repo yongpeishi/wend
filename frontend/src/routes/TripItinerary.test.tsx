@@ -21,7 +21,7 @@ import { TripLayout } from './TripLayout';
 //   Day 3 · Wed 4   lodging, one live version and one archived
 //   Days 4–7        untouched
 // Kiyamachi, Coffee at Weekenders and Nishiki market are in no live version,
-// so the rail starts with three things in it.
+// so the rail starts with three to place — above the six already on a day.
 
 /**
  * The same raise TripBoard.test.tsx made, and for the same reason. Every render
@@ -160,7 +160,18 @@ function letThePageScroll() {
   // jsdom leaves `document.scrollingElement` undefined, and without it @dnd-kit
   // finds no scrolling ancestor at all and treats the page as unscrollable.
   Object.defineProperty(document, 'scrollingElement', { configurable: true, get: () => root });
-  Object.defineProperty(root, 'scrollTop', { configurable: true, get: () => scrolled });
+  // Writable too: after a commit that moves focus, React puts the previously
+  // focused element's ancestors back at the scroll offsets it read off them —
+  // and the rail row a drag came off now outlives its drop (it stays listed,
+  // marked placed), so that write reaches <html>. A getter alone would throw
+  // inside React's commit and take the rest of the file down with it.
+  Object.defineProperty(root, 'scrollTop', {
+    configurable: true,
+    get: () => scrolled,
+    set: (value: number) => {
+      scrolled = value;
+    },
+  });
   // Reachable only once there is a scrolling ancestor, and unimplemented in
   // jsdom: @dnd-kit brings the lifted thing into view when a drag starts.
   const scrollIntoView = Element.prototype.scrollIntoView;
@@ -345,7 +356,7 @@ describe('TripItinerary — dates that would cost a day', () => {
 
     await user.click(screen.getByRole('button', { name: 'Back to your days' }));
     expect(await screen.findByText('Day 7 · Sun 8')).toBeInTheDocument();
-    expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
+    expect(await screen.findByText('3 to place')).toBeInTheDocument();
   });
 
   it('clears the day when the answer is yes, and the ideas on it come back to the rail', async () => {
@@ -357,9 +368,11 @@ describe('TripItinerary — dates that would cost a day', () => {
     expect(await screen.findByText('Day 2 · Tue 3')).toBeInTheDocument();
     expect(screen.queryByText('Day 3 · Wed 4')).not.toBeInTheDocument();
     // Nothing kept was destroyed: the night out was only ever placed on that
-    // day, so losing the day puts it back among the things waiting.
-    expect(await screen.findByText('Not placed yet · 4')).toBeInTheDocument();
-    expect(screen.getByText('A night out in Pontocho')).toBeInTheDocument();
+    // day, so losing the day puts it back among the things waiting — still on
+    // the rail, now without its "placed" marker.
+    expect(await screen.findByText('4 to place')).toBeInTheDocument();
+    const rail = screen.getByRole('complementary', { name: 'Kept for this trip' });
+    expect(within(rail).getByText('A night out in Pontocho').closest('[data-placed]')).toBeNull();
     expect(screen.getByText('Your days are open. What came off is waiting on the right.')).toBeInTheDocument();
   });
 
@@ -379,7 +392,7 @@ describe('TripItinerary — dates that would cost a day', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     // Day 1's plan is still Day 1's plan, two dates along.
     expect(within(dayBox('2026-11-04')).getByText('Nanzen-ji · Nishiki market crawl')).toBeInTheDocument();
-    expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
+    expect(await screen.findByText('3 to place')).toBeInTheDocument();
   });
 });
 
@@ -398,8 +411,8 @@ describe('TripItinerary — swapping two days', () => {
     await user.click(screen.getByRole('button', { name: 'Swap Day 1 · Mon 2 with another day' }));
     await user.click(screen.getByRole('button', { name: 'Swap with Day 3 · Wed 4' }));
 
-    const first = await screen.findByText('A night out in Pontocho');
-    expect(dayBox('2026-11-02')).toContainElement(first);
+    // Scoped to the day: the rail lists the night out too, marked as placed.
+    expect(await within(dayBox('2026-11-02')).findByText('A night out in Pontocho')).toBeInTheDocument();
     expect(within(dayBox('2026-11-04')).getByText('Nanzen-ji · Nishiki market crawl')).toBeInTheDocument();
     // Lodging travels with the day it belongs to.
     expect(within(dayBox('2026-11-02')).getByText('Sleeping on the night train')).toBeInTheDocument();
@@ -507,7 +520,7 @@ describe('TripItinerary — placing what is waiting', () => {
   it('places a kept idea on a day from the rail, untimed, and asks when', async () => {
     const user = userEvent.setup();
     renderItinerary();
-    expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
+    expect(await screen.findByText('3 to place')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Add Kiyamachi to a day' }));
     await user.click(screen.getByRole('button', { name: 'Add to Day 4 · Thu 5' }));
@@ -521,7 +534,150 @@ describe('TripItinerary — placing what is waiting', () => {
     expect(await screen.findByRole('heading', { name: 'Day 4 · Thu 5' })).toBeInTheDocument();
     // Placed somewhere, so it stops waiting — but nothing was consumed: the
     // other two are still on the rail.
-    expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+    expect(await screen.findByText('2 to place')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feedback #26 and #24: the rail and the picker are a pool, not a queue.
+ *
+ * An idea placed on Day 1 used to vanish from the rail and every picker, so it
+ * could never go on Day 2 as well — a lunch spot you would happily eat at twice
+ * was spent after one use. Now everything kept stays listed, says which day it
+ * is already on, and can be placed again; only the count above the rail is
+ * about what still has no day. Lodging leaves the pool altogether: each day's
+ * own "Where you sleep" is where a hotel goes.
+ *
+ * The seed has six things on days — Nanzen-ji on two of them — and three on
+ * none, so the rail reads "3 to place" over nine rows.
+ */
+describe('TripItinerary — kept, placed or not', () => {
+  /** The rail, found by what it says it is. */
+  function rail() {
+    return screen.getByRole('complementary', { name: 'Kept for this trip' });
+  }
+
+  it('keeps a placed idea on the rail, marked with its day, below the ones still waiting', async () => {
+    renderItinerary();
+    expect(await screen.findByText('3 to place')).toBeInTheDocument();
+
+    // Still there, and honest about where it is.
+    const crawl = within(rail()).getByText('Nishiki market crawl');
+    expect(within(rail()).getByText('placed · Day 1')).toBeInTheDocument();
+    expect(crawl.closest('[data-placed]')).not.toBeNull();
+    // Six on a day, one of them on two.
+    expect(rail().querySelectorAll('[data-placed]')).toHaveLength(6);
+    expect(within(rail()).getByText('placed · 2 days')).toBeInTheDocument();
+
+    // The three with no day yet come first, unmarked, so the top of the rail
+    // is still the to-do list it always was.
+    for (const title of ['Kiyamachi', 'Coffee at Weekenders', 'Nishiki market']) {
+      const waiting = within(rail()).getByText(title);
+      expect(waiting.closest('[data-placed]')).toBeNull();
+      expect(waiting.compareDocumentPosition(crawl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it('leaves lodging out of the rail and the picker, and offers it where you sleep instead', async () => {
+    // A kept hotel, on the trip like any other idea.
+    await api.post('/entries', {
+      entry: { kind: 'idea', title: 'Hotel Granvia', category: 'lodging' },
+      parent_id: SEEDED_TRIP_ID,
+    });
+    const user = userEvent.setup();
+    renderItinerary();
+    expect(await screen.findByText('3 to place')).toBeInTheDocument();
+
+    // Not a thing to do at 14:00, so not on the rail, and not in the count.
+    expect(within(rail()).queryByText('Hotel Granvia')).not.toBeInTheDocument();
+
+    await openDay(user, 'Day 1 · Mon 2');
+    await user.click(screen.getByRole('button', { name: '+ add to this day' }));
+    expect(screen.getByRole('button', { name: /^Kiyamachi/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Hotel Granvia/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Not now' }));
+
+    // The one place a hotel belongs: the day's own lodging editor.
+    await user.click(screen.getByRole('button', { name: 'Where you sleep: Machiya near Gion. Change it.' }));
+    expect(screen.getByRole('button', { name: 'Hotel Granvia' })).toBeInTheDocument();
+  });
+
+  it('places an idea already on one day onto a second, and shows it on both', async () => {
+    const user = userEvent.setup();
+    const post = vi.spyOn(api, 'post');
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    await screen.findByRole('heading', { name: 'Version B' });
+
+    // Teramachi arcade is on Day 2 only. Day 1's picker still offers it.
+    await user.click(within(dayBox('2026-11-02')).getByRole('button', { name: '+ add to this day' }));
+    await user.click(screen.getByRole('button', { name: /^Teramachi arcade/ }));
+
+    // A second placement is simply another schedule item, on the other day's
+    // own version — the API puts no uniqueness on items per entry.
+    expect(post).toHaveBeenCalledWith(`/trips/${SEEDED_TRIP_ID}/schedule`, {
+      schedule_item: expect.objectContaining({ entry_id: 8, day: '2026-11-02', day_version_id: 1 }),
+    });
+
+    // On both days once the itinerary comes back, and the rail says so. Day 1
+    // already names Teramachi as a member of the market crawl's band, so the
+    // new placement is told apart by the control only a placed item has — and
+    // it landed untimed, as a pick from the shelf does.
+    expect(
+      await within(dayBox('2026-11-02')).findByRole('button', { name: 'Set the hours for Teramachi arcade' }),
+    ).toBeInTheDocument();
+    expect(within(dayBox('2026-11-03')).getByText('Teramachi arcade')).toBeInTheDocument();
+    // Its own row's marker — Nanzen-ji has been on two days since the seed.
+    await waitFor(() =>
+      expect(within(rail()).getByText('Teramachi arcade').closest('[data-placed]')).toHaveTextContent('placed · 2 days'),
+    );
+    // Nothing new was placed for the first time, so the count holds.
+    expect(screen.getByText('3 to place')).toBeInTheDocument();
+  });
+
+  it('marks a picked idea by the day it is on — or as already on this one, and lets you add it again', async () => {
+    const user = userEvent.setup();
+    const post = vi.spyOn(api, 'post');
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    await screen.findByRole('heading', { name: 'Version B' });
+
+    // From Day 2, the market crawl is somewhere else: it says where.
+    await user.click(screen.getByRole('button', { name: /^\+ add to Version A/ }));
+    expect(screen.getByRole('button', { name: /^Nishiki market crawl/ })).toHaveTextContent('placed · Day 1');
+    expect(screen.getByRole('button', { name: /^Kiyamachi/ })).not.toHaveTextContent(/placed|already/);
+    await user.click(screen.getByRole('button', { name: 'Not now' }));
+
+    // From Day 1 itself, "placed · Day 1" would send the reader looking for a
+    // second Day 1 — so the row says the plainer thing, and still takes a click.
+    await user.click(within(dayBox('2026-11-02')).getByRole('button', { name: '+ add to this day' }));
+    const crawl = screen.getByRole('button', { name: /^Nishiki market crawl/ });
+    expect(crawl).toHaveTextContent('already on this day');
+    await user.click(crawl);
+
+    expect(post).toHaveBeenCalledWith(`/trips/${SEEDED_TRIP_ID}/schedule`, {
+      schedule_item: expect.objectContaining({ entry_id: 4, day: '2026-11-02', day_version_id: 1 }),
+    });
+    // Twice on the same day is allowed, and drawn twice.
+    expect(await within(dayBox('2026-11-02')).findAllByText('Plan · Nishiki market crawl')).toHaveLength(2);
+  });
+
+  it('returns an idea to plain waiting when its only placement is taken off', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    expect(await screen.findByText('3 to place')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Expand all' }));
+    await screen.findByRole('heading', { name: 'Version B' });
+    expect(within(rail()).getByText('Teramachi arcade').closest('[data-placed]')).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Take Teramachi arcade off this day' }));
+
+    // Off the day, so back to needing one: the marker goes and the count grows.
+    expect(await screen.findByText('4 to place')).toBeInTheDocument();
+    expect(within(rail()).getByText('Teramachi arcade').closest('[data-placed]')).toBeNull();
+    expect(within(dayBox('2026-11-03')).queryByText('Teramachi arcade')).not.toBeInTheDocument();
   });
 });
 
@@ -583,7 +739,7 @@ describe('TripItinerary — asked on arrival', () => {
     // exactly as it landed, on the day, with its hours still unset.
     expect(screen.queryByText(/On the day\. When on/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Set the hours for Kiyamachi' })).toBeInTheDocument();
-    expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+    expect(await screen.findByText('2 to place')).toBeInTheDocument();
   });
 
   it('keeps a gap’s "Fill it" timed over the gap’s own hours, with nothing to ask', async () => {
@@ -617,7 +773,7 @@ describe('TripItinerary — keeping a new idea straight onto a day', () => {
   it('writes the idea down and puts it on the day, in one gesture', async () => {
     const user = userEvent.setup();
     renderItinerary();
-    expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
+    expect(await screen.findByText('3 to place')).toBeInTheDocument();
 
     await openDay(user, 'Day 1 · Mon 2');
     await user.click(screen.getByRole('button', { name: 'Fill it' }));
@@ -635,7 +791,7 @@ describe('TripItinerary — keeping a new idea straight onto a day', () => {
 
     // It is an ordinary trip idea, created and then placed — so it never joins
     // the queue of things waiting, and the three that were waiting still are.
-    expect(await screen.findByText('Not placed yet · 3')).toBeInTheDocument();
+    expect(await screen.findByText('3 to place')).toBeInTheDocument();
   });
 
   it('says so and places nothing when the idea cannot be written down', async () => {
@@ -644,7 +800,7 @@ describe('TripItinerary — keeping a new idea straight onto a day', () => {
     // id to place, so the day must be left exactly as it was.
     const post = vi.spyOn(api, 'post').mockRejectedValueOnce(new Error('nope'));
     renderItinerary();
-    await screen.findByText('Not placed yet · 3');
+    await screen.findByText('3 to place');
 
     await openDay(user, 'Day 1 · Mon 2');
     await user.click(screen.getByRole('button', { name: 'Fill it' }));
@@ -704,7 +860,7 @@ describe('TripItinerary — dragging onto a split day', () => {
 
     const inA = screen.getByRole('heading', { name: 'Version A' }).closest('[data-drop-id]') as HTMLElement;
     expect(within(inA).queryByText('Kiyamachi')).not.toBeInTheDocument();
-    expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+    expect(await screen.findByText('2 to place')).toBeInTheDocument();
   });
 
   it('names the version being aimed at, rather than only the day', async () => {
@@ -765,7 +921,7 @@ describe('TripItinerary — dragging onto a split day', () => {
     expect(await screen.findByRole('button', { name: 'Set the hours for Kiyamachi' })).toBeInTheDocument();
     expect(screen.getByText('On the day. When on Thu 5?')).toBeInTheDocument();
     expect(screen.queryByText("That didn't save. It's still here — try again.")).not.toBeInTheDocument();
-    expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+    expect(await screen.findByText('2 to place')).toBeInTheDocument();
   });
 
   /**
@@ -807,7 +963,7 @@ describe('TripItinerary — dragging onto a split day', () => {
         '[data-drop-id]',
       ) as HTMLElement;
       expect(await within(inB).findByText('Kiyamachi')).toBeInTheDocument();
-      expect(await screen.findByText('Not placed yet · 2')).toBeInTheDocument();
+      expect(await screen.findByText('2 to place')).toBeInTheDocument();
     } finally {
       page.restore();
     }
@@ -823,7 +979,7 @@ describe('TripItinerary — dragging onto a split day', () => {
       screen.getByRole('button', { name: 'Drag Kiyamachi onto a day' }),
       'Version B of Day 2 · Tue 3',
     );
-    await screen.findByText('Not placed yet · 2');
+    await screen.findByText('2 to place');
 
     // One placement on the day, not two: the column and the day around it are
     // mutually exclusive, so the day's own monitor stayed quiet rather than
@@ -936,8 +1092,8 @@ describe('TripItinerary — as a viewer', () => {
 
     // With everything still waiting on the rail. Scoped to the rail: a title
     // here can also be a location on a day, and the seed has both.
-    const rail = screen.getByRole('complementary', { name: 'Kept and not placed yet' });
-    expect(within(rail).getByText('Not placed yet · 3')).toBeInTheDocument();
+    const rail = screen.getByRole('complementary', { name: 'Kept for this trip' });
+    expect(within(rail).getByText('3 to place')).toBeInTheDocument();
     expect(within(rail).getByText('Kiyamachi')).toBeInTheDocument();
     expect(within(rail).getByText('Nishiki market')).toBeInTheDocument();
     expect(within(rail).getByText('Coffee at Weekenders')).toBeInTheDocument();
@@ -1012,9 +1168,9 @@ describe('TripItinerary — as a viewer', () => {
 
   it('tells the rail what it is, rather than naming controls a viewer has not got', async () => {
     renderItinerary();
-    await screen.findByText('Not placed yet · 3');
+    await screen.findByText('3 to place');
 
-    expect(screen.getByText('Kept for this trip, not on a day yet.')).toBeInTheDocument();
+    expect(screen.getByText('Kept for this trip. Anything already on a day says which.')).toBeInTheDocument();
     expect(screen.queryByText(/Drag one onto a day/)).not.toBeInTheDocument();
     // The one thing about this rail people assume wrongly is said to everyone.
     expect(screen.getByText(/Nothing here is used up/)).toBeInTheDocument();

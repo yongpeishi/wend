@@ -4,10 +4,20 @@ import userEvent from '@testing-library/user-event';
 import { DndContext } from '@dnd-kit/core';
 import type { DayVersion, EntrySummary, ItineraryItem } from '../../api/types';
 import { DayCard } from './DayCard';
-import type { ItineraryDay } from './itineraryModel';
+import type { ItineraryDay, PoolEntry } from './itineraryModel';
 
 function summary(id: number, title: string, kind: EntrySummary['kind'] = 'idea'): EntrySummary {
   return { id, kind, title, category: 'place', duration_minutes: 120 };
+}
+
+/** What the picker is handed: a kept thing plus where it already sits, as `buildPool` shapes it. */
+function pool(
+  id: number,
+  title: string,
+  placedOn: string[] = [],
+  placedMarker: string | null = null,
+): PoolEntry {
+  return { ...summary(id, title), placedOn, placedMarker };
 }
 
 function item(overrides: Partial<ItineraryItem> & { id: number }): ItineraryItem {
@@ -80,7 +90,7 @@ function renderCard(props: Partial<Parameters<typeof DayCard>[0]> = {}) {
       <DayCard
         day={props.day ?? day()}
         lodgingChoices={props.lodgingChoices ?? [summary(30, 'Machiya near Yasaka')]}
-        addChoices={props.addChoices ?? [summary(40, 'Kinkaku-ji')]}
+        addChoices={props.addChoices ?? [pool(40, 'Kinkaku-ji')]}
         {...handlers}
         {...props}
       />
@@ -175,7 +185,7 @@ describe('DayCard — placing things', () => {
     const handlers = renderCard();
 
     await user.click(screen.getByRole('button', { name: '+ add to this day' }));
-    expect(screen.getByText('Kept and not placed yet')).toBeInTheDocument();
+    expect(screen.getByText('Kept for this trip')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Kinkaku-ji/ }));
 
@@ -203,7 +213,7 @@ describe('DayCard — placing things', () => {
     await user.click(screen.getByRole('button', { name: '+ add to this day' }));
     await user.click(screen.getByRole('button', { name: 'Not now' }));
 
-    expect(screen.queryByText('Kept and not placed yet')).not.toBeInTheDocument();
+    expect(screen.queryByText('Kept for this trip')).not.toBeInTheDocument();
     expect(handlers.onAddItem).not.toHaveBeenCalled();
   });
 
@@ -221,7 +231,7 @@ describe('DayCard — placing things', () => {
     expect(handlers.onCreateItem).toHaveBeenCalledWith(1, 'Nishiki fish stall', null);
     // Placed, so the question is answered and the picker stands down — the
     // same courtesy picking from the shelf gets.
-    expect(screen.queryByText('Kept and not placed yet')).not.toBeInTheDocument();
+    expect(screen.queryByText('Kept for this trip')).not.toBeInTheDocument();
   });
 
   it('takes Enter as the same gesture, and hands the gap its own hours', async () => {
@@ -247,7 +257,35 @@ describe('DayCard — placing things', () => {
     expect(screen.getByRole('button', { name: 'Add to day' })).toBeDisabled();
     expect(handlers.onCreateItem).not.toHaveBeenCalled();
     // Still standing: nothing happened, so nothing has been answered.
-    expect(screen.getByText('Kept and not placed yet')).toBeInTheDocument();
+    expect(screen.getByText('Kept for this trip')).toBeInTheDocument();
+  });
+
+  // Feedback #26: the picker lists everything kept, placed or not. A thing on
+  // another day says which; a thing already on THIS day says that instead —
+  // and both are still offered, because a second helping is allowed.
+  it('says where a choice already sits, and lets you pick it anyway', async () => {
+    const user = userEvent.setup();
+    const handlers = renderCard({
+      addChoices: [
+        pool(40, 'Kinkaku-ji', ['2026-10-13'], 'placed · Day 2'),
+        pool(41, 'Arashiyama', ['2026-10-12'], 'placed · Day 1'),
+      ],
+    });
+
+    await user.click(screen.getByRole('button', { name: '+ add to this day' }));
+
+    // This is Day 2, so Kinkaku-ji's own marker gives way to the plainer fact.
+    expect(screen.getByRole('button', { name: /Kinkaku-ji/ })).toHaveTextContent('already on this day');
+    expect(screen.queryByText('placed · Day 2')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Arashiyama/ })).toHaveTextContent('placed · Day 1');
+
+    await user.click(screen.getByRole('button', { name: /Kinkaku-ji/ }));
+    expect(handlers.onAddItem).toHaveBeenCalledWith(1, 40, null);
+
+    // Picking closes the picker, so open it again for the other row.
+    await user.click(screen.getByRole('button', { name: '+ add to this day' }));
+    await user.click(screen.getByRole('button', { name: /Arashiyama/ }));
+    expect(handlers.onAddItem).toHaveBeenCalledWith(1, 41, null);
   });
 
   // The prop is the switch. A DayCard given no way to create shows a shelf and
@@ -258,7 +296,7 @@ describe('DayCard — placing things', () => {
 
     await user.click(screen.getByRole('button', { name: '+ add to this day' }));
 
-    expect(screen.getByText('Kept and not placed yet')).toBeInTheDocument();
+    expect(screen.getByText('Kept for this trip')).toBeInTheDocument();
     expect(screen.queryByLabelText('Name a new idea')).not.toBeInTheDocument();
   });
 });

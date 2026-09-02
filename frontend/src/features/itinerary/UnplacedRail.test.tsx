@@ -4,11 +4,17 @@ import userEvent from '@testing-library/user-event';
 import { DndContext } from '@dnd-kit/core';
 import type { EntrySummary } from '../../api/types';
 import { ArchivedPanel } from './ArchivedPanel';
-import type { ItineraryDay } from './itineraryModel';
+import type { ItineraryDay, PoolEntry } from './itineraryModel';
 import { UnplacedRail } from './UnplacedRail';
 
-function summary(id: number, title: string, kind: EntrySummary['kind'] = 'idea'): EntrySummary {
-  return { id, kind, title, category: 'place', duration_minutes: 60 };
+/** A kept thing no day holds yet — the pool entry `buildPool` makes of a bare summary. */
+function summary(id: number, title: string, kind: EntrySummary['kind'] = 'idea'): PoolEntry {
+  return { id, kind, title, category: 'place', duration_minutes: 60, placedOn: [], placedMarker: null };
+}
+
+/** The same thing, already on the given days, wearing the marker the model would give it. */
+function placed(entry: PoolEntry, placedOn: string[], placedMarker: string): PoolEntry {
+  return { ...entry, placedOn, placedMarker };
 }
 
 function day(number: number, iso: string, label: string): ItineraryDay {
@@ -34,7 +40,7 @@ function renderRail(props: Partial<Parameters<typeof UnplacedRail>[0]> = {}) {
   render(
     <DndContext>
       <UnplacedRail
-        title="Not placed yet · 2"
+        title="Kept for this trip · 2"
         line={props.line ?? 'Drag one onto a day, or use its menu.'}
         items={props.items ?? ITEMS}
         days={props.days ?? DAYS}
@@ -52,7 +58,7 @@ describe('UnplacedRail — what is waiting', () => {
   it('counts what is waiting and says how to place it', () => {
     renderRail();
 
-    expect(screen.getByText('Not placed yet · 2')).toBeInTheDocument();
+    expect(screen.getByText('Kept for this trip · 2')).toBeInTheDocument();
     expect(screen.getByText('Drag one onto a day, or use its menu.')).toBeInTheDocument();
   });
 
@@ -63,10 +69,28 @@ describe('UnplacedRail — what is waiting', () => {
     expect(screen.getByText('Plan · 1 hr')).toBeInTheDocument();
   });
 
-  it('says plainly when everything kept is already on a day', () => {
+  it('says plainly when nothing has been kept for the trip yet', () => {
     renderRail({ items: [] });
 
-    expect(screen.getByText(/Everything you've kept is on a day/)).toBeInTheDocument();
+    expect(
+      screen.getByText('Nothing kept for this trip yet. Keep something on the Ideas board and it waits here.'),
+    ).toBeInTheDocument();
+  });
+
+  // Feedback #26: a thing placed on Day 1 vanished from the rail, so it could
+  // never be placed on Day 2. It stays now, and says where it already is.
+  it('marks a thing that is already on a day, and leaves the others unmarked', () => {
+    renderRail({
+      items: [summary(1, 'Kinkaku-ji'), placed(summary(2, 'Central wander', 'bundle'), ['2026-10-12'], 'placed · Day 1')],
+    });
+
+    expect(screen.getByText('placed · Day 1')).toBeInTheDocument();
+    const placedRow = screen.getByText('Central wander').closest('[data-placed]');
+    expect(placedRow).not.toBeNull();
+    expect(placedRow).toHaveTextContent('placed · Day 1');
+
+    expect(screen.getByText('Kinkaku-ji').closest('[data-placed]')).toBeNull();
+    expect(screen.getAllByText(/^placed · /)).toHaveLength(1);
   });
 
   it('says out loud that nothing here is used up', () => {
@@ -216,6 +240,22 @@ describe('UnplacedRail — getting something onto a day', () => {
     expect(screen.queryByRole('button', { name: 'Add to Day 1 · Mon 12' })).not.toBeInTheDocument();
   });
 
+  // The whole point of keeping a placed thing in the rail: it can go on
+  // another day too, by either route. Placed is a fact, not a lock.
+  it('still drags and still offers the menu for a thing already on a day', async () => {
+    const user = userEvent.setup();
+    const { onAddToDay } = renderRail({
+      items: [placed(summary(1, 'Kinkaku-ji'), ['2026-10-12'], 'placed · Day 1')],
+    });
+
+    expect(screen.getByRole('button', { name: 'Drag Kinkaku-ji onto a day' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Add Kinkaku-ji to a day' }));
+    await user.click(screen.getByRole('button', { name: 'Add to Day 2 · Tue 13' }));
+
+    expect(onAddToDay).toHaveBeenCalledWith(1, '2026-10-13');
+  });
+
   it('says why the menu is empty when the trip has no dates yet', async () => {
     const user = userEvent.setup();
     renderRail({ days: [] });
@@ -232,7 +272,7 @@ describe('UnplacedRail — read only', () => {
     // a ⋯ menu, and a viewer has neither. See TripItinerary's RAIL_LINE.
     renderRail({ readOnly: true, line: 'Kept for this trip, not on a day yet.' });
 
-    expect(screen.getByText('Not placed yet · 2')).toBeInTheDocument();
+    expect(screen.getByText('Kept for this trip · 2')).toBeInTheDocument();
     expect(screen.getByText('Kept for this trip, not on a day yet.')).toBeInTheDocument();
     expect(screen.getByText('Kinkaku-ji')).toBeInTheDocument();
     expect(screen.getByText('Plan · 1 hr')).toBeInTheDocument();
@@ -245,9 +285,21 @@ describe('UnplacedRail — read only', () => {
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 
-  it('still says plainly when everything kept is already on a day', () => {
+  it('still says plainly when nothing has been kept for the trip yet', () => {
     renderRail({ readOnly: true, items: [] });
 
-    expect(screen.getByText(/Everything you've kept is on a day/)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing kept for this trip yet/)).toBeInTheDocument();
+  });
+
+  // A viewer sees where things already are — that is reading — with no way to
+  // put them anywhere else.
+  it('keeps the placed marker for a viewer, with nothing to press beside it', () => {
+    renderRail({
+      readOnly: true,
+      items: [placed(summary(1, 'Kinkaku-ji'), ['2026-10-12'], 'placed · Day 1')],
+    });
+
+    expect(screen.getByText('placed · Day 1')).toBeInTheDocument();
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 });
