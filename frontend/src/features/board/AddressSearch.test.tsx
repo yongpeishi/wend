@@ -407,4 +407,34 @@ describe('AddressSearch', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     expect(field()).toHaveValue('nanzen');
   });
+
+  it('blur while a search is in flight discards its answer instead of opening the list', async () => {
+    const user = userEvent.setup();
+    let signal: AbortSignal | undefined;
+    let resolve: (found: GeocodeResult[]) => void = () => undefined;
+    const searchFn = vi.fn(
+      (_query: string, options?: { signal?: AbortSignal }) =>
+        new Promise<GeocodeResult[]>((res) => {
+          signal = options?.signal;
+          resolve = res;
+        }),
+    );
+    render(<Harness searchFn={searchFn} />);
+
+    await user.type(field(), 'fushimi');
+    await waitFor(() => expect(searchFn).toHaveBeenCalledTimes(1));
+
+    // Tab away — to a category pill, say — before the geocoder has answered.
+    await user.tab();
+    expect(signal?.aborted).toBe(true);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    // The answer arrives late, under a field nobody is in — and must change nothing.
+    resolve([makePlace({ label: 'Fushimi Inari-taisha' })]);
+    await new Promise((res) => setTimeout(res, 0));
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(field()).toHaveAttribute('aria-expanded', 'false');
+    expect(field()).toHaveValue('fushimi');
+  });
 });

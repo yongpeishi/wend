@@ -239,7 +239,12 @@ export function AddressSearch({
         onKeyDown={handleKeyDown}
         // Blur closes the list but keeps the results; the options take care
         // not to cause the blur in the first place (see their onMouseDown).
+        // Pending work is cancelled too: a search that landed after focus had
+        // moved on would open the list under a field nobody is in, and shove
+        // whatever sits below it out from under the pointer.
         onBlur={() => {
+          cancelPending();
+          setSearching(false);
           setOpen(false);
           setHighlighted(null);
         }}
