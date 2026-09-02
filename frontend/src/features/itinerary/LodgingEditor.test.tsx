@@ -11,7 +11,7 @@ function place(id: number, title: string): EntrySummary {
 
 const CHOICES = [place(11, 'Machiya near Yasaka'), place(12, 'Hotel in Namba')];
 
-function renderEditor(current: LodgingValue | null = null) {
+function renderEditor(current: LodgingValue | null = null, onClose?: () => void) {
   const onPick = vi.fn();
   const onClear = vi.fn();
   const onFreeText = vi.fn();
@@ -22,6 +22,7 @@ function renderEditor(current: LodgingValue | null = null) {
       onPick={onPick}
       onClear={onClear}
       onFreeText={onFreeText}
+      onClose={onClose}
     />,
   );
   return { onPick, onClear, onFreeText };
@@ -91,5 +92,24 @@ describe('LodgingEditor', () => {
     renderEditor(null);
 
     expect(screen.queryByRole('button', { name: 'Clear it' })).not.toBeInTheDocument();
+  });
+
+  it('closes from the X without touching the night', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const { onPick, onClear, onFreeText } = renderEditor({ entryId: 11, label: null }, onClose);
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onPick).not.toHaveBeenCalled();
+    expect(onClear).not.toHaveBeenCalled();
+    expect(onFreeText).not.toHaveBeenCalled();
+  });
+
+  it('offers no X when there is nowhere to close to', () => {
+    renderEditor(null);
+
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
   });
 });

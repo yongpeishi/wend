@@ -2,6 +2,8 @@
    day rather than a layer over it, which is what "no shadows" leaves us and
    what we want anyway. */
 .editor {
+  /* The containing block for the CloseButton in the corner. */
+  position: relative;
   background: var(--surface-page);
   border-radius: var(--radius-card);
   padding: var(--space-3);
@@ -10,9 +12,13 @@
   gap: var(--space-2);
 }
 
-/* The design sets this caption at 13px; raised to --text-min-size, the floor. */
+/* The design sets this caption at 13px; raised to --text-min-size, the floor.
+   The right padding stops a long caption running under the X, whose box
+   reaches 40px in from the panel's corner; the panel's 12px inset covers the
+   rest. */
 .title {
   margin: 0;
+  padding-right: var(--space-8);
   font-size: var(--text-min-size);
   color: var(--text-muted);
 }

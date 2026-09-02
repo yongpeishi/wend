@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../../design/components/core/Button';
 import { Chip } from '../../design/components/core/Chip';
 import { Input } from '../../design/components/core/Input';
+import { CloseButton } from '../../components/CloseButton';
 import type { EntrySummary } from '../../api/types';
 import styles from './LodgingEditor.module.css';
 
@@ -49,6 +50,9 @@ export function LodgingEditor({ choices, current, onPick, onClear, onFreeText, o
         onClose();
       }}
     >
+      {/* Only when there is somewhere to go back to — the same condition
+          Escape answers to, so the X never promises a way out Escape lacks. */}
+      {onClose && <CloseButton onClick={onClose} />}
       <p className={styles.title}>Kept places, or your own words</p>
 
       <div className={styles.choices}>

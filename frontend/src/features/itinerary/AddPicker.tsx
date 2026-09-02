@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../design/components/core/Button';
+import { CloseButton } from '../../components/CloseButton';
 import type { EntrySummary } from '../../api/types';
 import { joinMeta } from '../../lib/formatDates';
 // The itinerary's own short duration form ("30 min", "1 hr 30"), not
@@ -64,6 +65,10 @@ export function AddPicker({ choices, onPick, onCreate, onClose, slotLabel }: Add
         onClose();
       }}
     >
+      {/* The same X every panel wears, alongside "Not now": the words say what
+          leaving means here (nothing is lost), the X is where a hand already
+          expects the way out to be. */}
+      <CloseButton onClick={onClose} />
       <div className={styles.head}>
         <p className={styles.title}>Kept and not placed yet</p>
         {slotLabel && <p className={styles.slot}>{slotLabel}</p>}
