@@ -60,8 +60,12 @@ export function landingIndex(fromIndex: number, insertAt: InsertionIndex): numbe
  * New array with `items[fromIndex]` moved into the gap. Always a fresh array —
  * a noop returns a same-order copy — so callers can hand the result straight
  * to a mutation or a state setter without checking whether anything changed.
- * Out-of-range indexes are clamped rather than thrown on: a drop that lands a
- * frame after the list shrank should degrade to "nothing happened".
+ * Out-of-range indexes degrade to "nothing happened" rather than throwing: a
+ * `fromIndex` that no longer names a row (a drop that lands a frame after the
+ * list shrank) returns the same-order copy — clamping it would move whichever
+ * row now sits at the edge, and fire a request for a move nobody made. A gap
+ * beyond the ends is clamped to the nearest end: the pointer left the list,
+ * but the row it was carrying is still real.
  */
 export function applyInsertion<T>(
   items: readonly T[],
@@ -70,11 +74,11 @@ export function applyInsertion<T>(
 ): T[] {
   const next = items.slice();
   if (items.length === 0) return next;
-  const from = clamp(fromIndex, 0, items.length - 1);
+  if (fromIndex < 0 || fromIndex >= items.length || !Number.isInteger(fromIndex)) return next;
   const at = clamp(insertAt, 0, items.length);
-  if (isNoopInsertion(from, at)) return next;
-  const [moved] = next.splice(from, 1);
-  next.splice(landingIndex(from, at), 0, moved);
+  if (isNoopInsertion(fromIndex, at)) return next;
+  const [moved] = next.splice(fromIndex, 1);
+  next.splice(landingIndex(fromIndex, at), 0, moved);
   return next;
 }
 

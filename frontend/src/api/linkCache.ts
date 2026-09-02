@@ -94,6 +94,14 @@ export interface LinkSnapshot {
  * Cancels the parent's in-flight detail fetch (so a response already on the
  * wire cannot land on top of the optimistic state) and captures what we are
  * about to change. Every `optimistic*` below starts here.
+ *
+ * Only the detail is cancelled. A list refetch already in flight (kicked off
+ * by a sibling that settled a moment ago) can still land after this edit and
+ * briefly show the pre-edit `parent_ids`/`children_count` on the ideas list;
+ * the plan's `children` — what the board actually draws the move from — are
+ * safe, and the list is put right when this mutation settles and refetches.
+ * Cancelling every `['entries','list']` query on each drop would also cancel
+ * the ideas list's own first load, which nothing would restart until then.
  */
 async function snapshot(queryClient: QueryClient, parentId: number): Promise<LinkSnapshot> {
   await queryClient.cancelQueries({ queryKey: queryKeys.entries.detail(parentId) });
@@ -224,7 +232,23 @@ export async function optimisticMoveChild(
   return snap;
 }
 
-/** Puts every cache an `optimistic*` touched back the way it was. */
+/**
+ * Puts every cache an `optimistic*` touched back the way it was.
+ *
+ * "The way it was" is as of THIS mutation's `onMutate`. With several link
+ * mutations in flight, a later one's snapshot already contains the earlier
+ * ones' optimistic edits, and an earlier one's snapshot predates the later
+ * ones'. So a failure in the first of two overlapping drops also hides the
+ * second's row until the second settles — at which point it is the last one
+ * standing, its `onSettled` invalidates `['entries']`, and the refetch paints
+ * the server's truth (see the guard in src/api/links.ts). The alternative —
+ * diffing snapshots against the live cache to restore only what this mutation
+ * changed — is not worth its weight for a flicker that only shows when a
+ * request fails while a sibling is still out.
+ *
+ * Lists whose data was `undefined` at snapshot time (still on their first
+ * fetch) are skipped by `setQueryData` itself, which is a no-op for undefined.
+ */
 export function restoreLinkSnapshot(queryClient: QueryClient, snap: LinkSnapshot): void {
   if (snap.detail) queryClient.setQueryData(queryKeys.entries.detail(snap.detail.entry.id), snap.detail);
   for (const [key, list] of snap.lists) {

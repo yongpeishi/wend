@@ -94,10 +94,18 @@ describe('applyInsertion', () => {
     expect(items).toEqual(before);
   });
 
-  it('clamps indexes that have fallen out of range', () => {
+  it('clamps a gap that has fallen off either end', () => {
     expect(applyInsertion(items, 0, 99)).toEqual(['b', 'c', 'd', 'a']);
-    expect(applyInsertion(items, 99, 0)).toEqual(['d', 'a', 'b', 'c']);
-    expect(applyInsertion(items, -1, 1)).toEqual(items);
+    expect(applyInsertion(items, 3, -5)).toEqual(['d', 'a', 'b', 'c']);
+  });
+
+  it('does nothing for an origin that no longer names a row', () => {
+    // The list shrank under a drop: the old last index is now one past the end.
+    for (const stale of [items.length, 99, -1, 1.5]) {
+      const result = applyInsertion(items, stale, 0);
+      expect(result).toEqual(items);
+      expect(result).not.toBe(items);
+    }
   });
 
   it('copies an empty list', () => {
