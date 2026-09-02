@@ -1,9 +1,22 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { IdeaComposer } from './IdeaComposer';
 import type { IdeaComposerProps } from './IdeaComposer';
 import type { Entry } from '../../api/types';
+import type { GeocodeResult } from '../map/types';
+
+/**
+ * The address field asks the map's geocoder; these tests never do. The
+ * standing answer is "nothing found", so the older typing tests see no list
+ * and no network; the search tests below set what a pick has to offer.
+ */
+const { searchPlace } = vi.hoisted(() => ({ searchPlace: vi.fn() }));
+vi.mock('../map/geocode', () => ({ searchPlace }));
+beforeEach(() => {
+  searchPlace.mockReset();
+  searchPlace.mockResolvedValue([]);
+});
 
 function makeEntry(overrides: Partial<Entry>): Entry {
   return {
@@ -95,13 +108,13 @@ describe('IdeaComposer — the card', () => {
 
     expect(screen.getByRole('button', { name: 'Add idea' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue('');
-    expect(screen.getByRole('textbox', { name: 'Address' })).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: 'Address' })).toHaveValue('');
   });
 
   it('shows the whole form and no reveal link when it is not trimmed', () => {
     renderComposer();
 
-    expect(screen.getByRole('textbox', { name: 'Address' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Address' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'Category' })).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: '＋ address, category, parents' }),
@@ -139,7 +152,7 @@ describe('IdeaComposer — trimmed', () => {
 
     expect(screen.getByRole('textbox', { name: 'Name' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Short description' })).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: 'Address' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Address' })).not.toBeInTheDocument();
     expect(screen.queryByRole('radiogroup', { name: 'Category' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '+ add parent' })).not.toBeInTheDocument();
   });
@@ -150,7 +163,7 @@ describe('IdeaComposer — trimmed', () => {
 
     await user.click(screen.getByRole('button', { name: '＋ address, category, parents' }));
 
-    expect(screen.getByRole('textbox', { name: 'Address' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Address' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'Category' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '+ add parent' })).toBeInTheDocument();
   });
@@ -160,12 +173,12 @@ describe('IdeaComposer — trimmed', () => {
     renderComposer({ trimmed: true });
 
     await user.click(screen.getByRole('button', { name: '＋ address, category, parents' }));
-    await user.type(screen.getByRole('textbox', { name: 'Address' }), '68 Fukakusa');
+    await user.type(screen.getByRole('combobox', { name: 'Address' }), '68 Fukakusa');
 
     expect(
       screen.queryByRole('button', { name: '＋ address, category, parents' }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: 'Address' })).toHaveValue('68 Fukakusa');
+    expect(screen.getByRole('combobox', { name: 'Address' })).toHaveValue('68 Fukakusa');
   });
 
   it('folds again on the next opening, not on the re-render in between', async () => {
@@ -176,7 +189,7 @@ describe('IdeaComposer — trimmed', () => {
     view.update({ open: false });
     view.update({ open: true });
 
-    expect(screen.queryByRole('textbox', { name: 'Address' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Address' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '＋ address, category, parents' })).toBeInTheDocument();
   });
 });
@@ -197,7 +210,7 @@ describe('IdeaComposer — worn as the edit form', () => {
 
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Fushimi Inari');
     expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue('Torii gates');
-    expect(screen.getByRole('textbox', { name: 'Address' })).toHaveValue('68 Fukakusa');
+    expect(screen.getByRole('combobox', { name: 'Address' })).toHaveValue('68 Fukakusa');
     expect(screen.getByRole('radio', { name: 'Activity' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('button', { name: 'Remove from Kyoto day' })).toBeInTheDocument();
   });
@@ -225,6 +238,8 @@ describe('IdeaComposer — worn as the edit form', () => {
       title: 'Fushimi Inari',
       description: 'Torii gates',
       address: '68 Fukakusa',
+      lat: null,
+      lng: null,
       category: 'activity',
       parentIds: [],
     });
@@ -486,7 +501,7 @@ describe('IdeaComposer — submit and cancel', () => {
 
     await user.type(screen.getByRole('textbox', { name: 'Name' }), '  Fushimi Inari  ');
     await user.type(screen.getByRole('textbox', { name: 'Short description' }), ' Torii gates ');
-    await user.type(screen.getByRole('textbox', { name: 'Address' }), ' 68 Fukakusa ');
+    await user.type(screen.getByRole('combobox', { name: 'Address' }), ' 68 Fukakusa ');
     await user.click(screen.getByRole('radio', { name: 'Activity' }));
     await user.click(screen.getByRole('button', { name: '+ add parent' }));
     await user.click(screen.getByRole('button', { name: 'Food crawl' }));
@@ -497,6 +512,8 @@ describe('IdeaComposer — submit and cancel', () => {
       title: 'Fushimi Inari',
       description: 'Torii gates',
       address: '68 Fukakusa',
+      lat: null,
+      lng: null,
       category: 'activity',
       parentIds: [11, 12],
     });
@@ -514,6 +531,8 @@ describe('IdeaComposer — submit and cancel', () => {
       title: 'Onsen day',
       description: '',
       address: '',
+      lat: null,
+      lng: null,
       category: null,
       parentIds: [],
     });
@@ -530,6 +549,8 @@ describe('IdeaComposer — submit and cancel', () => {
       title: 'Nishiki market',
       description: '',
       address: '',
+      lat: null,
+      lng: null,
       category: null,
       parentIds: [11],
     });
@@ -603,5 +624,164 @@ describe('IdeaComposer — a fresh form every open', () => {
 
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Onsen day');
     expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue('Mid-thought');
+  });
+});
+
+/**
+ * Feedback #4 and #12: the address box is the map's search, and an address an
+ * idea already has is shown rather than folded behind the reveal link. The
+ * geocoder is mocked at the module seam (see the top of the file), so the
+ * suggestion list here is fed exactly what a test says and nothing else.
+ */
+describe('IdeaComposer — the address is the map’s search', () => {
+  const TAISHA: GeocodeResult = {
+    lat: 34.9671,
+    lng: 135.7727,
+    label: 'Fushimi Inari Taisha, 68 Fukakusa Yabunouchicho, Kyoto',
+    kind: 'place of worship',
+    placeId: 'n1',
+  };
+
+  /** Type, wait out the debounce for the one offered row, and take it. */
+  async function pickTaisha(user: ReturnType<typeof userEvent.setup>) {
+    searchPlace.mockResolvedValue([TAISHA]);
+    await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Fushimi');
+    await user.click(await screen.findByRole('option', { name: /Fushimi Inari Taisha/ }));
+  }
+
+  it('opens a trimmed card with the address showing when the idea has one — feedback #12', () => {
+    renderComposer({ trimmed: true, hostTitle: 'Kyoto day', initialAddress: '68 Fukakusa' });
+
+    expect(screen.getByRole('combobox', { name: 'Address' })).toHaveValue('68 Fukakusa');
+    expect(
+      screen.queryByRole('button', { name: '＋ address, category, parents' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('still folds a trimmed card whose idea has no address — blank counts as none', () => {
+    renderComposer({ trimmed: true, initialAddress: '   ' });
+
+    expect(screen.queryByRole('combobox', { name: 'Address' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '＋ address, category, parents' })).toBeInTheDocument();
+  });
+
+  it('asks the map’s geocoder for what was typed', async () => {
+    const user = userEvent.setup();
+    renderComposer();
+
+    await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Fushimi');
+
+    await waitFor(() => expect(searchPlace).toHaveBeenCalledWith('Fushimi', expect.anything()));
+  });
+
+  it('takes a picked suggestion whole: its label, its point, and "place" when nothing was chosen', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer({ initialTitle: 'Shrine' });
+
+    await pickTaisha(user);
+
+    expect(screen.getByRole('combobox', { name: 'Address' })).toHaveValue(TAISHA.label);
+    expect(screen.getByRole('radio', { name: 'Place' })).toHaveAttribute('aria-checked', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(onSubmit).toHaveBeenCalledWith({
+      title: 'Shrine',
+      description: '',
+      address: TAISHA.label,
+      lat: TAISHA.lat,
+      lng: TAISHA.lng,
+      category: 'place',
+      parentIds: [],
+    });
+  });
+
+  // The pick answers "where", not "what kind" — a chip the writer already lit
+  // is their answer, and a restaurant with an address is still food.
+  it('never overwrites a category the writer already chose', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer({ initialTitle: 'Inari sushi', initialCategory: 'food' });
+
+    await pickTaisha(user);
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(screen.getByRole('radio', { name: 'Food' })).toHaveAttribute('aria-checked', 'true');
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ category: 'food', lat: TAISHA.lat }));
+  });
+
+  it('keeps the idea’s pin when the address is merely retyped', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer({
+      initialTitle: 'Shrine',
+      initialAddress: '68 Fukakusa',
+      initialLat: 34.9671,
+      initialLng: 135.7727,
+    });
+
+    await user.type(screen.getByRole('combobox', { name: 'Address' }), ' Yabunouchicho');
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ address: '68 Fukakusa Yabunouchicho', lat: 34.9671, lng: 135.7727 }),
+    );
+  });
+
+  it('drops the pin when the address is emptied — no address, no place', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer({
+      initialTitle: 'Shrine',
+      initialAddress: '68 Fukakusa',
+      initialLat: 34.9671,
+      initialLng: 135.7727,
+    });
+
+    await user.clear(screen.getByRole('combobox', { name: 'Address' }));
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ address: '', lat: null, lng: null }));
+  });
+
+  it('seeds no pin from half a coordinate', async () => {
+    const user = userEvent.setup();
+    const { onSubmit } = renderComposer({
+      initialTitle: 'Shrine',
+      initialAddress: '68 Fukakusa',
+      initialLat: 34.9671,
+      initialLng: null,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ lat: null, lng: null }));
+  });
+
+  // decisions.md §3: a failed geocode never blocks capturing an idea.
+  it('keeps the address as typed when the geocoder has nothing, or falls over', async () => {
+    const user = userEvent.setup();
+    searchPlace.mockRejectedValue(new Error('nominatim is down'));
+    const { onSubmit } = renderComposer({ initialTitle: 'Somewhere' });
+
+    await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Nowhere in particular');
+    expect(await screen.findByText('No match — kept as typed.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ address: 'Nowhere in particular', lat: null, lng: null }),
+    );
+  });
+
+  it('forgets a picked pin on the next opening, like every other field', async () => {
+    const user = userEvent.setup();
+    const view = renderComposer({ initialTitle: 'Shrine' });
+
+    await pickTaisha(user);
+    view.update({ open: false });
+    view.update({ open: true, initialTitle: 'Something else' });
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(view.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Something else', address: '', lat: null, lng: null }),
+    );
   });
 });

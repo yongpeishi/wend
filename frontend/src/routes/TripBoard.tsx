@@ -480,6 +480,11 @@ export function TripBoard() {
           // Only when there is one: an empty string written onto the entry
           // would read as "an address was given and it is nothing".
           ...(draft.address.trim() !== '' ? { address: draft.address } : {}),
+          // A pin only when the composer has one — here that means a picked
+          // suggestion, since a new idea has nothing to be seeded with. The
+          // composer nulls both halves together, so checking both is belt and
+          // braces against ever writing half a coordinate.
+          ...(draft.lat !== null && draft.lng !== null ? { lat: draft.lat, lng: draft.lng } : {}),
         },
         parent_id: firstParentId ?? trip.id,
       });

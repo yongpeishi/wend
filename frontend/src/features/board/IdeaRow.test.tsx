@@ -13,6 +13,9 @@ import { api } from '../../api';
 import { server } from '../../mocks/server';
 import type { Entry } from '../../api/types';
 
+// The edit form's address field asks the map's geocoder; this file never does.
+vi.mock('../map/geocode', () => ({ searchPlace: vi.fn(async () => []) }));
+
 function makeEntry(overrides: Partial<Entry>): Entry {
   return {
     id: 42,
@@ -892,6 +895,8 @@ describe('IdeaRow — editing in place', () => {
   const ENTRY = makeEntry({
     description: 'Thousand torii gates.',
     address: '68 Fukakusa',
+    lat: 34.9671,
+    lng: 135.7727,
     category: 'activity',
     parent_ids: [7, 90],
   });
@@ -903,7 +908,7 @@ describe('IdeaRow — editing in place', () => {
 
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Fushimi Inari');
     expect(screen.getByRole('textbox', { name: 'Short description' })).toHaveValue('Thousand torii gates.');
-    expect(screen.getByRole('textbox', { name: 'Address' })).toHaveValue('68 Fukakusa');
+    expect(screen.getByRole('combobox', { name: 'Address' })).toHaveValue('68 Fukakusa');
     expect(screen.getByRole('radio', { name: 'Activity' })).toHaveAttribute('aria-checked', 'true');
     // The idea parent is named; the bundle (90) is not the form's to claim.
     expect(screen.getByRole('button', { name: 'Remove from Kyoto day' })).toBeInTheDocument();
@@ -925,6 +930,8 @@ describe('IdeaRow — editing in place', () => {
     expect(screen.queryByRole('button', { name: 'Fushimi Inari' })).not.toBeInTheDocument();
   });
 
+  // The pin rides along untouched: an edit that never went near the address
+  // must not cost the idea its place on the map.
   it('saves the edited facts through PATCH and comes back to the open panel', async () => {
     const patch = vi.spyOn(api, 'patch').mockResolvedValue({ entry: ENTRY });
     const onToast = vi.fn();
@@ -941,6 +948,8 @@ describe('IdeaRow — editing in place', () => {
           title: 'Fushimi Inari',
           description: 'Ten thousand gates.',
           address: '68 Fukakusa',
+          lat: 34.9671,
+          lng: 135.7727,
           category: 'activity',
         },
       }),
@@ -952,18 +961,26 @@ describe('IdeaRow — editing in place', () => {
     patch.mockRestore();
   });
 
+  // An emptied address takes the pin with it — no address, no place.
   it('writes an emptied description and address as null, not empty words', async () => {
     const patch = vi.spyOn(api, 'patch').mockResolvedValue({ entry: ENTRY });
     renderRow({ entry: ENTRY, allIdeas: ALL_IDEAS });
     const user = await startEditing();
 
     await user.clear(screen.getByRole('textbox', { name: 'Short description' }));
-    await user.clear(screen.getByRole('textbox', { name: 'Address' }));
+    await user.clear(screen.getByRole('combobox', { name: 'Address' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith('/entries/42', {
-        entry: { title: 'Fushimi Inari', description: null, address: null, category: 'activity' },
+        entry: {
+          title: 'Fushimi Inari',
+          description: null,
+          address: null,
+          lat: null,
+          lng: null,
+          category: 'activity',
+        },
       }),
     );
     patch.mockRestore();

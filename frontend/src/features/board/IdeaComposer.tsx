@@ -1,13 +1,32 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { Entry, EntryCategory } from '../../api/types';
+import type { GeocodeResult } from '../map/types';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from './filters';
 import { pathToIdea } from './tree';
 import { Button } from '../../design/components/core/Button';
+import { AddressSearch } from './AddressSearch';
 import styles from './IdeaComposer.module.css';
 
 /** How many picker results are ever drawn at once — see PICKER_LIMIT's note. */
 const PICKER_LIMIT = 8;
+
+/** Both halves or nothing — half a coordinate is not a place. */
+function seedCoords(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+): { lat: number; lng: number } | null {
+  return lat !== null && lat !== undefined && lng !== null && lng !== undefined ? { lat, lng } : null;
+}
+
+/**
+ * Whether the card opens with address, category and parents already showing.
+ * A trimmed card folds them away — unless it was handed an address, which
+ * must be seen to be corrected (see the component comment on feedback #12).
+ */
+function startsRevealed(trimmed: boolean, initialAddress: string): boolean {
+  return !trimmed || initialAddress.trim() !== '';
+}
 
 /**
  * What the composer hands back on submit — everything the quick-add path
@@ -23,6 +42,13 @@ export interface IdeaComposerDraft {
   title: string;
   description: string;
   address: string;
+  /**
+   * Where the address points, when a suggestion was picked or the idea already
+   * had a pin. Both null whenever there is no pin — the board and the row write
+   * these straight through, so null here has to MEAN "no pin", not "unknown".
+   */
+  lat: number | null;
+  lng: number | null;
   category: EntryCategory | null;
   parentIds: number[];
 }
@@ -49,6 +75,9 @@ export interface IdeaComposerProps {
   initialDescription?: string;
   /** Seed for the address field — an existing idea's, when editing. */
   initialAddress?: string;
+  /** Seed coordinates — an existing idea's, when editing. Null/undefined = none. */
+  initialLat?: number | null;
+  initialLng?: number | null;
   /** Which category chip starts lit; null — nothing lit — unless told otherwise. */
   initialCategory?: EntryCategory | null;
   /**
@@ -125,6 +154,26 @@ export interface IdeaComposerProps {
  * from another. Only the first few matches are drawn (see PICKER_LIMIT); the
  * search field, not scrolling, is how you reach the rest.
  *
+ * The address field is the map's search wearing the composer's clothes:
+ * `AddressSearch`, over the same `geocode.ts` the map page asks. Feedback #4
+ * put it plainly — typing an address into an idea "should do the same search
+ * as when you create a place via the map page" — and until it did, an address
+ * typed here was a sentence the map could not draw, because only a pick
+ * carries coordinates. So a picked suggestion writes the label AND `lat`/`lng`
+ * into the draft, and lights 'place' if no category was chosen yet (the map's
+ * own "Add as idea" writes 'place' for a geocoded place; a chip the writer
+ * already chose is never overwritten). Free typing does the other thing on
+ * purpose: it keeps whatever coordinates the idea already had, because a
+ * hand-corrected address is a better label for the same pin, not a reason to
+ * lose the pin. Only emptying the field drops them — no address, no place, no
+ * pin. The geocoder failing or finding nothing changes none of this
+ * (decisions.md §3: a failed geocode never blocks capturing an idea).
+ *
+ * And a trimmed card that is seeded with an address opens with the field
+ * already showing. Feedback #12 was an address set from the map that nobody
+ * could find when editing here, because it sat behind the reveal link — the
+ * link is for fields nobody has answered yet, not for hiding answers.
+ *
  * State resets when `open` flips true. The composer stays mounted whether it
  * is open or not — TripBoard always renders it — so a fresh Tab must not
  * resurrect the half-draft someone cancelled yesterday. The reset seeds every field from
@@ -151,6 +200,8 @@ export function IdeaComposer({
   allIdeas = parentChoices,
   initialDescription = '',
   initialAddress = '',
+  initialLat = null,
+  initialLng = null,
   initialCategory = null,
   hostTitle,
   trimmed = false,
@@ -161,13 +212,15 @@ export function IdeaComposer({
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
   const [address, setAddress] = useState(initialAddress);
+  const [coords, setCoords] = useState(seedCoords(initialLat, initialLng));
   const [category, setCategory] = useState<EntryCategory | null>(initialCategory);
   const [parentIds, setParentIds] = useState<number[]>(initialParentIds);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
-  // A trimmed card starts folded; every other caller starts with the whole
-  // form, so "revealed" is true from the outset and no link is ever drawn.
-  const [revealed, setRevealed] = useState(!trimmed);
+  // A trimmed card starts folded (unless seeded with an address — see
+  // startsRevealed); every other caller starts with the whole form, so
+  // "revealed" is true from the outset and no link is ever drawn.
+  const [revealed, setRevealed] = useState(startsRevealed(trimmed, initialAddress));
   const categoryLabelId = useId();
   const insideLabelId = useId();
   const nameRef = useRef<HTMLInputElement>(null);
@@ -186,11 +239,12 @@ export function IdeaComposer({
       setTitle(initialTitle);
       setDescription(initialDescription);
       setAddress(initialAddress);
+      setCoords(seedCoords(initialLat, initialLng));
       setCategory(initialCategory);
       setParentIds(initialParentIds);
       setPickerOpen(false);
       setQuery('');
-      setRevealed(!trimmed);
+      setRevealed(startsRevealed(trimmed, initialAddress));
       nameRef.current?.focus({ preventScroll: true });
     }
     wasOpen.current = open;
@@ -199,6 +253,8 @@ export function IdeaComposer({
     initialTitle,
     initialDescription,
     initialAddress,
+    initialLat,
+    initialLng,
     initialCategory,
     initialParentIds,
     trimmed,
@@ -255,9 +311,29 @@ export function IdeaComposer({
       title: kept,
       description: description.trim(),
       address: address.trim(),
+      lat: coords?.lat ?? null,
+      lng: coords?.lng ?? null,
       category,
       parentIds,
     });
+  }
+
+  /**
+   * Typing keeps the pin; only emptying the field drops it. A corrected label
+   * is still the same place, and no label is no place — see the component
+   * comment for why free text is trusted this far.
+   */
+  function changeAddress(text: string) {
+    setAddress(text);
+    if (text.trim() === '') setCoords(null);
+  }
+
+  /** A suggestion taken whole: its label as the address, its point as the pin. */
+  function pickPlace(place: GeocodeResult) {
+    setAddress(place.label);
+    setCoords({ lat: place.lat, lng: place.lng });
+    // Only an unanswered category is filled in; a chosen chip is the writer's.
+    if (category === null) setCategory('place');
   }
 
   /**
@@ -330,14 +406,17 @@ export function IdeaComposer({
       {revealed && (
         <>
           {/* The placeholder does the explaining, so an idea that is not a place —
-              a dish, a warning, a vibe — never meets a required-looking field. */}
-          <input
-            type="text"
-            className={styles.input}
+              a dish, a warning, a vibe — never meets a required-looking field.
+              No `submitOnEnter` here, deliberately: Enter on a highlighted
+              suggestion picks it, and Enter otherwise does what the plain
+              address box always did, which was nothing. */}
+          <AddressSearch
             value={address}
+            onChange={changeAddress}
+            onPick={pickPlace}
             placeholder="Address — leave empty if it isn't a place"
             aria-label="Address"
-            onChange={(event) => setAddress(event.target.value)}
+            inputClassName={styles.input}
           />
 
           <div className={styles.section}>
