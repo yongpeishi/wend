@@ -1,10 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, queryKeys } from '../../api';
+import { api } from '../../api';
 import {
   LINK_MUTATION_KEY,
   optimisticAddChild,
   optimisticRemoveChild,
   restoreLinkSnapshot,
+  settleLinkMutation,
 } from '../../api/linkCache';
 import type { LinkSnapshot } from '../../api/linkCache';
 import type { EntryLink } from '../../api/types';
@@ -18,11 +19,12 @@ import type { EntryLink } from '../../api/types';
  * a second parent-id shape into src/api.
  *
  * Both are optimistic (src/api/linkCache.ts): the member shows up in — or
- * leaves — the plan on `mutate`, and a failure puts the snapshot back. The
- * `onSettled` guard mirrors src/api/links.ts: with several link mutations in
- * flight (a bulk add, a fast second drop), only the last one to settle
- * refetches, otherwise the first response back would repaint the board
- * without the siblings the server hasn't seen yet. No toasts here — every
+ * leaves — the plan on `mutate`, and a failure puts the snapshot back.
+ * `onSettled` is the same `settleLinkMutation` src/api/links.ts uses: with
+ * several link mutations in flight (a bulk add, a fast second drop), every
+ * settle marks `['entries']` stale but only the last one refetches, otherwise
+ * the first response back would repaint the board without the siblings the
+ * server hasn't seen yet. No toasts here — every
  * caller (TripBoard, IdeaRow, BulkBar, the map views) already shows its own
  * "That didn't save…" and success toasts per call, so one here would double
  * them.
@@ -33,11 +35,7 @@ export function useLinkMutations() {
     onError: (_error: unknown, _variables: unknown, context: LinkSnapshot | undefined) => {
       if (context) restoreLinkSnapshot(queryClient, context);
     },
-    onSettled: () => {
-      if (queryClient.isMutating({ mutationKey: LINK_MUTATION_KEY }) === 1) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.entries.all });
-      }
-    },
+    onSettled: () => settleLinkMutation(queryClient),
   };
 
   const addLink = useMutation({

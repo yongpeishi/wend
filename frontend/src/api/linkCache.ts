@@ -5,11 +5,37 @@ import type { Entry, EntryDetailResponse } from './types';
 /**
  * The prefix every link mutation's `mutationKey` starts with. Two things hang
  * off it: `usePendingLinkChildIds` asks `useMutationState` for everything
- * under this prefix, and each hook's `onSettled` counts how many are still
- * in flight before refetching — see the `isMutating(...) === 1` guard in
- * src/api/links.ts.
+ * under this prefix, and `settleLinkMutation` counts how many are still in
+ * flight to decide whether it is the one that refetches.
  */
 export const LINK_MUTATION_KEY = ['links'] as const;
+
+/**
+ * The `onSettled` every link mutation shares (src/api/links.ts and
+ * src/features/board/useLinkMutations.ts).
+ *
+ * A drag-and-drop burst (BulkBar adding five ideas, or a drop that lands
+ * while an earlier one is still saving) runs several link mutations at once.
+ * If each refetched as it settled, the first response back would repaint the
+ * board from the server — which does not yet know about the siblings still
+ * in flight — and their optimistic rows would vanish until the last one
+ * landed. During `onSettled` the settling mutation still counts as pending,
+ * so `isMutating(...) === 1` means "I am the last one standing": only that
+ * one refetches, and every optimistic edit survives until the server can
+ * confirm all of them together.
+ *
+ * Every settler still marks `['entries']` stale (`refetchType: 'none'`).
+ * Two mutations can reach `onSettled` in the same microtask drain, each
+ * seeing the other still pending — neither is "last". If marking stale were
+ * gated too, nothing would refetch and the optimistic (or rolled-back) state
+ * would sit there until some unrelated refetch happened along. Marked stale,
+ * the next observer mount or window focus puts it right, and nothing on
+ * screen changes now, so no sibling's optimistic row is clobbered.
+ */
+export function settleLinkMutation(queryClient: QueryClient): void {
+  const isLast = queryClient.isMutating({ mutationKey: LINK_MUTATION_KEY }) === 1;
+  void queryClient.invalidateQueries({ queryKey: queryKeys.entries.all, refetchType: isLast ? 'active' : 'none' });
+}
 
 /** What a pending link mutation is touching — for the in-flight fade. */
 export interface LinkTouch {
@@ -35,9 +61,6 @@ export function linkTouch(mutationKey: MutationKey | undefined, variables: unkno
     case 'create':
       if (staticParent === undefined || typeof vars.child_id !== 'number') return undefined;
       return { parentId: staticParent, childIds: [vars.child_id] };
-    case 'position':
-      if (staticParent === undefined || typeof vars.childId !== 'number') return undefined;
-      return { parentId: staticParent, childIds: [vars.childId] };
     case 'delete':
       if (staticParent === undefined || typeof variables !== 'number') return undefined;
       return { parentId: staticParent, childIds: [variables] };
@@ -212,26 +235,6 @@ export async function optimisticReorderChildren(
   return snap;
 }
 
-/** Moves one child of `parentId` to index `position` before the server confirms. */
-export async function optimisticMoveChild(
-  queryClient: QueryClient,
-  parentId: number,
-  childId: number,
-  position: number,
-): Promise<LinkSnapshot> {
-  const snap = await snapshot(queryClient, parentId);
-  if (snap.detail) {
-    setChildren(queryClient, parentId, (children) => {
-      const moved = children.find((c) => c.id === childId);
-      if (!moved) return children;
-      const next = children.filter((c) => c.id !== childId);
-      next.splice(Math.max(0, Math.min(position, next.length)), 0, moved);
-      return next;
-    });
-  }
-  return snap;
-}
-
 /**
  * Puts every cache an `optimistic*` touched back the way it was.
  *
@@ -240,8 +243,8 @@ export async function optimisticMoveChild(
  * ones' optimistic edits, and an earlier one's snapshot predates the later
  * ones'. So a failure in the first of two overlapping drops also hides the
  * second's row until the second settles — at which point it is the last one
- * standing, its `onSettled` invalidates `['entries']`, and the refetch paints
- * the server's truth (see the guard in src/api/links.ts). The alternative —
+ * standing, its `onSettled` refetches `['entries']`, and the refetch paints
+ * the server's truth (see `settleLinkMutation` above). The alternative —
  * diffing snapshots against the live cache to restore only what this mutation
  * changed — is not worth its weight for a flicker that only shows when a
  * request fails while a sibling is still out.

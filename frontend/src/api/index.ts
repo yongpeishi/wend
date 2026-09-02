@@ -5,7 +5,7 @@ export * from './types';
 
 export { useEntries, useEntry, useEntryTree, useCreateEntry, useUpdateEntry, useChangeTripDates, useArchiveEntry, useRestoreEntry, useLiftEntry, useAbsorbEntry, useForkEntry } from './entries';
 export type { ChangeTripDatesParams, ChangeTripDatesResult } from './entries';
-export { useCreateLink, useUpdateLinkPosition, useDeleteLink, useReorderLinks, usePendingLinkChildIds } from './links';
+export { useCreateLink, useDeleteLink, useReorderLinks, usePendingLinkChildIds } from './links';
 export { LINK_MUTATION_KEY } from './linkCache';
 export { useVote, useDeleteVote } from './votes';
 export { useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo } from './todos';

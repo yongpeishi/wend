@@ -6,29 +6,21 @@ import {
   LINK_MUTATION_KEY,
   linkTouch,
   optimisticAddChild,
-  optimisticMoveChild,
   optimisticRemoveChild,
   optimisticReorderChildren,
   restoreLinkSnapshot,
+  settleLinkMutation,
 } from './linkCache';
 import type { LinkSnapshot } from './linkCache';
-import { queryKeys } from './queryKeys';
 import type { EntryLink } from './types';
 
 /**
  * The `onError`/`onSettled` pair every link mutation shares. Each hook edits
  * the cache in `onMutate` (see src/api/linkCache.ts) and hands back a snapshot
- * as its context; a failure puts the snapshot back, and settling refetches.
- *
- * The `isMutating(...) === 1` guard: a drag-and-drop burst (BulkBar adding
- * five ideas, or a drop that lands while an earlier one is still saving)
- * runs several link mutations at once. If each refetched as it settled, the
- * first response back would repaint the board from the server — which does
- * not yet know about the siblings still in flight — and their optimistic
- * rows would vanish until the last one landed. During `onSettled` the
- * settling mutation still counts as pending, so `=== 1` means "I am the last
- * one standing": only that one refetches, and every optimistic edit survives
- * until the server can confirm all of them together.
+ * as its context; a failure puts the snapshot back, and settling marks
+ * `['entries']` stale — refetching only from the last mutation standing, so
+ * an earlier response cannot repaint the board without the siblings still in
+ * flight (see `settleLinkMutation`).
  *
  * No toasts here. Every caller already shows "That didn't save. It's still
  * here — try again." from its own per-call `onError`, and success toasts are
@@ -40,11 +32,7 @@ function linkMutationLifecycle(queryClient: QueryClient) {
     onError: (_error: unknown, _variables: unknown, context: LinkSnapshot | undefined) => {
       if (context) restoreLinkSnapshot(queryClient, context);
     },
-    onSettled: () => {
-      if (queryClient.isMutating({ mutationKey: LINK_MUTATION_KEY }) === 1) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.entries.all });
-      }
-    },
+    onSettled: () => settleLinkMutation(queryClient),
   };
 }
 
@@ -55,17 +43,6 @@ export function useCreateLink(parentId: number) {
     mutationFn: (params: { child_id: number; position?: number }) =>
       api.post<{ link: EntryLink }>(`/entries/${parentId}/links`, params).then((r) => r.link),
     onMutate: ({ child_id, position }) => optimisticAddChild(queryClient, parentId, child_id, position),
-    ...linkMutationLifecycle(queryClient),
-  });
-}
-
-export function useUpdateLinkPosition(parentId: number) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationKey: [...LINK_MUTATION_KEY, 'position', parentId],
-    mutationFn: ({ childId, position }: { childId: number; position: number }) =>
-      api.patch<{ link: EntryLink }>(`/entries/${parentId}/links/${childId}`, { position }).then((r) => r.link),
-    onMutate: ({ childId, position }) => optimisticMoveChild(queryClient, parentId, childId, position),
     ...linkMutationLifecycle(queryClient),
   });
 }

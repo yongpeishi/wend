@@ -12,6 +12,7 @@ import {
   optimisticAddChild,
   optimisticRemoveChild,
   reorderChildren,
+  settleLinkMutation,
 } from './linkCache';
 import type { Entry, EntryDetailResponse } from './types';
 import { db, findEntry, toEntry, toEntryDetail } from '../mocks/db';
@@ -126,7 +127,6 @@ describe('usePendingLinkChildIds', () => {
 describe('linkTouch', () => {
   it.each([
     [['links', 'create', 4], { child_id: 10, position: 1 }, { parentId: 4, childIds: [10] }],
-    [['links', 'position', 4], { childId: 10, position: 1 }, { parentId: 4, childIds: [10] }],
     [['links', 'delete', 4], 10, { parentId: 4, childIds: [10] }],
     [['links', 'reorder', 4], { childIds: [8, 6, 7], movedId: 8 }, { parentId: 4, childIds: [8] }],
     [['links', 'reorder', 4], { childIds: [8, 6, 7] }, { parentId: 4, childIds: [] }],
@@ -192,6 +192,30 @@ describe('linkCache', () => {
 
     expect(childIds()).toEqual([6, 10, 7, 8]);
     expect(before.children.map((c) => c.id)).toEqual([6, 7, 8]);
+  });
+
+  it('settleLinkMutation marks entries stale from every settler but refetches only from the last', () => {
+    const { queryClient } = setup();
+    const detailKey = queryKeys.entries.detail(BUNDLE_ID);
+    const isMutating = vi.spyOn(queryClient, 'isMutating');
+    const refetch = vi.spyOn(queryClient, 'refetchQueries');
+    expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(false);
+
+    // A sibling is still in flight: stale, but nothing refetched.
+    isMutating.mockReturnValue(2);
+    settleLinkMutation(queryClient);
+    expect(isMutating).toHaveBeenCalledWith({ mutationKey: LINK_MUTATION_KEY });
+    expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true);
+    expect(refetch).not.toHaveBeenCalled();
+
+    // Last one standing: refetch what is on screen.
+    isMutating.mockReturnValue(1);
+    settleLinkMutation(queryClient);
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(refetch).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: queryKeys.entries.all, type: 'active' }),
+      expect.anything(),
+    );
   });
 
   it('findCachedEntry looks in the detail, then lists, then other bundles\' children', () => {

@@ -135,12 +135,16 @@ describe('useLinkMutations — removeLink', () => {
 });
 
 describe('useLinkMutations — settling', () => {
-  it('refetches only once the last in-flight link mutation settles', async () => {
-    const { queryClient, wrapper } = setup();
+  it('marks entries stale as each link mutation settles but refetches only from the last', async () => {
+    const { queryClient, wrapper, childIds } = setup();
+    const detailKey = queryKeys.entries.detail(BUNDLE_ID);
     const first = deferred<{ link: unknown }>();
     const second = deferred<{ link: unknown }>();
     vi.spyOn(api, 'post').mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const refetch = vi.spyOn(queryClient, 'refetchQueries');
+    // Entry 3 is only reachable through bundle 9's cached children.
+    queryClient.setQueryData(queryKeys.entries.detail(9), toEntryDetail(findEntry(9)!, db.currentUserId));
     const { result } = renderHook(() => useLinkMutations(), { wrapper });
 
     act(() => {
@@ -148,14 +152,23 @@ describe('useLinkMutations — settling', () => {
       result.current.addLink.mutate({ parentId: BUNDLE_ID, childId: 3 });
     });
     await waitFor(() => expect(queryClient.isMutating()).toBe(2));
+    expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(false);
 
+    // First settler: the detail is stale, but nothing refetches — the second
+    // add's optimistic row must survive until the server knows about it.
     first.resolve({ link: {} });
     await waitFor(() => expect(queryClient.isMutating()).toBe(1));
-    expect(invalidate).not.toHaveBeenCalled();
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.entries.all, refetchType: 'none' });
+    expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true);
+    expect(refetch).not.toHaveBeenCalled();
+    expect(childIds()).toEqual([6, 7, 8, 10, 3]);
 
+    // Last settler: refetch.
     second.resolve({ link: {} });
     await waitFor(() => expect(queryClient.isMutating()).toBe(0));
-    expect(invalidate).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.entries.all });
+    expect(invalidate).toHaveBeenCalledTimes(2);
+    expect(invalidate).toHaveBeenLastCalledWith({ queryKey: queryKeys.entries.all, refetchType: 'active' });
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 });
