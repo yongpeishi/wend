@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MIN_INTERVAL_MS, __resetThrottleForTests, parseLatLng, searchPlace, throttle1Hz } from './geocode';
+import {
+  GeocoderUnreachable,
+  MIN_INTERVAL_MS,
+  __resetThrottleForTests,
+  parseLatLng,
+  searchPlace,
+  throttle1Hz,
+} from './geocode';
 
 // Every case shares one module-level throttle queue by design (that's what
 // makes a burst across the whole app share one 1/sec budget) — reset it
@@ -64,14 +71,39 @@ describe('searchPlace', () => {
     expect(results[0]!.placeId).toBeUndefined();
   });
 
-  it('resolves to an empty array — never throws — when the response is not ok', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue({ ok: false, json: async () => [] });
+  // "We asked and there is no such place" is an empty array; "we could not
+  // ask" is a rejection. Only usePlaceSearch calls this, and it absorbs both
+  // into state — so keeping them apart here costs no caller anything and is
+  // what lets a field say which of the two happened. 503 is the one that
+  // matters in practice: it is how Nominatim says "slow down".
+  it('rejects as unreachable — rather than claiming no match — when the response is not ok', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => [] });
+    await expect(
+      searchPlace('nowhere', { fetchImpl: fetchImpl as unknown as typeof fetch }),
+    ).rejects.toBeInstanceOf(GeocoderUnreachable);
+  });
+
+  it('rejects as unreachable when the network call itself rejects', async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error('offline'));
+    await expect(
+      searchPlace('nowhere', { fetchImpl: fetchImpl as unknown as typeof fetch }),
+    ).rejects.toBeInstanceOf(GeocoderUnreachable);
+  });
+
+  it('resolves empty — the provider is fine — when the search simply matched nothing', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [] });
     await expect(searchPlace('nowhere', { fetchImpl: fetchImpl as unknown as typeof fetch })).resolves.toEqual([]);
   });
 
-  it('resolves to an empty array — never throws — when the network call rejects', async () => {
-    const fetchImpl = vi.fn().mockRejectedValue(new Error('offline'));
-    await expect(searchPlace('nowhere', { fetchImpl: fetchImpl as unknown as typeof fetch })).resolves.toEqual([]);
+  it('rethrows an abort as it came — our own doing is not the provider failing', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const abortError = new DOMException('aborted', 'AbortError');
+    const fetchImpl = vi.fn().mockRejectedValue(abortError);
+
+    await expect(
+      searchPlace('nowhere', { fetchImpl: fetchImpl as unknown as typeof fetch, signal: controller.signal }),
+    ).rejects.toBe(abortError);
   });
 
   it('biases toward the given viewport, spelling the box west,north,east,south', async () => {

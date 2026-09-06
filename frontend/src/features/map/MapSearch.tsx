@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Input } from '../../design/components/core/Input';
 import { Spinner } from '../../components/Spinner';
-import { searchPlace as defaultSearchPlace } from './geocode';
+import { usePlaceSearch } from './usePlaceSearch';
+import type { PlaceSearchFn } from './usePlaceSearch';
 import { matchIdeas } from './mapScreen';
 import type { LocatedEntry } from './mapScreen';
 import type { Bounds, GeocodeResult } from './types';
 import styles from './MapSearch.module.css';
-
-const DEBOUNCE_MS = 400;
 
 /** A dropdown longer than the screen is not a suggestion — same caps as matchIdeas. */
 const MAX_IDEA_MATCHES = 3;
@@ -40,7 +39,7 @@ export interface MapSearchProps {
    * any caller, and so tests never depend on a real network call. Defaults to
    * Nominatim via geocode.ts (rate-limited to 1/sec there).
    */
-  searchFn?: (query: string, options?: { signal?: AbortSignal; viewbox?: Bounds }) => Promise<GeocodeResult[]>;
+  searchFn?: PlaceSearchFn;
 }
 
 /**
@@ -59,43 +58,36 @@ export function MapSearch({
   canEdit,
   clearNonce,
   bounds,
-  searchFn = defaultSearchPlace,
+  searchFn,
 }: MapSearchProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<GeocodeResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   /**
-   * The viewport, in a ref rather than read from the closure — and deliberately
-   * NOT in any dependency array. Two things are being kept apart here:
+   * The viewport, handed to the hook as a getter rather than a value — and
+   * deliberately NOT in any dependency array. Two things are being kept apart:
    *
-   * 1. handleChange's search fires on a 400ms timer. The closure it schedules
-   *    captures whatever `bounds` was when the key was pressed; if you nudge the
-   *    map in that gap the request would be biased toward where you *were*. The
-   *    ref is read at fire time, so the bias follows the map.
+   * 1. The search fires on a debounce timer. A captured `bounds` would be
+   *    whatever it was when the key was pressed; if you nudge the map in that
+   *    gap the request would be biased toward where you *were*. The hook calls
+   *    this at fire time, so the bias follows the map.
    * 2. Panning must not re-run a geocode. `bounds` changes on every frame of a
    *    drag; wiring it into an effect dependency (or resubscribing the debounce
    *    to it) would fire a request per pan, which both burns Nominatim's 1/sec
    *    budget and makes the results flicker under a still-typing user. Bounds
    *    are an input to the next search, never a trigger for one.
-   *
-   * Assigned during render rather than in an effect so the very first search
-   * after mount already sees real bounds.
    */
-  const boundsRef = useRef(bounds);
-  boundsRef.current = bounds;
+  const { results, searching, searched, unreachable, search, clear } = usePlaceSearch({
+    searchFn,
+    requestOptions: () => ({ viewbox: bounds ?? undefined }),
+  });
 
-  function reset() {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    abortRef.current?.abort();
+  // Stable, because the effect below lists it: `clear` is stable for the life
+  // of the hook, so this is too, and the effect stays a nonce watcher rather
+  // than something that runs on every render.
+  const reset = useCallback(() => {
+    clear();
     setQuery('');
-    setResults([]);
-    setSearching(false);
-    setSearched(false);
-  }
+  }, [clear]);
 
   // Ref-guard idiom: the ref starts at whatever nonce the parent mounted with,
   // so only a CHANGE clears the field — an initial value never counts.
@@ -104,49 +96,15 @@ export function MapSearch({
     if (clearNonce === undefined || clearNonce === nonceRef.current) return;
     nonceRef.current = clearNonce;
     reset();
-  }, [clearNonce]);
-
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      abortRef.current?.abort();
-    },
-    [],
-  );
+  }, [clearNonce, reset]);
 
   function handleChange(value: string) {
     setQuery(value);
-    setResults([]);
-    setSearched(false);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    abortRef.current?.abort();
-
-    const trimmed = value.trim();
-    if (!trimmed) {
-      setSearching(false);
-      return;
-    }
-
-    timerRef.current = setTimeout(() => {
-      const controller = new AbortController();
-      abortRef.current = controller;
-      setSearching(true);
-      searchFn(trimmed, { signal: controller.signal, viewbox: boundsRef.current ?? undefined })
-        // A swapped-in provider might reject instead of resolving empty — the
-        // seam itself must absorb that, not just geocode.ts's default fetch.
-        .catch(() => [])
-        .then((found) => {
-          // A superseded search must not write over the one that replaced it.
-          if (controller.signal.aborted) return;
-          setResults(found);
-          setSearched(true);
-          setSearching(false);
-        });
-    }, DEBOUNCE_MS);
+    search(value);
   }
 
   // Idea matching is local and instant, so it reads `bounds` straight from the
-  // props — no ref needed, because there is no gap between deciding and doing:
+  // props — no getter needed, because there is no gap between deciding and doing:
   // this runs during the same render that received the new viewport. Re-ordering
   // on pan is the point, and costs nothing (no network, a handful of entries).
   const near = bounds
@@ -216,11 +174,20 @@ export function MapSearch({
 
           {searching && <Spinner label="Searching" />}
 
+          {/* "Nothing by that name" is a claim about the world, and it must
+              not be made on a search that never ran. Nominatim rate-limits at
+              1/sec, so an unreachable place search is an ordinary outcome of
+              typing quickly — and the ideas already on the map were matched
+              locally, so what failed is only half the answer. Either way the
+              drop-a-pin offer stands: it is exactly the fallback for a place
+              the geocoder can't hand you, whichever reason it can't. */}
           {nothingFound &&
             (canEdit ? (
               <div className={styles.nothing}>
                 <p className={styles.nothingLine}>
-                  Nothing by that name. You can put it on the map yourself — click where it is.
+                  {unreachable
+                    ? 'Couldn’t reach the place search. You can put it on the map yourself — click where it is.'
+                    : 'Nothing by that name. You can put it on the map yourself — click where it is.'}
                 </p>
                 <button
                   type="button"
@@ -235,7 +202,9 @@ export function MapSearch({
                 </button>
               </div>
             ) : (
-              <p className={styles.nothingLine}>Nothing by that name.</p>
+              <p className={styles.nothingLine}>
+                {unreachable ? 'Couldn’t reach the place search.' : 'Nothing by that name.'}
+              </p>
             ))}
         </div>
       )}
