@@ -73,6 +73,15 @@ describe('AdminFeedback', () => {
     expect(within(row).getByText('demo@wend.app')).toBeInTheDocument();
   });
 
+  it('prints the row’s own id beside the chevron', async () => {
+    renderPage();
+    const row = (await screen.findByText('The checklist loses my tick when I scroll — it comes back on reload though.')).closest('tr') as HTMLElement;
+    // The seeded id, verbatim — it is what names this note anywhere off the
+    // page, so the cell shows the number and nothing dressed up around it.
+    expect(within(row).getByText('901')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'ID' })).toBeInTheDocument();
+  });
+
   it('shows where the feedback came from, capture and all, once the row is open', async () => {
     // "Where" is no longer one of the always-visible columns — it moved into
     // the disclosure, so this now asserts the same two things one click later.
@@ -131,7 +140,7 @@ describe('AdminFeedback', () => {
       renderPage();
       await screen.findByText(CHECKLIST);
 
-      // Collapsed: the table is five columns of triage and nothing else.
+      // Collapsed: the table is the triage columns and nothing else.
       expect(screen.queryByText('http://localhost:5173/trips/1/checklist')).not.toBeInTheDocument();
       expect(screen.queryByText('Screenshots')).not.toBeInTheDocument();
 
