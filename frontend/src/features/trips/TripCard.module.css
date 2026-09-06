@@ -81,11 +81,23 @@
 }
 
 /* Everything interactive sits above the link overlay, so it keeps its own click
-   and its own tab stop. */
+   and its own tab stop. The description belongs in this list: the title's
+   ::after is a positioned box and paints over the in-flow content below it, so
+   without this a click meant for the description — or for a link inside it —
+   lands on the overlay and navigates to the trip instead. */
 .headActions,
+.descriptionField,
 .reasons {
   position: relative;
   z-index: 1;
+}
+
+/* The description's two states share a row with the pencil that opens the
+   field, so swapping prose for textarea doesn't shift anything sideways. */
+.descriptionField {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
 }
 
 .headActions {
@@ -122,15 +134,18 @@
 }
 
 /* Borderless by default so the card still reads clean with no description;
-   a border only shows up once you're actually in the field. */
-.description {
+   a border only shows up once you're actually in the field. The paragraph and
+   the textarea carry the same box and the same type, so opening the field
+   re-flows nothing. */
+.description,
+.descriptionText {
   display: block;
+  flex: 1;
+  min-width: 0;
   width: 100%;
   box-sizing: border-box;
   margin: 0;
   padding: var(--space-1) var(--space-2);
-  resize: none;
-  overflow: hidden;
   font-family: var(--font-sans);
   font-size: var(--text-small-size);
   line-height: var(--text-body-line);
@@ -140,17 +155,72 @@
   border-radius: var(--radius-card);
 }
 
+.description {
+  resize: none;
+  overflow: hidden;
+}
+
+/* The field kept the writer's line breaks; the paragraph has to as well, or a
+   multi-line description would reflow the moment it stopped being edited.
+   `anywhere` because a pasted URL is one unbreakable word and the card is
+   narrow — break it rather than let it widen the grid. */
+.descriptionText {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Muted only when it is the invitation rather than the description. */
+.descriptionEmpty {
+  color: var(--text-muted);
+}
+
 .description::placeholder {
   color: var(--text-muted);
 }
 
-.description:hover {
+.description:hover,
+.descriptionEditable:hover {
   border-color: var(--border-subtle);
+}
+
+/* A text caret over prose that answers a click by opening the field. A viewer
+   doesn't get this class, and so doesn't get the promise. */
+.descriptionEditable {
+  cursor: text;
 }
 
 .description:focus-visible {
   border-color: var(--border-subtle);
   background: var(--surface-card);
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* The description's own pencil, quieter than the title's: same gesture, but it
+   sits in the body of the card rather than the head, so it takes no ring of its
+   own. It is what makes the field reachable without a mouse. */
+.editDescription {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.editDescription:hover {
+  opacity: 0.65;
+}
+
+.editDescription:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
@@ -165,7 +235,8 @@
 
 @media (pointer: coarse) {
   .archive,
-  .editTitle {
+  .editTitle,
+  .editDescription {
     width: var(--tap-min);
     height: var(--tap-min);
   }

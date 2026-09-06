@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ProsCons } from './ProsCons';
+import { Linkify } from '../../components';
 import { useUpdateEntry } from '../../api/entries';
 import { canDelete, canEdit } from '../../auth/tripRole';
 import { useToast } from '../../components/Toast';
@@ -36,6 +37,12 @@ function metaLine(trip: Entry): string {
  * none of them needs to stop propagation. Renaming swaps the title link for an
  * input via an explicit edit button (`.editTitle`) rather than making the link
  * itself editable, so click-to-navigate and click-to-rename stay distinguishable.
+ *
+ * The description reads as prose and only becomes a field when asked, for the
+ * same reason: a URL someone typed into it is a link, and a link cannot live
+ * inside a textarea. So the read view is a paragraph (with `<Linkify>` doing
+ * the URLs), and an explicit pencil — the description's own, mirroring the
+ * title's — opens the textarea, which still holds and saves the raw text.
  */
 export function TripCard({ trip, onArchive }: TripCardProps) {
   const updateTrip = useUpdateEntry(trip.id);
@@ -50,6 +57,7 @@ export function TripCard({ trip, onArchive }: TripCardProps) {
   const deletable = canDelete(trip.my_role ?? null);
 
   const [editingTitle, setEditingTitle] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
   const [titleDraft, setTitleDraft] = useState(trip.title);
   const [descriptionDraft, setDescriptionDraft] = useState(trip.description ?? '');
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -58,6 +66,7 @@ export function TripCard({ trip, onArchive }: TripCardProps) {
   // than going through the blur handler, so this flag tells that handler to
   // stand down when the resulting unmount blurs the input anyway.
   const skipTitleSave = useRef(false);
+  const skipDescriptionSave = useRef(false);
 
   // Stay in sync with the trip prop (e.g. after another field's mutation
   // invalidates and refetches the list) without clobbering an in-progress edit.
@@ -70,14 +79,27 @@ export function TripCard({ trip, onArchive }: TripCardProps) {
     if (editingTitle) titleInputRef.current?.select();
   }, [editingTitle]);
 
-  // Grows the borderless textarea to fit its content instead of scrolling,
-  // so a saved multi-line description still reads like the old plain <p>.
+  // Grows the borderless textarea to fit its content instead of scrolling, so
+  // the field is the same shape as the paragraph it replaced and opening it
+  // doesn't jump the card. Depends on editingDescription too: the textarea only
+  // exists while editing, so its first measurement happens on that flip, not on
+  // a change to the text.
   useEffect(() => {
     const el = descriptionRef.current;
     if (!el) return;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
-  }, [descriptionDraft]);
+  }, [descriptionDraft, editingDescription]);
+
+  // Opening the field puts you in it, caret at the end: you clicked a
+  // description to add to it, not to retype it — unlike the title, which is one
+  // line and gets selected whole.
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (!editingDescription || !el) return;
+    el.focus();
+    el.setSelectionRange(el.value.length, el.value.length);
+  }, [editingDescription]);
 
   function startEditingTitle() {
     setTitleDraft(trip.title);
@@ -108,7 +130,25 @@ export function TripCard({ trip, onArchive }: TripCardProps) {
     );
   }
 
+  // No re-seeding from the trip, unlike the title: the paragraph already shows
+  // the draft, and after a save that failed the draft is the only copy of what
+  // was typed — which is what the error toast promised was still here.
+  function startEditingDescription() {
+    setEditingDescription(true);
+  }
+
+  function cancelEditingDescription() {
+    skipDescriptionSave.current = true;
+    setDescriptionDraft(trip.description ?? '');
+    setEditingDescription(false);
+  }
+
   function saveDescription(value: string) {
+    setEditingDescription(false);
+    if (skipDescriptionSave.current) {
+      skipDescriptionSave.current = false;
+      return;
+    }
     const parsed = value.trim() === '' ? null : value;
     if (parsed === trip.description) return;
     updateTrip.mutate(
@@ -196,21 +236,73 @@ export function TripCard({ trip, onArchive }: TripCardProps) {
         </div>
       </div>
 
-      {/* readOnly, not disabled: a description is content, and a viewer keeps it
-          at full contrast and still selectable. The placeholder goes with the
-          capability — "Add a description" is an invitation nobody here can
-          accept, and an empty box says the same thing more honestly. */}
-      <textarea
-        ref={descriptionRef}
-        className={styles.description}
-        rows={1}
-        readOnly={!editable}
-        placeholder={editable ? 'Add a description' : undefined}
-        aria-label={`Description for ${titleDraft}`}
-        value={descriptionDraft}
-        onChange={(e) => setDescriptionDraft(e.target.value)}
-        onBlur={(e) => saveDescription(e.target.value)}
-      />
+      {/* A viewer with nothing to read gets nothing: an empty box would be an
+          invitation nobody here can accept. Everyone else gets the paragraph,
+          which for someone editing doubles as the prompt to write one. */}
+      {(editable || descriptionDraft !== '') && (
+        <div className={styles.descriptionField}>
+          {editingDescription ? (
+            <textarea
+              ref={descriptionRef}
+              className={styles.description}
+              rows={1}
+              placeholder="Add a description"
+              aria-label={`Description for ${titleDraft}`}
+              value={descriptionDraft}
+              onChange={(e) => setDescriptionDraft(e.target.value)}
+              onBlur={(e) => saveDescription(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') cancelEditingDescription();
+              }}
+            />
+          ) : (
+            <>
+              {/* descriptionDraft, not trip.description: straight after a save
+                  it already holds the new words, so the paragraph doesn't
+                  flicker back while the list query refetches. The click is a
+                  convenience for the mouse — the pencil beside it is the real
+                  control, and a link inside the prose stops its own click so
+                  following it never opens the field. */}
+              <p
+                className={[
+                  styles.descriptionText,
+                  editable ? styles.descriptionEditable : '',
+                  descriptionDraft === '' ? styles.descriptionEmpty : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                onClick={editable ? startEditingDescription : undefined}
+              >
+                {descriptionDraft === '' ? 'Add a description' : <Linkify>{descriptionDraft}</Linkify>}
+              </p>
+              {editable && (
+                <button
+                  type="button"
+                  className={styles.editDescription}
+                  title="Edit description"
+                  aria-label={`Edit description for ${titleDraft}`}
+                  onClick={startEditingDescription}
+                >
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* The prop, not a disabled fieldset: the reasons stay readable and the
           controls around them are simply not drawn (architecture.md §5). */}
