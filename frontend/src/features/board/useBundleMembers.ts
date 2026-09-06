@@ -17,9 +17,10 @@ import type { Entry, EntryDetailResponse } from '../../api/types';
  * (backend: `entries.order(:id)`), which is not the reorderable sequence a
  * bundle needs. The detail endpoint's `children` comes from the `children`
  * association, which the model orders by `position` (`has_many :children,
- * -> { order(:position) }`), the same order `useReorderLinks`/
- * `useUpdateLinkPosition` change — so drag/move-up/move-down in BundleCard
- * are reflected here once the query re-settles. Using the same query key
+ * -> { order(:position) }`), the same order `useReorderLinks` changes with
+ * one `/links/reorder` call carrying the full order — so drag/move-up/
+ * move-down in BundleCard are reflected here once the query re-settles
+ * (optimistically first, then from the server). Using the same query key
  * `useEntry` uses (`queryKeys.entries.detail`) with the same response shape
  * keeps this cache-compatible with the entry drawer and with the existing
  * `['entries']`-prefix invalidation every create/update/link mutation
