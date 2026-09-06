@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { useCanEdit } from '../auth/TripRoleContext';
 import { EmptyState } from '../components/EmptyState';
+import { Linkify } from '../components';
 import { PageTitle } from '../components/PageTitle';
 import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
@@ -181,7 +182,14 @@ function TodoRow({ todo, canEdit }: { todo: Todo; canEdit: boolean }) {
         </span>
       )}
       <span className={styles.body}>
-        <span className={styles.title}>{todo.title}</span>
+        {/* The cell keeps its class and its wrapping rules; <Linkify> adds no
+            element of its own, so a todo with no URL in it lays out exactly as
+            it did. Only the rendered line gains links — the screen-reader label
+            on the circle above and the deadline's label below still carry the
+            raw title, which is what someone hearing the row should hear. */}
+        <span className={styles.title}>
+          <Linkify>{todo.title}</Linkify>
+        </span>
         {hasMeta && (
           <span className={styles.meta}>
             {source && <span className={styles.source}>{source}</span>}
