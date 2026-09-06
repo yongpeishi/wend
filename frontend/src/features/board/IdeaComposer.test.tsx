@@ -767,9 +767,24 @@ describe('IdeaComposer — the address is the map’s search', () => {
   });
 
   // decisions.md §3: a failed geocode never blocks capturing an idea.
-  it('keeps the address as typed when the geocoder has nothing, or falls over', async () => {
+  it('keeps the address as typed when the geocoder falls over, and says which happened', async () => {
     const user = userEvent.setup();
     searchPlace.mockRejectedValue(new Error('nominatim is down'));
+    const { onSubmit } = renderComposer({ initialTitle: 'Somewhere' });
+
+    await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Nowhere in particular');
+    expect(await screen.findByText('Couldn’t reach the address search — kept as typed.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Add idea' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ address: 'Nowhere in particular', lat: null, lng: null }),
+    );
+  });
+
+  it('keeps the address as typed when the geocoder simply has nothing', async () => {
+    const user = userEvent.setup();
+    searchPlace.mockResolvedValue([]);
     const { onSubmit } = renderComposer({ initialTitle: 'Somewhere' });
 
     await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Nowhere in particular');

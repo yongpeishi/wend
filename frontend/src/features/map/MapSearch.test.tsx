@@ -173,7 +173,10 @@ describe('MapSearch', () => {
     expect(screen.queryByRole('button', { name: 'Click where it is' })).not.toBeInTheDocument();
   });
 
-  it('absorbs a rejecting searchFn as an empty result instead of crashing', async () => {
+  // "Nothing by that name" is a claim about the world, and a search that never
+  // ran is no evidence for it. The drop-a-pin offer stands either way — it is
+  // the fallback for a place the geocoder can't hand you, whichever reason.
+  it('says the place search was unreachable — not "nothing by that name" — when it rejects', async () => {
     const user = userEvent.setup();
     const searchFn = vi.fn().mockRejectedValue(new Error('network down'));
     renderSearch({ searchFn });
@@ -181,7 +184,21 @@ describe('MapSearch', () => {
     await user.type(screen.getByRole('textbox', { name: 'Search the map' }), 'somewhere remote');
 
     await waitFor(() => expect(searchFn).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText(/Nothing by that name\./)).toBeInTheDocument();
+    expect(await screen.findByText(/Couldn’t reach the place search\./)).toBeInTheDocument();
+    expect(screen.queryByText(/Nothing by that name\./)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Click where it is' })).toBeInTheDocument();
+  });
+
+  it('still says it plainly to a reader, who has no pin to drop', async () => {
+    const user = userEvent.setup();
+    const searchFn = vi.fn().mockRejectedValue(new Error('network down'));
+    renderSearch({ searchFn, canEdit: false });
+
+    await user.type(screen.getByRole('textbox', { name: 'Search the map' }), 'somewhere remote');
+
+    await waitFor(() => expect(searchFn).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('Couldn’t reach the place search.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Click where it is' })).not.toBeInTheDocument();
   });
 
   describe('viewport bias', () => {

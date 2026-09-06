@@ -76,7 +76,7 @@ export function MapSearch({
    *    budget and makes the results flicker under a still-typing user. Bounds
    *    are an input to the next search, never a trigger for one.
    */
-  const { results, searching, searched, search, clear } = usePlaceSearch({
+  const { results, searching, searched, unreachable, search, clear } = usePlaceSearch({
     searchFn,
     requestOptions: () => ({ viewbox: bounds ?? undefined }),
   });
@@ -174,11 +174,20 @@ export function MapSearch({
 
           {searching && <Spinner label="Searching" />}
 
+          {/* "Nothing by that name" is a claim about the world, and it must
+              not be made on a search that never ran. Nominatim rate-limits at
+              1/sec, so an unreachable place search is an ordinary outcome of
+              typing quickly — and the ideas already on the map were matched
+              locally, so what failed is only half the answer. Either way the
+              drop-a-pin offer stands: it is exactly the fallback for a place
+              the geocoder can't hand you, whichever reason it can't. */}
           {nothingFound &&
             (canEdit ? (
               <div className={styles.nothing}>
                 <p className={styles.nothingLine}>
-                  Nothing by that name. You can put it on the map yourself — click where it is.
+                  {unreachable
+                    ? 'Couldn’t reach the place search. You can put it on the map yourself — click where it is.'
+                    : 'Nothing by that name. You can put it on the map yourself — click where it is.'}
                 </p>
                 <button
                   type="button"
@@ -193,7 +202,9 @@ export function MapSearch({
                 </button>
               </div>
             ) : (
-              <p className={styles.nothingLine}>Nothing by that name.</p>
+              <p className={styles.nothingLine}>
+                {unreachable ? 'Couldn’t reach the place search.' : 'Nothing by that name.'}
+              </p>
             ))}
         </div>
       )}

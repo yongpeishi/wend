@@ -79,7 +79,7 @@ describe('usePlaceSearch', () => {
     expect(searchFn.mock.calls[0]![1]).toMatchObject({ viewbox: { north: 9, south: 8, east: 9, west: 8 } });
   });
 
-  it('absorbs a rejecting provider as an empty answer rather than throwing', async () => {
+  it('absorbs a rejecting provider as an empty answer, flagged unreachable', async () => {
     const searchFn = vi.fn().mockRejectedValue(new Error('nominatim is down'));
     const { result } = renderHook(() => usePlaceSearch({ searchFn }));
 
@@ -89,6 +89,54 @@ describe('usePlaceSearch', () => {
     expect(result.current.searched).toBe(true);
     expect(result.current.results).toEqual([]);
     expect(result.current.searching).toBe(false);
+    expect(result.current.unreachable).toBe(true);
+  });
+
+  // The distinction the flag exists for: both leave `results` empty, and only
+  // one of them is evidence that there is no such place.
+  it('a search that ran and matched nothing is not unreachable', async () => {
+    const searchFn = vi.fn().mockResolvedValue([]);
+    const { result } = renderHook(() => usePlaceSearch({ searchFn }));
+
+    act(() => result.current.search('nanzenji'));
+    await fireDebounce();
+
+    expect(result.current.searched).toBe(true);
+    expect(result.current.unreachable).toBe(false);
+  });
+
+  it('clears the unreachable flag as soon as the next search is asked for', async () => {
+    const searchFn = vi.fn().mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce([makePlace()]);
+    const { result } = renderHook(() => usePlaceSearch({ searchFn }));
+
+    act(() => result.current.search('nanzenji'));
+    await fireDebounce();
+    expect(result.current.unreachable).toBe(true);
+
+    act(() => result.current.search('nanzenji temple'));
+    expect(result.current.unreachable).toBe(false);
+
+    await fireDebounce();
+    expect(result.current.unreachable).toBe(false);
+    expect(result.current.results).toEqual([makePlace()]);
+  });
+
+  it('does not report an abort as an unreachable provider', async () => {
+    let reject: (reason: unknown) => void = () => {};
+    const searchFn = vi.fn().mockImplementation(() => new Promise<GeocodeResult[]>((_, r) => (reject = r)));
+    const { result } = renderHook(() => usePlaceSearch({ searchFn }));
+
+    act(() => result.current.search('nanzenji'));
+    await fireDebounce();
+    act(() => result.current.cancel());
+
+    // An abort rejects the request like any other failure. It is ours, though.
+    await act(async () => {
+      reject(new DOMException('aborted', 'AbortError'));
+    });
+
+    expect(result.current.unreachable).toBe(false);
+    expect(result.current.searched).toBe(false);
   });
 
   it('never lets a superseded answer overwrite the one that replaced it', async () => {

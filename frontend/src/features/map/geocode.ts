@@ -84,14 +84,36 @@ function buildSearchUrl(trimmed: string, viewbox?: Bounds): string {
 }
 
 /**
- * Geocodes free text via Nominatim. Per the maps decision (doc/assumptions.md
- * A0c): a failed request, a timeout, or zero results must never throw or
- * block capturing an idea — every path here resolves to an array, empty on
- * any trouble, so the caller's fallback (drop a pin, paste coordinates) is
- * always available.
+ * The geocoder could not be asked: the network was down, or the provider
+ * answered with something that was not an answer. Distinct from a successful
+ * search that found nothing, which is an empty array — the difference matters
+ * to the fields above, because "there is no such place" and "we couldn't
+ * check" are two different things to tell someone, and Nominatim's 1/sec
+ * policy makes the second one easy to hit while typing.
+ */
+export class GeocoderUnreachable extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GeocoderUnreachable';
+  }
+}
+
+/**
+ * Geocodes free text via Nominatim. Resolves to the results — empty when the
+ * search ran and matched nothing — and rejects with GeocoderUnreachable when
+ * it could not run at all. An abort is rethrown as it came, since that one is
+ * the caller's own doing rather than the provider's.
+ *
+ * Rejecting does NOT walk back the maps decision (doc/assumptions.md A0c,
+ * decisions.md §3): a failed geocode must never block capturing an idea. That
+ * promise is kept one level up, in usePlaceSearch, which is the only thing in
+ * the app that calls this and which absorbs both outcomes into state a field
+ * can render. Keeping the distinction alive down here is what lets it say
+ * "couldn't reach the search" instead of claiming there was no match.
  */
 export async function searchPlace(query: string, options: SearchPlaceOptions = {}): Promise<GeocodeResult[]> {
   const trimmed = query.trim();
+  // Nothing was asked, so nothing failed.
   if (!trimmed) return [];
   const fetchImpl = options.fetchImpl ?? fetch;
 
@@ -101,7 +123,8 @@ export async function searchPlace(query: string, options: SearchPlaceOptions = {
         signal: options.signal,
         headers: { Accept: 'application/json' },
       });
-      if (!response.ok) return [];
+      // 503 is the ordinary one here — it is how Nominatim says "too fast".
+      if (!response.ok) throw new GeocoderUnreachable(`the geocoder answered ${response.status}`);
       const body = (await response.json()) as NominatimResult[];
       // `kind` and `placeId` ride along only when the response carries them —
       // both are optional on GeocodeResult, so a leaner provider (or an older
@@ -115,8 +138,12 @@ export async function searchPlace(query: string, options: SearchPlaceOptions = {
         placeId: r.place_id != null ? String(r.place_id) : undefined,
       }));
     });
-  } catch {
-    return [];
+  } catch (error) {
+    // An abort is not the provider failing — it is us changing our mind, and
+    // the caller already knows to ignore the answer it was waiting for.
+    if (options.signal?.aborted) throw error;
+    if (error instanceof GeocoderUnreachable) throw error;
+    throw new GeocoderUnreachable('could not reach the geocoder');
   }
 }
 

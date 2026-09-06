@@ -54,6 +54,13 @@ export interface PlaceSearch {
    */
   searched: boolean;
   /**
+   * The last completed search could not be run at all — the provider was
+   * unreachable, or rate-limited us. Always paired with empty `results`, and
+   * the reason a field can say "couldn't reach the search" rather than
+   * claiming there was no such place. Cleared by the next keystroke.
+   */
+  unreachable: boolean;
+  /**
    * Debounce, abort the search before it, and ask. An empty query asks
    * nothing at all — no spinner, no request in flight to arrive late and
    * resurrect results for text that is gone.
@@ -82,9 +89,12 @@ export interface PlaceSearch {
  * over it — because that is the part that genuinely differs. This owns the
  * asking; the components own the showing.
  *
- * Nothing here can throw at its caller. A rejecting provider collapses to an
- * empty result, per decisions.md §3: a failed geocode never blocks capturing
- * an idea, so the search is always an offer and never a gate.
+ * Nothing here can throw at its caller. A rejecting provider becomes empty
+ * results plus `unreachable`, per decisions.md §3: a failed geocode never
+ * blocks capturing an idea, so the search is always an offer and never a
+ * gate. The flag exists so that offer can be honest about why it is empty —
+ * "there is no such place" and "we couldn't check" read very differently to
+ * someone who just typed an address they know is right.
  */
 export function usePlaceSearch({
   searchFn = defaultSearchPlace,
@@ -94,6 +104,7 @@ export function usePlaceSearch({
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [unreachable, setUnreachable] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -122,6 +133,7 @@ export function usePlaceSearch({
   const search = useCallback((query: string) => {
     setResults([]);
     setSearched(false);
+    setUnreachable(false);
     // Deliberately not `cancel()`: the spinner is left alone here. A typist
     // who adds a letter mid-request is still searching, and blinking the
     // spinner off for the length of the debounce would say otherwise.
@@ -139,16 +151,24 @@ export function usePlaceSearch({
       setSearching(true);
       searchFnRef
         .current(trimmed, { signal: controller.signal, ...requestOptionsRef.current?.() })
-        // The default geocoder already resolves empty on any trouble, but this
-        // seam takes any provider — one that rejects must be absorbed here,
-        // not surface as an error inside the act of writing an idea down.
-        .catch(() => [])
-        .then((found) => {
+        // A rejection is how any provider says "I could not answer" — the
+        // default one throws GeocoderUnreachable, a swapped-in one may throw
+        // whatever it likes. Either way it is absorbed here into state, and
+        // never surfaces as an error inside the act of writing an idea down.
+        // This is where decisions.md §3 is actually kept.
+        .then(
+          (found) => ({ found, reached: true }),
+          () => ({ found: [] as GeocodeResult[], reached: false }),
+        )
+        .then(({ found, reached }) => {
           // A superseded search must not write over the one that replaced it.
+          // This also covers our own aborts, which reject like any other
+          // failure but must not be reported as an unreachable provider.
           if (controller.signal.aborted) return;
           setResults(found);
           setSearched(true);
           setSearching(false);
+          setUnreachable(!reached);
           onResultsRef.current?.(found);
         });
     }, SEARCH_DEBOUNCE_MS);
@@ -164,7 +184,8 @@ export function usePlaceSearch({
     setResults([]);
     setSearching(false);
     setSearched(false);
+    setUnreachable(false);
   }, [stopPending]);
 
-  return { results, searching, searched, search, cancel, clear };
+  return { results, searching, searched, unreachable, search, cancel, clear };
 }

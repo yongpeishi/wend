@@ -81,7 +81,7 @@ export function AddressSearch({
   // and which row the arrow keys are on. An answer landing opens the list, and
   // opens it with nothing highlighted, so the first ArrowDown reaches the
   // first row rather than the second.
-  const { results, searching, searched, search, cancel, clear } = usePlaceSearch({
+  const { results, searching, searched, unreachable, search, cancel, clear } = usePlaceSearch({
     searchFn,
     onResults: () => {
       setHighlighted(null);
@@ -231,9 +231,19 @@ export function AddressSearch({
 
       {searching && <Spinner label="Searching" />}
 
-      {/* Not an error. The text above is the address whatever happened here;
-          this only says the geocoder had nothing to add to it. */}
-      {nothingFound && <p className={styles.empty}>No match — kept as typed.</p>}
+      {/* Neither line is an error. The text above is the address whatever
+          happened here; these only say what the geocoder could add to it, and
+          both end the same way to make that plain. Which one shows is the
+          whole point: "no match" invites a second look at what you typed,
+          and someone who typed an address they know is right would keep
+          re-reading it. Nominatim rate-limits at 1/sec, so being told the
+          search is unreachable is an ordinary thing to need to hear. */}
+      {nothingFound &&
+        (unreachable ? (
+          <p className={styles.empty}>Couldn’t reach the address search — kept as typed.</p>
+        ) : (
+          <p className={styles.empty}>No match — kept as typed.</p>
+        ))}
     </div>
   );
 }

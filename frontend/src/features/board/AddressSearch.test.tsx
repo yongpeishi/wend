@@ -311,7 +311,11 @@ describe('AddressSearch', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 
-  it('absorbs a rejecting searchFn as "no match" instead of throwing', async () => {
+  // A rejecting provider is not evidence about the world. Saying "no match"
+  // here would send someone back to re-read an address that was fine, so the
+  // two outcomes get two lines — both ending "kept as typed.", because
+  // neither one is allowed to cost them the address they wrote.
+  it('says the search was unreachable — not "no match" — when the provider rejects', async () => {
     const user = userEvent.setup();
     const searchFn = vi.fn().mockRejectedValue(new Error('network down'));
     render(<Harness searchFn={searchFn} />);
@@ -319,8 +323,28 @@ describe('AddressSearch', () => {
     await user.type(field(), 'somewhere remote');
 
     await waitFor(() => expect(searchFn).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText('No match — kept as typed.')).toBeInTheDocument();
+    expect(await screen.findByText('Couldn’t reach the address search — kept as typed.')).toBeInTheDocument();
+    expect(screen.queryByText('No match — kept as typed.')).not.toBeInTheDocument();
     expect(field()).toHaveValue('somewhere remote');
+  });
+
+  it('goes back to "no match" once the provider answers again', async () => {
+    const user = userEvent.setup();
+    const searchFn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('rate limited'))
+      .mockResolvedValueOnce([]);
+    render(<Harness searchFn={searchFn} />);
+
+    await user.type(field(), 'kyoto');
+    expect(await screen.findByText('Couldn’t reach the address search — kept as typed.')).toBeInTheDocument();
+
+    await user.type(field(), ' station');
+
+    expect(await screen.findByText('No match — kept as typed.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Couldn’t reach the address search — kept as typed.'),
+    ).not.toBeInTheDocument();
   });
 
   it('a new keystroke clears the no-match line', async () => {
