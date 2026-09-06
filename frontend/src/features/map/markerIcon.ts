@@ -12,6 +12,20 @@ const FILL: Record<PinState, string> = {
   destination: 'var(--stop-destination)',
 };
 
+// The edge each pin draws around its fill. A solid pin gets the card-tone
+// halo that lifts it off the tiles. The potential pin cannot: its pale fill
+// is "pale = potential, solid = scheduled" (screens.md), but that pale on its
+// own is 1.23:1 against paper — a reader with ordinary eyes reported the pins
+// as invisible. So the potential pin is ringed in leaf instead: the ring puts
+// its edge at 5.50:1 while the pale centre still tells it apart from a solid
+// scheduled pin. That is a shape difference (ring vs disc), not just a tint,
+// so colour is no longer carrying the meaning alone.
+const STROKE: Record<PinState, string> = {
+  scheduled: 'var(--surface-card)',
+  potential: 'var(--stop-decided)',
+  destination: 'var(--surface-card)',
+};
+
 // 32px square hit area — "never below 32x32 for pointer" (architecture.md
 // §5). The visual mark stays Trail-scaled (an 8px-radius stop circle,
 // matching <Trail>'s own dot sizes) and sits centred inside the larger button.
@@ -28,7 +42,7 @@ export function pinIcon(state: PinState, selected: boolean, title: string): L.Di
     <button type="button" class="wend-pin" aria-label="${escapeHtml(label)}">
       <svg width="${PIN_BOX}" height="${PIN_BOX}" viewBox="0 0 ${PIN_BOX} ${PIN_BOX}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         ${ring}
-        <circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="8" fill="${FILL[state]}" stroke="var(--surface-card)" stroke-width="2"/>
+        <circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="8" fill="${FILL[state]}" stroke="${STROKE[state]}" stroke-width="2"/>
       </svg>
     </button>
   `;
@@ -155,15 +169,16 @@ export function dotIcon(title: string, selected: boolean): L.DivIcon {
  * pins would make the map lie about what the trip holds. The fade is an
  * inline opacity rather than a stylesheet rule for the same reason the dash
  * on a nested chip is: opacity is not a colour, so nothing escapes the token
- * file, and the icon stays whole on its own. 0.55 is the floor that still
- * reads over OSM tiles (the .wend-pin-faint border override in
- * MapView.module.css is the other half of that legibility). No `selected`
+ * file, and the icon stays whole on its own. 0.6 is the floor: with the
+ * `--text-strong` edge .wend-pin-faint gets in MapView.module.css (the other
+ * half of this legibility) it keeps the faint edge at 3.11:1 over the tiles,
+ * while still reading plainly dimmer than the full-opacity dot. No `selected`
  * argument — a pin the filter set aside is by definition not the one under
  * discussion.
  */
 export function faintIcon(title: string): L.DivIcon {
   const html = `
-    <button type="button" class="wend-pin-dot wend-pin-faint" style="opacity: 0.55;" aria-label="${escapeHtml(title)}">
+    <button type="button" class="wend-pin-dot wend-pin-faint" style="opacity: 0.6;" aria-label="${escapeHtml(title)}">
       <span aria-hidden="true"></span>
     </button>
   `;
