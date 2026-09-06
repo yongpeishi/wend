@@ -183,6 +183,18 @@ describe('DatesGate — setting the dates', () => {
     expect(onBack).toHaveBeenCalled();
   });
 
+  // The X in the corner is the back button said in one glyph — same way out,
+  // and no dates written on the way.
+  it('leaves by the X in the corner without setting any dates', async () => {
+    const user = userEvent.setup();
+    const { onBack, onConfirm } = renderGate();
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   // Reached by "Change dates", backing out lands on the day list it was opened
   // over, so the button may not go on promising the ideas board.
   it('names what backing out actually does when the dates are only being changed', async () => {
@@ -234,5 +246,16 @@ describe('DatesGate — read only', () => {
     await user.click(screen.getByRole('button', { name: 'Back to ideas' }));
 
     expect(onBack).toHaveBeenCalled();
+  });
+
+  // A viewer gets the same corner X as anyone else; it is the only thing here
+  // that writes nothing either way.
+  it('keeps the X too', async () => {
+    const user = userEvent.setup();
+    const { onBack } = renderGate({ readOnly: true });
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+
+    expect(onBack).toHaveBeenCalledTimes(1);
   });
 });
