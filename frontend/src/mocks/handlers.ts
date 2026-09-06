@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import {
   FEEDBACK_SCREENSHOT_CONTENT_TYPES,
   FEEDBACK_SCREENSHOT_MAX_BYTES,
@@ -52,6 +52,18 @@ import type {
   TripRole,
   User,
 } from '../api/types';
+
+/**
+ * Optional latency for the link handlers. The mocks answer instantly, which
+ * hides exactly what the board's optimistic updates exist to cover — the gap
+ * between a drop and the server's reply, during which the row fades. Set
+ * `VITE_MOCK_DELAY_MS=800` in the shell that starts Vite to see it. Anything
+ * that isn't a positive number (unset in tests) is a no-op.
+ */
+async function mockDelay(): Promise<void> {
+  const ms = Number(import.meta.env.VITE_MOCK_DELAY_MS);
+  if (Number.isFinite(ms) && ms > 0) await delay(ms);
+}
 
 function currentUser(): User | null {
   const user = db.users.find((u) => u.id === db.currentUserId);
@@ -542,6 +554,7 @@ export const handlers = [
 
   // ---- Links ---------------------------------------------------------------
   http.post('/api/entries/:id/links', async ({ params, request }) => {
+    await mockDelay();
     const parentId = Number(params.id);
     const body = (await request.json()) as { child_id?: number; position?: number };
     if (!body.child_id) return HttpResponse.json({ errors: { child_id: ["can't be blank"] } }, { status: 422 });
@@ -552,6 +565,7 @@ export const handlers = [
   }),
 
   http.patch('/api/entries/:id/links/:childId', async ({ params, request }) => {
+    await mockDelay();
     const link = db.links.find((l) => l.parent_id === Number(params.id) && l.child_id === Number(params.childId));
     if (!link) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
     const body = (await request.json()) as { position?: number };
@@ -560,12 +574,14 @@ export const handlers = [
     return HttpResponse.json({ link });
   }),
 
-  http.delete('/api/entries/:id/links/:childId', ({ params }) => {
+  http.delete('/api/entries/:id/links/:childId', async ({ params }) => {
+    await mockDelay();
     db.links = db.links.filter((l) => !(l.parent_id === Number(params.id) && l.child_id === Number(params.childId)));
     return new HttpResponse(null, { status: 204 });
   }),
 
   http.post('/api/entries/:id/links/reorder', async ({ params, request }) => {
+    await mockDelay();
     const parentId = Number(params.id);
     const body = (await request.json()) as { child_ids?: number[] };
     (body.child_ids ?? []).forEach((childId, position) => {

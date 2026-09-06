@@ -382,16 +382,20 @@ function MapIdeaActions({ entry, bundles, members, canEdit, onToast }: MapIdeaAc
 
   // The same two mutations and the same two sentences as the board's chips,
   // because they are the same act — only reached from a different screen.
+  // Both are optimistic, so a refusal has to be said out loud — the chip
+  // would otherwise just flip back. mutateAsync rather than mutate's per-call
+  // callbacks: TanStack Query keeps only the latest call's callbacks on an
+  // observer, and two quick chip presses are two calls.
   function toggleBundle(bundle: Entry) {
     if (isMember(bundle.id)) {
-      removeLink.mutate(
-        { parentId: bundle.id, childId: entry.id },
-        { onSuccess: () => onToast?.(`Removed from ${bundle.title}. Still kept.`) },
+      void removeLink.mutateAsync({ parentId: bundle.id, childId: entry.id }).then(
+        () => onToast?.(`Removed from ${bundle.title}. Still kept.`),
+        () => show(SAVE_FAILED, 'error'),
       );
     } else {
-      addLink.mutate(
-        { parentId: bundle.id, childId: entry.id },
-        { onSuccess: () => onToast?.(`Added to ${bundle.title}.`) },
+      void addLink.mutateAsync({ parentId: bundle.id, childId: entry.id }).then(
+        () => onToast?.(`Added to ${bundle.title}.`),
+        () => show(SAVE_FAILED, 'error'),
       );
     }
   }

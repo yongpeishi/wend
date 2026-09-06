@@ -427,12 +427,11 @@ export function TripBoard() {
   // ---- Capture ---------------------------------------------------------------
   /** The fast path: a title, landed at the level being read, nothing else asked. */
   function handleQuickAdd(title: string) {
-    createEntry.mutate(
-      { entry: { kind: 'idea', title }, parent_id: currentId ?? trip.id },
-      {
-        onSuccess: () => show(`Added "${title}". Nothing locked in.`, 'success'),
-        onError: () => show(SAVE_FAILED, 'error'),
-      },
+    // Per-call promise rather than per-call callbacks: two quick adds must each
+    // get their own toast (see handleDragEnd for why mutate's callbacks can't).
+    void createEntry.mutateAsync({ entry: { kind: 'idea', title }, parent_id: currentId ?? trip.id }).then(
+      () => show(`Added "${title}". Nothing locked in.`, 'success'),
+      () => show(SAVE_FAILED, 'error'),
     );
   }
 
@@ -536,12 +535,13 @@ export function TripBoard() {
 
     if (overData.bundleId === undefined) return;
     const bundleTitle = overData.title ?? 'the plan';
-    addLink.mutate(
-      { parentId: overData.bundleId, childId: entryData.entryId },
-      {
-        onSuccess: () => show(`Added ${entryData.title} to ${bundleTitle}.`, 'success'),
-        onError: () => show(SAVE_FAILED, 'error'),
-      },
+    // mutateAsync, not mutate(vars, { onSuccess, onError }): TanStack Query
+    // only keeps the per-call callbacks of the LATEST mutate on an observer,
+    // so a second drop before the first has settled would leave the first to
+    // roll back with no toast. The promise belongs to this call alone.
+    void addLink.mutateAsync({ parentId: overData.bundleId, childId: entryData.entryId }).then(
+      () => show(`Added ${entryData.title} to ${bundleTitle}.`, 'success'),
+      () => show(SAVE_FAILED, 'error'),
     );
   }
 
