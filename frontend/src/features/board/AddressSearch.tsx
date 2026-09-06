@@ -35,9 +35,15 @@ export interface AddressSearchProps {
  * (doc/init/decisions.md §3): a failed geocode never blocks capturing an idea.
  * So the text is controlled from above and is always the address — the list
  * is an offer, never a gate. A rejecting provider, an empty answer, a
- * mid-typing abort, all collapse to "no suggestions", and the only thing the
- * field says about it is a muted line admitting the address will be kept as
- * typed. Nothing here can throw at the parent or refuse a save.
+ * mid-typing abort, all collapse to "no suggestions", and the most the field
+ * ever says about it is a muted line ending "kept as typed." Nothing here can
+ * throw at the parent or refuse a save.
+ *
+ * The one distinction that line does draw is between a search that ran and
+ * matched nothing and one that could not run at all (`unreachable` from
+ * usePlaceSearch). Nominatim rate-limits at 1/sec, so the second is an
+ * ordinary outcome of typing quickly — and telling someone "no match" for it
+ * would send them back to re-read an address that was fine.
  *
  * It is a proper combobox (input + listbox, ARIA 1.2 shape) rather than a
  * list of buttons under a box, because the composer is worked from the
