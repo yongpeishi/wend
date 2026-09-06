@@ -674,14 +674,13 @@ describe('IdeaComposer — the address is the map’s search', () => {
     await waitFor(() => expect(searchPlace).toHaveBeenCalledWith('Fushimi', expect.anything()));
   });
 
-  it('takes a picked suggestion whole: its label, its point, and "place" when nothing was chosen', async () => {
+  it('takes a picked suggestion whole: its label and its point, and nothing else', async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderComposer({ initialTitle: 'Shrine' });
 
     await pickTaisha(user);
 
     expect(screen.getByRole('combobox', { name: 'Address' })).toHaveValue(TAISHA.label);
-    expect(screen.getByRole('radio', { name: 'Place' })).toHaveAttribute('aria-checked', 'true');
 
     await user.click(screen.getByRole('button', { name: 'Add idea' }));
 
@@ -691,13 +690,25 @@ describe('IdeaComposer — the address is the map’s search', () => {
       address: TAISHA.label,
       lat: TAISHA.lat,
       lng: TAISHA.lng,
-      category: 'place',
+      category: null,
       parentIds: [],
     });
   });
 
-  // The pick answers "where", not "what kind" — a chip the writer already lit
-  // is their answer, and a restaurant with an address is still food.
+  // The pick answers "where", not "what kind": a shrine, a restaurant and a
+  // station all have an address, so no chip may be lit on the writer's behalf —
+  // not even the one nobody has answered yet.
+  it('lights no category chip on a pick', async () => {
+    const user = userEvent.setup();
+    renderComposer({ initialTitle: 'Shrine' });
+
+    await pickTaisha(user);
+
+    for (const label of ['Place', 'Food', 'Activity', 'Lodging', 'Transport', 'Other']) {
+      expect(screen.getByRole('radio', { name: label })).toHaveAttribute('aria-checked', 'false');
+    }
+  });
+
   it('never overwrites a category the writer already chose', async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderComposer({ initialTitle: 'Inari sushi', initialCategory: 'food' });

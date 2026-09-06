@@ -160,10 +160,11 @@ export interface IdeaComposerProps {
  * as when you create a place via the map page" — and until it did, an address
  * typed here was a sentence the map could not draw, because only a pick
  * carries coordinates. So a picked suggestion writes the label AND `lat`/`lng`
- * into the draft, and lights 'place' if no category was chosen yet (the map's
- * own "Add as idea" writes 'place' for a geocoded place; a chip the writer
- * already chose is never overwritten). Free typing does the other thing on
- * purpose: it keeps whatever coordinates the idea already had, because a
+ * into the draft, and nothing else — the category row is left exactly as the
+ * writer left it. Picking an address answers "where", never "what kind", and
+ * a guess lit on their behalf is one they then have to notice and undo.
+ * Free typing does the other thing on purpose: it keeps whatever coordinates
+ * the idea already had, because a
  * hand-corrected address is a better label for the same pin, not a reason to
  * lose the pin. Only emptying the field drops them — no address, no place, no
  * pin. The geocoder failing or finding nothing changes none of this
@@ -328,12 +329,16 @@ export function IdeaComposer({
     if (text.trim() === '') setCoords(null);
   }
 
-  /** A suggestion taken whole: its label as the address, its point as the pin. */
+  /**
+   * A suggestion taken whole: its label as the address, its point as the pin,
+   * and the category left alone. A picked address says where the idea is, not
+   * what kind of thing it is — a shrine, a restaurant and a station all have
+   * one — so lighting a chip here would be a guess the writer has to spot and
+   * undo, on the one row of this card that is allowed to stay unanswered.
+   */
   function pickPlace(place: GeocodeResult) {
     setAddress(place.label);
     setCoords({ lat: place.lat, lng: place.lng });
-    // Only an unanswered category is filled in; a chosen chip is the writer's.
-    if (category === null) setCategory('place');
   }
 
   /**
