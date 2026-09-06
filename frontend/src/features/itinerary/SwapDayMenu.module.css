@@ -47,7 +47,10 @@
   background: var(--surface-card);
   border: var(--border-width) solid var(--border-strong);
   border-radius: var(--radius-card);
-  padding: 6px;
+  /* 40px on top, not 6px: the CloseButton sits in this corner and its box
+     reaches 40px down from it, so the first day starts below the X rather
+     than beside it — a popup this narrow has no spare width to give it. */
+  padding: 40px 6px 6px;
   display: flex;
   flex-direction: column;
 }

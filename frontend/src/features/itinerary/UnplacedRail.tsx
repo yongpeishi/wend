@@ -3,26 +3,28 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { GripVertical, MoreHorizontal } from 'lucide-react';
 import { useDndMonitor, useDraggable } from '@dnd-kit/core';
 import { EmptyState } from '../../components/EmptyState';
-import type { EntrySummary } from '../../api/types';
 import { joinMeta } from '../../lib/formatDates';
 // The itinerary's own short duration form ("30 min", "1 hr 30"), not
 // lib/formatDates' longer one — one screen, one convention.
 import { formatDuration } from './itineraryModel';
-import type { ItineraryDay } from './itineraryModel';
+import type { ItineraryDay, PoolEntry } from './itineraryModel';
 import styles from './UnplacedRail.module.css';
 
 const DRAGGABLE_PREFIX = 'itinerary-unplaced-';
 
 export interface UnplacedRailProps {
-  /** `Not placed yet · 4`. */
+  /** `4 to place` — how many still have no day, not how long the list is. */
   title: string;
   /**
    * The sentence under it. For someone editing, both ways onto a day; for a
    * viewer, what the list is — see `readOnly`, and the container that picks.
    */
   line: string;
-  /** Kept ideas and bundles that sit in no live version of any day. */
-  items: EntrySummary[];
+  /**
+   * Everything kept for this trip that could go on a day — placed or not, from
+   * `buildPool`. A placed one carries its marker and stays fully placeable.
+   */
+  items: PoolEntry[];
   /** Every day of the trip, for the ⋯ menu's targets. */
   days: ItineraryDay[];
   onAddToDay: (entryId: number, day: string) => void;
@@ -40,12 +42,14 @@ export interface UnplacedRailProps {
 }
 
 /**
- * The right rail: everything kept for this trip that no day holds yet.
+ * The right rail: everything kept for this trip, whether a day holds it yet or
+ * not.
  *
  * Nothing here is used up. Placing a bundle on Tuesday does not take it off
- * this list for Wednesday — the list is only "in no live version", which is a
- * fact about the days, not a stock level. The closing line says so, because it
- * is the one thing about this screen people assume wrongly.
+ * this list for Wednesday — it stays, wearing a quiet "placed · Day 2", so it
+ * can be placed again. The list is a pool, not a stock level, and the closing
+ * line says so, because it is the one thing about this screen people assume
+ * wrongly. Lodging never appears: each day has its own lodging editor.
  */
 export function UnplacedRail({
   title,
@@ -66,12 +70,12 @@ export function UnplacedRail({
   });
 
   return (
-    <aside className={styles.rail} aria-label="Kept and not placed yet">
+    <aside className={styles.rail} aria-label="Kept for this trip">
       <p className={styles.title}>{title}</p>
       <p className={styles.line}>{line}</p>
 
       {items.length === 0 ? (
-        <EmptyState message="Everything you've kept is on a day. Keep something new and it waits here." />
+        <EmptyState message="Nothing kept for this trip yet. Keep something on the Ideas board and it waits here." />
       ) : (
         items.map((item) => (
           <RailItem key={item.id} item={item} days={days} onAddToDay={onAddToDay} readOnly={readOnly} />
@@ -86,7 +90,7 @@ export function UnplacedRail({
 }
 
 interface RailItemProps {
-  item: EntrySummary;
+  item: PoolEntry;
   days: ItineraryDay[];
   onAddToDay: (entryId: number, day: string) => void;
   readOnly?: boolean;
@@ -194,6 +198,7 @@ function RailItem({ item, days, onAddToDay, readOnly = false }: RailItemProps) {
       className={styles.item}
       data-bundle={item.kind === 'bundle' || undefined}
       data-dragging={isDragging || undefined}
+      data-placed={item.placedMarker !== null || undefined}
       ref={containerRef}
     >
       {!readOnly && (
@@ -212,6 +217,9 @@ function RailItem({ item, days, onAddToDay, readOnly = false }: RailItemProps) {
       <span className={styles.body}>
         <span className={styles.name}>{item.title}</span>
         {meta && <span className={styles.meta}>{meta}</span>}
+        {/* Where it already sits. A fact, not a warning: the row is still
+            here precisely so it can go on another day too. */}
+        {item.placedMarker && <span className={styles.placed}>{item.placedMarker}</span>}
       </span>
 
       {!readOnly && (

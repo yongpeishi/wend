@@ -7,6 +7,8 @@
 }
 
 .card {
+  /* The containing block for the CloseButton in the corner. */
+  position: relative;
   width: 100%;
   max-width: 520px;
   box-sizing: border-box;
@@ -17,12 +19,20 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  /* 24px inset + a 32px box puts the 20px icon's centre 40px from the corner,
+     the same place Modal and Drawer keep it. */
+  --close-button-inset: var(--space-6);
 }
 
+/* The X's box reaches 56px in from the card's corner and the card's own 30px
+   inset covers most of that, so the intro gives up the last 32px — a long
+   trip title wraps rather than running under the icon. Nothing below the
+   intro comes near it. */
 .intro {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding-right: var(--space-8);
 }
 
 /* The uppercase eyebrow keeps its letter-spacing but takes --text-min-size

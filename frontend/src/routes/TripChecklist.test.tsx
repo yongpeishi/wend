@@ -8,8 +8,9 @@ import { ToastProvider } from '../components/Toast';
 import { api } from '../api';
 import { server } from '../mocks/server';
 import { TripRoleProvider } from '../auth/TripRoleContext';
-import { setRole } from '../mocks/db';
+import { allocateId, db, setRole } from '../mocks/db';
 import { TripChecklist } from './TripChecklist';
+import styles from './TripChecklist.module.css';
 import type { Todo, TripRole } from '../api/types';
 
 // The checklist reads `trip` from useOutletContext, which only exists inside an
@@ -268,6 +269,82 @@ describe('TripChecklist — as a viewer', () => {
     expect(screen.getByRole('button', { name: `Check off ${TRIP_TODO}` })).toBeInTheDocument();
     await openComposer(user);
     expect(screen.getByRole('combobox', { name: 'For' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feedback #40, "Todo text should wrap." Whether a title actually breaks onto
+ * a second line is layout, and jsdom does no layout — so none of this proves
+ * wrapping. What it can prove is the two things that would stop wrapping from
+ * happening: a title that is cut (not rendered in full) or a title whose
+ * styling truncates (nowrap / ellipsis / hidden). vitest runs with `css: true`
+ * (vitest.config.ts), which gives the module's real class names and injects
+ * its rules into the document; jsdom's getComputedStyle applies the cascade
+ * for declared values, so the `.source` control below checks that the rules
+ * really arrived before the title's absences are taken to mean anything.
+ */
+describe('TripChecklist — long titles', () => {
+  // ~120 characters of prose: breaks at its spaces, given the room.
+  const PROSE_TITLE =
+    'Ring the ryokan in Arashiyama to confirm the late check-in on the second night and ask whether the kaiseki dinner can be vegetarian';
+  // ~140 characters with no space anywhere: cannot break at all without help.
+  const URL_TITLE =
+    'https://www.japan-guide.com/e/e3900.html?utm_source=itinerary&utm_medium=checklist&utm_campaign=kyoto-six-days&ref=nanzenji-opening-hours-and-fees';
+
+  beforeEach(() => {
+    // Trip-level, like the seeded "Apply for visa" — no idea name beside them,
+    // so the title is the only text in its cell. resetDb() in afterEach takes
+    // them out again.
+    db.todos.push(
+      { id: allocateId(), title: PROSE_TITLE, entry_id: null, trip_id: TRIP_ID, done_at: null, due_on: null, position: 1 },
+      { id: allocateId(), title: URL_TITLE, entry_id: null, trip_id: TRIP_ID, done_at: null, due_on: null, position: 2 },
+    );
+  });
+
+  /** The declared-style checks, shared by both shapes of title. */
+  function expectRenderedInFullAndUntruncated(title: string, el: HTMLElement) {
+    expect(el.textContent).toBe(title);
+    expect(el).toHaveClass(styles.title);
+    expect(screen.getAllByRole('listitem')).toContain(el.closest('li'));
+
+    const style = getComputedStyle(el);
+    expect(style.whiteSpace).not.toBe('nowrap');
+    expect(style.textOverflow).not.toBe('ellipsis');
+    expect(style.overflow).not.toBe('hidden');
+  }
+
+  it('renders a long prose title in full, in its own list item, with nothing in its styling that truncates', async () => {
+    renderChecklist();
+
+    expectRenderedInFullAndUntruncated(PROSE_TITLE, await screen.findByText(PROSE_TITLE));
+  });
+
+  it('renders an unbroken URL-like title in full, in its own list item, with nothing in its styling that truncates', async () => {
+    renderChecklist();
+
+    expectRenderedInFullAndUntruncated(URL_TITLE, await screen.findByText(URL_TITLE));
+  });
+
+  // The one cell on the row that is meant to ellipsise is the idea name. This
+  // pins the title to a different element from it, so a refactor that folded
+  // the two into one cell would put the title under .source's nowrap and fail
+  // here — and, as the control for the checks above, confirms the module's
+  // rules are in the cascade jsdom reads from.
+  it('keeps the title and the idea name in separate cells, and only the idea name is styled to ellipsise', async () => {
+    renderChecklist();
+
+    const entryTitle = await screen.findByText(ENTRY_TODO);
+    const source = screen.getByText(/Nanzen-ji/);
+
+    expect(entryTitle).toHaveClass(styles.title);
+    expect(source).toHaveClass(styles.source);
+    expect(source).not.toBe(entryTitle);
+    expect(source.contains(entryTitle)).toBe(false);
+    expect(entryTitle.contains(source)).toBe(false);
+
+    expect(getComputedStyle(source).whiteSpace).toBe('nowrap');
+    expect(getComputedStyle(source).textOverflow).toBe('ellipsis');
+    expect(getComputedStyle(entryTitle).whiteSpace).not.toBe('nowrap');
   });
 });
 
