@@ -1,18 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Spinner } from '../../components/Spinner';
-import { searchPlace as defaultSearchPlace } from '../map/geocode';
+import { usePlaceSearch } from '../map/usePlaceSearch';
+import type { PlaceSearchFn } from '../map/usePlaceSearch';
 import type { GeocodeResult } from '../map/types';
 import styles from './AddressSearch.module.css';
-
-/**
- * Must stay equal to MapSearch's DEBOUNCE_MS. The two fields ask the same
- * geocoder the same question from two places in the product; if one felt
- * snappier than the other, the slower one would read as broken rather than as
- * a deliberate pace. Neither number is a throttle — geocode.ts already paces
- * the wire at 1/sec — this is only how long a pause counts as "done typing".
- */
-const DEBOUNCE_MS = 400;
 
 /** A suggestion list longer than a hand is a search result page, not a suggestion. */
 const MAX_RESULTS = 5;
@@ -30,7 +22,7 @@ export interface AddressSearchProps {
   /** Class for the <input> itself so the composer can pass its own `.input` look. */
   inputClassName?: string;
   /** Injectable geocoder — tests never hit the network. Default: `searchPlace` from '../map/geocode'. */
-  searchFn?: (query: string, options?: { signal?: AbortSignal }) => Promise<GeocodeResult[]>;
+  searchFn?: PlaceSearchFn;
 }
 
 /**
@@ -75,83 +67,45 @@ export function AddressSearch({
   placeholder,
   'aria-label': ariaLabel = 'Address',
   inputClassName,
-  searchFn = defaultSearchPlace,
+  searchFn,
 }: AddressSearchProps) {
-  const [results, setResults] = useState<GeocodeResult[]>([]);
   const [highlighted, setHighlighted] = useState<number | null>(null);
   // `open` is separate from "has results" so Escape and blur can put the list
   // away without throwing the answers out — an arrow key brings them straight
   // back, with no second round-trip to the geocoder.
   const [open, setOpen] = useState(false);
-  const [searching, setSearching] = useState(false);
-  // True once a search has COMPLETED for the current text. It is what lets
-  // "no match" mean "we asked and there was none" and never "we haven't asked
-  // yet", which an empty results array alone cannot tell apart.
-  const [searched, setSearched] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
   const listboxId = useId();
 
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      abortRef.current?.abort();
+  // The debounce/abort loop is the map search's, shared (usePlaceSearch). What
+  // is local to this field is the list built on top of it — whether it shows,
+  // and which row the arrow keys are on. An answer landing opens the list, and
+  // opens it with nothing highlighted, so the first ArrowDown reaches the
+  // first row rather than the second.
+  const { results, searching, searched, search, cancel, clear } = usePlaceSearch({
+    searchFn,
+    onResults: () => {
+      setHighlighted(null);
+      setOpen(true);
     },
-    [],
-  );
-
-  /** Stop whatever is pending — the timer that hasn't fired and the request that has. */
-  function cancelPending() {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    abortRef.current?.abort();
-  }
+  });
 
   function handleChange(text: string) {
     onChange(text);
-    setResults([]);
     setHighlighted(null);
-    setSearched(false);
-    cancelPending();
+    search(text);
 
-    const trimmed = text.trim();
-    if (!trimmed) {
-      // An emptied field asks nothing: no spinner, no list, no request in
-      // flight to arrive late and resurrect suggestions for text that is gone.
-      setSearching(false);
-      setOpen(false);
-      return;
-    }
-
-    timerRef.current = setTimeout(() => {
-      const controller = new AbortController();
-      abortRef.current = controller;
-      setSearching(true);
-      searchFn(trimmed, { signal: controller.signal })
-        // The default geocoder already resolves empty on any trouble, but this
-        // seam takes any provider — one that rejects must be absorbed here,
-        // not surface as an error inside the act of writing an idea down.
-        .catch(() => [])
-        .then((found) => {
-          // A superseded search must not write over the one that replaced it.
-          if (controller.signal.aborted) return;
-          setResults(found);
-          setHighlighted(null);
-          setOpen(true);
-          setSearched(true);
-          setSearching(false);
-        });
-    }, DEBOUNCE_MS);
+    // An emptied field asks nothing, so it shows nothing either — `search`
+    // has already seen to it that no request is left in flight to arrive late
+    // and resurrect suggestions for text that is gone.
+    if (!text.trim()) setOpen(false);
   }
 
   function pick(place: GeocodeResult) {
-    // Cancel first: a search still in flight would otherwise land after the
+    // Clear first: a search still in flight would otherwise land after the
     // pick and reopen the list over the address the writer just chose.
-    cancelPending();
-    setSearching(false);
-    setResults([]);
+    clear();
     setHighlighted(null);
     setOpen(false);
-    setSearched(false);
     onPick(place);
   }
 
@@ -243,8 +197,7 @@ export function AddressSearch({
         // moved on would open the list under a field nobody is in, and shove
         // whatever sits below it out from under the pointer.
         onBlur={() => {
-          cancelPending();
-          setSearching(false);
+          cancel();
           setOpen(false);
           setHighlighted(null);
         }}
