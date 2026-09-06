@@ -101,7 +101,7 @@
    widest thing on screen: the columns hold their shares and the text wraps. */
 .table {
   width: 100%;
-  min-width: 760px;
+  min-width: 824px;
   table-layout: fixed;
   border-collapse: collapse;
   font-family: var(--font-sans);
@@ -120,12 +120,12 @@
   border-bottom: var(--border-width) solid var(--border-subtle);
 }
 
-/* Select / Chevron / Received / From / Message / Status. The two leading
-   columns are one control each — a 20px checkbox, a 16px icon — plus the cell
-   padding and nothing else, so they are the fixed widths here; the rest share
-   what is left, and Message still gets the room — it is what the page exists
-   to read. Where has moved into the detail row, and its share went to Message
-   and From. */
+/* Select / Chevron / ID / Received / From / Message / Status. The three
+   leading columns hold a known thing each — a 20px checkbox, a 16px icon, a
+   handful of digits — plus the cell padding and nothing else, so they are the
+   fixed widths here; the rest share what is left, and Message still gets the
+   room — it is what the page exists to read. Where has moved into the detail
+   row, and its share went to Message and From. */
 .table th:nth-child(1) {
   width: 44px;
 }
@@ -135,18 +135,22 @@
 }
 
 .table th:nth-child(3) {
-  width: 13%;
+  width: 64px;
 }
 
 .table th:nth-child(4) {
-  width: 20%;
+  width: 13%;
 }
 
 .table th:nth-child(5) {
-  width: 45%;
+  width: 20%;
 }
 
 .table th:nth-child(6) {
+  width: 45%;
+}
+
+.table th:nth-child(7) {
   width: 16%;
 }
 
@@ -158,6 +162,15 @@
 
 .table tbody tr:last-child td {
   border-bottom: none;
+}
+
+/* The id is a number you copy, not prose: data tracking, no wrapping, and the
+   same muted tone as Received — both are the row's labels rather than its
+   content. */
+.idCell {
+  letter-spacing: var(--text-data-tracking);
+  white-space: nowrap;
+  color: var(--text-muted);
 }
 
 /* "22 Aug 2026" is data, so it takes the data tracking and never wraps. */

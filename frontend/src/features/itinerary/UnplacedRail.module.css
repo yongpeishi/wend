@@ -145,6 +145,15 @@
   color: var(--text-muted);
 }
 
+/* "placed · Day 2": the same muted tone as the meta, so it reads as one more
+   fact about the row and not as a badge. The row itself is unchanged — it is
+   still fully draggable, because being placed once is not a reason it cannot
+   be placed again. */
+.placed {
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
 .menuWrap {
   flex: none;
   position: relative;
