@@ -83,6 +83,9 @@
   display: flex;
   align-items: baseline;
   gap: var(--space-3);
+  /* A placed row carries a third cell; on a narrow day column it drops to a
+     second line rather than squeezing the title to nothing. */
+  flex-wrap: wrap;
   text-align: left;
   background: var(--surface-card);
   border: var(--border-width) solid var(--border-subtle);
@@ -116,6 +119,14 @@
 
 /* Raised from the design's 13px to the 15px floor. */
 .choiceMeta {
+  flex: none;
+  font-size: var(--text-min-size);
+  color: var(--text-muted);
+}
+
+/* "placed · Day 1" / "already on this day": the meta's own muted tone, one
+   more fact about the row. The row stays a button — placed is not disabled. */
+.choicePlaced {
   flex: none;
   font-size: var(--text-min-size);
   color: var(--text-muted);
