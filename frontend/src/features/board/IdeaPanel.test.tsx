@@ -8,6 +8,7 @@ import { ToastProvider } from '../../components/Toast';
 import { IdeaPanel } from './IdeaPanel';
 import { server } from '../../mocks/server';
 import type { Entry } from '../../api/types';
+import styles from './IdeaPanel.module.css';
 
 function makeEntry(overrides: Partial<Entry>): Entry {
   return {
@@ -103,6 +104,53 @@ describe('IdeaPanel — the idea’s own words', () => {
     renderPanel({ id: 'panel-7' });
 
     expect(document.getElementById('panel-7')).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feedback #42: a URL somebody typed is a link, wherever they typed it. The
+ * panel's three prose fields are all free text, so all three linkify; which
+ * shapes count as a URL is `lib/linkify`'s business and is tested there.
+ */
+describe('IdeaPanel — URLs in the idea’s words', () => {
+  const URL = 'https://wend.app/trips';
+
+  it('links a URL in the description, and opens it in a new tab', () => {
+    renderPanel({ entry: makeEntry({ description: `Tickets at ${URL} from March.` }) });
+
+    const link = screen.getByRole('link', { name: URL });
+    expect(link).toHaveAttribute('href', URL);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    // The full stop was the sentence's, not the address's, and it stays outside.
+    expect(link.closest('p')?.textContent).toBe(`Tickets at ${URL} from March.`);
+  });
+
+  it('links a URL in the notes without taking them out of their quieter voice', () => {
+    renderPanel({ entry: makeEntry({ notes: `Ask Mari — ${URL}` }) });
+
+    const link = screen.getByRole('link', { name: URL });
+    // Still the notes paragraph: the anchor inherits the muted colour rather
+    // than overriding it, so the class it hangs under is the whole assertion.
+    expect(link.closest('p')).toHaveClass(styles.notes);
+  });
+
+  it('links a URL typed into the address field', () => {
+    renderPanel({ entry: makeEntry({ address: URL }) });
+
+    expect(screen.getByRole('link', { name: URL })).toHaveAttribute('href', URL);
+  });
+
+  // The point of a bare-fragment renderer: prose with no URL in it must render
+  // as the same single text node it always did.
+  it('leaves words with no URL in them exactly as they were', () => {
+    renderPanel({
+      entry: makeEntry({ description: 'Thousand torii gates up the hill.', notes: 'Go before eight.' }),
+    });
+
+    expect(screen.getByText('Thousand torii gates up the hill.')).toBeInTheDocument();
+    expect(screen.getByText('Go before eight.')).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });
 

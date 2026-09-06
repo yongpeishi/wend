@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button } from '../../design/components/core/Button';
+import { Linkify } from '../../components';
 import { useToast } from '../../components/Toast';
 import { useCreateTodo, useTodos, useUpdateTodo } from '../../api';
 import type { Todo } from '../../api/types';
@@ -165,8 +166,14 @@ function TodoLine({ todo, canEdit }: { todo: Todo; canEdit: boolean }) {
           {tick}
         </span>
       )}
+      {/* "Book https://…" is the example the feedback was reported with, so the
+          to-do text is the one place the link has to work. <Linkify> adds no
+          element of its own, which is what keeps the span's id — the checkbox's
+          `aria-labelledby` target — and its wrap rules exactly where they were.
+          The anchor stops its own click, so following a link does not also tick
+          the box beside it. */}
       <span id={titleId} className={done ? `${styles.title} ${styles.titleDone}` : styles.title}>
-        {todo.title}
+        <Linkify>{todo.title}</Linkify>
       </span>
     </li>
   );
