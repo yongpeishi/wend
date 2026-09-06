@@ -61,6 +61,17 @@ describe('DroppedPinCard', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  it('closes through onCancel from the corner X, without confirming', async () => {
+    const user = userEvent.setup();
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    renderCard({ onConfirm, onCancel });
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it('disables the primary action while the name is blank', () => {
     renderCard({ name: '   ' });
     expect(screen.getByRole('button', { name: 'Add as idea' })).toBeDisabled();

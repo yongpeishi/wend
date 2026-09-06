@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { ArrowUpDown } from 'lucide-react';
+import { CloseButton } from '../../components/CloseButton';
 import styles from './SwapDayMenu.module.css';
 
 /** One day of the trip as the menu offers it. */
@@ -48,6 +49,16 @@ export function SwapDayMenu({ day, dayLabel, choices, onSwap, className }: SwapD
   // in it and refusing.
   const others = choices.filter((choice) => choice.day !== day);
 
+  /**
+   * Leaving without choosing: Escape and the X both come here, so focus lands
+   * back on the trigger either way rather than falling to the body when the
+   * popup it was in disappears.
+   */
+  function close() {
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
   // Opening moves focus into the popup so a keyboard reaches the days without
   // tabbing past the trigger, and Escape hands it straight back.
   useEffect(() => {
@@ -58,8 +69,7 @@ export function SwapDayMenu({ day, dayLabel, choices, onSwap, className }: SwapD
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
-      setOpen(false);
-      triggerRef.current?.focus();
+      close();
     }
     document.addEventListener('mousedown', onDocPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -69,9 +79,16 @@ export function SwapDayMenu({ day, dayLabel, choices, onSwap, className }: SwapD
     };
   }, [open]);
 
-  /** Up and Down walk the days and wrap; Home and End jump to the ends. */
+  /**
+   * Up and Down walk the days and wrap; Home and End jump to the ends. Only
+   * the days: the X shares the popup but is not a choice, and an arrow walk
+   * that stopped on it would make "the last day" mean "close". Tab still
+   * reaches it.
+   */
   function moveFocus(event: ReactKeyboardEvent<HTMLDivElement>) {
-    const buttons = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? []);
+    const buttons = Array.from(
+      menuRef.current?.querySelectorAll<HTMLButtonElement>('button[data-swap-item]') ?? [],
+    );
     if (buttons.length === 0) return;
 
     const here = buttons.indexOf(document.activeElement as HTMLButtonElement);
@@ -119,6 +136,7 @@ export function SwapDayMenu({ day, dayLabel, choices, onSwap, className }: SwapD
           aria-label={`Days to swap ${dayLabel} with`}
           onKeyDown={moveFocus}
         >
+          <CloseButton onClick={close} />
           {others.length === 0 ? (
             <p className={styles.empty}>A one-day trip has nothing to swap with.</p>
           ) : (
@@ -128,6 +146,7 @@ export function SwapDayMenu({ day, dayLabel, choices, onSwap, className }: SwapD
                 type="button"
                 ref={index === 0 ? firstItemRef : undefined}
                 className={styles.item}
+                data-swap-item
                 onClick={() => {
                   setOpen(false);
                   onSwap(choice.day);
