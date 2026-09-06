@@ -47,3 +47,6 @@ export type { Tab, TabBarProps } from './TabBar';
 
 export { TrailNav, TRAIL_STEPS } from './TrailNav';
 export type { TrailNavProps, TrailStep } from './TrailNav';
+
+export { Linkify } from './Linkify';
+export type { LinkifyProps } from './Linkify';

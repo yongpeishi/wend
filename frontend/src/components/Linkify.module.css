@@ -1,0 +1,29 @@
+/*
+ * A URL sitting inside prose the user typed. It is not a control and not a
+ * destination the product chose — it is a word in their sentence that happens
+ * to be clickable — so it takes the app's reading-verb idiom rather than a
+ * browser blue: the ink of whatever voice it lands in, marked by an apricot
+ * underline. That is what lets the same link read correctly in body text and
+ * in the muted `notes` voice without either one being told about the other.
+ */
+
+.link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--wend-apricot);
+  /* A pasted URL is one unbreakable word and can be longer than any column it
+     lands in — a board card, a panel, the checklist. Break it mid-token rather
+     than let it push a container into a horizontal scroll. */
+  overflow-wrap: anywhere;
+}
+
+.link:hover {
+  opacity: 0.85;
+}
+
+.link:active {
+  opacity: 0.7;
+}
+
+/* No :focus-visible rule: design/global.css already rings every `a`, and a
+   local copy would only be a second place to keep in step. */
