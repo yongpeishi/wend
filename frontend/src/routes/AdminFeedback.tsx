@@ -108,8 +108,9 @@ function toggleStatus(selected: FeedbackStatus[], status: FeedbackStatus): Feedb
  * the evidence — where they were, what they had pointed at, what the browser
  * was, the images — is all the same kind of thing: not what you read fifty of,
  * but what you read one of, once a message has earned a closer look. So the
- * five always-visible columns stay the ones you triage by, "Where" moves down
- * into the detail beside the screenshots, and a leading chevron opens it.
+ * always-visible columns stay the ones you triage by — plus the id, which is
+ * how a row is named everywhere off this page — "Where" moves down into the
+ * detail beside the screenshots, and a leading chevron opens it.
  *
  * Several rows open at once, held as a Set of ids rather than one open row.
  * Comparing two reports is the ordinary reason to open anything here — the two
@@ -283,6 +284,13 @@ export function AdminFeedback() {
                   <th scope="col">
                     <span className={styles.srOnly}>Details</span>
                   </th>
+                  {/* The row's own id, straight after the chevron that opens
+                      it: the number is how a note is referred to anywhere off
+                      this page — a ticket, a chat message, the API — so it
+                      sits where the eye already is when a row is picked out,
+                      and stays narrow enough to cost the columns you triage by
+                      almost nothing. */}
+                  <th scope="col">ID</th>
                   <th scope="col">Received</th>
                   <th scope="col">From</th>
                   <th scope="col">Message</th>
@@ -337,6 +345,7 @@ export function AdminFeedback() {
                             )}
                           </button>
                         </td>
+                        <td className={styles.idCell}>{feedback.id}</td>
                         <td className={styles.received}>{formatReceived(feedback.created_at)}</td>
                         <td>
                           <div className={styles.reporter}>{feedback.user.name}</div>
@@ -367,7 +376,7 @@ export function AdminFeedback() {
                       </tr>
                       {open && (
                         <tr id={detailId} className={styles.detailRow}>
-                          <td className={styles.detail} colSpan={6}>
+                          <td className={styles.detail} colSpan={7}>
                             <div className={styles.detailInner}>
                               {/* Where, verbatim from the column it used to be:
                                   the URL, and when the reporter pointed at
