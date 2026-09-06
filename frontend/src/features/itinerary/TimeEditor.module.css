@@ -2,9 +2,16 @@
    never a shadow, and it is a panel rather than a popover so it can never sit
    half off the edge of a narrow version column. */
 .editor {
+  /* The containing block for the CloseButton in the corner. */
+  position: relative;
   background: var(--surface-page);
   border-radius: var(--radius-card);
   padding: var(--space-3);
+  /* No heading here — the fields start at the very top, so the Ends box would
+     run straight under the X. The whole editor gives up a column on the right
+     instead: the X's hit box reaches 40px in from the corner, and 12px plus
+     32px keeps every field 44px clear of it. */
+  padding-right: calc(var(--space-3) + var(--space-8));
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
