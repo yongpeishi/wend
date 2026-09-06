@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '../../design/components/core/Button';
 import { Chip } from '../../design/components/core/Chip';
 import { Field } from '../../components/Field';
+import { CloseButton } from '../../components/CloseButton';
 import { addDays } from '../schedule/scheduleModel';
 import styles from './DatesGate.module.css';
 
@@ -131,6 +132,7 @@ export function DatesGate({
     return (
       <div className={styles.gate}>
         <div className={styles.card}>
+          <CloseButton onClick={onBack} />
           <div className={styles.intro}>
             <h2 className={styles.title}>No days yet</h2>
             <p className={styles.body}>
@@ -151,6 +153,11 @@ export function DatesGate({
   return (
     <div className={styles.gate}>
       <div className={styles.card}>
+        {/* The same X every card wears, and here it does what the back button
+            at the foot does — leaves without dates. The card fills the screen,
+            so the corner is the only place a hand looks for the way out
+            before it has read to the bottom. */}
+        <CloseButton onClick={onBack} />
         <div className={styles.intro}>
           <p className={styles.eyebrow}>Before the days appear</p>
           <h2 className={styles.title}>When are you going?</h2>

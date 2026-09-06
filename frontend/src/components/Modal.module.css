@@ -9,6 +9,9 @@
   border-radius: var(--radius-card);
   padding: var(--space-8);
   box-shadow: var(--shadow-none);
+  /* 24px inset + a 32px box puts the 20px icon's centre 40px from the corner —
+     exactly where the old 48px button at a 16px inset had it. */
+  --close-button-inset: var(--space-6);
 }
 
 /* Room for two fields to a line. The same `min()` against the viewport, so on a
