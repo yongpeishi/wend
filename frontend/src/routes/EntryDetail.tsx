@@ -312,7 +312,12 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
                 )}
                 {/* Picking it back up is what this note is offering, so it keeps
                     the bordered button; the one that ends the idea is quiet and
-                    second. `canEdit` on top of the entry's own rule because a
+                    second — and quiet here means quieter than the way back, not
+                    merely unbordered. `variant="quiet"` alone still drew it in
+                    leaf green, bold and underlined, which is as loud as the
+                    bordered button beside it; the local class mutes it the way
+                    the board's row and the trips list both draw this verb.
+                    `canEdit` on top of the entry's own rule because a
                     viewer has no verbs here at all — the rest of the panel is
                     already read-only for them. It is not the backstop it looks
                     like, though, which is the whole reason the destroy asks
@@ -320,7 +325,11 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
                     /entries/:id there is no role in the tree and `canEdit` is
                     true for everyone. See the note on that function. */}
                 {canEdit && mayDeleteForGoodHere(entry) && (
-                  <Button variant="quiet" onClick={() => deleteForGood.request(entry)}>
+                  <Button
+                    variant="quiet"
+                    className={styles.deleteForGood}
+                    onClick={() => deleteForGood.request(entry)}
+                  >
                     Delete for good
                   </Button>
                 )}

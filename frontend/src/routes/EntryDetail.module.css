@@ -36,6 +36,26 @@
   gap: var(--space-4);
 }
 
+/* The stronger verb in the weaker styling — the same pairing the board's
+   set-aside list and the trips list already make: a bordered button to pick the
+   thing back up, and "Delete for good" as plain muted text beside it. This
+   screen was the last one still drawing the destroy in leaf green, bold and
+   underlined, flush against the bordered way back, which made ending the idea
+   the louder of the two things on offer. Rust is still not spent here; that hue
+   belongs to the confirm one step further in, where the click is what actually
+   destroys something.
+
+   Written two classes deep on purpose. It has to out-specify Button's own
+   `.quiet`, which sets the colour and the underline in a single-class rule of
+   its own (and `.button` the weight in another); matching that specificity
+   would leave the outcome to whichever stylesheet the bundler happened to emit
+   last, which is not something to bet a destructive verb's appearance on. */
+.asideActions .deleteForGood {
+  color: var(--text-muted);
+  font-weight: var(--weight-regular);
+  border-bottom: none;
+}
+
 .input,
 .textarea {
   width: 100%;

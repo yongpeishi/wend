@@ -9,6 +9,8 @@ import { TripRoleProvider } from '../auth/TripRoleContext';
 import { server } from '../mocks/server';
 import { db, setRole } from '../mocks/db';
 import { EntryDetailModal } from './EntryDetail';
+import buttonStyles from '../design/components/core/Button.module.css';
+import styles from './EntryDetail.module.css';
 import type { TripRole } from '../api/types';
 
 /**
@@ -487,6 +489,34 @@ describe('EntryDetail — deleting a set-aside idea for good', () => {
     expect(read.getByText('Set aside. It’s still here whenever you want it.')).toBeInTheDocument();
     expect(read.getByRole('button', { name: 'Pick it back up' })).toBeInTheDocument();
     expect(read.getByRole('button', { name: 'Delete for good' })).toBeInTheDocument();
+  });
+
+  /**
+   * The destroy is the heavier act, so it gets the lighter styling — the rule
+   * the board's set-aside row and the trips list both already follow. This
+   * screen was the odd one out: `variant="quiet"` on its own still paints leaf
+   * green, bold and underlined, so the irreversible verb sat beside the way
+   * back looking every bit as loud as it.
+   *
+   * Asserted as classes rather than as computed colour because the muting is
+   * done by a CSS module rule the test renderer never applies; what is worth
+   * pinning is that the two buttons are drawn from different recipes at all —
+   * the destroy carries the local hook, the way back keeps the bordered
+   * variant, and neither wears the other's.
+   */
+  it('is drawn quieter than the way back, not identically to it', async () => {
+    setAside();
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    const restore = read.getByRole('button', { name: 'Pick it back up' });
+    const destroy = read.getByRole('button', { name: 'Delete for good' });
+
+    expect(restore).toHaveClass(buttonStyles.secondary);
+    expect(restore).not.toHaveClass(styles.deleteForGood);
+
+    expect(destroy).toHaveClass(styles.deleteForGood);
+    expect(destroy).not.toHaveClass(buttonStyles.secondary);
   });
 
   /** The sentence survives, both verbs go: a viewer is told where the idea
