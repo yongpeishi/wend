@@ -1,6 +1,6 @@
 # Wend backend — data model (UML)
 
-Source of truth: `backend/db/schema.rb` (schema version `2026_08_14_100001`, SQLite) and `backend/app/models/`.
+Source of truth: `backend/db/schema.rb` (schema version `2026_09_07_120000`, SQLite) and `backend/app/models/`.
 Product-level narrative lives in [tech-data-model.md](tech-data-model.md); architecture rules in [architecture.md](architecture.md).
 
 ## The one thing to know first
@@ -102,16 +102,26 @@ classDiagram
         +string status = new / in_progress / rejected / done
     }
 
+    class EntryDeletion {
+        +int entry_id  [no FK — the row is gone]
+        +string kind
+        +string title
+        +int descendants_destroyed
+        +datetime deleted_at
+        [append-only: no UI, no read endpoint, no restore]
+    }
+
     %% ── User ownership ──────────────────────────────
     User "1" --> "0..*" Entry : created_by (restrict destroy)
     User "1" --> "0..*" Vote
     User "1" --> "0..*" TripMembership
     User "1" --> "0..*" Feedback
+    User "1" --> "0..*" EntryDeletion : who deleted it
 
     %% ── The Entry DAG (all hierarchy) ───────────────
     Entry "1" *-- "0..*" EntryLink : as parent
     Entry "1" *-- "0..*" EntryLink : as child
-    Entry --> Entry : from_entry / to_entry (transport, optional)
+    Entry --> Entry : from_entry / to_entry (transport, optional, nullify)
 
     %% ── Trip-scoped children (FK targets entries) ───
     Entry "1 trip" *-- "0..*" TripMembership
@@ -122,8 +132,8 @@ classDiagram
     %% ── Entry-scoped children ───────────────────────
     Entry "1" *-- "0..*" Vote
     Entry "0..1" --> "0..*" Todo
-    Entry "0..1" --> "0..*" ScheduleItem : entry (nullify)
-    Entry "0..1" --> "0..*" ScheduleItem : chosen_entry (bundle pick)
+    Entry "0..1" *-- "0..*" ScheduleItem : entry (destroy)
+    Entry "0..1" --> "0..*" ScheduleItem : chosen_entry (bundle pick, nullify)
     Entry "0..1" --> "0..*" TripDay : lodging_entry (nullify)
 
     %% ── Itinerary layers ────────────────────────────
@@ -141,15 +151,18 @@ optional or `dependent: :nullify` as labelled. `$` marks class-level methods. `[
 | User → Entry | `entries.created_by_id` (NOT NULL) | 1 : many | `restrict_with_error` — an author can't be destroyed |
 | User → Vote / Feedback | `user_id` | 1 : many | destroy |
 | User → TripMembership | `user_id` | 1 : many | `delete_all` (bypasses last-owner guard) |
+| User → EntryDeletion | `entry_deletions.user_id` | 1 : many | — (append-only audit; see below) |
+| EntryDeletion → *(nothing)* | `entry_deletions.entry_id` | — | **no FK on purpose** — it names a row that is gone |
 | Entry ↔ Entry | `entry_links.parent_id` / `child_id` | many : many (DAG) | link rows destroyed from either side |
-| Entry → Entry | `from_entry_id`, `to_entry_id` | optional | — (transport origin/destination) |
+| Entry → Entry | `from_entry_id`, `to_entry_id` | optional (transport origin/destination) | nullify — the leg survives with one blank end |
 | Entry(trip) → TripMembership | `trip_memberships.trip_id` | 1 : many | `delete_all` |
 | Entry(trip) → TripDay | `trip_days.trip_id` | 1 : many, unique per day | destroy |
 | Entry(trip) → ScheduleItem | `schedule_items.trip_id` | 1 : many | destroy |
 | Entry(trip) → Todo | `todos.trip_id` | optional | destroy |
 | Entry → Todo | `todos.entry_id` | optional (entry **or** trip required) | destroy |
 | Entry → Vote | `votes.entry_id` | 1 : many, one per user | destroy |
-| Entry → ScheduleItem | `schedule_items.entry_id`, `chosen_entry_id` | optional | nullify |
+| Entry → ScheduleItem | `schedule_items.entry_id` | optional | destroy — a placement of a destroyed entry is a ghost |
+| Entry → ScheduleItem | `schedule_items.chosen_entry_id` | optional | nullify — the bundle's placement stays, the pick is unmade |
 | Entry → TripDay | `trip_days.lodging_entry_id` | optional | nullify |
 | TripDay → DayVersion | `day_versions.trip_day_id` | 1 : many | destroy |
 | DayVersion → ScheduleItem | `schedule_items.day_version_id` | optional | nullify |
@@ -170,14 +183,26 @@ optional or `dependent: :nullify` as labelled. `$` marks class-level methods. `[
    then permit the action).
 5. **Itinerary** — `TripDay` (lazy rows, one per trip+date) → `DayVersion` (side-by-side alternate plans;
    "Version A" wins; a day never loses its last live version) → `ScheduleItem` (a *placement*, minutes
-   from midnight, no timezones). Schedule items are the only content-ish rows that get hard-destroyed,
-   because they point at kept things rather than being kept things.
-6. **Out of band** — `Feedback` (in-app bug reports), deliberately not an Entry.
+   from midnight, no timezones). A schedule item points at kept things rather than being a kept thing, so
+   it is hard-destroyed freely — including when the entry it places is destroyed for good (`:destroy`, not
+   `:nullify`: a placement of a row that no longer exists is a ghost on the day). Entries have their own
+   destroy path now, two-step (see invariants); `DayVersion` deliberately does not.
+6. **Out of band** — `Feedback` (in-app bug reports), deliberately not an Entry; `EntryDeletion`, the
+   append-only stub a destroyed Entry leaves behind (`user_id`, `entry_id`, `kind`, `title`,
+   `descendants_destroyed`, `deleted_at`) so that "where did my trip go?" has an answer. No UI, no read
+   endpoint, no restore.
 
-## Key invariants ("nothing is discarded")
+## Key invariants ("nothing is discarded in one step")
 
 - Soft delete via `archived_at` on `entries` and `day_versions` only; no `default_scope` — filtering is
-  explicit (`active` / `live`), and `visible_to` ignores archival so owners can restore.
+  explicit (`active` / `live`), and `visible_to` ignores archival so owners can restore. For `entries`
+  that is step one of two; for `day_versions` it is the whole story — a version is never destroyed.
+- Step two, entries only: `DELETE /api/entries/:id/permanent` destroys the row, refused
+  `422 must_be_set_aside_first` unless `archived_at` is already set, and appends one `entry_deletions`
+  row. It takes the descendants that live nowhere else and leaves alone anything also reachable from
+  another trip or from the library; the cascade is filtered by the same policy, so it destroys only what
+  the actor could have destroyed one at a time. `dependent:` fires on `destroy` only — none of it touches
+  archiving.
 - The entry graph must stay a DAG — `EntryLink#no_cycles` walks descendants before save.
 - A trip can never lose its last owner (`TripMembership#refuse_last_owner` + partial unique index).
 - A day can never lose its last live version (`DayVersion#archive!` returns false instead).
