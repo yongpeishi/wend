@@ -2,6 +2,8 @@ import { useId, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { QueryGate } from '../../components/QueryGate';
 import type { QueryGateSource } from '../../components/QueryGate';
+import { DeleteForGoodModal } from '../../components/DeleteForGoodModal';
+import { useDeleteForGood } from '../../components/useDeleteForGood';
 import { useCanEdit } from '../../auth/TripRoleContext';
 import { useRestoreEntry } from '../../api';
 import type { Entry } from '../../api/types';
@@ -82,8 +84,11 @@ export interface BundlePanelProps {
  *
  * The set-aside disclosure stays at the foot and now carries more weight than
  * it did: removing a bundle from a card archives it, so this disclosure is the
- * undo for the strongest action on the rail. Nothing here is destroyed, so the
- * way back has to be visible on the same screen as the way out. It is pinned to
+ * undo for the strongest action on the rail. Nothing the rail itself does
+ * destroys anything, so the way back has to be visible on the same screen as
+ * the way out. Deleting a plan for good is a separate, second act taken from
+ * inside that disclosure, on something already set aside, and behind a dialog
+ * that says what goes — never a control on a live card. It is pinned to
  * the foot in the layout sense too — the bundle list between the intro and it
  * scrolls on its own rather than growing the page, so the way back does not
  * drift below the fold as the rail fills up. See BundlePanel.module.css.
@@ -91,10 +96,11 @@ export interface BundlePanelProps {
  * The panel takes no compare selection any more. Compare was a card action
  * and went with the rest of that row — see BundleCard's doc comment.
  *
- * Restoring is handled here rather than handed up as a prop: the panel already
- * takes `onToast` for its wording, and every other bundle mutation on this
- * rail (rename, remove) already lives inside these components. Routing just
- * this one back through the board would be the odd one out.
+ * Restoring — and deleting for good — are handled here rather than handed up as
+ * props: the panel already takes `onToast` for its wording, and every other
+ * bundle mutation on this rail (rename, remove) already lives inside these
+ * components. Routing just those back through the board would be the odd one
+ * out.
  *
  * `onOpen` is the exception, and it is a pass-through rather than a decision:
  * opening a bundle member is the board's business, because the row it lands on
@@ -119,6 +125,15 @@ export function BundlePanel({
 }: BundlePanelProps) {
   const restoreEntry = useRestoreEntry();
   const canEdit = useCanEdit();
+  // Owned here for exactly the reason restoring is: every bundle mutation on
+  // this rail lives inside these components, and the panel already takes
+  // `onToast` for its wording. That prop carries no tone, so a failure reads in
+  // the same voice as a success — the sentence itself says what went wrong, and
+  // inventing a second toast channel for this one call is not worth the seam.
+  const deleteForGood = useDeleteForGood({
+    onDeleted: () => onToast('Deleted for good.'),
+    onError: (message) => onToast(message),
+  });
   const [naming, setNaming] = useState(false);
   const headingId = useId();
   const introId = useId();
@@ -237,7 +252,17 @@ export function BundlePanel({
         entries={archivedBundles}
         onRestore={(id) => restoreEntry.mutate(id, { onSuccess: () => onToast('Picked back up.') })}
         canEdit={canEdit}
+        onDeleteForGood={deleteForGood.request}
       />
+
+      {/* No `currentTripTitle`. The rail is handed a `tripId` and never the
+          trip's title, and threading one down through the board just so this
+          dialog can subtract it from a list would be a prop that exists for a
+          single sentence. The cost of leaving it out is small and bounded: a
+          plan is emptied before it can be deleted, so its trip list is almost
+          always the one trip it sits in, and the worst case is the dialog
+          naming that trip back to the reader — true, if redundant. */}
+      <DeleteForGoodModal {...deleteForGood.modalProps} />
     </aside>
   );
 }

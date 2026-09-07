@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
+import { DeleteForGoodModal } from '../components/DeleteForGoodModal';
 import { EntryRow } from '../components/EntryRow';
 import { EmptyState } from '../components/EmptyState';
 import { QueryGate } from '../components/QueryGate';
+import { useToast } from '../components/Toast';
+import { useDeleteForGood } from '../components/useDeleteForGood';
 import { useArchiveEntry, useEntries, useRestoreEntry } from '../api/entries';
-import { canDelete } from '../auth/tripRole';
+import { canDelete, canDeleteForGood } from '../auth/tripRole';
 import { CATEGORY_LABELS } from '../features/board/filters';
 import { NewTripModal } from '../features/trips/NewTripModal';
 import { TripCard } from '../features/trips/TripCard';
@@ -21,12 +24,22 @@ import styles from './TripsList.module.css';
  */
 export function TripsList() {
   const navigate = useNavigate();
+  const { show } = useToast();
 
   const tripsQuery = useEntries({ kind: 'trip', include_archived: true });
   const libraryQuery = useEntries({ unassigned: true, kind: 'idea' });
 
   const archiveTrip = useArchiveEntry();
   const restoreTrip = useRestoreEntry();
+
+  // Setting a trip aside is its own undo — the row is still on the page, with
+  // "Bring back" on it — so neither of those says anything. This one has no
+  // undo and takes the row away, so the toast is the only thing left that says
+  // it happened; the list repaints off the invalidation the mutation fires.
+  const deleteForGood = useDeleteForGood({
+    onDeleted: () => show('Deleted for good.', 'success'),
+    onError: (message) => show(message, 'error'),
+  });
 
   const [starting, setStarting] = useState(false);
 
@@ -85,30 +98,66 @@ export function TripsList() {
             Saved for later
           </h2>
           <ul className={styles.savedList}>
-            {saved.map((trip) => (
-              <li key={trip.id} className={styles.savedRow}>
-                <div className={styles.savedText}>
-                  <span className={styles.savedTitle}>{trip.title}</span>
-                  {trip.description && <span className={styles.savedNote}>{trip.description}</span>}
-                </div>
-                {/* Setting aside and bringing back are the same decision read
-                    from either end, so they answer to the same capability. A
-                    member on a trip somebody else set aside still sees it here
-                    — they simply have no button. */}
-                {canDelete(trip.my_role ?? null) && (
-                  <button
-                    type="button"
-                    className={styles.bringBack}
-                    onClick={() => restoreTrip.mutate(trip.id)}
-                  >
-                    Bring back
-                  </button>
-                )}
-              </li>
-            ))}
+            {saved.map((trip) => {
+              // Setting aside and bringing back are the same decision read
+              // from either end, so they answer to the same capability. A
+              // member on a trip somebody else set aside still sees it here
+              // — they simply have no button.
+              const mayBringBack = canDelete(trip.my_role ?? null);
+              // On a trip this reduces to the same owner-only rule, because
+              // authorship grants nothing on a trip — so in practice the two
+              // buttons arrive together. Asked by its own name anyway: the
+              // equivalence is tripRole.ts's to know, and writing it out here
+              // is how the two drift apart the day a role is added.
+              const mayDeleteForGood = canDeleteForGood(trip);
+              return (
+                <li key={trip.id} className={styles.savedRow}>
+                  <div className={styles.savedText}>
+                    <span className={styles.savedTitle}>{trip.title}</span>
+                    {trip.description && <span className={styles.savedNote}>{trip.description}</span>}
+                  </div>
+                  {(mayBringBack || mayDeleteForGood) && (
+                    <div className={styles.savedActions}>
+                      {mayBringBack && (
+                        <button
+                          type="button"
+                          className={styles.bringBack}
+                          onClick={() => restoreTrip.mutate(trip.id)}
+                        >
+                          Bring back
+                        </button>
+                      )}
+                      {/* The stronger act, in the weaker button. Bringing a
+                          trip back is the offer this row is making; deleting
+                          it for good is a thing you have to have come here
+                          meaning to do, so it is a word rather than a target.
+                          It is also only the first half of the gesture — the
+                          server refuses this and answers with the counts the
+                          dialog is made of. */}
+                      {mayDeleteForGood && (
+                        <button
+                          type="button"
+                          className={styles.deleteForGood}
+                          onClick={() => deleteForGood.request(trip)}
+                        >
+                          Delete for good
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
+
+      {/* One dialog for the whole list, not one per row: the hook holds which
+          trip is being confirmed, so a copy on every row would be a stack of
+          closed dialogs saying the same thing. No `currentTripTitle` — a trip
+          hangs under no trip, so the server sends `trip_titles: []` and there
+          is nothing here to filter out of it. */}
+      <DeleteForGoodModal {...deleteForGood.modalProps} />
 
       <section className={styles.section} aria-labelledby="library-heading">
         <div className={styles.libraryHead}>

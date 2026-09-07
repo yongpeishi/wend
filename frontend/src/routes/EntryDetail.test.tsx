@@ -439,6 +439,77 @@ describe('EntryDetail — a URL in what someone wrote', () => {
 });
 
 /**
+ * Set aside is a state with two ways out of it: pick it back up, or end it.
+ * The note that describes the state is for everyone — that this was set aside
+ * is part of what the entry says about itself — and only the verbs are gated.
+ *
+ * This screen is the detail view of the thing being destroyed, so the one
+ * thing it has to do that no other surface does is leave: after the delete
+ * there is no entry to be the detail of.
+ */
+describe('EntryDetail — deleting a set-aside idea for good', () => {
+  /** resetDb() in the global afterEach puts the fixture back. */
+  function setAside() {
+    const entry = db.entries.find((e) => e.id === IDEA.id);
+    if (!entry) throw new Error('Seeded entry 5 has gone missing');
+    entry.archived_at = new Date().toISOString();
+  }
+
+  it('offers it beside "Pick it back up" once the idea is set aside', async () => {
+    setAside();
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    expect(read.getByText('Set aside. It’s still here whenever you want it.')).toBeInTheDocument();
+    expect(read.getByRole('button', { name: 'Pick it back up' })).toBeInTheDocument();
+    expect(read.getByRole('button', { name: 'Delete for good' })).toBeInTheDocument();
+  });
+
+  /** The sentence survives, both verbs go: a viewer is told where the idea
+   * stands and given nothing to do about it, which is how the rest of the
+   * panel already reads to them. */
+  it('tells a viewer the same thing and hands them neither verb', async () => {
+    setAside();
+    const panel = await openPanel('viewer');
+    const read = within(panel);
+
+    expect(read.getByText('Set aside. It’s still here whenever you want it.')).toBeInTheDocument();
+    expect(read.queryByRole('button', { name: 'Pick it back up' })).not.toBeInTheDocument();
+    expect(read.queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
+  });
+
+  /** Step one first, everywhere. A live idea has no delete on it because the
+   * whole note this button lives in is about being set aside. */
+  it('is nowhere to be found on an idea that is still live', async () => {
+    const panel = await openPanel('member');
+    expect(within(panel).queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
+  });
+
+  it('asks first, then leaves the screen it was the detail of', async () => {
+    setAside();
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    const panel = await openPanel('member', IDEA, onClose);
+
+    await user.click(within(panel).getByRole('button', { name: 'Delete for good' }));
+
+    // The refused attempt is the preview, so the panel is still open behind a
+    // deletion that has not happened — and closing it is not one of the
+    // answers on offer.
+    expect(await screen.findByRole('dialog', { name: `Delete "${IDEA.title}" for good?` })).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: /^Yes, delete it/ }));
+
+    // Staying here would be a detail screen for a row that no longer exists —
+    // a refetch into "That one isn't here", which is the wrong sentence for
+    // something you just deleted on purpose. The toast carries the news out.
+    expect(await screen.findByText('Deleted for good.')).toBeInTheDocument();
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+
+/**
  * Every PATCH body the panel sends, in arrival order. The real handler is
  * stood aside because what is on trial here is whether a blur earns a request
  * at all, not what the server does with one.

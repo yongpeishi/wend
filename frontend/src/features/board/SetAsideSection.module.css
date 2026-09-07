@@ -39,3 +39,13 @@
   font-size: var(--text-small-size);
   color: var(--text-body);
 }
+
+/* The empty state's one line. Muted and small like the titles it stands in
+   place of, so an empty disclosure reads as a quiet explanation rather than as
+   a message about something having gone wrong. */
+.note {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-small-size);
+  color: var(--text-muted);
+}

@@ -25,6 +25,17 @@
   padding: var(--space-4);
 }
 
+/* The two things you can do about that state, on one line under the sentence
+   that describes it. The note stacks (sentence above, actions below) because
+   the sentence is a paragraph and wraps; the actions themselves are a row, and
+   wrap to a second line rather than stretching when there is no room. */
+.asideActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
 .input,
 .textarea {
   width: 100%;

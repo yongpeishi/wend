@@ -4,11 +4,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { Select } from '../design/components/core/Select';
 import { useCanEdit } from '../auth/TripRoleContext';
+import { canDeleteForGood } from '../auth/tripRole';
 import { Linkify } from '../components';
 import { Modal } from '../components/Modal';
+import { DeleteForGoodModal } from '../components/DeleteForGoodModal';
 import { Field } from '../components/Field';
 import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
+import { useDeleteForGood } from '../components/useDeleteForGood';
 import { useEntry, useRestoreEntry, useUpdateEntry } from '../api/entries';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '../features/board/filters';
 import { formatDuration } from '../lib/formatDates';
@@ -134,6 +137,21 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
   const updateEntry = useUpdateEntry(entryId ?? 0);
   const restoreEntry = useRestoreEntry();
 
+  // This panel is a detail screen for the thing being destroyed, so it cannot
+  // stay open on it: the entry is gone, the query behind this dialog would
+  // refetch into a 404, and "It may have been set aside" is the wrong sentence
+  // for something you just deleted on purpose. Leaving is `close` — the same
+  // one "Done" and the ✕ use, which means `navigate(-1)` at /entries/:id and
+  // closing the panel over the board when the board raised it. The toast is
+  // what carries the news out to wherever that lands.
+  const deleteForGood = useDeleteForGood({
+    onDeleted: () => {
+      show('Deleted for good.', 'success');
+      close();
+    },
+    onError: (message) => show(message, 'error'),
+  });
+
   const [draft, setDraft] = useState<Record<string, string>>({});
 
   const entry = data?.entry;
@@ -209,199 +227,226 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
   }
 
   return (
-    <Modal
-      open
-      title={canEdit ? 'Edit idea' : 'Idea'}
-      onClose={close}
-      size="wide"
-      /* One button, and it does not say "Save". Every field here writes itself
-         on blur, so there is nothing held back to commit and nothing to cancel —
-         a Save/Cancel pair would promise an undo this panel cannot give. "Done"
-         says what it does, and it says it to a viewer too: they are finished
-         reading. Not "Close" — the dialog's own ✕ already carries that name, and
-         two buttons answering to it is one target too many to say out loud. */
-      actions={
-        <Button variant="quiet" onClick={close}>
-          Done
-        </Button>
-      }
-    >
-      <div className={styles.body}>
-        {entry.archived_at && (
-          <div className={styles.asideNote}>
-            {/* The sentence stays for everyone — that this was set aside is part
-                of what the entry says about itself. Only the way to undo it goes. */}
-            <p className={styles.note}>Set aside. It&rsquo;s still here whenever you want it.</p>
-            {canEdit && (
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  restoreEntry.mutate(entry.id, {
-                    onSuccess: () => show('Picked back up.', 'success'),
-                  })
-                }
-              >
-                Pick it back up
-              </Button>
-            )}
-          </div>
-        )}
+    <>
+      <Modal
+        open
+        title={canEdit ? 'Edit idea' : 'Idea'}
+        /* Escape is heard by every open dialog at once, so while the
+           confirmation is standing in front of this panel, Escape means "no,
+           don't delete it" and nothing else. Backing out of the question should
+           not also take away the screen that asked it. Only Escape is affected:
+           the ✕ and "Done" are behind the confirmation's own overlay. */
+        onClose={deleteForGood.target ? () => {} : close}
+        size="wide"
+        /* One button, and it does not say "Save". Every field here writes itself
+           on blur, so there is nothing held back to commit and nothing to cancel —
+           a Save/Cancel pair would promise an undo this panel cannot give. "Done"
+           says what it does, and it says it to a viewer too: they are finished
+           reading. Not "Close" — the dialog's own ✕ already carries that name, and
+           two buttons answering to it is one target too many to say out loud. */
+        actions={
+          <Button variant="quiet" onClick={close}>
+            Done
+          </Button>
+        }
+      >
+        <div className={styles.body}>
+          {entry.archived_at && (
+            <div className={styles.asideNote}>
+              {/* The sentence stays for everyone — that this was set aside is part
+                  of what the entry says about itself. Only the ways to act on it go. */}
+              <p className={styles.note}>Set aside. It&rsquo;s still here whenever you want it.</p>
+              <div className={styles.asideActions}>
+                {canEdit && (
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      restoreEntry.mutate(entry.id, {
+                        onSuccess: () => show('Picked back up.', 'success'),
+                      })
+                    }
+                  >
+                    Pick it back up
+                  </Button>
+                )}
+                {/* Picking it back up is what this note is offering, so it keeps
+                    the bordered button; the one that ends the idea is quiet and
+                    second. `canEdit` on top of the entry's own rule because a
+                    viewer has no verbs here at all — the rest of the panel is
+                    already read-only for them. */}
+                {canEdit && canDeleteForGood(entry) && (
+                  <Button variant="quiet" onClick={() => deleteForGood.request(entry)}>
+                    Delete for good
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
-        {/* The two halves of the same panel: the same facts, in the same order,
-            under the same labels. Someone who can edit gets them as fields that
-            save themselves on blur; someone reading gets them as text. The fork
-            is here rather than a `readOnly` prop on each control because a
-            locked-out form is the thing being got rid of — see <Fact>. */}
-        {canEdit ? (
-          <>
-            <Field label="Name">
-              <input
-                className={styles.input}
-                value={draft.title ?? ''}
-                onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-                onBlur={(e) => save('title', e.target.value)}
-              />
-            </Field>
-
-            {/* Straight after the name, because it is the sentence you would
-                say next if someone asked what the idea was. It used to sit near
-                the bottom, under the coordinates, which put a latitude between
-                an idea and its own description. */}
-            <Field label="Short description">
-              <textarea
-                className={styles.textarea}
-                rows={3}
-                value={draft.description ?? ''}
-                onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
-                onBlur={(e) => save('description', e.target.value)}
-              />
-            </Field>
-
-            {/* Two short facts to a line, which is what the extra width bought.
-                The grid collapses to one column under its own breakpoint, so a
-                phone still reads them in order. */}
-            <div className={styles.pair}>
-              <Field label="Category">
-                {/* <Select>, not a bare <select> with .input: .input styles a text
-                    field, and a native select ignores that styling entirely unless
-                    something resets `appearance`. Field clones this child to inject
-                    id/aria-describedby, which Select spreads onto the real control. */}
-                <Select
-                  value={draft.category ?? ''}
-                  onChange={(e) => {
-                    setDraft((d) => ({ ...d, category: e.target.value }));
-                    save('category', e.target.value);
-                  }}
-                >
-                  <option value="">Not sure yet</option>
-                  {CATEGORY_ORDER.map((c) => (
-                    <option key={c} value={c}>
-                      {CATEGORY_LABELS[c]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-
-              <Field label="Estimated duration" hint="In minutes">
+          {/* The two halves of the same panel: the same facts, in the same order,
+              under the same labels. Someone who can edit gets them as fields that
+              save themselves on blur; someone reading gets them as text. The fork
+              is here rather than a `readOnly` prop on each control because a
+              locked-out form is the thing being got rid of — see <Fact>. */}
+          {canEdit ? (
+            <>
+              <Field label="Name">
                 <input
                   className={styles.input}
-                  inputMode="numeric"
-                  value={draft.duration_minutes ?? ''}
-                  onChange={(e) => setDraft((d) => ({ ...d, duration_minutes: e.target.value }))}
-                  onBlur={(e) => save('duration_minutes', e.target.value)}
+                  value={draft.title ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                  onBlur={(e) => save('title', e.target.value)}
                 />
               </Field>
-            </div>
 
-            <Field label="Address">
-              <input
-                className={styles.input}
-                value={draft.address ?? ''}
-                onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
-                onBlur={(e) => save('address', e.target.value)}
-              />
-            </Field>
+              {/* Straight after the name, because it is the sentence you would
+                  say next if someone asked what the idea was. It used to sit near
+                  the bottom, under the coordinates, which put a latitude between
+                  an idea and its own description. */}
+              <Field label="Short description">
+                <textarea
+                  className={styles.textarea}
+                  rows={3}
+                  value={draft.description ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+                  onBlur={(e) => save('description', e.target.value)}
+                />
+              </Field>
 
-            <div className={styles.pair}>
-              <Field label="Latitude">
+              {/* Two short facts to a line, which is what the extra width bought.
+                  The grid collapses to one column under its own breakpoint, so a
+                  phone still reads them in order. */}
+              <div className={styles.pair}>
+                <Field label="Category">
+                  {/* <Select>, not a bare <select> with .input: .input styles a text
+                      field, and a native select ignores that styling entirely unless
+                      something resets `appearance`. Field clones this child to inject
+                      id/aria-describedby, which Select spreads onto the real control. */}
+                  <Select
+                    value={draft.category ?? ''}
+                    onChange={(e) => {
+                      setDraft((d) => ({ ...d, category: e.target.value }));
+                      save('category', e.target.value);
+                    }}
+                  >
+                    <option value="">Not sure yet</option>
+                    {CATEGORY_ORDER.map((c) => (
+                      <option key={c} value={c}>
+                        {CATEGORY_LABELS[c]}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+
+                <Field label="Estimated duration" hint="In minutes">
+                  <input
+                    className={styles.input}
+                    inputMode="numeric"
+                    value={draft.duration_minutes ?? ''}
+                    onChange={(e) => setDraft((d) => ({ ...d, duration_minutes: e.target.value }))}
+                    onBlur={(e) => save('duration_minutes', e.target.value)}
+                  />
+                </Field>
+              </div>
+
+              <Field label="Address">
                 <input
                   className={styles.input}
-                  inputMode="decimal"
-                  value={draft.lat ?? ''}
-                  onChange={(e) => setDraft((d) => ({ ...d, lat: e.target.value }))}
-                  onBlur={(e) => save('lat', e.target.value)}
+                  value={draft.address ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))}
+                  onBlur={(e) => save('address', e.target.value)}
                 />
               </Field>
-              <Field label="Longitude">
-                <input
-                  className={styles.input}
-                  inputMode="decimal"
-                  value={draft.lng ?? ''}
-                  onChange={(e) => setDraft((d) => ({ ...d, lng: e.target.value }))}
-                  onBlur={(e) => save('lng', e.target.value)}
+
+              <div className={styles.pair}>
+                <Field label="Latitude">
+                  <input
+                    className={styles.input}
+                    inputMode="decimal"
+                    value={draft.lat ?? ''}
+                    onChange={(e) => setDraft((d) => ({ ...d, lat: e.target.value }))}
+                    onBlur={(e) => save('lat', e.target.value)}
+                  />
+                </Field>
+                <Field label="Longitude">
+                  <input
+                    className={styles.input}
+                    inputMode="decimal"
+                    value={draft.lng ?? ''}
+                    onChange={(e) => setDraft((d) => ({ ...d, lng: e.target.value }))}
+                    onBlur={(e) => save('lng', e.target.value)}
+                  />
+                </Field>
+              </div>
+
+              {/* The last box, and deliberately the only open one. "Where did you
+                  find it?" used to be a field of its own — one labelled box for
+                  one URL, which is a lot of panel for a thing most ideas do not
+                  have. The placeholder says the link belongs here now, along with
+                  whatever else did not deserve a field. */}
+              <Field label="Notes">
+                <textarea
+                  className={styles.textarea}
+                  rows={4}
+                  placeholder="Anything else — a link to where you found it, opening hours, who to ask."
+                  value={draft.notes ?? ''}
+                  onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
+                  onBlur={(e) => save('notes', e.target.value)}
                 />
               </Field>
-            </div>
+            </>
+          ) : (
+            <>
+              {/* Read off the entry, not the draft: the draft is the edit buffer,
+                  and there is no editing going on here. Same facts in the same
+                  order and the same two-up grid as the fields above. */}
+              <Fact label="Name" value={written(entry.title)} />
+              <Fact label="Short description" value={written(entry.description)} />
 
-            {/* The last box, and deliberately the only open one. "Where did you
-                find it?" used to be a field of its own — one labelled box for
-                one URL, which is a lot of panel for a thing most ideas do not
-                have. The placeholder says the link belongs here now, along with
-                whatever else did not deserve a field. */}
-            <Field label="Notes">
-              <textarea
-                className={styles.textarea}
-                rows={4}
-                placeholder="Anything else — a link to where you found it, opening hours, who to ask."
-                value={draft.notes ?? ''}
-                onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
-                onBlur={(e) => save('notes', e.target.value)}
-              />
-            </Field>
-          </>
-        ) : (
-          <>
-            {/* Read off the entry, not the draft: the draft is the edit buffer,
-                and there is no editing going on here. Same facts in the same
-                order and the same two-up grid as the fields above. */}
-            <Fact label="Name" value={written(entry.title)} />
-            <Fact label="Short description" value={written(entry.description)} />
+              <div className={styles.pair}>
+                <Fact label="Category" value={entry.category && CATEGORY_LABELS[entry.category]} />
+                {/* "2 hr", not "120". The minutes box exists because minutes are
+                    what you type; reading it, how long it takes is a duration. */}
+                <Fact label="Estimated duration" value={formatDuration(entry.duration_minutes)} />
+              </div>
 
-            <div className={styles.pair}>
-              <Fact label="Category" value={entry.category && CATEGORY_LABELS[entry.category]} />
-              {/* "2 hr", not "120". The minutes box exists because minutes are
-                  what you type; reading it, how long it takes is a duration. */}
-              <Fact label="Estimated duration" value={formatDuration(entry.duration_minutes)} />
-            </div>
+              <Fact label="Address" value={written(entry.address)} />
 
-            <Fact label="Address" value={written(entry.address)} />
+              <div className={styles.pair}>
+                <Fact label="Latitude" value={entry.lat == null ? null : String(entry.lat)} />
+                <Fact label="Longitude" value={entry.lng == null ? null : String(entry.lng)} />
+              </div>
 
-            <div className={styles.pair}>
-              <Fact label="Latitude" value={entry.lat == null ? null : String(entry.lat)} />
-              <Fact label="Longitude" value={entry.lng == null ? null : String(entry.lng)} />
-            </div>
+              <Fact label="Notes" value={written(entry.notes)} />
+            </>
+          )}
 
-            <Fact label="Notes" value={written(entry.notes)} />
-          </>
-        )}
+          {data.children.length > 0 && (
+            <section className={styles.section}>
+              <h3 className={styles.sectionLabel}>Holds</h3>
+              <ul className={styles.linkList}>
+                {data.children.map((child) => (
+                  <li key={child.id}>
+                    <Link className={styles.link} to={`/entries/${child.id}`}>
+                      {child.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-        {data.children.length > 0 && (
-          <section className={styles.section}>
-            <h3 className={styles.sectionLabel}>Holds</h3>
-            <ul className={styles.linkList}>
-              {data.children.map((child) => (
-                <li key={child.id}>
-                  <Link className={styles.link} to={`/entries/${child.id}`}>
-                    {child.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        </div>
+      </Modal>
 
-      </div>
-    </Modal>
+      {/* A sibling of the panel rather than a child of it, because it is a
+          second dialog over the first one and not part of what the panel says.
+          No `currentTripTitle`: this screen belongs to no trip — it is reached
+          by URL and raised over whichever board happened to open it — so every
+          trip that loses the idea is news here, including the one you may be
+          standing on. */}
+      <DeleteForGoodModal {...deleteForGood.modalProps} />
+    </>
   );
 }
 
