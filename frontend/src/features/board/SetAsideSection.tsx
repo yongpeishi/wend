@@ -84,20 +84,33 @@ export function SetAsideSection({
                 <span className={styles.title}>{entry.title}</span>
                 {canEdit && (
                   <Row gap={2}>
-                    <Button variant="quiet" onClick={() => onRestore(entry.id)}>
+                    {/* Bordered, because picking it back up is the offer this
+                        row is making — the same shape "Bring back" has on the
+                        trips list and on the entry detail's set-aside note. It
+                        used to be quiet, which left the two buttons here
+                        identical to the pixel. */}
+                    <Button variant="secondary" size="small" onClick={() => onRestore(entry.id)}>
                       Pick it back up
                     </Button>
                     {/* Quieter than the way back, on purpose, and the weaker of
                         the two on the row it shares. Delete for good is the
                         heavier act; a heavier-looking button next to "Pick it
                         back up" would make the irreversible one the obvious
-                        thing to press. quiet/small is the same weight the board
-                        already gives "Move to Set aside" on a row — the
-                        available step, not the recommended one. The rust fill
+                        thing to press. It was not actually quieter until now:
+                        both were quiet/small-vs-medium, which is the same ink,
+                        the same weight and the same size rendered — a size
+                        class that changes nothing you can see is not a
+                        difference. It is plain muted text now, the way the
+                        trips list has always drawn this verb. The rust fill
                         this product reserves for destroying something is spent
                         once, on the confirm inside the dialog. */}
                     {onDeleteForGood && canDeleteForGood(entry) && (
-                      <Button variant="quiet" size="small" onClick={() => onDeleteForGood(entry)}>
+                      <Button
+                        variant="quiet"
+                        size="small"
+                        className={styles.deleteForGood}
+                        onClick={() => onDeleteForGood(entry)}
+                      >
                         Delete for good
                       </Button>
                     )}

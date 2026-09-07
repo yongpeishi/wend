@@ -7,7 +7,7 @@ import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { server } from '../mocks/server';
-import { db } from '../mocks/db';
+import { db, setRole } from '../mocks/db';
 import { EntryDetailModal } from './EntryDetail';
 import type { TripRole } from '../api/types';
 
@@ -28,6 +28,24 @@ const IDEA = { id: 5, title: 'Fushimi Inari at dawn' };
  * appears in, or the checklist belongs to a dialog about what the idea is.
  */
 const RATED = { id: 2, title: 'Nanzen-ji' };
+
+/**
+ * Seeded entry 1 — the trip itself, and the one kind of row the wire actually
+ * populates `my_role` on. It is the fixture for the half of "may I destroy
+ * this?" that a real role answers, where every idea above can only be answered
+ * by authorship.
+ */
+const TRIP = { id: 1, title: 'Six days in Kyoto' };
+
+/**
+ * Who is asking. The seeded ideas were all written by user 1, so signing in as
+ * them is what makes `created_by_me` true — and nothing in this file was signed
+ * in at all before the destroy verb started needing to know. resetDb() in the
+ * global afterEach signs back out.
+ */
+function signIn(userId: number) {
+  db.currentUserId = userId;
+}
 
 /**
  * What the dialog is called, which now depends on what you can do with it. It
@@ -449,11 +467,17 @@ describe('EntryDetail — a URL in what someone wrote', () => {
  */
 describe('EntryDetail — deleting a set-aside idea for good', () => {
   /** resetDb() in the global afterEach puts the fixture back. */
-  function setAside() {
-    const entry = db.entries.find((e) => e.id === IDEA.id);
-    if (!entry) throw new Error('Seeded entry 5 has gone missing');
+  function setAside(id = IDEA.id) {
+    const entry = db.entries.find((e) => e.id === id);
+    if (!entry) throw new Error(`Seeded entry ${id} has gone missing`);
     entry.archived_at = new Date().toISOString();
   }
+
+  // The demo user wrote the seeded ideas, so being them is what makes an idea
+  // yours to destroy here — this screen asks for that positively now, rather
+  // than reading a null role as "yours". The describe below is the other half:
+  // who is refused, and why.
+  beforeEach(() => signIn(1));
 
   it('offers it beside "Pick it back up" once the idea is set aside', async () => {
     setAside();
@@ -506,6 +530,82 @@ describe('EntryDetail — deleting a set-aside idea for good', () => {
     // something you just deleted on purpose. The toast carries the news out.
     expect(await screen.findByText('Deleted for good.')).toBeInTheDocument();
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+/**
+ * The leak this closes, found in a browser pass: Anna, a viewer on the Japan
+ * trip, opened /entries/:id on somebody else's set-aside idea and was offered
+ * "Delete for good" — all the way into the confirmation, where the server
+ * finally said no.
+ *
+ * Two defaults met. /entries/:id renders outside any <TripRoleProvider>, so
+ * `useCanEdit()` returns the null role's answer, which is "yours, therefore
+ * editable"; and `my_role` is null on every idea, so the entry could not
+ * contradict it. Every case below therefore mounts a role that CAN edit — the
+ * point is that the destroy verb no longer takes that as permission to destroy.
+ *
+ * The rest of the leak is deliberately still here and asserted: the edit form
+ * and "Pick it back up" reach a viewer at this URL exactly as they did before
+ * this feature existed. Teaching this route to resolve a real trip role is the
+ * fix for that, and it is not one verb's worth of change.
+ */
+describe('EntryDetail — who is offered the destroy at /entries/:id', () => {
+  function setAside(id: number) {
+    const entry = db.entries.find((e) => e.id === id);
+    if (!entry) throw new Error(`Seeded entry ${id} has gone missing`);
+    entry.archived_at = new Date().toISOString();
+  }
+
+  /** Sarah did not write the seeded ideas, and holds no role on the trip. */
+  const SOMEONE_ELSE = 2;
+
+  it('refuses it to someone who neither wrote it nor holds a role on it', async () => {
+    setAside(IDEA.id);
+    signIn(SOMEONE_ELSE);
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    expect(read.queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
+    // The state is still described, and the pre-existing leak is untouched:
+    // the way back is still offered here, wrongly, as it was before.
+    expect(read.getByText('Set aside. It’s still here whenever you want it.')).toBeInTheDocument();
+    expect(read.getByRole('button', { name: 'Pick it back up' })).toBeInTheDocument();
+  });
+
+  /** Authorship is the one thing this screen can establish on an idea, and it
+   * is enough on its own — the seeded ideas are the demo user's. */
+  it('offers it to the person who wrote it', async () => {
+    setAside(IDEA.id);
+    signIn(1);
+    const panel = await openPanel('member');
+
+    expect(within(panel).getByRole('button', { name: 'Delete for good' })).toBeInTheDocument();
+  });
+
+  /**
+   * A trip is the one row the wire fills `my_role` in on, so it is the one
+   * place a real role can answer. Sarah did not create this trip — the button
+   * is the role's doing and nothing else.
+   */
+  it('offers it on a trip where a real role allows it', async () => {
+    setAside(TRIP.id);
+    signIn(SOMEONE_ELSE);
+    setRole(TRIP.id, SOMEONE_ELSE, 'owner');
+    const panel = await openPanel('member', TRIP);
+
+    expect(within(panel).getByRole('button', { name: 'Delete for good' })).toBeInTheDocument();
+  });
+
+  /** Same trip, same editable context, one different role — and a viewer's
+   * role is a real answer, so it is the answer. */
+  it('refuses it on a trip where a real role forbids it', async () => {
+    setAside(TRIP.id);
+    signIn(SOMEONE_ELSE);
+    setRole(TRIP.id, SOMEONE_ELSE, 'viewer');
+    const panel = await openPanel('member', TRIP);
+
+    expect(within(panel).queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
   });
 });
 

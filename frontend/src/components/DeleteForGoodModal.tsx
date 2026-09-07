@@ -40,11 +40,19 @@ function listTitles(titles: string[]): string {
  * Everything the dialog says, as plain strings.
  *
  * Two rules run through all of it. Singular and plural are written out rather
- * than pluralised with an "(s)" — one idea going with a trip is a different
+ * than pluralised with an "(s)" — one thing going with a trip is a different
  * sentence from fourteen, and the verb has to agree in both. And a count of
  * zero produces no line at all: "0 votes go too" is noise dressed as a fact,
  * and a dialog that lists what is about to be lost has to be readable at a
  * glance to be worth standing in front of a destroy.
+ *
+ * The descendant counts are called "things", not "ideas". The wire carries one
+ * total per bucket and no breakdown by kind, and a subtree mixes ideas with
+ * plans — the four bundles in a trip are plans in every other surface, so
+ * "16 ideas" would be a false sentence in the one place a false sentence costs
+ * the most. "Things" is true of both, and plain enough for the sentence before
+ * an irreversible act. Votes and to-dos keep their own names: those counts are
+ * exactly what they say.
  *
  * The order is: what this is, what goes with it, what survives, what is left
  * alone, and last the fact that lives outside this screen — the other trips
@@ -63,10 +71,13 @@ function deleteForGoodCopy(preview: DeleteForGoodPreview, currentTripTitle: stri
   const leftBehind = preview.descendantsLeftBehindCount;
 
   const lines: string[] = [
-    // A trip's archived state is called "saved for later", not "set aside", so
-    // only the idea/bundle line can name the step it is contrasted with.
+    // Both branches carry the contrast — a trip is the more destructive of the
+    // two and cannot be the one that says less. They differ only in the verb,
+    // because the reversible step has a different name on each surface: the
+    // trips list says "Saved for later" and offers "Bring back", a board says
+    // "Set aside" and offers "Pick it back up".
     isTrip
-      ? "This one can't be undone."
+      ? "This one can't be undone — unlike saving for later, there is no way back."
       : "This one can't be undone — unlike setting aside, there is no way back.",
   ];
 
@@ -85,8 +96,8 @@ function deleteForGoodCopy(preview: DeleteForGoodPreview, currentTripTitle: stri
   if (destroyed > 0) {
     lines.push(
       isTrip
-        ? `${destroyed} ${destroyed === 1 ? 'idea lives' : 'ideas live'} only in this trip and ${destroyed === 1 ? 'goes' : 'go'} with it.`
-        : `${destroyed} ${destroyed === 1 ? 'idea inside it lives' : 'ideas inside it live'} nowhere else and ${destroyed === 1 ? 'goes' : 'go'} with it.`,
+        ? `${destroyed} ${destroyed === 1 ? 'thing lives' : 'things live'} only in this trip and ${destroyed === 1 ? 'goes' : 'go'} with it.`
+        : `${destroyed} ${destroyed === 1 ? 'thing inside it lives' : 'things inside it live'} nowhere else and ${destroyed === 1 ? 'goes' : 'go'} with it.`,
     );
   }
 
@@ -96,7 +107,7 @@ function deleteForGoodCopy(preview: DeleteForGoodPreview, currentTripTitle: stri
     const subject =
       destroyed > 0
         ? `${surviving} more ${surviving === 1 ? 'is' : 'are'}`
-        : `${surviving} ${surviving === 1 ? 'idea inside it is' : 'ideas inside it are'}`;
+        : `${surviving} ${surviving === 1 ? 'thing inside it is' : 'things inside it are'}`;
     lines.push(
       `${subject} also in ${surviving === 1 ? 'another trip' : 'other trips'} and ${surviving === 1 ? 'stays where it is' : 'stay where they are'}.`,
     );
@@ -106,7 +117,7 @@ function deleteForGoodCopy(preview: DeleteForGoodPreview, currentTripTitle: stri
   // to destroy and the operation leaves them alive rather than refusing.
   if (leftBehind > 0) {
     lines.push(
-      `${leftBehind} ${leftBehind === 1 ? 'idea inside was' : 'ideas inside were'} added by someone else and ${leftBehind === 1 ? 'stays' : 'stay'} in your library.`,
+      `${leftBehind} ${leftBehind === 1 ? 'thing inside was' : 'things inside were'} added by someone else and ${leftBehind === 1 ? 'stays' : 'stay'} in your library.`,
     );
   }
 
@@ -133,10 +144,10 @@ function deleteForGoodCopy(preview: DeleteForGoodPreview, currentTripTitle: stri
     // none.
     confirmLabel: isTrip
       ? destroyed > 0
-        ? `Yes, delete the trip and ${destroyed} ${destroyed === 1 ? 'idea' : 'ideas'}`
+        ? `Yes, delete the trip and ${destroyed} ${destroyed === 1 ? 'thing' : 'things'}`
         : 'Yes, delete the trip for good'
       : destroyed > 0
-        ? `Yes, delete it and ${destroyed} ${destroyed === 1 ? 'idea' : 'ideas'}`
+        ? `Yes, delete it and ${destroyed} ${destroyed === 1 ? 'thing' : 'things'}`
         : 'Yes, delete it for good',
   };
 }

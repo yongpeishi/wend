@@ -61,8 +61,9 @@ describe('DeleteForGoodModal — what it says', () => {
     expect(screen.getByRole('button', { name: 'Yes, delete it for good' })).toBeInTheDocument();
   });
 
-  // The design's trip example, whole. Its shorter first line is deliberate: a
-  // trip is "saved for later", not "set aside", so it cannot name that step.
+  // The design's trip example, whole. It carries the same contrast as the idea
+  // case, in the verb its own surface uses: the trips list says "Saved for
+  // later" where a board says "Set aside".
   it('states the trip case exactly', () => {
     renderModal({
       title: 'Japan, spring',
@@ -72,11 +73,41 @@ describe('DeleteForGoodModal — what it says', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'Delete "Japan, spring" for good?' })).toBeInTheDocument();
-    line("This one can't be undone.");
-    line('14 ideas live only in this trip and go with it.');
+    line("This one can't be undone — unlike saving for later, there is no way back.");
+    line('14 things live only in this trip and go with it.');
     line('6 more are also in other trips and stay where they are.');
     expect(screen.getByRole('button', { name: 'No, keep it saved for later' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Yes, delete the trip and 14 ideas' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Yes, delete the trip and 14 things' })).toBeInTheDocument();
+  });
+});
+
+// The wire carries one total per bucket and no breakdown by kind, and a real
+// subtree mixes ideas with plans — the seeded Japan trip destroys 12 ideas and
+// 4 bundles, which the product calls plans. "16 ideas" would be false in the
+// one sentence read before an irreversible act, so every descendant line says
+// "things", on both branches. Ideas can contain plans too, so the non-trip
+// branch needs it just as much.
+describe('DeleteForGoodModal — a subtree of more than one kind', () => {
+  it('calls a trip\'s mixed descendants things, not ideas', () => {
+    renderModal({ title: 'Japan, spring', kind: 'trip', descendantsDestroyedCount: 16 });
+
+    line('16 things live only in this trip and go with it.');
+    expect(screen.queryByText(/ideas/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Yes, delete the trip and 16 things' })).toBeInTheDocument();
+  });
+
+  it('calls an idea\'s mixed descendants things too', () => {
+    renderModal({
+      descendantsDestroyedCount: 5,
+      descendantsSurvivingCount: 2,
+      descendantsLeftBehindCount: 3,
+    });
+
+    line('5 things inside it live nowhere else and go with it.');
+    line('2 more are also in other trips and stay where they are.');
+    line('3 things inside were added by someone else and stay in your library.');
+    expect(screen.queryByText(/ideas/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Yes, delete it and 5 things' })).toBeInTheDocument();
   });
 });
 
@@ -103,10 +134,10 @@ describe('DeleteForGoodModal — the counts', () => {
     });
 
     line('1 vote on it goes too.');
-    line('1 idea inside it lives nowhere else and goes with it.');
+    line('1 thing inside it lives nowhere else and goes with it.');
     line('1 more is also in another trip and stays where it is.');
-    line('1 idea inside was added by someone else and stays in your library.');
-    expect(screen.getByRole('button', { name: 'Yes, delete it and 1 idea' })).toBeInTheDocument();
+    line('1 thing inside was added by someone else and stays in your library.');
+    expect(screen.getByRole('button', { name: 'Yes, delete it and 1 thing' })).toBeInTheDocument();
   });
 
   // The verb agrees with the two counts together, not with either alone.
@@ -135,22 +166,22 @@ describe('DeleteForGoodModal — the counts', () => {
   it('names the survivors outright when nothing is destroyed alongside them', () => {
     renderModal({ descendantsSurvivingCount: 6 });
 
-    line('6 ideas inside it are also in other trips and stay where they are.');
+    line('6 things inside it are also in other trips and stay where they are.');
     expect(screen.queryByText(/more are/)).not.toBeInTheDocument();
   });
 
   it('promises the left-behind ones a landing place', () => {
     renderModal({ descendantsDestroyedCount: 3, descendantsLeftBehindCount: 2 });
 
-    line('3 ideas inside it live nowhere else and go with it.');
-    line('2 ideas inside were added by someone else and stay in your library.');
+    line('3 things inside it live nowhere else and go with it.');
+    line('2 things inside were added by someone else and stay in your library.');
   });
 
   it('names the descendants on a trip\'s confirm button too, in the singular', () => {
     renderModal({ kind: 'trip', title: 'Japan, spring', descendantsDestroyedCount: 1 });
 
-    line('1 idea lives only in this trip and goes with it.');
-    expect(screen.getByRole('button', { name: 'Yes, delete the trip and 1 idea' })).toBeInTheDocument();
+    line('1 thing lives only in this trip and goes with it.');
+    expect(screen.getByRole('button', { name: 'Yes, delete the trip and 1 thing' })).toBeInTheDocument();
   });
 
   it('drops the count from the confirm button when there is nothing inside', () => {

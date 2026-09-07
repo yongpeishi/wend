@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SetAsideSection } from './SetAsideSection';
+import buttonStyles from '../../design/components/core/Button.module.css';
+import styles from './SetAsideSection.module.css';
 import type { Entry } from '../../api/types';
 
 function entry(id: number, title: string, overrides: Partial<Entry> = {}): Entry {
@@ -125,6 +127,30 @@ describe('SetAsideSection', () => {
       await open(user, 'Set aside · 1');
       await user.click(screen.getByRole('button', { name: 'Delete for good' }));
       expect(onDeleteForGood).toHaveBeenCalledWith(MINE);
+    });
+
+    /**
+     * The stronger verb has to be the quieter one. These two used to be the
+     * same button: both `quiet`, so the same leaf ink at the same bold weight
+     * and the same rendered size — the only difference was a small-vs-medium
+     * class that changes nothing you can see, which is not a difference at all.
+     * The way back is bordered now, and the destroy carries this section's own
+     * muted-text hook, which is the pairing the trips list and the entry detail
+     * already make.
+     */
+    it('is drawn quieter than the way back, not identically to it', async () => {
+      const user = userEvent.setup();
+      renderSection({ onDeleteForGood: vi.fn() });
+
+      await open(user, 'Set aside · 1');
+      const restore = screen.getByRole('button', { name: 'Pick it back up' });
+      const destroy = screen.getByRole('button', { name: 'Delete for good' });
+
+      expect(restore).toHaveClass(buttonStyles.secondary);
+      expect(restore).not.toHaveClass(styles.deleteForGood);
+
+      expect(destroy).toHaveClass(styles.deleteForGood);
+      expect(destroy).not.toHaveClass(buttonStyles.secondary);
     });
 
     // Absent means absent: a surface that does not hand the section this

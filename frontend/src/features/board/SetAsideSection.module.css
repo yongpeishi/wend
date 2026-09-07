@@ -40,6 +40,28 @@
   color: var(--text-body);
 }
 
+/* The stronger verb in the weaker styling, which is the pairing the other two
+   surfaces already make: a bordered button to put the thing back, and the word
+   "Delete for good" as plain muted text beside it (TripsList.module.css draws
+   its own with the same --text-muted). On this row the two were literally
+   indistinguishable — both quiet, both the leaf ink at bold weight, separated
+   only by a size class that changes nothing rendered. Reaching for the way back
+   and hitting the destroy is the accident this row has to make impossible, and
+   how loud the target looks is most of that. Rust is still not spent here; that
+   hue belongs to the confirm one step further in, where the click is what
+   actually destroys something.
+
+   Written two classes deep on purpose. This has to out-specify Button's own
+   `.quiet`, which sets the colour, the weight and the underline in a
+   single-class rule of its own; matching its specificity would leave the
+   outcome to which stylesheet the bundler happened to emit last, which is not
+   something to bet a destructive verb's appearance on. */
+.list .deleteForGood {
+  color: var(--text-muted);
+  font-weight: var(--weight-regular);
+  border-bottom: none;
+}
+
 /* The empty state's one line. Muted and small like the titles it stands in
    place of, so an empty disclosure reads as a quiet explanation rather than as
    a message about something having gone wrong. */

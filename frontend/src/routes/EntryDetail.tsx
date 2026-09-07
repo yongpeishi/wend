@@ -13,6 +13,7 @@ import { Spinner } from '../components/Spinner';
 import { useToast } from '../components/Toast';
 import { useDeleteForGood } from '../components/useDeleteForGood';
 import { useEntry, useRestoreEntry, useUpdateEntry } from '../api/entries';
+import type { Entry } from '../api/types';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '../features/board/filters';
 import { formatDuration } from '../lib/formatDates';
 import styles from './EntryDetail.module.css';
@@ -67,6 +68,46 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
  */
 function written(value: string | null | undefined): ReactNode {
   return value ? <Linkify>{value}</Linkify> : value;
+}
+
+/**
+ * May the person reading THIS screen be offered "Delete for good"?
+ *
+ * `canDeleteForGood` is still the rule, and it is still named once in
+ * auth/tripRole.ts — this only decides whether this screen has any business
+ * asking it. Two things make the plain gate say yes to a viewer here:
+ *
+ * `useCanEdit()` is not a backstop on this surface. /entries/:id renders
+ * outside any <TripRoleProvider>, so the context hands back its documented
+ * default — the null role, which reads as "yours, therefore editable" (see
+ * tripRole.ts). That is a pre-existing leak covering the whole screen: the edit
+ * form and "Pick it back up" have always reached a viewer this way, and fixing
+ * it means teaching this route to resolve a real trip role, which is a much
+ * larger change than one verb.
+ *
+ * And the entry cannot correct it either. EntrySerializer fills in `my_role`
+ * only on a `kind: "trip"` row — it is null on every idea and bundle, because a
+ * subtree inherits its trip's role and the client already holds it. So for an
+ * idea `canDeleteForGood` reduces to `canDelete(null)`, which is true. On the
+ * board that costs nothing, because there `canEdit` from the context is real;
+ * here both halves default to yes and a viewer was walked all the way into the
+ * confirmation before the server refused it.
+ *
+ * So the destructive verb asks for positive authority rather than inheriting
+ * the "null means yours" default: either you wrote this yourself, or there is a
+ * real, non-null role to be judged by. `canDeleteForGood` then does the judging
+ * — an owner on a trip keeps it, a viewer on one does not.
+ *
+ * The false negative this accepts, plainly: a trip owner looking at a
+ * co-traveller's idea through /entries/:id loses a button the server would have
+ * allowed, because this screen cannot see the role that would have granted it.
+ * That is the right way to be wrong about a destroy. The board, which does hold
+ * the role, still offers it there, and "a hidden button plus a server policy
+ * that actually enforces it" is the pair this whole feature already rests on.
+ */
+function mayDeleteForGoodHere(entry: Pick<Entry, 'kind' | 'my_role' | 'created_by_me'>) {
+  const positiveAuthority = entry.created_by_me === true || entry.my_role != null;
+  return positiveAuthority && canDeleteForGood(entry);
 }
 
 export interface EntryDetailModalProps {
@@ -273,8 +314,12 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
                     the bordered button; the one that ends the idea is quiet and
                     second. `canEdit` on top of the entry's own rule because a
                     viewer has no verbs here at all — the rest of the panel is
-                    already read-only for them. */}
-                {canEdit && canDeleteForGood(entry) && (
+                    already read-only for them. It is not the backstop it looks
+                    like, though, which is the whole reason the destroy asks
+                    `mayDeleteForGoodHere` rather than `canDeleteForGood`: at
+                    /entries/:id there is no role in the tree and `canEdit` is
+                    true for everyone. See the note on that function. */}
+                {canEdit && mayDeleteForGoodHere(entry) && (
                   <Button variant="quiet" onClick={() => deleteForGood.request(entry)}>
                     Delete for good
                   </Button>
