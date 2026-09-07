@@ -80,6 +80,13 @@
   outline-offset: var(--focus-offset);
 }
 
+/* The head and the description go into and out of edit mode together, so they
+   sit inside one wrapper that owns the mode's focus. It must own no layout: the
+   card is the flex column and these two are its items, exactly as before. */
+.editRegion {
+  display: contents;
+}
+
 /* Everything interactive sits above the link overlay, so it keeps its own click
    and its own tab stop. The description belongs in this list: the title's
    ::after is a positioned box and paints over the in-flow content below it, so
@@ -92,14 +99,6 @@
   z-index: 1;
 }
 
-/* The description's two states share a row with the pencil that opens the
-   field, so swapping prose for textarea doesn't shift anything sideways. */
-.descriptionField {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-1);
-}
-
 .headActions {
   flex: none;
   display: flex;
@@ -107,7 +106,7 @@
 }
 
 .archive,
-.editTitle {
+.edit {
   flex: none;
   width: 36px;
   height: 36px;
@@ -123,12 +122,12 @@
 }
 
 .archive:hover,
-.editTitle:hover {
+.edit:hover {
   opacity: 0.65;
 }
 
 .archive:focus-visible,
-.editTitle:focus-visible {
+.edit:focus-visible {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
 }
@@ -140,8 +139,6 @@
 .description,
 .descriptionText {
   display: block;
-  flex: 1;
-  min-width: 0;
   width: 100%;
   box-sizing: border-box;
   margin: 0;
@@ -196,35 +193,6 @@
   outline-offset: var(--focus-offset);
 }
 
-/* The description's own pencil, quieter than the title's: same gesture, but it
-   sits in the body of the card rather than the head, so it takes no ring of its
-   own. It is what makes the field reachable without a mouse. */
-.editDescription {
-  flex: none;
-  width: 24px;
-  height: 24px;
-  margin-top: 1px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--text-muted);
-  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
-}
-
-.editDescription:hover {
-  opacity: 0.65;
-}
-
-.editDescription:focus-visible {
-  outline: var(--focus-width) solid var(--focus-ring);
-  outline-offset: var(--focus-offset);
-}
-
 .meta {
   margin: auto 0 0;
   font-family: var(--font-sans);
@@ -235,8 +203,7 @@
 
 @media (pointer: coarse) {
   .archive,
-  .editTitle,
-  .editDescription {
+  .edit {
     width: var(--tap-min);
     height: var(--tap-min);
   }
