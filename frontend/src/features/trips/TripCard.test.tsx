@@ -40,28 +40,56 @@ describe('TripCard', () => {
     expect(link).toHaveAttribute('href', `/trips/${SEEDED_TRIP_ID}`);
   });
 
-  it('reveals an editable title input via the rename button, in place of the link', async () => {
+  // One pencil, one mode: the two things the card lets you write are open at
+  // the same time, and the caret starts in the title because that is what the
+  // pencil sits next to.
+  it('opens the title and the description together from the one pencil', async () => {
     const user = userEvent.setup();
     renderCard(await loadTrip());
 
-    await user.click(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` }));
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
 
     expect(screen.queryByRole('link', { name: TRIP_TITLE })).not.toBeInTheDocument();
     const input = screen.getByRole('textbox', { name: `Trip name for ${TRIP_TITLE}` });
     expect(input).toHaveValue(TRIP_TITLE);
+    expect(input).toHaveFocus();
+    expect(screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` })).toHaveValue(
+      TRIP_DESCRIPTION,
+    );
+    // The pencil that opened the mode is not left standing inside it.
+    expect(screen.queryByRole('button', { name: `Edit ${TRIP_TITLE}` })).not.toBeInTheDocument();
   });
 
   it('saves a new title on blur and shows the link again', async () => {
     const user = userEvent.setup();
     renderCard(await loadTrip());
 
-    await user.click(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` }));
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
     const input = screen.getByRole('textbox', { name: `Trip name for ${TRIP_TITLE}` });
     await user.clear(input);
     await user.type(input, 'Kyoto in autumn');
-    await user.tab();
+    await user.click(document.body);
 
     expect(await screen.findByRole('link', { name: 'Kyoto in autumn' })).toBeInTheDocument();
+    await waitFor(async () => expect((await loadTrip()).title).toBe('Kyoto in autumn'));
+  });
+
+  // Moving between the card's two fields is still inside the mode, so the title
+  // commits without the description snapping shut under the caret.
+  it('saves the title on the way to the description and stays in edit mode', async () => {
+    const user = userEvent.setup();
+    renderCard(await loadTrip());
+
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
+    const input = screen.getByRole('textbox', { name: `Trip name for ${TRIP_TITLE}` });
+    await user.clear(input);
+    await user.type(input, 'Kyoto in autumn');
+    // Past the archive button, which is in the head and so still in the mode.
+    await user.tab();
+    await user.tab();
+
+    expect(screen.getByRole('textbox', { name: 'Description for Kyoto in autumn' })).toHaveFocus();
+    expect(screen.queryByRole('link', { name: 'Kyoto in autumn' })).not.toBeInTheDocument();
     await waitFor(async () => expect((await loadTrip()).title).toBe('Kyoto in autumn'));
   });
 
@@ -69,7 +97,7 @@ describe('TripCard', () => {
     const user = userEvent.setup();
     renderCard(await loadTrip());
 
-    await user.click(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` }));
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
     const input = screen.getByRole('textbox', { name: `Trip name for ${TRIP_TITLE}` });
     await user.clear(input);
     await user.type(input, 'Kyoto, take two{Enter}');
@@ -82,10 +110,10 @@ describe('TripCard', () => {
     const user = userEvent.setup();
     renderCard(await loadTrip());
 
-    await user.click(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` }));
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
     const input = screen.getByRole('textbox', { name: `Trip name for ${TRIP_TITLE}` });
     await user.clear(input);
-    await user.tab();
+    await user.click(document.body);
 
     expect(await screen.findByRole('link', { name: TRIP_TITLE })).toBeInTheDocument();
     const trip = await loadTrip();
@@ -96,7 +124,7 @@ describe('TripCard', () => {
     const user = userEvent.setup();
     renderCard(await loadTrip());
 
-    await user.click(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` }));
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
     const input = screen.getByRole('textbox', { name: `Trip name for ${TRIP_TITLE}` });
     await user.clear(input);
     await user.type(input, 'Something I changed my mind about{Escape}');
@@ -106,32 +134,76 @@ describe('TripCard', () => {
     expect(trip.title).toBe(TRIP_TITLE);
   });
 
-  it('shows the description in an always-editable textarea and saves changes on blur', async () => {
+  it('reads the description as prose until the pencil opens the field', async () => {
     const user = userEvent.setup();
     renderCard(await loadTrip());
 
+    expect(screen.getByText(TRIP_DESCRIPTION)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('textbox', { name: `Description for ${TRIP_TITLE}` }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
+
     const textarea = screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` });
     expect(textarea).toHaveValue(TRIP_DESCRIPTION);
+  });
 
+  it('saves a changed description on blur and shows the prose again', async () => {
+    const user = userEvent.setup();
+    renderCard(await loadTrip());
+
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
+    const textarea = screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` });
     await user.clear(textarea);
     await user.type(textarea, 'Slower this time.');
     await user.tab();
 
+    expect(await screen.findByText('Slower this time.')).toBeInTheDocument();
     await waitFor(async () => expect((await loadTrip()).description).toBe('Slower this time.'));
   });
 
-  it('saves a cleared description as null', async () => {
+  // The same mode, entered from the other end: the click is a shortcut to the
+  // pencil, so the title opens too — but the caret goes where you clicked.
+  it('opens the mode from a click on the description, with the caret in it', async () => {
     const user = userEvent.setup();
     renderCard(await loadTrip());
 
+    await user.click(screen.getByText(TRIP_DESCRIPTION));
+
+    const textarea = screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` });
+    expect(textarea).toHaveValue(TRIP_DESCRIPTION);
+    expect(textarea).toHaveFocus();
+    expect(screen.getByRole('textbox', { name: `Trip name for ${TRIP_TITLE}` })).toBeInTheDocument();
+  });
+
+  it('cancels an in-progress description edit on Escape without saving', async () => {
+    const user = userEvent.setup();
+    renderCard(await loadTrip());
+
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
+    const textarea = screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` });
+    await user.clear(textarea);
+    await user.type(textarea, 'Not this{Escape}');
+
+    expect(await screen.findByText(TRIP_DESCRIPTION)).toBeInTheDocument();
+    expect((await loadTrip()).description).toBe(TRIP_DESCRIPTION);
+  });
+
+  it('saves a cleared description as null and offers the field again', async () => {
+    const user = userEvent.setup();
+    renderCard(await loadTrip());
+
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
     const textarea = screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` });
     await user.clear(textarea);
     await user.tab();
 
+    expect(await screen.findByText('Add a description')).toBeInTheDocument();
     await waitFor(async () => expect((await loadTrip()).description).toBeNull());
   });
 
-  it('keeps the archive button working alongside the new rename control', async () => {
+  it('keeps the archive button working alongside the edit control', async () => {
     const user = userEvent.setup();
     let archived = false;
     renderCard(await loadTrip(), () => {
@@ -154,10 +226,10 @@ describe('TripCard — what each role may do to it', () => {
     renderCard({ ...trip, my_role: role });
   }
 
-  it('gives a viewer no rename and no way to set the trip aside', async () => {
+  it('gives a viewer no edit pencil and no way to set the trip aside', async () => {
     await cardFor('viewer');
 
-    expect(screen.queryByRole('button', { name: `Rename ${TRIP_TITLE}` })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: `Edit ${TRIP_TITLE}` })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: `Save ${TRIP_TITLE} for later` })).not.toBeInTheDocument();
   });
 
@@ -194,28 +266,32 @@ describe('TripCard — what each role may do to it', () => {
     await cardFor('viewer');
 
     expect(screen.getByRole('link', { name: TRIP_TITLE })).toBeInTheDocument();
-    const description = screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` });
-    expect(description).toHaveValue(TRIP_DESCRIPTION);
-    // readOnly, not disabled — full contrast, still selectable and copyable.
-    expect(description).toHaveAttribute('readonly');
-    expect(description).toBeEnabled();
+    // Prose, not a field: the words are content and stay at full contrast, and
+    // the pencil that would open the card simply isn't drawn.
+    expect(screen.getByText(TRIP_DESCRIPTION)).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: `Edit ${TRIP_TITLE}` }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('textbox', { name: `Description for ${TRIP_TITLE}` }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Flights are already booked')).toBeInTheDocument();
     expect(screen.getByText('Nothing sorted yet')).toBeInTheDocument();
   });
 
   // A member may unmake their own work, not the trip everyone else is standing
-  // on — so they rename and they do not archive.
-  it('lets a member rename but not set the trip aside', async () => {
+  // on — so they get the pencil and they do not archive.
+  it('lets a member edit the card but not set the trip aside', async () => {
     await cardFor('member');
 
-    expect(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: `Save ${TRIP_TITLE} for later` })).not.toBeInTheDocument();
   });
 
   it('gives the owner both', async () => {
     await cardFor('owner');
 
-    expect(screen.getByRole('button', { name: `Rename ${TRIP_TITLE}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: `Save ${TRIP_TITLE} for later` })).toBeInTheDocument();
   });
 
@@ -229,5 +305,121 @@ describe('TripCard — what each role may do to it', () => {
     expect(
       screen.getByRole('button', { name: 'Remove pro: Flights are already booked' }),
     ).toBeInTheDocument();
+  });
+
+  // An invitation nobody here can accept is worse than an empty space.
+  it('offers a viewer no "add a description" where there is no description', async () => {
+    const trip = await loadTrip();
+    renderCard({ ...trip, my_role: 'viewer', description: null });
+
+    expect(screen.queryByText('Add a description')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A URL someone typed into a trip card. The parsing is `lib/linkify`'s and has
+ * its own tests; what is pinned here is that the card's two pieces of prose —
+ * the description and the reasons — render it as a link, and that following one
+ * doesn't set off the card underneath it.
+ */
+describe('TripCard — a URL in the words on the card', () => {
+  const URL = 'https://wend.app/trips';
+
+  it('turns a URL in the description into a link that opens in a new tab', async () => {
+    const trip = await loadTrip();
+    renderCard({ ...trip, description: `Notes at ${URL} for later` });
+
+    const link = screen.getByRole('link', { name: URL });
+    expect(link).toHaveAttribute('href', URL);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    // The sentence either side of it survives verbatim.
+    expect(link.closest('p')?.textContent).toBe(`Notes at ${URL} for later`);
+  });
+
+  // The link sits on top of a card whose title stretches over everything and a
+  // paragraph that opens a field when clicked. Following it must do neither.
+  it('does not open the description field when the link inside it is clicked', async () => {
+    const user = userEvent.setup();
+    const trip = await loadTrip();
+    renderCard({ ...trip, description: `Notes at ${URL} for later` });
+
+    await user.click(screen.getByRole('link', { name: URL }));
+
+    expect(
+      screen.queryByRole('textbox', { name: `Description for ${TRIP_TITLE}` }),
+    ).not.toBeInTheDocument();
+
+    // The prose around it still opens the field — the link stopped its own
+    // click, not every click.
+    await user.click(screen.getByText(/for later/));
+    expect(
+      screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the raw URL in the field while editing, and saves it back raw', async () => {
+    const user = userEvent.setup();
+    const trip = await loadTrip();
+    renderCard({ ...trip, description: `Notes at ${URL} for later` });
+
+    await user.click(screen.getByRole('button', { name: `Edit ${TRIP_TITLE}` }));
+    const textarea = screen.getByRole('textbox', { name: `Description for ${TRIP_TITLE}` });
+    expect(textarea).toHaveValue(`Notes at ${URL} for later`);
+    // No link while the words are being edited: this is a textarea, all text.
+    expect(screen.queryByRole('link', { name: URL })).not.toBeInTheDocument();
+
+    await user.type(textarea, ' really');
+    await user.tab();
+
+    await waitFor(async () =>
+      expect((await loadTrip()).description).toBe(`Notes at ${URL} for later really`),
+    );
+    expect(await screen.findByRole('link', { name: URL })).toBeInTheDocument();
+  });
+
+  it('turns a URL in a pro into a link that opens in a new tab', async () => {
+    const trip = await loadTrip();
+    renderCard({ ...trip, pros: [{ id: 'p-url', text: `Ferry times ${URL}` }] });
+
+    const link = within(screen.getByRole('list', { name: `Pros for ${TRIP_TITLE}` })).getByRole(
+      'link',
+      { name: URL },
+    );
+    expect(link).toHaveAttribute('href', URL);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(link.closest('span')?.textContent).toBe(`Ferry times ${URL}`);
+  });
+
+  // The row's remove button is named after the note. That name is a string, and
+  // stays the raw one — truncating or re-shaping it there would leave the button
+  // describing something other than what it removes.
+  it('leaves the remove button named after the raw text of the note', async () => {
+    const trip = await loadTrip();
+    renderCard({ ...trip, pros: [{ id: 'p-url', text: `Ferry times ${URL}` }] });
+
+    expect(
+      screen.getByRole('button', { name: `Remove pro: Ferry times ${URL}` }),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves words with no URL in them exactly as they were — text, no link', async () => {
+    renderCard(await loadTrip());
+
+    expect(screen.getByText(TRIP_DESCRIPTION).textContent).toBe(TRIP_DESCRIPTION);
+    expect(screen.getByText('Flights are already booked').textContent).toBe(
+      'Flights are already booked',
+    );
+    // The only link on the card is the title's.
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+  });
+
+  // A viewer reads the same words, so a viewer gets the same links.
+  it('gives a viewer the links too', async () => {
+    const trip = await loadTrip();
+    renderCard({ ...trip, my_role: 'viewer', description: `Notes at ${URL} for later` });
+
+    expect(screen.getByRole('link', { name: URL })).toHaveAttribute('href', URL);
   });
 });

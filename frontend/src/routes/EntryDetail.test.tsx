@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { server } from '../mocks/server';
+import { db } from '../mocks/db';
 import { EntryDetailModal } from './EntryDetail';
 import type { TripRole } from '../api/types';
 
@@ -345,6 +346,95 @@ describe('EntryDetail — it opens as a modal', () => {
   it('is already the same dialog while the entry is still coming', () => {
     renderPanel('member');
     expect(screen.getByRole('dialog', { name: 'Opening' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Feedback #42: "when entered a url, it should be displayed as clickable link,
+ * which should open in new tab when clicked. Eg: in todo item, but also in
+ * description text etc."
+ *
+ * The notes box is where this panel invites a link — its own placeholder says
+ * "a link to where you found it" — so the read side is where that link has to
+ * become one. Only the facts a person wrote get it; the ones the app derived
+ * are left alone, which is what the last test here pins.
+ */
+describe('EntryDetail — a URL in what someone wrote', () => {
+  const SOURCE = 'https://kyoto-hours.example/fushimi-inari';
+  const NOTES = `Opening hours are on ${SOURCE} — check before you go.`;
+
+  function seedEntry5(patch: { title?: string; address?: string; notes?: string }) {
+    const entry = db.entries.find((e) => e.id === IDEA.id);
+    if (!entry) throw new Error('Seeded entry 5 has gone missing');
+    Object.assign(entry, patch);
+  }
+
+  // resetDb() in the global afterEach puts the fixture back.
+  beforeEach(() => seedEntry5({ notes: NOTES }));
+
+  it('turns a URL in the notes into a link that opens in a new tab', async () => {
+    const panel = await openPanel('viewer');
+    const link = within(panel).getByRole('link', { name: SOURCE });
+
+    expect(link).toHaveAttribute('href', SOURCE);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    // The sentence it sits in is unchanged, word for word.
+    expect(link.parentElement?.textContent).toBe(NOTES);
+  });
+
+  /** A pasted link is an ordinary way to name an idea you captured off the web,
+   * so the name is written text too. */
+  it('links a URL pasted into the name as well', async () => {
+    const named = 'https://ramen-alley.example';
+    seedEntry5({ title: `Ramen alley ${named}` });
+    const panel = await openPanel('viewer');
+
+    expect(within(panel).getByRole('link', { name: named })).toHaveAttribute('href', named);
+  });
+
+  /** Editing is untouched: the box holds the raw text, because that is what
+   * gets saved back. */
+  it('leaves the raw text in the box for someone editing it', async () => {
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    expect(read.getByRole('textbox', { name: 'Notes' })).toHaveValue(NOTES);
+    expect(read.queryByRole('link', { name: SOURCE })).not.toBeInTheDocument();
+  });
+
+  it('renders a fact with no URL in it exactly as it was — no anchor, no wrapper', async () => {
+    const panel = await openPanel('viewer');
+    const description = within(panel).getByText('Saved from a friend’s trip report.');
+
+    expect(description.querySelector('*')).toBeNull();
+    expect(description.childNodes).toHaveLength(1);
+  });
+
+  /**
+   * The address is written too — it is typed and hand-corrected like any other
+   * sentence, and IdeaPanel linkifies the same field on the board, so the same
+   * idea opened two ways has to read the same way.
+   *
+   * The coordinates it sits beside are the control: same row of the panel, and
+   * they come out of the map rather than off a keyboard. The category and the
+   * duration are the same case. None is wrapped, so each is still the single
+   * bare text node it always was — which is what "structured facts never
+   * linkify" has to mean in the DOM.
+   */
+  it('links a URL in the address, and leaves the facts nobody typed alone', async () => {
+    const maps = 'https://maps.example/place/fushimi-inari';
+    seedEntry5({ address: `68 Fukakusa Yabunouchicho — ${maps}` });
+    const panel = await openPanel('viewer');
+    const read = within(panel);
+
+    expect(read.getByRole('link', { name: maps })).toHaveAttribute('href', maps);
+    // Exactly two: this one and the one in the notes. Nothing else grew a link.
+    expect(read.getAllByRole('link')).toHaveLength(2);
+
+    for (const derived of ['Place', '34.9671', '135.7727']) {
+      expect(read.getByText(derived).querySelector('*')).toBeNull();
+    }
   });
 });
 

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '../../components/Toast';
 import { api } from '../../api';
+import { truncateUrl } from '../../lib/linkify';
 import { allocateId, db } from '../../mocks/db';
 import { IdeaTodos } from './IdeaTodos';
 import styles from './IdeaTodos.module.css';
@@ -240,19 +241,95 @@ describe('IdeaTodos — long titles', () => {
     expectNoTruncation(li);
   });
 
-  it('renders a 140-character unbroken URL in full as the checkbox label, with the wrap rules and no truncation styling', async () => {
+  // Since feedback #42 a to-do that IS a URL renders as a link, and the link's
+  // own label is middle-truncated — the full address stays in href and title.
+  // The wrap rules still have to be there: the label is 48 characters of
+  // unbroken token, and it shares the line with whatever else was typed.
+  it('renders a 140-character unbroken URL as a link, middle-truncated, with the wrap rules and no truncation styling', async () => {
     expect(URL).not.toMatch(/\s/);
     expect(URL.length).toBeGreaterThanOrEqual(140);
     db.todos.push({ id: allocateId(), title: URL, entry_id: ENTRY_ID, trip_id: null, done_at: null, due_on: null, position: 2 });
     renderTodos();
 
-    const span = await screen.findByText(URL);
-    expect(span.textContent).toBe(URL);
-    const { li } = titleAndLine(URL);
+    const link = await screen.findByRole('link', { name: truncateUrl(URL) });
+    expect(link).toHaveAttribute('href', URL);
+    expect(link).toHaveAttribute('title', URL);
+
+    const span = link.closest('span') as HTMLSpanElement;
+    const li = link.closest('li') as HTMLLIElement;
+    expect(screen.getByRole('checkbox', { name: truncateUrl(URL) }).getAttribute('aria-labelledby'))
+      .toBe(span.id);
 
     expectWrapRules(span, li);
     expectNoTruncation(span);
     expectNoTruncation(li);
+    expectNoTruncation(link);
+  });
+});
+
+/**
+ * Feedback #42: "when entered a url, it should be displayed as clickable link,
+ * which should open in new tab" — reported with a to-do as the example, which
+ * makes this block the one the reporter will read.
+ *
+ * What is being pinned here is the wiring, not the parsing: `lib/linkify` has
+ * its own tests for which shapes count as a URL, and repeating them per call
+ * site would only make them harder to change.
+ */
+describe('IdeaTodos — a URL in a to-do', () => {
+  const SHORT = 'https://wend.app/trips';
+
+  function pushTodo(title: string) {
+    db.todos.push({ id: allocateId(), title, entry_id: ENTRY_ID, trip_id: null, done_at: null, due_on: null, position: 2 });
+  }
+
+  it('turns the URL into a link that opens in a new tab, and leaves the rest of the sentence alone', async () => {
+    pushTodo(`Book ${SHORT} before June`);
+    renderTodos();
+
+    const link = await screen.findByRole('link', { name: SHORT });
+    expect(link).toHaveAttribute('href', SHORT);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    // The prose either side survives verbatim — this is still one to-do line.
+    expect(link.closest('span')?.textContent).toBe(`Book ${SHORT} before June`);
+  });
+
+  // The line is a checkbox and its label. Following the link must not also tick
+  // the box — which is exactly what the reporter will try first.
+  it('does not tick the box when the link inside the line is clicked', async () => {
+    const patch = vi.spyOn(api, 'patch');
+    const user = userEvent.setup();
+    pushTodo(`Book ${SHORT} before June`);
+    renderTodos();
+
+    const link = await screen.findByRole('link', { name: SHORT });
+    await user.click(link);
+
+    expect(patch).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: `Book ${SHORT} before June` })).not.toBeChecked();
+
+    // The box itself still works — the link stopped its own click, not every click.
+    await user.click(screen.getByRole('checkbox', { name: `Book ${SHORT} before June` }));
+    await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
+    patch.mockRestore();
+  });
+
+  it('leaves a to-do with no URL in it exactly as it was — text, no link', async () => {
+    renderTodos();
+
+    const span = await screen.findByText('Book tickets');
+    expect(span.textContent).toBe('Book tickets');
+    expect(span.querySelector('a')).toBeNull();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  // A viewer reads the same words, so a viewer gets the same links.
+  it('gives a viewer the link too', async () => {
+    pushTodo(`Book ${SHORT} before June`);
+    renderTodos(false);
+
+    expect(await screen.findByRole('link', { name: SHORT })).toHaveAttribute('href', SHORT);
   });
 });
 

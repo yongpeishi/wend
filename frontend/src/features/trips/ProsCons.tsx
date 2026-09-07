@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Linkify } from '../../components';
 import { useUpdateEntry } from '../../api/entries';
 import type { EntryNote, EntryWritePayload } from '../../api/types';
 import styles from './ProsCons.module.css';
@@ -102,11 +103,21 @@ export function ProsCons({ entryId, tripTitle, pros, cons, canEdit = true }: Pro
               <ul className={styles.list} aria-label={`${column.label} for ${tripTitle}`}>
                 {notes.map((note) => (
                   <li key={note.id} className={[styles.row, column.rowClass].join(' ')}>
-                    <span className={styles.text}>{note.text}</span>
+                    {/* A reason is often a link — the hotel, the ferry timetable,
+                        the article that started the argument — so the note reads
+                        as prose with the URL live inside it. The span and its
+                        class are untouched: a note with no URL lays out exactly
+                        as it did. */}
+                    <span className={styles.text}>
+                      <Linkify>{note.text}</Linkify>
+                    </span>
                     {canEdit && (
                       <button
                         type="button"
                         className={styles.remove}
+                        // The raw text, not the linkified render: an accessible
+                        // name is a string, and "Remove pro: https://…" is what
+                        // the button is actually about to remove.
                         aria-label={`Remove ${column.noun}: ${note.text}`}
                         onClick={() => removeNote(column.side, note.id)}
                       >

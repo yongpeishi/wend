@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Entry } from '../../api/types';
 import { useDeleteVote, useVote } from '../../api';
+import { Linkify } from '../../components';
 import { useToast } from '../../components/Toast';
 import { IdeaTodos } from './IdeaTodos';
 import { VoteBar } from './VoteBar';
@@ -53,12 +54,33 @@ export function IdeaPanel({ entry, canEdit, actions, id, className }: IdeaPanelP
     <div id={id} className={[styles.panel, className].filter(Boolean).join(' ')}>
       {/* The mockup has one `note`; our model splits the same idea into a
           description and private notes, and both are worth reading here.
-          The notes are muted because they are the aside, not the pitch. */}
-      {entry.description && <p className={styles.body}>{entry.description}</p>}
-      {entry.notes && <p className={[styles.body, styles.notes].join(' ')}>{entry.notes}</p>}
+          The notes are muted because they are the aside, not the pitch.
 
-      {/* Data tracking, because an address is read character by character. */}
-      {entry.address && <p className={styles.address}>{entry.address}</p>}
+          <Linkify> is a bare fragment, so the paragraph, its class and its
+          `pre-wrap` are untouched: a description with no URL in it lays out
+          exactly as before. The link takes its colour from whatever it sits
+          in, which is why a URL in the notes stays in the notes' quieter
+          voice without either side being told about the other. */}
+      {entry.description && (
+        <p className={styles.body}>
+          <Linkify>{entry.description}</Linkify>
+        </p>
+      )}
+      {entry.notes && (
+        <p className={[styles.body, styles.notes].join(' ')}>
+          <Linkify>{entry.notes}</Linkify>
+        </p>
+      )}
+
+      {/* Data tracking, because an address is read character by character.
+          Linkified as well: the field is free text — the map's suggestions are
+          an offer, not a constraint — so a booking URL typed in as "where"
+          should be as clickable here as anywhere else. */}
+      {entry.address && (
+        <p className={styles.address}>
+          <Linkify>{entry.address}</Linkify>
+        </p>
+      )}
 
       <VoteBar
         myVote={entry.my_vote}

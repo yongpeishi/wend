@@ -319,10 +319,31 @@ describe('TripChecklist — long titles', () => {
     expectRenderedInFullAndUntruncated(PROSE_TITLE, await screen.findByText(PROSE_TITLE));
   });
 
-  it('renders an unbroken URL-like title in full, in its own list item, with nothing in its styling that truncates', async () => {
+  /**
+   * Since feedback #42 this title is a link rather than a run of text, so "in
+   * full" has moved: the whole 148-character address is in the href and in the
+   * anchor's title, and the visible label is deliberately middle-truncated so
+   * one pasted URL cannot set the row's width on its own. What has not moved is
+   * where it lands — the same title cell, in its own list item — or the absence
+   * of anything in that cell's styling that truncates, which is what feedback
+   * #40 was about and is still the thing this asserts.
+   */
+  it('renders an unbroken URL-like title as one link, whole in the href, with nothing in its styling that truncates', async () => {
     renderChecklist();
 
-    expectRenderedInFullAndUntruncated(URL_TITLE, await screen.findByText(URL_TITLE));
+    const link = await screen.findByRole('link');
+    expect(link).toHaveAttribute('href', URL_TITLE);
+    expect(link).toHaveAttribute('title', URL_TITLE);
+    expect(link.textContent).toHaveLength(48);
+
+    const cell = link.parentElement as HTMLElement;
+    expect(cell).toHaveClass(styles.title);
+    expect(screen.getAllByRole('listitem')).toContain(cell.closest('li'));
+
+    const style = getComputedStyle(cell);
+    expect(style.whiteSpace).not.toBe('nowrap');
+    expect(style.textOverflow).not.toBe('ellipsis');
+    expect(style.overflow).not.toBe('hidden');
   });
 
   // The one cell on the row that is meant to ellipsise is the idea name. This
@@ -345,6 +366,81 @@ describe('TripChecklist — long titles', () => {
     expect(getComputedStyle(source).whiteSpace).toBe('nowrap');
     expect(getComputedStyle(source).textOverflow).toBe('ellipsis');
     expect(getComputedStyle(entryTitle).whiteSpace).not.toBe('nowrap');
+  });
+});
+
+/**
+ * Feedback #42, in the words it was reported: "when entered a url, it should be
+ * displayed as clickable link, which should open in new tab when clicked. Eg: in
+ * todo item". A todo is where the booking page gets pasted, so it is the surface
+ * the reporter will check first.
+ */
+describe('TripChecklist — a URL in a todo', () => {
+  const BOOKING = 'https://jr-central.example/booking';
+  const WITH_URL = `Book the shinkansen at ${BOOKING} before Friday`;
+  const NO_URL = 'Pack the umbrella';
+
+  beforeEach(() => {
+    // Trip-level, like the seeded "Apply for visa". resetDb() in afterEach takes
+    // them out again.
+    db.todos.push(
+      { id: allocateId(), title: WITH_URL, entry_id: null, trip_id: TRIP_ID, done_at: null, due_on: null, position: 1 },
+      { id: allocateId(), title: NO_URL, entry_id: null, trip_id: TRIP_ID, done_at: null, due_on: null, position: 2 },
+    );
+  });
+
+  it('makes the URL a link that opens in a new tab, leaving the sentence around it alone', async () => {
+    renderChecklist();
+
+    const link = await screen.findByRole('link', { name: BOOKING });
+    expect(link).toHaveAttribute('href', BOOKING);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+
+    // Still the line that was typed, word for word, in the cell it always was.
+    const cell = link.parentElement as HTMLElement;
+    expect(cell).toHaveClass(styles.title);
+    expect(cell.textContent).toBe(WITH_URL);
+  });
+
+  /**
+   * The reporter's own next move: click the link. The circle is a sibling of the
+   * title rather than an ancestor, and the anchor stops the click besides — so
+   * following a link must not tick the thing off, and must not send anything.
+   */
+  it('does not check the todo off when the link inside it is clicked', async () => {
+    const patch = vi.spyOn(api, 'patch');
+    const user = userEvent.setup();
+    renderChecklist();
+
+    await user.click(await screen.findByRole('link', { name: BOOKING }));
+
+    expect(patch).not.toHaveBeenCalled();
+    // Still offering to check it off, and still saying it is not checked off.
+    expect(screen.getByRole('button', { name: `Check off ${WITH_URL}` })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    patch.mockRestore();
+  });
+
+  /** The raw title is what a screen reader hears and what the deadline names,
+   * on both rows — a link is a thing to look at, not a thing to say. */
+  it('keeps the raw title in the labels, links and all', async () => {
+    renderChecklist();
+    await screen.findByRole('link', { name: BOOKING });
+
+    expect(screen.getByRole('button', { name: `Check off ${WITH_URL}` })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: `By when for ${WITH_URL}` })).toBeInTheDocument();
+  });
+
+  it('leaves a todo with no URL in it exactly as it was — no anchor, no wrapper', async () => {
+    renderChecklist();
+
+    const cell = await screen.findByText(NO_URL);
+    expect(cell).toHaveClass(styles.title);
+    expect(cell.querySelector('*')).toBeNull();
+    expect(cell.childNodes).toHaveLength(1);
   });
 });
 

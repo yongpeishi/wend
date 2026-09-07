@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../design/components/core/Button';
 import { Select } from '../design/components/core/Select';
 import { useCanEdit } from '../auth/TripRoleContext';
+import { Linkify } from '../components';
 import { Modal } from '../components/Modal';
 import { Field } from '../components/Field';
 import { Spinner } from '../components/Spinner';
@@ -40,6 +41,29 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
       <p className={styles.fact}>{empty ? <span className={styles.factEmpty}>&mdash;</span> : value}</p>
     </Field>
   );
+}
+
+/**
+ * A fact whose value is something a person wrote, rather than something the app
+ * derived — so a URL in it is a link.
+ *
+ * The written facts are the name, the short description, the address and the
+ * notes. The address earns it despite sitting beside the coordinates: it is
+ * typed and hand-corrected like any other sentence, and IdeaPanel on the board
+ * linkifies the same field — the same idea opened two ways must not read two
+ * ways. The coordinates it sits next to are the opposite case and stay plain.
+ *
+ * A category, a duration and a coordinate come out of a picker, a number box
+ * and the map. None of them can hold a URL, so wrapping them would be ceremony
+ * around text that will never contain one.
+ *
+ * A helper at the call site rather than a flag on <Fact>, because <Fact> takes a
+ * ReactNode and <Linkify> takes a string — the place that knows the value is
+ * still a string is the place that reads it off the entry. Empty stays empty so
+ * <Fact> can still draw its em dash.
+ */
+function written(value: string | null | undefined): ReactNode {
+  return value ? <Linkify>{value}</Linkify> : value;
 }
 
 export interface EntryDetailModalProps {
@@ -340,8 +364,8 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
             {/* Read off the entry, not the draft: the draft is the edit buffer,
                 and there is no editing going on here. Same facts in the same
                 order and the same two-up grid as the fields above. */}
-            <Fact label="Name" value={entry.title} />
-            <Fact label="Short description" value={entry.description} />
+            <Fact label="Name" value={written(entry.title)} />
+            <Fact label="Short description" value={written(entry.description)} />
 
             <div className={styles.pair}>
               <Fact label="Category" value={entry.category && CATEGORY_LABELS[entry.category]} />
@@ -350,14 +374,14 @@ export function EntryDetailModal({ entryId, onClose: close }: EntryDetailModalPr
               <Fact label="Estimated duration" value={formatDuration(entry.duration_minutes)} />
             </div>
 
-            <Fact label="Address" value={entry.address} />
+            <Fact label="Address" value={written(entry.address)} />
 
             <div className={styles.pair}>
               <Fact label="Latitude" value={entry.lat == null ? null : String(entry.lat)} />
               <Fact label="Longitude" value={entry.lng == null ? null : String(entry.lng)} />
             </div>
 
-            <Fact label="Notes" value={entry.notes} />
+            <Fact label="Notes" value={written(entry.notes)} />
           </>
         )}
 

@@ -45,9 +45,12 @@
 
 /* An address is data — read character by character — so it takes the data
    tracking rather than prose spacing. */
+/* `overflow-wrap` for the same reason .body carries it: the field is free text,
+   so what lands here can be one unbroken token wider than the card. */
 .address {
   margin: 0;
   font-size: var(--text-min-size);
   letter-spacing: var(--text-data-tracking);
   color: var(--text-body);
+  overflow-wrap: anywhere;
 }
