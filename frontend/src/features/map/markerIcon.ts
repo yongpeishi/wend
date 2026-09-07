@@ -1,4 +1,7 @@
 import L from 'leaflet';
+import type { EntryCategory } from '../../api/types';
+import { CATEGORY_LABELS } from '../board/filters';
+import { categoryGlyphSvg } from './categoryGlyph';
 import type { PinState, PinTone } from './types';
 import { pinStateLabel } from './pins';
 
@@ -26,23 +29,74 @@ const STROKE: Record<PinState, string> = {
   destination: 'var(--surface-card)',
 };
 
-// 32px square hit area — "never below 32x32 for pointer" (architecture.md
-// §5). The visual mark stays Trail-scaled (an 8px-radius stop circle,
-// matching <Trail>'s own dot sizes) and sits centred inside the larger button.
-const PIN_BOX = 32;
+// The glyph knocked out of (or laid onto) the stop circle. `potential` is
+// deliberately the odd one out: the other two states fill solid, so paper reads
+// straight out of them, but a pale fill cannot carry a paper glyph at all — it
+// would be near-invisible on near-invisible. So the pale pin inverts and draws
+// its category in the same deep leaf its ring already uses. That is the
+// design's explicit call, not an oversight to "fix" back to paper.
+const GLYPH: Record<PinState, string> = {
+  scheduled: 'var(--surface-card)', // paper knocked out of leaf
+  potential: 'var(--stop-decided)', // deep leaf on pale
+  destination: 'var(--surface-card)', // paper knocked out of plum
+};
+
+// Two box constants, not one — and they must STAY two.
+//
+// `pinIcon`, `dotIcon`, `faintIcon` and `pendingIcon` all shared a single
+// PIN_BOX until the category glyph arrived. `pinIcon`'s disc had to grow to
+// 28px to hold a 16px glyph, and growing a shared constant would have silently
+// resized the neutral dot, the faint dot and the pending ring along with it —
+// each of which the stylesheet hard-codes at 32px (`.wend-pin-dot`), so the
+// markup and the CSS would have quietly disagreed with no test to catch it.
+//
+// PIN_BOX is `pinIcon`'s alone. MARK_BOX is everyone else's, still 32, still
+// byte-for-byte what it always was. Do not re-merge them.
+
+/** `pinIcon` only — 40px so the grown 28px disc and its selection ring fit. */
+const PIN_BOX = 40;
 const PIN_CENTER = PIN_BOX / 2;
 
+/**
+ * `dotIcon`, `faintIcon` and `pendingIcon`, and matching `.wend-pin-dot`'s
+ * hard-coded 32px in CSS. A 32px square hit area — "never below 32x32 for
+ * pointer" (architecture.md §5) — around a Trail-scaled 8px-radius mark.
+ */
+const MARK_BOX = 32;
+const MARK_CENTER = MARK_BOX / 2;
+
+/** The glyph's drawn edge inside the stop circle. */
+const PIN_GLYPH_SIZE = 16;
+
 /** A single pin, styled like the brand's own trail stop circles. */
-export function pinIcon(state: PinState, selected: boolean, title: string): L.DivIcon {
+export function pinIcon(
+  state: PinState,
+  selected: boolean,
+  title: string,
+  category?: EntryCategory | null,
+): L.DivIcon {
+  // r=17 puts the ring outside the grown 14px disc: 14 + 1.5px of gap + 1.5px
+  // of half-stroke. At the old r=13 it would now cut straight through the disc.
   const ring = selected
-    ? `<circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="13" fill="none" stroke="var(--stop-open)" stroke-width="3"/>`
+    ? `<circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="17" fill="none" stroke="var(--stop-open)" stroke-width="3"/>`
     : '';
-  const label = `${title} — ${pinStateLabel(state)}`;
+  const glyph = categoryGlyphSvg(category, { size: PIN_GLYPH_SIZE, color: GLYPH[state] });
+  // A nested <svg> defaults to x=0,y=0 and categoryGlyphSvg emits no position
+  // of its own (it has no idea what it is being embedded in), so the <g> is
+  // what centres it. Drawn after the disc, so it sits on top of the fill.
+  const offset = PIN_CENTER - PIN_GLYPH_SIZE / 2;
+  const glyphMarkup = glyph ? `<g transform="translate(${offset}, ${offset})">${glyph}</g>` : '';
+  // The glyph is a drawing, and a drawing cannot be the only place the category
+  // is said (screens.md: never colour — or shape — alone). So the word rides in
+  // the aria-label. With no category the label is exactly what it always was.
+  const categoryWord = category ? ` — ${CATEGORY_LABELS[category]}` : '';
+  const label = `${title}${categoryWord} — ${pinStateLabel(state)}`;
   const html = `
     <button type="button" class="wend-pin" aria-label="${escapeHtml(label)}">
       <svg width="${PIN_BOX}" height="${PIN_BOX}" viewBox="0 0 ${PIN_BOX} ${PIN_BOX}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         ${ring}
-        <circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="8" fill="${FILL[state]}" stroke="${STROKE[state]}" stroke-width="2"/>
+        <circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="14" fill="${FILL[state]}" stroke="${STROKE[state]}" stroke-width="2"/>
+        ${glyphMarkup}
       </svg>
     </button>
   `;
@@ -68,8 +122,42 @@ const TONE_CLASS: Record<PinTone, string> = {
   offView: 'wend-pin-label--off-view',
 };
 
-/** Matches the pill's rendered height in MapView.module.css — only used to lift the popup clear of it. */
-const LABEL_HEIGHT = 28;
+/**
+ * Matches the pill's rendered height in MapView.module.css — only used to lift
+ * the popup clear of it. 29 = a 16px glyph (the tallest thing in the row now
+ * that the pill is a centred flex line; the 15px text no longer sets the
+ * height) + 5px padding twice + two 1.5px edges. It was 28 when the 15px text
+ * was the tallest thing there.
+ */
+const LABEL_HEIGHT = 29;
+
+/** The glyph's drawn edge in the name pill — one step up from the chip's, to match the pill's larger text. */
+const LABEL_GLYPH_SIZE = 16;
+
+/**
+ * `currentColor`, in both the pill and the chip, and deliberately not a token.
+ *
+ * The chip is fixed paper-on-leaf, but the pill has four colour states — the
+ * base and three tone modifiers — and each one sets `--pin-label-text` in
+ * MapView.module.css. Naming a token here would mean either picking one of
+ * those four and being wrong on the other three, or restating the whole tone
+ * table in this file. `currentColor` inherits whichever one the stylesheet
+ * settled on, so the glyph follows every tone for free and the colour decision
+ * stays where every other colour decision lives.
+ */
+const TEXT_GLYPH_COLOR = 'currentColor';
+
+/**
+ * The accessible name for a chip or pill: the title plus the category word,
+ * but ONLY when there is a category. With no category we emit no aria-label at
+ * all, rather than an aria-label that merely repeats the title — the visible
+ * text is already the accessible name, and re-stating it would be a change to
+ * how these pins read today for no gain.
+ */
+function nameLabel(title: string, category: EntryCategory | null | undefined): string {
+  if (!category) return '';
+  return ` aria-label="${escapeHtml(`${title} — ${CATEGORY_LABELS[category]}`)}"`;
+}
 
 /**
  * The name-pill pin. Where `pinIcon` says "something is here", this says
@@ -83,14 +171,23 @@ const LABEL_HEIGHT = 28;
  * box whose width we would have to measure in advance — which we cannot do
  * before it is in the document.
  */
-export function labelIcon(title: string, tone: PinTone | undefined, selected: boolean): L.DivIcon {
+export function labelIcon(
+  title: string,
+  tone: PinTone | undefined,
+  selected: boolean,
+  category?: EntryCategory | null,
+): L.DivIcon {
   const classes = ['wend-pin-label'];
   // No tone means no opinion, and the base class already resting-tones itself —
   // so an untoned pin is not silently reported as "off view".
   if (tone) classes.push(TONE_CLASS[tone]);
   if (selected) classes.push('is-selected');
+  const glyph = categoryGlyphSvg(category, { size: LABEL_GLYPH_SIZE, color: TEXT_GLYPH_COLOR });
+  // The title is wrapped in a <span> whether or not there is a glyph: the pill
+  // is a flex row in CSS, and a bare text node would be an anonymous flex item
+  // the stylesheet cannot reach. One markup shape, categorised or not.
   const html = `
-    <button type="button" class="${classes.join(' ')}">${escapeHtml(title)}</button>
+    <button type="button" class="${classes.join(' ')}"${nameLabel(title, category)}>${glyph}<span>${escapeHtml(title)}</span></button>
   `;
   return L.divIcon({
     html,
@@ -101,8 +198,16 @@ export function labelIcon(title: string, tone: PinTone | undefined, selected: bo
   });
 }
 
-/** Matches the chip's rendered height in MapView.module.css — 13px text + 4px×2 padding + 1.5px×2 border. */
-const CHIP_HEIGHT = 24;
+/**
+ * Matches the chip's rendered height in MapView.module.css — 14px glyph (which
+ * now out-measures the 13px text and so sets the flex line's height) + 4px×2
+ * padding + 1.5px×2 border. It was 24 when the 13px text was the tallest thing
+ * in the row.
+ */
+const CHIP_HEIGHT = 25;
+
+/** The glyph's drawn edge in the chip — smaller than the pill's, matching the chip's smaller text. */
+const CHIP_GLYPH_SIZE = 14;
 
 /**
  * The labelled chip pin — the board's "this one is in the list you're reading"
@@ -112,7 +217,12 @@ const CHIP_HEIGHT = 24;
  * toned, because the chip/dot split *is* the message — a second colour axis on
  * top of it would be two encodings fighting over one pill.
  */
-export function chipIcon(title: string, selected: boolean, nested?: boolean): L.DivIcon {
+export function chipIcon(
+  title: string,
+  selected: boolean,
+  nested?: boolean,
+  category?: EntryCategory | null,
+): L.DivIcon {
   const classes = ['wend-pin-chip'];
   if (selected) classes.push('is-selected');
   if (nested) classes.push('wend-pin-chip--nested');
@@ -124,8 +234,10 @@ export function chipIcon(title: string, selected: boolean, nested?: boolean): L.
   // whatever the stylesheet's border variable does; the modifier class above
   // is the stylesheet's hook if it ever wants more than a dash.
   const nestedStyle = nested ? ' style="border-style: dashed; border-width: 1.5px;"' : '';
+  const glyph = categoryGlyphSvg(category, { size: CHIP_GLYPH_SIZE, color: TEXT_GLYPH_COLOR });
+  // Same always-a-<span> shape as the pill, for the same reason.
   const html = `
-    <button type="button" class="${classes.join(' ')}"${nestedStyle}>${escapeHtml(title)}</button>
+    <button type="button" class="${classes.join(' ')}"${nestedStyle}${nameLabel(title, category)}>${glyph}<span>${escapeHtml(title)}</span></button>
   `;
   return L.divIcon({
     html,
@@ -155,9 +267,9 @@ export function dotIcon(title: string, selected: boolean): L.DivIcon {
   return L.divIcon({
     html,
     className: 'wend-pin-dot-icon',
-    iconSize: [PIN_BOX, PIN_BOX],
-    iconAnchor: [PIN_CENTER, PIN_CENTER],
-    popupAnchor: [0, -PIN_CENTER],
+    iconSize: [MARK_BOX, MARK_BOX],
+    iconAnchor: [MARK_CENTER, MARK_CENTER],
+    popupAnchor: [0, -MARK_CENTER],
   });
 }
 
@@ -185,9 +297,9 @@ export function faintIcon(title: string): L.DivIcon {
   return L.divIcon({
     html,
     className: 'wend-pin-dot-icon',
-    iconSize: [PIN_BOX, PIN_BOX],
-    iconAnchor: [PIN_CENTER, PIN_CENTER],
-    popupAnchor: [0, -PIN_CENTER],
+    iconSize: [MARK_BOX, MARK_BOX],
+    iconAnchor: [MARK_CENTER, MARK_CENTER],
+    popupAnchor: [0, -MARK_CENTER],
   });
 }
 
@@ -205,12 +317,12 @@ export function clusterIcon(count: number): L.DivIcon {
 export function pendingIcon(): L.DivIcon {
   const html = `
     <span class="wend-pending" aria-hidden="true">
-      <svg width="${PIN_BOX}" height="${PIN_BOX}" viewBox="0 0 ${PIN_BOX} ${PIN_BOX}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="8" fill="none" stroke="var(--stop-open)" stroke-width="3" stroke-dasharray="3 4"/>
+      <svg width="${MARK_BOX}" height="${MARK_BOX}" viewBox="0 0 ${MARK_BOX} ${MARK_BOX}" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="${MARK_CENTER}" cy="${MARK_CENTER}" r="8" fill="none" stroke="var(--stop-open)" stroke-width="3" stroke-dasharray="3 4"/>
       </svg>
     </span>
   `;
-  return L.divIcon({ html, className: 'wend-pending-icon', iconSize: [PIN_BOX, PIN_BOX], iconAnchor: [PIN_CENTER, PIN_CENTER] });
+  return L.divIcon({ html, className: 'wend-pending-icon', iconSize: [MARK_BOX, MARK_BOX], iconAnchor: [MARK_CENTER, MARK_CENTER] });
 }
 
 function escapeHtml(value: string): string {

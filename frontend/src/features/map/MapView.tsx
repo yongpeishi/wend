@@ -275,11 +275,13 @@ function PinMarker({
   // when it wants the chip/dot split, and pins without one keep drawing the
   // way the variant says — so a caller that never sets it sees no change.
   const icon = useMemo(() => {
-    if (pin.mark === 'chip') return chipIcon(pin.title, selected, pin.nested);
+    if (pin.mark === 'chip') return chipIcon(pin.title, selected, pin.nested, pin.category);
     if (pin.mark === 'dot') return dotIcon(pin.title, selected);
     if (pin.mark === 'faint') return faintIcon(pin.title);
-    return variant === 'label' ? labelIcon(pin.title, pin.tone, selected) : pinIcon(pin.state, selected, pin.title);
-  }, [variant, pin.mark, pin.state, pin.tone, pin.nested, selected, pin.title]);
+    return variant === 'label'
+      ? labelIcon(pin.title, pin.tone, selected, pin.category)
+      : pinIcon(pin.state, selected, pin.title, pin.category);
+  }, [variant, pin.mark, pin.state, pin.tone, pin.nested, pin.category, selected, pin.title]);
   return (
     <Marker
       position={[pin.lat, pin.lng]}
