@@ -37,7 +37,7 @@ import {
   tripDateShiftFor,
   voteTallyFor,
 } from './db';
-import type { StoredDayVersion, StoredFeedback, StoredMembership } from './db';
+import type { StoredDayVersion, StoredEntry, StoredFeedback, StoredMembership } from './db';
 import type {
   AdminFeedback,
   Collaborator,
@@ -290,6 +290,169 @@ function isDescendantOfTrip(entryId: number, tripId: number): boolean {
   return false;
 }
 
+// ---- Deleting for good ---------------------------------------------------
+// The preview is computed from the seeded graph rather than returned as
+// constants: the modal's copy branches on every one of these numbers, and copy
+// is only testable against numbers that can move.
+
+/** Every entry under `id`, at any depth. Ids, in no promised order. */
+function descendantIdsOf(id: number): number[] {
+  const found = new Set<number>();
+  const queue = [...childIdsOf(id)];
+  while (queue.length) {
+    const childId = queue.shift();
+    if (childId === undefined || found.has(childId)) continue;
+    found.add(childId);
+    queue.push(...childIdsOf(childId));
+  }
+  return [...found];
+}
+
+/**
+ * Could the caller have destroyed this one on its own? The mock's stand-in for
+ * `EntryPolicy#destroy_permanently?`: a trip answers to its owner alone, and
+ * anything else to its owner or its author, with the viewer floor on the
+ * authorship branch.
+ *
+ * It exists for the cascade filter, which the modal has a line about — a
+ * sole-child somebody else wrote is left behind rather than destroyed. The seed
+ * has one user who owns and wrote everything, so that count is 0 there;
+ * reassigning a `created_by_id` in a test moves it.
+ *
+ * Signed out is permitted, not refused: this route has no more of an auth gate
+ * than `DELETE /api/entries/:id` above, which archives for whoever asks.
+ */
+function mayDestroyPermanently(entry: StoredEntry): boolean {
+  const userId = db.currentUserId;
+  if (userId === null) return true;
+  const role = roleFor(entry.id, userId);
+  if (entry.kind === 'trip') return role === 'owner';
+  if (role === 'owner') return true;
+  // Null role is a library entry, which `Entry#role_for` hands to its creator
+  // anyway — so on both branches the only authority left is authorship, and
+  // `role !== 'viewer'` is the floor a demotion takes back.
+  return entry.created_by_id === userId && role !== 'viewer';
+}
+
+/**
+ * The three fates of everything under `target`, and which rows the destroy
+ * will actually take.
+ *
+ * Start by assuming the whole subtree goes, then let anything with a parent
+ * outside the doomed set pull itself back out — and, on the next pass, its own
+ * children with it. Iterating to a fixed point is what makes the grandchild of
+ * a survivor survive too.
+ *
+ * One simplification against the real thing: a left-behind entry's own
+ * sole-children are counted as destroyed here, where the server leaves them
+ * with their parent. Nothing in the seed can reach that case (see
+ * `mayDestroyPermanently`), and it would cost a second fixed point to model.
+ */
+function permanentDeletionPlan(target: StoredEntry) {
+  const descendants = descendantIdsOf(target.id);
+  const doomed = new Set(descendants);
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const id of [...doomed]) {
+      if (parentIdsOf(id).some((parentId) => parentId !== target.id && !doomed.has(parentId))) {
+        doomed.delete(id);
+        changed = true;
+      }
+    }
+  }
+
+  const destroyed: number[] = [];
+  const leftBehind: number[] = [];
+  for (const id of doomed) {
+    const entry = findEntry(id);
+    if (!entry) continue;
+    (mayDestroyPermanently(entry) ? destroyed : leftBehind).push(id);
+  }
+
+  return { destroyed, leftBehind, survivingCount: descendants.length - doomed.size };
+}
+
+/** Every kind:"trip" ancestor's title, nearest first. `[]` for a trip itself
+ * and for a library entry — neither hangs under one. */
+function tripAncestorTitles(entry: StoredEntry): string[] {
+  if (entry.kind === 'trip') return [];
+  const titles: string[] = [];
+  const visited = new Set<number>();
+  const queue = [...parentIdsOf(entry.id)];
+  while (queue.length) {
+    const parentId = queue.shift();
+    if (parentId === undefined || visited.has(parentId)) continue;
+    visited.add(parentId);
+    const parent = findEntry(parentId);
+    if (!parent) continue;
+    if (parent.kind === 'trip') titles.push(parent.title);
+    queue.push(...parentIdsOf(parentId));
+  }
+  return titles;
+}
+
+/**
+ * The counts the refusal carries. Votes and to-dos are of what GOES — the
+ * target plus the descendants actually being destroyed — not of what exists.
+ */
+function deletionPreview(target: StoredEntry, plan: ReturnType<typeof permanentDeletionPlan>) {
+  const going = new Set([target.id, ...plan.destroyed]);
+  return {
+    title: target.title,
+    kind: target.kind,
+    votes_count: db.votes.filter((v) => going.has(v.entry_id)).length,
+    todos_count: db.todos.filter((t) => (t.entry_id !== null && going.has(t.entry_id)) || (t.trip_id !== null && going.has(t.trip_id)))
+      .length,
+    trip_titles: tripAncestorTitles(target),
+    descendants_destroyed_count: plan.destroyed.length,
+    descendants_surviving_count: plan.survivingCount,
+    descendants_left_behind_count: plan.leftBehind.length,
+  };
+}
+
+/**
+ * The `dependent:` table from the design doc, in one function. Votes, to-dos,
+ * links and placements go with the row; a bundle's placement keeps its slot
+ * with the choice inside it unmade, a transport leg survives with one blank
+ * end, and a day keeps its lodging pill, emptied.
+ */
+function destroyPermanently(target: StoredEntry, destroyedDescendantIds: number[]) {
+  const gone = new Set([target.id, ...destroyedDescendantIds]);
+
+  db.entries = db.entries.filter((e) => !gone.has(e.id));
+  db.links = db.links.filter((l) => !gone.has(l.parent_id) && !gone.has(l.child_id));
+  db.votes = db.votes.filter((v) => !gone.has(v.entry_id));
+  db.todos = db.todos.filter(
+    (t) => !(t.entry_id !== null && gone.has(t.entry_id)) && !(t.trip_id !== null && gone.has(t.trip_id)),
+  );
+
+  // A placement of a thing that no longer exists is a ghost row on the day, so
+  // the placement goes too — but only when the thing itself was placed.
+  db.scheduleItems = db.scheduleItems.filter(
+    (s) => !(s.entry_id !== null && gone.has(s.entry_id)) && !gone.has(s.trip_id),
+  );
+  for (const item of db.scheduleItems) {
+    if (item.chosen_entry_id !== null && gone.has(item.chosen_entry_id)) item.chosen_entry_id = null;
+  }
+
+  for (const entry of db.entries) {
+    if (entry.from_entry_id !== null && gone.has(entry.from_entry_id)) entry.from_entry_id = null;
+    if (entry.to_entry_id !== null && gone.has(entry.to_entry_id)) entry.to_entry_id = null;
+  }
+
+  const goneDayIds = new Set(db.tripDays.filter((d) => gone.has(d.trip_id)).map((d) => d.id));
+  db.tripDays = db.tripDays.filter((d) => !goneDayIds.has(d.id));
+  db.dayVersions = db.dayVersions.filter((v) => !goneDayIds.has(v.trip_day_id));
+  for (const day of db.tripDays) {
+    if (day.lodging_entry_id !== null && gone.has(day.lodging_entry_id)) {
+      day.lodging_entry_id = null;
+      day.lodging_label = null;
+    }
+  }
+
+  db.memberships = db.memberships.filter((m) => !gone.has(m.trip_id));
+}
+
 export const handlers = [
   // ---- Session -----------------------------------------------------------
   http.post('/api/session', async ({ request }) => {
@@ -485,6 +648,29 @@ export const handlers = [
     if (!entry) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
     entry.archived_at = null;
     return HttpResponse.json({ entry: toEntry(entry, db.currentUserId) });
+  }),
+
+  // Deleting for good — its own route, so no stray param can turn the archive
+  // above into a destroy. Three answers and only three: it isn't set aside
+  // yet, it is but you haven't said so twice (here are the counts), or it is
+  // gone. Nothing is written on either 422; the attempt is its own preview.
+  http.delete('/api/entries/:id/permanent', ({ params, request }) => {
+    const entry = findEntry(Number(params.id));
+    if (!entry) return notFound();
+    if (entry.archived_at === null) {
+      return HttpResponse.json({ error: 'must_be_set_aside_first' }, { status: 422 });
+    }
+
+    const plan = permanentDeletionPlan(entry);
+    if (new URL(request.url).searchParams.get('confirm_permanent') !== 'true') {
+      return HttpResponse.json(
+        { error: 'permanent_deletion_needs_confirmation', preview: deletionPreview(entry, plan) },
+        { status: 422 },
+      );
+    }
+
+    destroyPermanently(entry, plan.destroyed);
+    return new HttpResponse(null, { status: 204 });
   }),
 
   http.get('/api/entries/:id/tree', ({ params, request }) => {

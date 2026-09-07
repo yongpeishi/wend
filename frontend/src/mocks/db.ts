@@ -263,6 +263,11 @@ export function toEntry(entry: StoredEntry, currentUserId: number | null): Entry
     // Trip-level only, matching the serializer: an idea or a bundle carries
     // null and inherits its trip's role through the board it is rendered on.
     my_role: entry.kind === 'trip' ? roleFor(entry.id, currentUserId) : null,
+    // Authorship, on every kind — unlike `my_role`, which is trip-level. It is
+    // what lets a member delete their own idea for good; see
+    // auth/tripRole.ts#canDeleteForGood. Nobody signed in means nobody wrote
+    // it, which is the same answer the serializer gives.
+    created_by_me: entry.created_by_id === currentUserId,
   };
 }
 

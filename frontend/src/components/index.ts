@@ -15,6 +15,12 @@ export type { FieldProps } from './Field';
 export { Modal } from './Modal';
 export type { ModalProps } from './Modal';
 
+export { DeleteForGoodModal } from './DeleteForGoodModal';
+export type { DeleteForGoodModalProps } from './DeleteForGoodModal';
+
+export { useDeleteForGood } from './useDeleteForGood';
+export type { UseDeleteForGood, UseDeleteForGoodOptions } from './useDeleteForGood';
+
 export { Drawer } from './Drawer';
 export type { DrawerProps } from './Drawer';
 
