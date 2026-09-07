@@ -1,6 +1,7 @@
 module Api
   class EntriesController < Api::BaseController
-    before_action :set_entry, only: [:show, :update, :destroy, :restore, :tree, :lift, :absorb, :fork]
+    before_action :set_entry,
+                  only: [:show, :update, :destroy, :destroy_permanently, :restore, :tree, :lift, :absorb, :fork]
 
     def index
       trip_id = params[:trip_id].presence
@@ -102,11 +103,46 @@ module Api
       render json: { entry: EntrySerializer.one(@entry, current_user: current_user) }
     end
 
-    # Soft-hide only. Never destroys the row -- see doc/architecture.md "Never
-    # hard-delete an Entry".
+    # Soft-hide only, and that is permanent: this action never destroys the row,
+    # whatever params it is handed. Destroying is #destroy_permanently below, on
+    # its own route, and it refuses anything this action has not already archived.
     def destroy
       @entry.archive!
       render json: { entry: EntrySerializer.one(@entry, current_user: current_user) }
+    end
+
+    # The one path in the product that actually destroys an Entry row.
+    #
+    # Two preconditions, in this order and both server-side, because the
+    # reversible first step is the API's contract and not a UI convention a
+    # script can skip:
+    #
+    #   1. it must already be set aside. A live entry is refused outright -- the
+    #      way out of the product is always through the list that shows the way
+    #      back first.
+    #   2. it must be confirmed. The refusal IS the preview: the same idiom
+    #      #update uses for dropped days, and the reason the counts the user
+    #      agreed to cannot drift from the rows that go (see
+    #      EntryPermanentDeletion).
+    #
+    # A policy denial is a 404 from set_entry's scoped find, like every other
+    # action here. Never a 403.
+    def destroy_permanently
+      if @entry.archived_at.nil?
+        render json: { error: "must_be_set_aside_first" }, status: :unprocessable_entity
+        return
+      end
+
+      deletion = EntryPermanentDeletion.new(@entry, current_user)
+
+      unless truthy?(params[:confirm_permanent])
+        render json: { error: "permanent_deletion_needs_confirmation", preview: deletion.preview },
+               status: :unprocessable_entity
+        return
+      end
+
+      deletion.destroy!
+      head :no_content
     end
 
     def restore

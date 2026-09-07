@@ -50,6 +50,9 @@ class Api::EntriesTest < ActionDispatch::IntegrationTest
     # Always an array, [] when unlinked — the client builds the idea tree from it.
     assert_equal [], row["parent_ids"]
     assert_equal false, row["scheduled"]
+    # Authorship, for the one capability it grants -- "delete for good". A fact
+    # about the caller, like my_vote above.
+    assert_equal true, row["created_by_me"]
   end
 
   test "GET /api/entries rows carry parent_ids for every parent link, ascending" do
