@@ -41,7 +41,7 @@ class EntryPermanentDeletion
       # actually being destroyed, so a survivor's votes are not mourned.
       "votes_count" => Vote.where(entry_id: doomed_ids).count,
       "todos_count" => todos_count,
-      "trip_titles" => trip_titles,
+      "trips" => trips,
       "descendants_destroyed_count" => destroyable_ids.size,
       "descendants_surviving_count" => surviving_ids.size,
       "descendants_left_behind_count" => left_behind_ids.size
@@ -88,19 +88,24 @@ class EntryPermanentDeletion
     Todo.where(entry_id: doomed_ids).or(Todo.where(trip_id: doomed_ids)).count
   end
 
-  # The trips this thing is in, by name, so the modal can say "it goes from there
-  # as well". Filtered through the visibility scope and not merely plucked: an
-  # idea can sit under a trip the caller has no grant on, and naming that trip --
-  # even only its title -- would leak it.
+  # The trips this thing is in, so the modal can say "it goes from there as
+  # well". Each carries its id beside its title because the client subtracts the
+  # trip whose screen the request came from, and it has to do that by id: two
+  # trips can share a title, and matching on the words would either hide a real
+  # other trip or name the current one back to the reader. Filtered through the
+  # visibility scope and not merely plucked: an idea can sit under a trip the
+  # caller has no grant on, and naming that trip -- even only its title -- would
+  # leak it.
   #
   # [] for a trip itself (it is not inside anything) and for a library entry
   # (there is no trip to name).
-  def trip_titles
+  def trips
     return [] if entry.trip?
 
     Entry.visible_to(user)
          .where(id: Entry.ancestor_ids_of(entry.id), kind: "trip")
-         .order(:id).pluck(:title)
+         .order(:id).pluck(:id, :title)
+         .map { |id, title| { "id" => id, "title" => title } }
   end
 
   def subtree_ids

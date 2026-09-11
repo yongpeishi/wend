@@ -817,10 +817,10 @@ export function TripBoard() {
           rather than inside the column so that reading this file, the one
           overlay the board owns is somewhere you can find it. The plans rail
           runs its own copy of this gesture, for the same reason it owns
-          restoring — see BundlePanel. `currentTripTitle` is the board's to
+          restoring — see BundlePanel. `currentTripId` is the board's to
           supply and is deliberately not in `modalProps`; without it the dialog
           would name the very trip you are standing on back to you. */}
-      <DeleteForGoodModal {...deleteForGood.modalProps} currentTripTitle={trip.title} />
+      <DeleteForGoodModal {...deleteForGood.modalProps} currentTripId={trip.id} />
     </DndContext>
   );
 }

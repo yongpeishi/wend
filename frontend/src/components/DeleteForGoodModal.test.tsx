@@ -11,7 +11,7 @@ function preview(overrides: Partial<DeleteForGoodPreview> = {}): DeleteForGoodPr
     kind: 'idea',
     votesCount: 0,
     todosCount: 0,
-    tripTitles: [],
+    trips: [],
     descendantsDestroyedCount: 0,
     descendantsSurvivingCount: 0,
     descendantsLeftBehindCount: 0,
@@ -21,7 +21,7 @@ function preview(overrides: Partial<DeleteForGoodPreview> = {}): DeleteForGoodPr
 
 function renderModal(
   overrides: Partial<DeleteForGoodPreview> = {},
-  props: { currentTripTitle?: string | null; deleting?: boolean } = {},
+  props: { currentTripId?: number | null; deleting?: boolean } = {},
 ) {
   const onCancel = vi.fn();
   const onConfirm = vi.fn();
@@ -29,7 +29,7 @@ function renderModal(
     <DeleteForGoodModal
       open
       preview={preview(overrides)}
-      currentTripTitle={props.currentTripTitle}
+      currentTripId={props.currentTripId}
       deleting={props.deleting}
       onCancel={onCancel}
       onConfirm={onConfirm}
@@ -40,6 +40,9 @@ function renderModal(
 
 const line = (text: string) => expect(screen.getByText(text)).toBeInTheDocument();
 
+const japan = { id: 1, title: 'Japan, spring' };
+const malaysia = { id: 2, title: 'Malaysia 2027' };
+
 describe('DeleteForGoodModal — what it says', () => {
   // The design's own example, whole: an idea in two trips, viewed from one of
   // them.
@@ -48,9 +51,9 @@ describe('DeleteForGoodModal — what it says', () => {
       {
         votesCount: 3,
         todosCount: 2,
-        tripTitles: ['Japan, spring', 'Malaysia 2027'],
+        trips: [japan, malaysia],
       },
-      { currentTripTitle: 'Japan, spring' },
+      { currentTripId: japan.id },
     );
 
     expect(screen.getByRole('heading', { name: 'Delete "Ramen Ichiran" for good?' })).toBeInTheDocument();
@@ -196,13 +199,21 @@ describe('DeleteForGoodModal — the other trips', () => {
   // which board the request came from. Naming the one you are standing on back
   // to you is the mistake this filter exists to prevent.
   it('says nothing when the only trip is the one you are on', () => {
-    renderModal({ tripTitles: ['Japan, spring'] }, { currentTripTitle: 'Japan, spring' });
+    renderModal({ trips: [japan] }, { currentTripId: japan.id });
 
     expect(screen.queryByText(/It's also in/)).not.toBeInTheDocument();
   });
 
+  // The filter is by id, not title. A trip called the same as the one you are
+  // on is still another trip, and the thing really does go from it.
+  it('still names another trip that happens to share the current one\'s title', () => {
+    renderModal({ trips: [japan, { id: 9, title: 'Japan, spring' }] }, { currentTripId: japan.id });
+
+    line('It\'s also in "Japan, spring", and it goes from there as well.');
+  });
+
   it('names every trip when you are on none of them — the library case', () => {
-    renderModal({ tripTitles: ['Japan, spring', 'Malaysia 2027'] }, { currentTripTitle: null });
+    renderModal({ trips: [japan, malaysia] }, { currentTripId: null });
 
     line('It\'s also in "Japan, spring" and "Malaysia 2027", and it goes from all of them as well.');
   });
@@ -211,7 +222,7 @@ describe('DeleteForGoodModal — the other trips', () => {
   // are quoted because a trip called "spring, maybe" would otherwise read as
   // two trips.
   it('runs three or more as a list, with only the last pair joined by the word', () => {
-    renderModal({ tripTitles: ['Malaysia 2027', 'Bali', 'Hanoi'] });
+    renderModal({ trips: [malaysia, { id: 3, title: 'Bali' }, { id: 4, title: 'Hanoi' }] });
 
     line('It\'s also in "Malaysia 2027", "Bali" and "Hanoi", and it goes from all of them as well.');
   });

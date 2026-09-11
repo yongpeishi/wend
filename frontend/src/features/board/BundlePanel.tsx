@@ -255,14 +255,10 @@ export function BundlePanel({
         onDeleteForGood={deleteForGood.request}
       />
 
-      {/* No `currentTripTitle`. The rail is handed a `tripId` and never the
-          trip's title, and threading one down through the board just so this
-          dialog can subtract it from a list would be a prop that exists for a
-          single sentence. The cost of leaving it out is small and bounded: a
-          plan is emptied before it can be deleted, so its trip list is almost
-          always the one trip it sits in, and the worst case is the dialog
-          naming that trip back to the reader — true, if redundant. */}
-      <DeleteForGoodModal {...deleteForGood.modalProps} />
+      {/* `currentTripId` is the `tripId` this rail was handed: without it the
+          dialog would name the very trip you are standing on back to you —
+          "it's also in X" about the board you are looking at. */}
+      <DeleteForGoodModal {...deleteForGood.modalProps} currentTripId={tripId} />
     </aside>
   );
 }

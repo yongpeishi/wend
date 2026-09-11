@@ -60,7 +60,7 @@ describe('useDeleteForGood — asking', () => {
       todosCount: 0,
       // Every trip ancestor the caller can see — the modal filters out the one
       // whose screen it is on, not the server.
-      tripTitles: ['Six days in Kyoto'],
+      trips: [{ id: TRIP_ID, title: 'Six days in Kyoto' }],
       descendantsDestroyedCount: 3,
       descendantsSurvivingCount: 0,
       descendantsLeftBehindCount: 0,
@@ -92,7 +92,7 @@ describe('useDeleteForGood — asking', () => {
       votesCount: 3,
       todosCount: 2,
       // A trip hangs under no trip.
-      tripTitles: [],
+      trips: [],
       descendantsDestroyedCount: 9,
       descendantsSurvivingCount: 0,
     });

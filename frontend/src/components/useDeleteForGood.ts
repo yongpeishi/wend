@@ -34,7 +34,7 @@ export interface UseDeleteForGood {
   request: (entry: Entry) => void;
   /** The entry being confirmed, or null. */
   target: Entry | null;
-  /** Spread onto <DeleteForGoodModal />. Does not include `currentTripTitle`. */
+  /** Spread onto <DeleteForGoodModal />. Does not include `currentTripId`. */
   modalProps: Pick<DeleteForGoodModalProps, 'open' | 'preview' | 'onCancel' | 'onConfirm' | 'deleting'>;
 }
 
@@ -50,7 +50,7 @@ export interface UseDeleteForGood {
  * its own — where the toast goes, and (on the modal itself) which trip's
  * screen this is.
  *
- * `currentTripTitle` is deliberately NOT in `modalProps`: this hook has no
+ * `currentTripId` is deliberately NOT in `modalProps`: this hook has no
  * idea which board it is mounted on, and a caller that forgot to pass it would
  * get a modal naming the trip you are standing on back to you.
  */

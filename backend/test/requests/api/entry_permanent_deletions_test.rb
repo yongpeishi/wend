@@ -84,7 +84,7 @@ class Api::EntryPermanentDeletionsTest < ActionDispatch::IntegrationTest
       "kind" => "idea",
       "votes_count" => 2,
       "todos_count" => 1,
-      "trip_titles" => [ "Japan, spring" ],
+      "trips" => [ { "id" => @trip.id, "title" => "Japan, spring" } ],
       "descendants_destroyed_count" => 0,
       "descendants_surviving_count" => 0,
       "descendants_left_behind_count" => 0
@@ -264,10 +264,10 @@ class Api::EntryPermanentDeletionsTest < ActionDispatch::IntegrationTest
     assert_equal 1, preview["votes_count"]
     assert_equal 1, preview["todos_count"]
     # A trip is not inside anything, so it names no trips.
-    assert_equal [], preview["trip_titles"]
+    assert_equal [], preview["trips"]
   end
 
-  test "trip_titles names every trip the entry is in, and only the ones the caller can see" do
+  test "trips names every trip the entry is in, by id and title, and only the ones the caller can see" do
     mine = create_trip(title: "Malaysia 2027")
     theirs = create_trip(title: "SecretTripNobodyToldMeAbout", created_by: create_user(name: "Stranger"))
     idea = archived_idea(parent: @trip)
@@ -277,7 +277,10 @@ class Api::EntryPermanentDeletionsTest < ActionDispatch::IntegrationTest
     delete "/api/entries/#{idea.id}/permanent"
 
     preview = JSON.parse(response.body)["preview"]
-    assert_equal [ "Japan, spring", "Malaysia 2027" ], preview["trip_titles"]
+    assert_equal [
+      { "id" => @trip.id, "title" => "Japan, spring" },
+      { "id" => mine.id, "title" => "Malaysia 2027" }
+    ], preview["trips"]
     assert_not_includes response.body, "SecretTripNobodyToldMeAbout"
   end
 
@@ -286,7 +289,7 @@ class Api::EntryPermanentDeletionsTest < ActionDispatch::IntegrationTest
 
     delete "/api/entries/#{idea.id}/permanent"
 
-    assert_equal [], JSON.parse(response.body).dig("preview", "trip_titles")
+    assert_equal [], JSON.parse(response.body).dig("preview", "trips")
   end
 
   # --- The cascade filter ----------------------------------------------------

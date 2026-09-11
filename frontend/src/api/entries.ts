@@ -199,16 +199,22 @@ export function useRestoreEntry() {
  * behind because somebody else wrote them and you have no authority over
  * them. The modal states all three, so the split is never a surprise.
  *
- * `tripTitles` is EVERY trip ancestor the caller can see, not "the other
- * trips": the server has no idea which trip screen the request came from, so
- * filtering out the current one is the modal's job.
+ * `trips` is EVERY trip ancestor the caller can see, not "the other trips":
+ * the server has no idea which trip screen the request came from, so filtering
+ * out the current one is the modal's job. Each comes with its id so that filter
+ * can match on identity rather than on a title two trips might share.
  */
+export interface DeleteForGoodTrip {
+  id: number;
+  title: string;
+}
+
 export interface DeleteForGoodPreview {
   title: string;
   kind: EntryKind;
   votesCount: number;
   todosCount: number;
-  tripTitles: string[];
+  trips: DeleteForGoodTrip[];
   descendantsDestroyedCount: number;
   descendantsSurvivingCount: number;
   descendantsLeftBehindCount: number;
@@ -233,7 +239,7 @@ interface PermanentDeletionBody {
     kind: EntryKind;
     votes_count: number;
     todos_count: number;
-    trip_titles: string[];
+    trips: DeleteForGoodTrip[];
     descendants_destroyed_count: number;
     descendants_surviving_count: number;
     descendants_left_behind_count: number;
@@ -284,7 +290,7 @@ async function deleteEntryPermanently(id: number, confirm?: boolean): Promise<De
         kind: p.kind,
         votesCount: p.votes_count,
         todosCount: p.todos_count,
-        tripTitles: p.trip_titles,
+        trips: p.trips,
         descendantsDestroyedCount: p.descendants_destroyed_count,
         descendantsSurvivingCount: p.descendants_surviving_count,
         descendantsLeftBehindCount: p.descendants_left_behind_count,

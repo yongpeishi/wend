@@ -15,9 +15,10 @@ export interface DeleteForGoodModalProps {
    * The trip whose screen this is, so "it's also in X" excludes it. The server
    * sends every trip the entry hangs under, because it has no idea which board
    * the request came from; naming the trip you are standing on back to you is
-   * this component's job to avoid.
+   * this component's job to avoid. An id, not a title: two trips can share a
+   * name, and only one of them is the one you are on.
    */
-  currentTripTitle?: string | null;
+  currentTripId?: number | null;
   onCancel: () => void;
   onConfirm: () => void;
   deleting?: boolean;
@@ -63,7 +64,7 @@ function listTitles(titles: string[]): string {
  * export from it costs a Fast Refresh warning for something the modal's own
  * test already reads through the rendered dialog.
  */
-function deleteForGoodCopy(preview: DeleteForGoodPreview, currentTripTitle: string | null) {
+function deleteForGoodCopy(preview: DeleteForGoodPreview, currentTripId: number | null) {
   const isTrip = preview.kind === 'trip';
   const { votesCount: votes, todosCount: todos } = preview;
   const destroyed = preview.descendantsDestroyedCount;
@@ -124,10 +125,10 @@ function deleteForGoodCopy(preview: DeleteForGoodPreview, currentTripTitle: stri
   // An idea in two trips is one row in both, not a copy in each, so deleting
   // it takes it out of both. Saying which other trips lose it is the whole
   // point of the line — "it's also elsewhere" would leave someone guessing.
-  const otherTrips = preview.tripTitles.filter((title) => title !== currentTripTitle);
+  const otherTrips = preview.trips.filter((trip) => trip.id !== currentTripId);
   if (otherTrips.length > 0) {
     lines.push(
-      `It's also in ${listTitles(otherTrips)}, and it goes from ${otherTrips.length === 1 ? 'there' : 'all of them'} as well.`,
+      `It's also in ${listTitles(otherTrips.map((trip) => trip.title))}, and it goes from ${otherTrips.length === 1 ? 'there' : 'all of them'} as well.`,
     );
   }
 
@@ -169,7 +170,7 @@ function deleteForGoodCopy(preview: DeleteForGoodPreview, currentTripTitle: stri
 export function DeleteForGoodModal({
   open,
   preview,
-  currentTripTitle = null,
+  currentTripId = null,
   onCancel,
   onConfirm,
   deleting = false,
@@ -178,7 +179,7 @@ export function DeleteForGoodModal({
   // the refusal, so this is the state between asking and being told.
   if (!preview) return null;
 
-  const { title, lines, cancelLabel, confirmLabel } = deleteForGoodCopy(preview, currentTripTitle);
+  const { title, lines, cancelLabel, confirmLabel } = deleteForGoodCopy(preview, currentTripId);
 
   return (
     <Modal

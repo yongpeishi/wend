@@ -374,9 +374,9 @@ function permanentDeletionPlan(target: StoredEntry) {
 
 /** Every kind:"trip" ancestor's title, nearest first. `[]` for a trip itself
  * and for a library entry — neither hangs under one. */
-function tripAncestorTitles(entry: StoredEntry): string[] {
+function tripAncestors(entry: StoredEntry): { id: number; title: string }[] {
   if (entry.kind === 'trip') return [];
-  const titles: string[] = [];
+  const trips: { id: number; title: string }[] = [];
   const visited = new Set<number>();
   const queue = [...parentIdsOf(entry.id)];
   while (queue.length) {
@@ -385,10 +385,10 @@ function tripAncestorTitles(entry: StoredEntry): string[] {
     visited.add(parentId);
     const parent = findEntry(parentId);
     if (!parent) continue;
-    if (parent.kind === 'trip') titles.push(parent.title);
+    if (parent.kind === 'trip') trips.push({ id: parent.id, title: parent.title });
     queue.push(...parentIdsOf(parentId));
   }
-  return titles;
+  return trips;
 }
 
 /**
@@ -403,7 +403,7 @@ function deletionPreview(target: StoredEntry, plan: ReturnType<typeof permanentD
     votes_count: db.votes.filter((v) => going.has(v.entry_id)).length,
     todos_count: db.todos.filter((t) => (t.entry_id !== null && going.has(t.entry_id)) || (t.trip_id !== null && going.has(t.trip_id)))
       .length,
-    trip_titles: tripAncestorTitles(target),
+    trips: tripAncestors(target),
     descendants_destroyed_count: plan.destroyed.length,
     descendants_surviving_count: plan.survivingCount,
     descendants_left_behind_count: plan.leftBehind.length,
