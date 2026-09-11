@@ -68,17 +68,57 @@ const MARK_CENTER = MARK_BOX / 2;
 /** The glyph's drawn edge inside the stop circle. */
 const PIN_GLYPH_SIZE = 16;
 
-/** A single pin, styled like the brand's own trail stop circles. */
+/** The disc's radius: a 28px stop circle, grown from 16px to hold the glyph. */
+const DISC_RADIUS = 14;
+
+/**
+ * The selection ring, and the focus ring with it: 3px of apricot, 3px off the
+ * disc's edge — "same apricot, same 3px at 3px" as focus everywhere else, and
+ * exactly the `outline: 3px; outline-offset: 3px` the design draws around its
+ * 28px disc. As a stroked SVG circle that is a radius of 14 + 3 + 1.5, whose
+ * outer edge lands on the 40px box's edge with nothing to spare — which is
+ * why the box is 40 and not the 32 every other mark keeps.
+ */
+const RING_RADIUS = DISC_RADIUS + 3 + 1.5;
+
+/**
+ * From the pin's centre to the near edge of its hover name: the disc's radius
+ * plus the 6px gap the design fixes. Exported for the flip test in MapView —
+ * the stylesheet positions the name with this same number.
+ */
+export const PIN_NAME_OFFSET = DISC_RADIUS + 6;
+
+/**
+ * Whether a stop-circle's hover name should open to the left of the disc
+ * rather than the right. Leaflet clips at the map container, so a name that
+ * would run past the right edge is cut off exactly where the reader is
+ * panning to; within a name's width of that edge it opens the other way.
+ * Pure, so the arithmetic is tested without a map: `pinX` and `mapWidth` in
+ * container pixels, `nameWidth` the rendered pill's width.
+ */
+export function nameOpensLeft(pinX: number, mapWidth: number, nameWidth: number): boolean {
+  return pinX + PIN_NAME_OFFSET + nameWidth > mapWidth;
+}
+
+/**
+ * A single pin, styled like the brand's own trail stop circles.
+ *
+ * The name rides along as a second child of the button, hidden until hover
+ * or keyboard focus (MapView.module.css does the showing). It is out of flow,
+ * so it never moves the anchor — the same trick `labelIcon` and `chipIcon`
+ * use — and it is aria-hidden, because the button's aria-label already says
+ * the title: a screen reader would otherwise hear the name twice. Touch has
+ * no hover, and loses nothing: a tap selects the pin and opens the popup,
+ * which carries the name in text.
+ */
 export function pinIcon(
   state: PinState,
   selected: boolean,
   title: string,
   category?: EntryCategory | null,
 ): L.DivIcon {
-  // r=17 puts the ring outside the grown 14px disc: 14 + 1.5px of gap + 1.5px
-  // of half-stroke. At the old r=13 it would now cut straight through the disc.
   const ring = selected
-    ? `<circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="17" fill="none" stroke="var(--stop-open)" stroke-width="3"/>`
+    ? `<circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="${RING_RADIUS}" fill="none" stroke="var(--stop-open)" stroke-width="3"/>`
     : '';
   const glyph = categoryGlyphSvg(category, { size: PIN_GLYPH_SIZE, color: GLYPH[state] });
   // A nested <svg> defaults to x=0,y=0 and categoryGlyphSvg emits no position
@@ -95,9 +135,10 @@ export function pinIcon(
     <button type="button" class="wend-pin" aria-label="${escapeHtml(label)}">
       <svg width="${PIN_BOX}" height="${PIN_BOX}" viewBox="0 0 ${PIN_BOX} ${PIN_BOX}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         ${ring}
-        <circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="14" fill="${FILL[state]}" stroke="${STROKE[state]}" stroke-width="2"/>
+        <circle cx="${PIN_CENTER}" cy="${PIN_CENTER}" r="${DISC_RADIUS}" fill="${FILL[state]}" stroke="${STROKE[state]}" stroke-width="2"/>
         ${glyphMarkup}
       </svg>
+      <span class="wend-pin-name" aria-hidden="true">${escapeHtml(title)}</span>
     </button>
   `;
   return L.divIcon({

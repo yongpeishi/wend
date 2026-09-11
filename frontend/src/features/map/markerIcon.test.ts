@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 import type { DivIcon } from 'leaflet';
 import type { EntryCategory } from '../../api/types';
 import { CATEGORY_GLYPH } from './categoryGlyph';
-import { chipIcon, clusterIcon, dotIcon, faintIcon, labelIcon, pendingIcon, pinIcon } from './markerIcon';
+import {
+  PIN_NAME_OFFSET,
+  chipIcon,
+  clusterIcon,
+  dotIcon,
+  faintIcon,
+  labelIcon,
+  nameOpensLeft,
+  pendingIcon,
+  pinIcon,
+} from './markerIcon';
 
 // The icons are HTML strings handed to Leaflet, so the only thing worth
 // asserting is the contract that string carries: which classes the stylesheet
@@ -35,7 +45,7 @@ function glyphStroke(markup: string): string | undefined {
 // The stop circle's geometry, named so the "ring sits outside the disc"
 // relationship is asserted as arithmetic rather than as two unrelated strings.
 const DISC_RADIUS = 14;
-const RING_RADIUS = 17;
+const RING_RADIUS = 18.5;
 const RING_STROKE = 3;
 
 describe('pinIcon', () => {
@@ -64,13 +74,64 @@ describe('pinIcon', () => {
     expect(html(pinIcon('scheduled', false, 'A'))).not.toContain('stroke="var(--stop-open)"');
   });
 
-  it('keeps the selection ring clear of the grown disc rather than cutting through it', () => {
+  it('rings the selected pin 3px off the disc, the way focus does everywhere else', () => {
     const markup = html(pinIcon('scheduled', true, 'A'));
-    expect(markup).toContain('r="14"');
-    expect(markup).toContain('r="17"');
-    // The ring is stroked at 3, so its inner edge is at 17 - 1.5 = 15.5 —
-    // outside the 14 disc, with a pixel and a half of paper between them.
-    expect(RING_RADIUS - RING_STROKE / 2).toBeGreaterThan(DISC_RADIUS);
+    expect(markup).toContain(`r="${DISC_RADIUS}"`);
+    expect(markup).toContain(`r="${RING_RADIUS}" fill="none" stroke="var(--stop-open)" stroke-width="${RING_STROKE}"`);
+    // The design draws the ring as a 3px outline at 3px offset around the
+    // 28px disc. Stroked at 3, a radius of 18.5 puts the inner edge at 17 —
+    // three pixels of paper outside the 14 disc — and the outer edge at 20,
+    // exactly the 40px box's edge.
+    expect(RING_RADIUS - RING_STROKE / 2 - DISC_RADIUS).toBe(3);
+    expect(RING_RADIUS + RING_STROKE / 2).toBe(20);
+  });
+});
+
+describe('the hover name on the stop circle', () => {
+  // The design's Option A: hovering (or focusing) a marker opens its name. The
+  // markup's half of that is a span the stylesheet reveals; these assert the
+  // span is there, says the right thing, and is invisible to a screen reader,
+  // which already gets the title from the button's aria-label.
+
+  it('carries the title in a name span, after the drawing', () => {
+    const markup = html(pinIcon('scheduled', false, 'Fushimi Inari'));
+    expect(markup).toContain('<span class="wend-pin-name" aria-hidden="true">Fushimi Inari</span>');
+    expect(markup.indexOf('</svg>')).toBeLessThan(markup.indexOf('wend-pin-name'));
+  });
+
+  it('is aria-hidden, so the name is not read out twice', () => {
+    const markup = html(pinIcon('scheduled', false, 'Fushimi Inari'));
+    expect(markup).toMatch(/class="wend-pin-name" aria-hidden="true"/);
+    expect(markup).toContain('aria-label="Fushimi Inari — Scheduled"');
+  });
+
+  it('escapes a title that contains markup rather than rendering it', () => {
+    const markup = html(pinIcon('scheduled', false, '<b>Bold</b>'));
+    expect(markup).not.toContain('<b>');
+    expect(markup).toContain('&lt;b&gt;Bold&lt;/b&gt;');
+  });
+
+  it('is the stop circle\'s alone — the chip, dot and name pill already show their title', () => {
+    expect(html(chipIcon('A', false))).not.toContain('wend-pin-name');
+    expect(html(dotIcon('A', false))).not.toContain('wend-pin-name');
+    expect(html(faintIcon('A'))).not.toContain('wend-pin-name');
+    expect(html(labelIcon('A', 'inView', false))).not.toContain('wend-pin-name');
+  });
+
+  it('opens 6px off the disc edge — the stylesheet\'s 20px and this constant are one number', () => {
+    expect(PIN_NAME_OFFSET).toBe(DISC_RADIUS + 6);
+  });
+
+  it('opens to the left only when it would run past the map\'s right edge', () => {
+    // A 600px-wide map, an 80px name: the name needs pinX + 20 + 80 to fit.
+    expect(nameOpensLeft(100, 600, 80)).toBe(false);
+    expect(nameOpensLeft(500, 600, 80)).toBe(false);
+    expect(nameOpensLeft(501, 600, 80)).toBe(true);
+    expect(nameOpensLeft(590, 600, 80)).toBe(true);
+  });
+
+  it('never flips a name that fits, however wide the map', () => {
+    expect(nameOpensLeft(0, 10_000, 200)).toBe(false);
   });
 });
 
