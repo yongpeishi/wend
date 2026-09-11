@@ -151,25 +151,101 @@
   border: none;
 }
 
+/* 40px, where every other mark in this file is 32px. The stop-circle grew from
+   a 16px disc to a 28px one so it can carry a category glyph knocked out of its
+   fill, and the selection ring now sits outside that larger disc — both need the
+   extra box. Only this pin grew: .wend-pin-dot, the faint dot and the pending
+   pin are unchanged marks and stay at 32px, which is why markerIcon.ts keeps two
+   box constants (PIN_BOX for this rule, MARK_BOX for those three) rather than
+   one. The two numbers disagreeing is the point; don't reconcile them. */
 :global(.wend-pin) {
+  /* relative: the hover name below is positioned against this box. */
+  position: relative;
   display: block;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: none;
   background: transparent;
   cursor: pointer;
+  outline: none;
+}
+
+/* The hover dim lives on the drawing, not the button, so the name that opens
+   beside it stays at full strength. */
+:global(.wend-pin > svg) {
+  display: block;
   transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
 }
 
-:global(.wend-pin:hover) {
+:global(.wend-pin:hover > svg) {
   opacity: 0.8;
 }
 
-:global(.wend-pin:focus-visible) {
+/* The focus ring is drawn around the 28px disc, not the 40px button: 3px of
+   apricot at 3px offset, which is exactly the selection ring markerIcon.ts
+   strokes for the selected pin — the design has the two share one geometry.
+   A pseudo-element the size of the disc is what takes the outline, since an
+   SVG circle cannot. */
+:global(.wend-pin::after) {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+:global(.wend-pin:focus-visible::after) {
   outline: var(--focus-width) solid var(--focus-ring);
   outline-offset: var(--focus-offset);
-  border-radius: 50%;
+}
+
+/* The stop-circle's name, opened by hover or keyboard focus — the map answers
+   "what is that?" without drawing a name nobody asked for. Out of flow, so
+   revealing it never moves the pin; 6px off the disc's edge (the 50% is the
+   disc's centre, the 20px is markerIcon.ts's PIN_NAME_OFFSET: 14px of radius
+   plus the gap). The pill itself is the name pill's: card tone, --border-strong,
+   15px/700, 5px/11px — the same 28px-tall .wend-pin-label that already exists,
+   restated because that class carries the transform and tones of a mark that
+   sits *on* the coordinate, and this one sits beside it.
+
+   Fades over --motion-fade-duration, which the token already collapses to 0ms
+   under reduced motion. pointer-events: none, so the name is never the thing
+   under the cursor — a hover that moved onto its own label and stuck open
+   would be the one way for two to be open at once. aria-hidden in the markup:
+   the button's aria-label already speaks the title. */
+:global(.wend-pin-name) {
+  position: absolute;
+  left: calc(50% + 20px);
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--text-strong);
+  border: var(--border-width) solid var(--border-strong);
+  font-family: var(--font-sans);
+  font-size: var(--text-min-size);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  white-space: nowrap;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+/* Within a name's width of the map's right edge the name opens to the left
+   instead — Leaflet clips at the container, and the right edge is exactly
+   where the reader is panning to. MapView.tsx measures and sets the class;
+   the stylesheet only knows the two placements. */
+:global(.wend-pin--flip .wend-pin-name) {
+  left: auto;
+  right: calc(50% + 20px);
+}
+
+:global(.wend-pin:hover .wend-pin-name),
+:global(.wend-pin:focus-visible .wend-pin-name) {
+  opacity: 1;
 }
 
 /* The name-pill pin (pinVariant='label'). Its colours arrive as custom
@@ -189,14 +265,25 @@
   --pin-label-bg: var(--surface-card);
   --pin-label-text: var(--text-strong);
   --pin-label-border: var(--border-strong);
-  display: block;
+  /* A flex row so the optional category glyph can sit in front of the title.
+     inline-flex, not flex: the pill must keep shrink-to-fit width. The 5px gap
+     sets the glyph closer to the title than the title sits to the pill's edge
+     (11px here, 10px on the chip), so the two read as one unit rather than as
+     two things sharing a pill. With no glyph the row holds a single <span> and
+     draws exactly as it did before — no gap, no size change, nothing to see.
+     width: max-content and the transform below are
+     the 0x0-anchor self-centring described above; both are load-bearing. */
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   width: max-content;
   transform: translate(-50%, -50%);
   /* The design bundle draws this pill at 13px; 15px is the product's readable
      floor (architecture.md §5) and the floor wins — this is a place name a
      reader scans across a map, not a caption. The padding steps down 6/12 ->
      5/11 to pay for the two extra pixels of type: same 1:2 proportion, and the
-     pill still renders exactly 28px tall (5 + 15 + 5 + two 1.5px edges), which
+     pill renders exactly 28px tall (5 + 15 + 5 + two 1.5px edges) with no
+     glyph, 29px with one (the 16px glyph is the tallest item in the row), which
      is the height markerIcon.ts's LABEL_HEIGHT assumes when it lifts the popup
      clear. Colour and tracking are the design's, untouched. */
   padding: 5px 11px;
@@ -260,11 +347,17 @@
 }
 
 :global(.wend-pin-chip) {
-  display: block;
+  /* Same flex row as the name pill, same 5px gap, same reasons — see there.
+     width: max-content and the transform are the self-centring; keep both. */
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   width: max-content;
   transform: translate(-50%, -50%);
   /* 4px vertical padding keeps the rendered height at the 24px
-     markerIcon.ts's CHIP_HEIGHT assumes when it lifts the popup clear. */
+     markerIcon.ts's CHIP_HEIGHT assumes when it lifts the popup clear — 4 + 13
+     + 4 + two 1.5px edges. A 14px glyph is the tallest item in the row and
+     takes it to 25px, so CHIP_HEIGHT tracks the glyph case. */
   padding: 4px 10px;
   border-radius: var(--radius-pill);
   background: var(--wend-leaf);
@@ -289,6 +382,27 @@
 :global(.wend-pin-chip:focus-visible) {
   outline: var(--focus-width) solid var(--wend-apricot);
   outline-offset: var(--focus-offset);
+}
+
+/* The category glyph on the two pills. Its size is set on the <svg> itself in
+   markerIcon.ts (14px in the chip beside 13px type, 16px in the name pill
+   beside 15px type) — a shade larger than the type it stands next to, so it
+   reads as a mark rather than as a capital letter. Its stroke is currentColor,
+   which is the whole point of leaving colour to the markup: the name pill's
+   tone modifiers only ever set --pin-label-text, and the glyph inherits every
+   one of them (bundled / in-view / off-view) with no second colour axis to keep
+   in step, and no colour escaping the token file.
+
+   display: block kills the inline baseline gap an <svg> would otherwise add
+   under itself; flex: none stops a long title from squeezing the glyph narrow.
+
+   Scoped to the two HTML pills on purpose. pinIcon's glyph carries the same
+   class but is a nested <svg> inside an SVG element, placed by a <g transform>
+   rather than by CSS — flex rules have no business reaching it. */
+:global(.wend-pin-chip .wend-pin-glyph),
+:global(.wend-pin-label .wend-pin-glyph) {
+  display: block;
+  flex: none;
 }
 
 /* The neutral dot pin (MapPin.mark='dot') — located, but not in the list on

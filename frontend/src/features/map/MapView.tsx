@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { boundsTupleForPoints } from './bounds';
 import { cellSizeForZoom, clusterPoints, isMultiPointCluster } from './clustering';
 import { fitAndReport, readBounds } from './fit';
-import { chipIcon, clusterIcon, dotIcon, faintIcon, labelIcon, pendingIcon, pinIcon } from './markerIcon';
+import { chipIcon, clusterIcon, dotIcon, faintIcon, labelIcon, nameOpensLeft, pendingIcon, pinIcon } from './markerIcon';
 import type { Bounds, Cluster, ClusterPoint, MapPin } from './types';
 import styles from './MapView.module.css';
 
@@ -14,6 +14,13 @@ const WORLD_CENTER: [number, number] = [20, 0];
 const WORLD_ZOOM = 2;
 /** Not an entry id, and cannot be mistaken for one: only the fit ever sees it. */
 const YOU_ARE_HERE_ID = -1;
+/**
+ * Added to a hovered or focused stop-circle's z-index so its name opens over
+ * the next pin rather than under it — on a dense map, that is most of them.
+ * Leaflet's per-marker z-index is the marker's y position in pixels, so this
+ * has to clear a whole map's height, not a neighbour's.
+ */
+const HOVERED_PIN_LIFT = 10000;
 
 /** How a pin draws. 'marker' is the trail stop-circle; 'label' is a name pill. */
 export type PinVariant = 'marker' | 'label';
@@ -275,13 +282,53 @@ function PinMarker({
   // when it wants the chip/dot split, and pins without one keep drawing the
   // way the variant says — so a caller that never sets it sees no change.
   const icon = useMemo(() => {
-    if (pin.mark === 'chip') return chipIcon(pin.title, selected, pin.nested);
+    if (pin.mark === 'chip') return chipIcon(pin.title, selected, pin.nested, pin.category);
     if (pin.mark === 'dot') return dotIcon(pin.title, selected);
     if (pin.mark === 'faint') return faintIcon(pin.title);
-    return variant === 'label' ? labelIcon(pin.title, pin.tone, selected) : pinIcon(pin.state, selected, pin.title);
-  }, [variant, pin.mark, pin.state, pin.tone, pin.nested, selected, pin.title]);
+    return variant === 'label'
+      ? labelIcon(pin.title, pin.tone, selected, pin.category)
+      : pinIcon(pin.state, selected, pin.title, pin.category);
+  }, [variant, pin.mark, pin.state, pin.tone, pin.nested, pin.category, selected, pin.title]);
+
+  const map = useMap();
+  const markerRef = useRef<L.Marker>(null);
+
+  // The stop-circle's hover name (see pinIcon) needs two things the stylesheet
+  // cannot know: which side of the disc it opens on, and that the hovered pin
+  // sits above its neighbours. Both are settled here, on the way in. The side
+  // is measured against the map container — the name is in the DOM already,
+  // just transparent, so its width is real — and the lift uses Leaflet's own
+  // z-index offset rather than a CSS z-index, because Leaflet writes each
+  // marker's z-index inline from its latitude and a stylesheet rule would
+  // have to shout over that. Keyed on `icon`: Leaflet rebuilds the element
+  // whenever the icon changes, and these listeners have to follow it. The
+  // chip, dot and pill marks carry no name span, so for them this is a no-op.
+  useEffect(() => {
+    const marker = markerRef.current;
+    const button = marker?.getElement()?.querySelector<HTMLElement>('.wend-pin');
+    const name = button?.querySelector<HTMLElement>('.wend-pin-name');
+    if (!marker || !button || !name) return;
+    const open = () => {
+      const x = map.latLngToContainerPoint(marker.getLatLng()).x;
+      button.classList.toggle('wend-pin--flip', nameOpensLeft(x, map.getSize().x, name.offsetWidth));
+      marker.setZIndexOffset(HOVERED_PIN_LIFT);
+    };
+    const close = () => marker.setZIndexOffset(0);
+    button.addEventListener('mouseenter', open);
+    button.addEventListener('focus', open);
+    button.addEventListener('mouseleave', close);
+    button.addEventListener('blur', close);
+    return () => {
+      button.removeEventListener('mouseenter', open);
+      button.removeEventListener('focus', open);
+      button.removeEventListener('mouseleave', close);
+      button.removeEventListener('blur', close);
+    };
+  }, [map, icon]);
+
   return (
     <Marker
+      ref={markerRef}
       position={[pin.lat, pin.lng]}
       icon={icon}
       eventHandlers={{

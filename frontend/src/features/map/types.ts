@@ -3,6 +3,8 @@
 // directly. That is the seam: swapping the renderer for a keyed provider
 // (Google/Mapbox) later means rewriting the inside of this folder only.
 
+import type { EntryCategory } from '../../api/types';
+
 /** Mirrors the trail vocabulary from architecture.md §5 and screens.md. */
 export type PinState = 'scheduled' | 'potential' | 'destination';
 
@@ -46,6 +48,16 @@ export interface MapPin {
    * Absent means false; non-chip marks ignore it.
    */
   nested?: boolean;
+  /**
+   * Optional. Absent or null means uncategorised — the mark draws exactly as
+   * it does today, with no glyph. Board vocabulary handed down, like `tone`:
+   * the category is the trip's own word for what a kept thing is, decided
+   * where the entry lives and passed to the map already settled. The map
+   * never asks a provider what a place "is" — a provider's taxonomy is a
+   * display hint at best (see GeocodeResult.kind), and reading one into this
+   * field would freeze one renderer's vocabulary into the seam.
+   */
+  category?: EntryCategory | null;
 }
 
 /** A plain lat/lng box — the provider-agnostic stand-in for LatLngBounds. */
