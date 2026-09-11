@@ -139,7 +139,9 @@ describe('TripsList', () => {
     expect(within(saved).getByText(TRIP_TITLE)).toBeInTheDocument();
     expect(within(saved).getByRole('button', { name: 'Bring back' })).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('link', { name: TRIP_TITLE })).not.toBeInTheDocument());
-    // Set aside, never deleted.
+    // Set aside is the whole of what this button does: the trip is still
+    // there, archived, and destroying it is a second act you have to ask for
+    // separately from the row it lands on (see "Delete for good" below).
     const { entry } = await api.get<{ entry: Entry }>(`/entries/${SEEDED_TRIP_ID}`);
     expect(entry.archived_at).not.toBeNull();
   });
@@ -189,6 +191,72 @@ describe('TripsList', () => {
 });
 
 /**
+ * Saving a trip for later is one tap and always undoable — the row it lands on
+ * is still on the page with "Bring back" on it. Deleting it for good is a
+ * second, separate act on something already saved, and it is the end of the
+ * road, so it never appears until the first step has been taken and it never
+ * happens on one press.
+ */
+describe('TripsList — deleting a saved trip for good', () => {
+  /** Sets the seeded trip aside, which is what "Save for later" does. */
+  const saveForLater = () => api.delete(`/entries/${SEEDED_TRIP_ID}`);
+
+  it('offers it beside "Bring back" on a trip you own', async () => {
+    await saveForLater();
+    renderTrips();
+
+    const saved = await screen.findByRole('region', { name: 'Saved for later' });
+    expect(within(saved).getByRole('button', { name: 'Bring back' })).toBeInTheDocument();
+    expect(within(saved).getByRole('button', { name: 'Delete for good' })).toBeInTheDocument();
+  });
+
+  /** Step one is unchanged everywhere: a live trip has nothing to delete yet,
+   * because setting it aside is still the only thing on offer. */
+  it('offers nothing of the kind on a trip that is still in the grid', async () => {
+    renderTrips();
+    await screen.findByRole('link', { name: TRIP_TITLE });
+
+    expect(screen.queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
+  });
+
+  it('asks first, and destroys nothing until the dialog is answered', async () => {
+    await saveForLater();
+    const user = userEvent.setup();
+    renderTrips();
+
+    await user.click(await screen.findByRole('button', { name: 'Delete for good' }));
+
+    // The refused attempt IS the preview — the dialog is standing in front of
+    // a deletion that has not happened, so the trip is still there behind it.
+    expect(await screen.findByRole('dialog', { name: `Delete "${TRIP_TITLE}" for good?` })).toBeInTheDocument();
+    const { entry } = await api.get<{ entry: Entry }>(`/entries/${SEEDED_TRIP_ID}`);
+    expect(entry.title).toBe(TRIP_TITLE);
+
+    // The confirm names the ideas going with it, so its exact wording depends
+    // on the fixture; that it says "delete the trip" is this test's business.
+    await user.click(screen.getByRole('button', { name: /^Yes, delete the trip/ }));
+
+    // Nothing else on this row can say it: the row itself is gone.
+    expect(await screen.findByText('Deleted for good.')).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Saved for later')).not.toBeInTheDocument());
+    await expect(api.get(`/entries/${SEEDED_TRIP_ID}`)).rejects.toThrow();
+  });
+
+  it('leaves the trip saved for later when you back out', async () => {
+    await saveForLater();
+    const user = userEvent.setup();
+    renderTrips();
+
+    await user.click(await screen.findByRole('button', { name: 'Delete for good' }));
+    await user.click(await screen.findByRole('button', { name: 'No, keep it saved for later' }));
+
+    const saved = await screen.findByRole('region', { name: 'Saved for later' });
+    expect(within(saved).getByText(TRIP_TITLE)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+/**
  * `/` shows the trips you are on, whatever you may do to each of them, so this
  * is the one screen where roles sit side by side. Signed in, the fixtures make
  * the demo user the owner of the seeded trip; `setRole` moves them.
@@ -221,6 +289,22 @@ describe('TripsList — a trip you are only reading', () => {
     expect(await screen.findByText('Saved for later')).toBeInTheDocument();
     expect(screen.getByText(TRIP_TITLE)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Bring back' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * The stronger verb answers to the stronger rule, and on a trip that is the
+   * same one: a member may unmake their own ideas, never the trip everybody
+   * else is standing on. Written to `canDeleteForGood` rather than to the
+   * archive rule so the two are pinned apart even where they agree.
+   */
+  it('offers a member no way to delete it for good either', async () => {
+    await signIn();
+    await api.delete(`/entries/${SEEDED_TRIP_ID}`);
+    setRole(SEEDED_TRIP_ID, DEMO_USER_ID, 'member');
+    renderTrips();
+
+    expect(await screen.findByText('Saved for later')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
   });
 });
 

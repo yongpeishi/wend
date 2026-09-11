@@ -624,13 +624,24 @@ export function IdeaRow({
                     Edit
                   </Button>
 
-                  {/* Set aside, never delete — SetAsideSection at the foot of
-                      the board is the way back, on the same screen as the way
-                      out. The label names that list rather than the motion, so
-                      the way back is already in the words on the way out. */}
+                  {/* Set aside, never delete — no live idea carries a delete
+                      control anywhere in the product, and this row is no
+                      exception. SetAsideSection at the foot of the board is the
+                      way back, on the same screen as the way out, and the label
+                      names that list rather than the motion so the way back is
+                      already in the words on the way out.
+
+                      Deleting for good does exist now, one step further on:
+                      it is offered from inside that list, on something already
+                      set aside. The label stays as it is — it names where the
+                      thing lands, which is the useful half — and the title
+                      carries the onward pointer, so someone hunting for a
+                      delete is told where it lives instead of concluding there
+                      isn't one. */}
                   <Button
                     variant="quiet"
                     size="small"
+                    title="Moves it to the Set aside list at the foot of the board. You can pick it back up from there, or delete it for good."
                     onClick={() =>
                       archiveEntry.mutate(entry.id, {
                         onSuccess: () => show('Set aside.', 'success'),

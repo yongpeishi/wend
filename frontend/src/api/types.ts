@@ -94,6 +94,20 @@ export interface Entry {
    * read as "not an owner and not a member".
    */
   my_role?: TripRole | null;
+  /**
+   * Did you write this? A fact about the entry, not a capability — but the
+   * only capability authorship grants reads it: `canDeleteForGood` in
+   * `auth/tripRole.ts` lets the creator of a thing destroy it even where
+   * `my_role` alone would not. Follows the `my_vote`/`my_role` idiom: true of
+   * the caller who asked, and of nobody else.
+   *
+   * Optional for the same reason `my_role` is: existing
+   * `makeEntry(overrides: Partial<Entry>)` fixtures would otherwise stop
+   * compiling. Read it as `entry.created_by_me === true` — never as a bare
+   * truthiness test, where `undefined` would quietly mean "somebody else
+   * wrote it" on a payload that simply predates the field.
+   */
+  created_by_me?: boolean;
   /** Present only on GET /api/trips/:trip_id/nearby results. */
   distance_km?: number;
 }

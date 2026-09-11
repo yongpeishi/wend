@@ -8,6 +8,7 @@ import type {
   Entry,
   EntriesQuery,
   EntryDetailResponse,
+  EntryKind,
   EntryTree,
   UpdateEntryParams,
 } from './types';
@@ -175,6 +176,158 @@ export function useRestoreEntry() {
   return useMutation({
     mutationFn: (id: number) => api.post<{ entry: Entry }>(`/entries/${id}/restore`).then((r) => r.entry),
     onSuccess: invalidate,
+  });
+}
+
+// ---- Deleting for good ---------------------------------------------------
+// A different route from `DELETE /entries/:id`, which still archives and always
+// will. Two verbs, two URLs, so no stray param can turn "set aside" into
+// "destroyed" and the server log says plainly which one happened. The server
+// enforces the order as well: it refuses anything that is not already
+// archived, so the reversible first step is a contract, not a UI convention.
+
+/**
+ * What the refusal tells you about the thing you are about to destroy.
+ *
+ * camelCase here, snake_case on the wire — the boundary is this file, the same
+ * as `ChangeTripDatesResult` above.
+ *
+ * The counts are of what GOES, not of what exists: `votesCount`/`todosCount`
+ * are the target's plus those of every descendant that will actually be
+ * destroyed. And the three descendant counts are three different fates —
+ * destroyed with it, surviving because they also live elsewhere, and left
+ * behind because somebody else wrote them and you have no authority over
+ * them. The modal states all three, so the split is never a surprise.
+ *
+ * `trips` is EVERY trip ancestor the caller can see, not "the other trips":
+ * the server has no idea which trip screen the request came from, so filtering
+ * out the current one is the modal's job. Each comes with its id so that filter
+ * can match on identity rather than on a title two trips might share.
+ */
+export interface DeleteForGoodTrip {
+  id: number;
+  title: string;
+}
+
+export interface DeleteForGoodPreview {
+  title: string;
+  kind: EntryKind;
+  votesCount: number;
+  todosCount: number;
+  trips: DeleteForGoodTrip[];
+  descendantsDestroyedCount: number;
+  descendantsSurvivingCount: number;
+  descendantsLeftBehindCount: number;
+}
+
+/**
+ * `needs_confirmation` is a refusal, not a failure — NOTHING has been
+ * destroyed when it arrives. Exactly the idiom `ChangeTripDatesResult` uses:
+ * there is no preview endpoint, the attempt is its own preview, and the same
+ * call sent again with `confirm: true` is the answer. One code path, so what
+ * the modal promises can never drift from what the destroy does.
+ */
+export type DeleteForGoodResult =
+  | { status: 'needs_confirmation'; preview: DeleteForGoodPreview }
+  | { status: 'deleted' };
+
+/** The 422 body, snake_case, exactly as the server sends it. */
+interface PermanentDeletionBody {
+  error: 'permanent_deletion_needs_confirmation';
+  preview: {
+    title: string;
+    kind: EntryKind;
+    votes_count: number;
+    todos_count: number;
+    trips: DeleteForGoodTrip[];
+    descendants_destroyed_count: number;
+    descendants_surviving_count: number;
+    descendants_left_behind_count: number;
+  };
+}
+
+function isPermanentDeletionBody(body: unknown): body is PermanentDeletionBody {
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    (body as { error?: unknown }).error === 'permanent_deletion_needs_confirmation' &&
+    typeof (body as { preview?: unknown }).preview === 'object' &&
+    (body as { preview?: unknown }).preview !== null
+  );
+}
+
+/**
+ * Stated with `fetch` rather than through `api.delete`, for the same reason
+ * `patchTripDates` above is: the shared client flattens every error body into
+ * an `ApiError` carrying a message and throws away the rest — and the rest is
+ * the seven counts this modal is made of. The same fix applies to both (an
+ * error type that keeps its body, in src/api/client.ts), at which point this
+ * becomes `api.delete` again.
+ *
+ * `must_be_set_aside_first` deliberately falls through to the throw. It is not
+ * a state this UI renders: the verb only exists on already-archived things, so
+ * seeing it means the client sent a request it should never have sent, and a
+ * thrown error is how that reaches someone.
+ */
+async function deleteEntryPermanently(id: number, confirm?: boolean): Promise<DeleteForGoodResult> {
+  const query = confirm === true ? '?confirm_permanent=true' : '';
+  const response = await fetch(`/api/entries/${id}/permanent${query}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
+
+  const body: unknown = (response.headers.get('content-type') ?? '').includes('application/json')
+    ? await response.json()
+    : undefined;
+
+  if (isPermanentDeletionBody(body)) {
+    const p = body.preview;
+    return {
+      status: 'needs_confirmation',
+      preview: {
+        title: p.title,
+        kind: p.kind,
+        votesCount: p.votes_count,
+        todosCount: p.todos_count,
+        trips: p.trips,
+        descendantsDestroyedCount: p.descendants_destroyed_count,
+        descendantsSurvivingCount: p.descendants_surviving_count,
+        descendantsLeftBehindCount: p.descendants_left_behind_count,
+      },
+    };
+  }
+
+  if (!response.ok) {
+    const message =
+      typeof body === 'object' && body !== null && typeof (body as { error?: unknown }).error === 'string'
+        ? (body as { error: string }).error
+        : response.statusText || `Request failed (${response.status})`;
+    throw new ApiError(response.status, message);
+  }
+
+  // 204, no body. The row is gone.
+  return { status: 'deleted' };
+}
+
+/**
+ * Destroy an entry, and the things inside it that live nowhere else.
+ *
+ * Unlike `useArchiveEntry` this invalidates all three caches: a destroyed
+ * entry takes its placements with it, so the itinerary and the schedule are
+ * both stale, not just the entry lists. Nothing is invalidated on the refusal
+ * — no write happened.
+ */
+export function useDeleteEntryForGood() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, confirm }: { id: number; confirm?: boolean }) => deleteEntryPermanently(id, confirm),
+    onSuccess: (result) => {
+      if (result.status !== 'deleted') return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.entries.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.itinerary.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.schedule.all });
+    },
   });
 }
 

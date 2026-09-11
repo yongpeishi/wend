@@ -18,6 +18,12 @@ Rails.application.routes.draw do
       end
     end
 
+    # Deliberately its own line rather than another `member do` verb next to the
+    # archive: DELETE /api/entries/:id still means "set aside, forever", and a
+    # stray param must never be able to turn one into the other. The path says
+    # plainly in the log which of the two happened.
+    delete "entries/:id/permanent", to: "entries#destroy_permanently"
+
     post "entries/:entry_id/links", to: "entry_links#create"
     post "entries/:entry_id/links/reorder", to: "entry_links#reorder"
     patch "entries/:entry_id/links/:child_id", to: "entry_links#update"

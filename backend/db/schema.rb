@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_28_120001) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_07_120000) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -79,6 +79,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_28_120001) do
     t.index ["kind"], name: "index_entries_on_kind"
     t.index ["lat", "lng"], name: "index_entries_on_lat_and_lng"
     t.index ["to_entry_id"], name: "index_entries_on_to_entry_id"
+  end
+
+  create_table "entry_deletions", force: :cascade do |t|
+    t.datetime "deleted_at", null: false
+    t.integer "descendants_destroyed", default: 0, null: false
+    t.integer "entry_id", null: false
+    t.string "kind", null: false
+    t.string "title", null: false
+    t.integer "user_id", null: false
+    t.index ["user_id"], name: "index_entry_deletions_on_user_id"
   end
 
   create_table "entry_links", force: :cascade do |t|
@@ -199,6 +209,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_28_120001) do
   add_foreign_key "entries", "entries", column: "from_entry_id"
   add_foreign_key "entries", "entries", column: "to_entry_id"
   add_foreign_key "entries", "users", column: "created_by_id"
+  add_foreign_key "entry_deletions", "users"
   add_foreign_key "entry_links", "entries", column: "child_id"
   add_foreign_key "entry_links", "entries", column: "parent_id"
   add_foreign_key "feedbacks", "users"

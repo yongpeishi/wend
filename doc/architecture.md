@@ -71,13 +71,32 @@ structure: trips contain ideas, ideas contain sub-ideas, bundles gather ideas.
 | from_entry_id | integer FK entries | transport only: origin |
 | to_entry_id | integer FK entries | transport only: destination |
 | created_by_id | integer FK users, not null | |
-| archived_at | datetime | **soft-hide only — never destroy.** |
+| archived_at | datetime | **soft-hide. `DELETE` sets it and never destroys**; destroying is a separate route (§4). |
 | created_at/updated_at | datetime | |
 
 Indexes: `kind`, `category`, `created_by_id`, `archived_at`, `[lat, lng]`.
 
-**Never hard-delete an Entry.** Principle 1 is "nothing is discarded". `DELETE` on an
-entry sets `archived_at`. Unlinking removes an `EntryLink`, never the Entry.
+**Never hard-delete an Entry in one step.** Principle 1 is "nothing is discarded in one
+step". `DELETE` on an entry sets `archived_at`. Unlinking removes an `EntryLink`, never
+the Entry. Destroying the row is a second, separate act on a separate route,
+`DELETE /api/entries/:id/permanent` (§4), and it is refused with
+`422 must_be_set_aside_first` unless `archived_at` is already set — so the reversible step
+is the API contract, not a UI convention a script can skip. Every destroy appends one
+`entry_deletions` row (below).
+
+**What a destroy takes with it.** The subtree first: it destroys the descendants that live
+nowhere else, and leaves alone anything also reachable from another trip or from the
+library. That walk is filtered by the same policy as the destroy itself, so it removes only
+what the actor could have destroyed one at a time; anything else is left behind and falls
+back to the library. Then the inbound references. `entry_links`, `votes` and `todos` go with
+the row, and so do the `schedule_items` that place it — a placement of a thing that no
+longer exists is a ghost on the day, and a placement is not a kept thing (below). Three
+references are nullified rather than followed: `schedule_items.chosen_entry_id` (the
+bundle's placement survives, only the choice inside it is unmade), `entries.from_entry_id` /
+`.to_entry_id` (the transport leg survives with one blank end rather than disappearing
+silently), and `trip_days.lodging_entry_id` (the day survives, the lodging pill empties).
+Destroying a trip also takes its `trip_memberships`. None of this touches archiving: it
+fires on `destroy` only.
 
 ### `entry_links` — the M:M self-reference
 | column | type | notes |
@@ -203,9 +222,10 @@ mutually exclusive in practice but not enforced — the API sends both plus a re
 | archived_at | datetime | **archived = "not chosen, kept anyway" — never destroyed.** |
 | created_at/updated_at | datetime | |
 
-Same rule as entries: a version the user did not go with is archived, not deleted, so a
-change of mind costs nothing. A day always keeps **at least one live version**; archiving
-the last one is rejected with 422.
+Stricter than entries, which have a destroy path (§4) that day versions deliberately do
+not: a version the user did not go with is archived, not deleted, so a change of mind costs
+nothing. A day always keeps **at least one live version**; archiving the last one is
+rejected with 422.
 
 Model rules:
 
@@ -221,6 +241,22 @@ Model rules:
   the first letter nobody is using.
 - `DayVersion#archive!` — sets `archived_at`; returns false rather than leaving a day with
   no live version.
+
+### `entry_deletions` — what a destroyed Entry leaves behind
+
+One row per successful `DELETE /api/entries/:id/permanent` (§4). Append-only: no UI, no
+read endpoint, no restore. It is the only trace a destroyed Entry leaves, and it exists so
+that "where did my trip go?" has an answer.
+
+| column | type | notes |
+| --- | --- | --- |
+| id | integer PK | |
+| user_id | integer FK users | who deleted it |
+| entry_id | integer | the id the destroyed row had |
+| kind | string | `trip` \| `idea` \| `bundle`, as it was |
+| title | string | as it was |
+| descendants_destroyed | integer | how many went with it |
+| deleted_at | datetime | |
 
 ### `feedbacks` — what users say about the app
 
@@ -306,6 +342,8 @@ GET    /api/entries/:id                                 -> 200 { entry, parents,
 PATCH  /api/entries/:id   { entry: {...} }              -> 200 { entry }  (kind is create-only: ignored here; use lift/absorb)
 DELETE /api/entries/:id                                 -> 200 { entry }  (sets archived_at)
 POST   /api/entries/:id/restore                         -> 200 { entry }
+DELETE /api/entries/:id/permanent                       -> 422 + the preview counts
+         ?confirm_permanent=true                        -> 204, row destroyed
 
 GET    /api/entries/:id/tree?depth=3                    -> 200 { entry, descendants: [Entry] }
 POST   /api/entries/:id/lift                            -> 200 { entry }
@@ -338,6 +376,22 @@ With confirmation, the shift and the removal happen in one transaction: the drop
 the usual `{ entry }`. No Entry is touched, so those ideas reappear under "Not placed yet".
 A PATCH that names neither date never drops anything, even a day that was already out of
 range.
+
+**Deleting for good is a separate route.** `DELETE /api/entries/:id` keeps its meaning —
+archive, forever — so no stray param can turn an archive into a destruction, and the log
+line says plainly which one happened. `DELETE /api/entries/:id/permanent` destroys the row,
+and refuses twice before it does. An entry that is not already archived is
+`422 { "error": "must_be_set_aside_first" }`. Without `confirm_permanent=true` the attempt
+is its own preview, the same idiom as the date shift above: nothing is written, and the 422
+`permanent_deletion_needs_confirmation` carries the counts the confirmation dialog is built
+from — what goes with the row, and what is also in another trip and stays. With it, 204 and
+the row is gone; there is no restore, only the `entry_deletions` row (§2).
+
+Who may is `EntryPolicy#destroy_permanently?`: the trip's owner, or whoever created the
+thing, with a `write?` floor so a member later demoted to viewer does not keep a destroy
+verb on their old work. A trip has no authorship fallback and answers to its owner alone,
+matching its `destroy?`. The cascade obeys the same policy row by row (§2), so a member
+deleting their own idea cannot sweep away a co-traveller's sub-idea on the way past.
 
 ### Links
 ```

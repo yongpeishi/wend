@@ -97,6 +97,28 @@ class EntrySerializerTest < ActiveSupport::TestCase
     )
   end
 
+  # Authorship on the wire, for the one capability it can grant ("delete for
+  # good"). A per-caller fact like my_vote and my_role, so it belongs in `list`
+  # and not in `base` -- which has no current_user to answer it with.
+  test "created_by_me answers for the caller, not for the row" do
+    other = create_user(name: "Peter")
+    mine = create_idea(title: "Mine", created_by: @user)
+    theirs = create_idea(title: "Theirs", created_by: other)
+
+    rows = EntrySerializer.list([ mine, theirs ], current_user: @user).index_by { |r| r["id"] }
+
+    assert_equal true, rows[mine.id]["created_by_me"]
+    assert_equal false, rows[theirs.id]["created_by_me"]
+  end
+
+  # Signed-out callers reach the serializer through nothing today, but the key is
+  # promised on every row, so it must be a boolean rather than nil.
+  test "created_by_me is false, never nil, with no current user" do
+    mine = create_idea(created_by: @user)
+
+    assert_equal false, EntrySerializer.one(mine)["created_by_me"]
+  end
+
   # `Todo#entry` and a schedule_item's `entry` are both optional, so the nil is
   # handled once here rather than guarded at every call site.
   test "summary of no entry is nil, not an empty hash" do

@@ -119,10 +119,29 @@ the `trip_memberships` rows in §2, exposed as `collaborators` to keep the two a
 wholesale, so a bundle can be nested, forked, voted on, and given todos for free. Cost:
 some columns (category, lat/lng) are always null on bundles.
 
-**Nothing is hard-deleted.** `DELETE /api/entries/:id` sets `archived_at`; it never
+**Nothing is deleted in one step.** `DELETE /api/entries/:id` sets `archived_at`; it never
 destroys. Unlinking removes an `EntryLink` only. Archived entries are hidden by default on
-`GET /api/entries`; `include_archived=true` shows both. There is no "only archived" filter
-and no UI path that permanently destroys an Entry.
+`GET /api/entries`; `include_archived=true` shows both. There is no "only archived" filter,
+and no live item anywhere carries a delete control — every removal verb in the product is
+"set aside", and set aside is always reversible.
+
+**Deleting for good is a second, separate act.** It exists only inside the set-aside list,
+only on something already set aside, and only behind a confirmation that names what goes.
+The API enforces that order rather than trusting the UI to: the destroy is its own route,
+`DELETE /api/entries/:id/permanent`, and an entry that is not already archived is refused
+`422 must_be_set_aside_first`. Unconfirmed, the attempt is its own preview — 422 plus the
+counts that fill the dialog, the idiom the date shift already uses; with
+`?confirm_permanent=true` it answers 204 and the row is gone. Who may: the trip's owner, or
+whoever created the thing, with a `write?` floor so a member later demoted to viewer does
+not keep a destroy verb on their old work. A trip answers to its owner alone (§2).
+Destroying a trip takes the descendants that live nowhere else and leaves anything also
+reachable from another trip or from the library; the cascade is filtered by the same policy,
+so it destroys only what the actor could have destroyed one at a time. Cost: this is the one
+irreversible act in the product, so it buys an append-only `entry_deletions` row per destroy
+(`user_id`, `entry_id`, `kind`, `title`, `descendants_destroyed`, `deleted_at`) — no UI, no
+read endpoint, no restore. It is the only thing standing between "where did my trip go?" and
+a shrug. Day versions are out of it entirely: `day_versions.archived_at` keeps the
+never-destroyed rule.
 
 **Times are integer minutes from midnight.** `schedule_items.starts_at_minutes` /
 `ends_at_minutes`, 0..1439, alongside a `day` date. This sidesteps timezone handling

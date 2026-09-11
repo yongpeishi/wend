@@ -34,7 +34,13 @@ class EntrySerializer
           "vote_tally" => tallies[entry.id] || { "total" => 0, "count" => 0, "average" => 0.0, "voters" => [] },
           "my_vote" => my_votes[entry.id],
           "scheduled" => scheduled_ids.include?(entry.id),
-          "my_role" => entry.kind == "trip" ? roles[entry.id] : nil
+          "my_role" => entry.kind == "trip" ? roles[entry.id] : nil,
+          # A fact about the caller, like my_vote and my_role -- not a capability.
+          # "Delete for good" is the first verb in this product that authorship can
+          # grant, and my_role is nil on everything that is not a trip, so the
+          # client cannot work this out from anything already on the wire. Free:
+          # created_by_id is on the row that is already loaded, so no extra query.
+          "created_by_me" => current_user.present? && entry.created_by_id == current_user.id
         )
       end
     end

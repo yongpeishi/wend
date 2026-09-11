@@ -17,6 +17,8 @@ import { EmptyState } from '../components/EmptyState';
 import { PageTitle } from '../components/PageTitle';
 import { QueryGate } from '../components/QueryGate';
 import { useToast } from '../components/Toast';
+import { DeleteForGoodModal } from '../components/DeleteForGoodModal';
+import { useDeleteForGood } from '../components/useDeleteForGood';
 import { useCreateEntry, useEntries, useRestoreEntry } from '../api';
 import type { Entry } from '../api/types';
 import { BoardMapPane } from '../features/board/BoardMapPane';
@@ -176,6 +178,17 @@ export function TripBoard() {
   const restoreEntry = useRestoreEntry();
   const createEntry = useCreateEntry();
   const { addLink } = useLinkMutations();
+
+  // The second step, offered only from the set-aside list at the foot of the
+  // ideas column. The hook owns the whole two-round-trip gesture — the refused
+  // attempt, the counts it comes back with, the confirmed re-send — so all the
+  // board supplies is where the toast goes. The failure sentence is the hook's,
+  // already written for a person, so it is passed through rather than replaced
+  // by this file's SAVE_FAILED, which is about a write that did not stick.
+  const deleteForGood = useDeleteForGood({
+    onDeleted: () => show('Deleted for good.', 'success'),
+    onError: (message) => show(message, 'error'),
+  });
 
   // A stable handle, not an inline arrow: components with focus effects
   // memoize against their close callback to keep those effects from re-firing
@@ -772,6 +785,7 @@ export function TripBoard() {
             entries={archivedIdeas}
             onRestore={(id) => restoreEntry.mutate(id, { onSuccess: () => show('Picked back up.', 'success') })}
             canEdit={canEdit}
+            onDeleteForGood={deleteForGood.request}
           />
         </section>
 
@@ -797,6 +811,16 @@ export function TripBoard() {
           </Card>
         )}
       </DragOverlay>
+
+      {/* The ideas column's dialog. Modal portals to the body, so where this
+          sits changes nothing on screen — it sits at the foot of the board
+          rather than inside the column so that reading this file, the one
+          overlay the board owns is somewhere you can find it. The plans rail
+          runs its own copy of this gesture, for the same reason it owns
+          restoring — see BundlePanel. `currentTripId` is the board's to
+          supply and is deliberately not in `modalProps`; without it the dialog
+          would name the very trip you are standing on back to you. */}
+      <DeleteForGoodModal {...deleteForGood.modalProps} currentTripId={trip.id} />
     </DndContext>
   );
 }

@@ -451,8 +451,11 @@ function MapIdeaActions({ entry, bundles, members, canEdit, onToast }: MapIdeaAc
         )}
       </div>
 
-      {/* Set aside, never delete — the board's SetAsideSection is the way back,
-          and the label names that list rather than the motion. */}
+      {/* Set aside, never delete — nothing live on this list gets a delete
+          control. The board's SetAsideSection is the way back, and the label
+          names that list rather than the motion. Deleting for good exists one
+          step further on, from inside that list and only on something already
+          set aside; it is not offered here, and there is no map surface for it. */}
       <Button
         variant="quiet"
         size="small"

@@ -186,6 +186,7 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
         patch "/api/entries/#{@idea.id}", params: { entry: { title: "Renamed" } }, as: :json
       } ],
       "api/entries#destroy" => [ :denied, -> { delete "/api/entries/#{@idea.id}" } ],
+      "api/entries#destroy_permanently" => [ :denied, -> { delete "/api/entries/#{@idea.id}/permanent" } ],
       "api/entries#restore" => [ :denied, -> { post "/api/entries/#{@idea.id}/restore" } ],
       "api/entries#tree" => [ :denied, -> { get "/api/entries/#{@trip.id}/tree" } ],
       "api/entries#lift" => [ :denied, -> { post "/api/entries/#{@idea.id}/lift" } ],

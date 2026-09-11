@@ -6,6 +6,23 @@ class EntryPolicy < ApplicationPolicy
   end
 
   def restore? = destroy?
+
+  # Setting aside is reversible, so any member may do it. This is not, so it needs
+  # either authorship or ownership. `write?` on the creator branch is the floor: a
+  # member later demoted to viewer does not keep a destroy verb on their old work.
+  #
+  # A trip has no authorship fallback -- trip access has exactly one authority, a
+  # membership row (see Entry#role_for) -- so a trip answers to its owner alone.
+  #
+  # created_by_id is read straight off the record rather than folded into the role
+  # because role_for has no created_by branch for an entry inside a trip; its
+  # fallback fires only for entries that hang under no trip at all.
+  def destroy_permanently?
+    return manage? if record.trip?
+
+    manage? || (record.created_by_id == user&.id && write?)
+  end
+
   def tree?    = read?
   def lift?    = write?
   def fork?    = write?

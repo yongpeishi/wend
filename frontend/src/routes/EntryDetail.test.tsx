@@ -7,8 +7,10 @@ import { http, HttpResponse } from 'msw';
 import { ToastProvider } from '../components/Toast';
 import { TripRoleProvider } from '../auth/TripRoleContext';
 import { server } from '../mocks/server';
-import { db } from '../mocks/db';
+import { db, setRole } from '../mocks/db';
 import { EntryDetailModal } from './EntryDetail';
+import buttonStyles from '../design/components/core/Button.module.css';
+import styles from './EntryDetail.module.css';
 import type { TripRole } from '../api/types';
 
 /**
@@ -28,6 +30,24 @@ const IDEA = { id: 5, title: 'Fushimi Inari at dawn' };
  * appears in, or the checklist belongs to a dialog about what the idea is.
  */
 const RATED = { id: 2, title: 'Nanzen-ji' };
+
+/**
+ * Seeded entry 1 — the trip itself, and the one kind of row the wire actually
+ * populates `my_role` on. It is the fixture for the half of "may I destroy
+ * this?" that a real role answers, where every idea above can only be answered
+ * by authorship.
+ */
+const TRIP = { id: 1, title: 'Six days in Kyoto' };
+
+/**
+ * Who is asking. The seeded ideas were all written by user 1, so signing in as
+ * them is what makes `created_by_me` true — and nothing in this file was signed
+ * in at all before the destroy verb started needing to know. resetDb() in the
+ * global afterEach signs back out.
+ */
+function signIn(userId: number) {
+  db.currentUserId = userId;
+}
 
 /**
  * What the dialog is called, which now depends on what you can do with it. It
@@ -435,6 +455,187 @@ describe('EntryDetail — a URL in what someone wrote', () => {
     for (const derived of ['Place', '34.9671', '135.7727']) {
       expect(read.getByText(derived).querySelector('*')).toBeNull();
     }
+  });
+});
+
+/**
+ * Set aside is a state with two ways out of it: pick it back up, or end it.
+ * The note that describes the state is for everyone — that this was set aside
+ * is part of what the entry says about itself — and only the verbs are gated.
+ *
+ * This screen is the detail view of the thing being destroyed, so the one
+ * thing it has to do that no other surface does is leave: after the delete
+ * there is no entry to be the detail of.
+ */
+describe('EntryDetail — deleting a set-aside idea for good', () => {
+  /** resetDb() in the global afterEach puts the fixture back. */
+  function setAside(id = IDEA.id) {
+    const entry = db.entries.find((e) => e.id === id);
+    if (!entry) throw new Error(`Seeded entry ${id} has gone missing`);
+    entry.archived_at = new Date().toISOString();
+  }
+
+  // The demo user wrote the seeded ideas, so being them is what makes an idea
+  // yours to destroy here — this screen asks for that positively now, rather
+  // than reading a null role as "yours". The describe below is the other half:
+  // who is refused, and why.
+  beforeEach(() => signIn(1));
+
+  it('offers it beside "Pick it back up" once the idea is set aside', async () => {
+    setAside();
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    expect(read.getByText('Set aside. It’s still here whenever you want it.')).toBeInTheDocument();
+    expect(read.getByRole('button', { name: 'Pick it back up' })).toBeInTheDocument();
+    expect(read.getByRole('button', { name: 'Delete for good' })).toBeInTheDocument();
+  });
+
+  /**
+   * The destroy is the heavier act, so it gets the lighter styling — the rule
+   * the board's set-aside row and the trips list both already follow. This
+   * screen was the odd one out: `variant="quiet"` on its own still paints leaf
+   * green, bold and underlined, so the irreversible verb sat beside the way
+   * back looking every bit as loud as it.
+   *
+   * Asserted as classes rather than as computed colour because the muting is
+   * done by a CSS module rule the test renderer never applies; what is worth
+   * pinning is that the two buttons are drawn from different recipes at all —
+   * the destroy carries the local hook, the way back keeps the bordered
+   * variant, and neither wears the other's.
+   */
+  it('is drawn quieter than the way back, not identically to it', async () => {
+    setAside();
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    const restore = read.getByRole('button', { name: 'Pick it back up' });
+    const destroy = read.getByRole('button', { name: 'Delete for good' });
+
+    expect(restore).toHaveClass(buttonStyles.secondary);
+    expect(restore).not.toHaveClass(styles.deleteForGood);
+
+    expect(destroy).toHaveClass(styles.deleteForGood);
+    expect(destroy).not.toHaveClass(buttonStyles.secondary);
+  });
+
+  /** The sentence survives, both verbs go: a viewer is told where the idea
+   * stands and given nothing to do about it, which is how the rest of the
+   * panel already reads to them. */
+  it('tells a viewer the same thing and hands them neither verb', async () => {
+    setAside();
+    const panel = await openPanel('viewer');
+    const read = within(panel);
+
+    expect(read.getByText('Set aside. It’s still here whenever you want it.')).toBeInTheDocument();
+    expect(read.queryByRole('button', { name: 'Pick it back up' })).not.toBeInTheDocument();
+    expect(read.queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
+  });
+
+  /** Step one first, everywhere. A live idea has no delete on it because the
+   * whole note this button lives in is about being set aside. */
+  it('is nowhere to be found on an idea that is still live', async () => {
+    const panel = await openPanel('member');
+    expect(within(panel).queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
+  });
+
+  it('asks first, then leaves the screen it was the detail of', async () => {
+    setAside();
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    const panel = await openPanel('member', IDEA, onClose);
+
+    await user.click(within(panel).getByRole('button', { name: 'Delete for good' }));
+
+    // The refused attempt is the preview, so the panel is still open behind a
+    // deletion that has not happened — and closing it is not one of the
+    // answers on offer.
+    expect(await screen.findByRole('dialog', { name: `Delete "${IDEA.title}" for good?` })).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: /^Yes, delete it/ }));
+
+    // Staying here would be a detail screen for a row that no longer exists —
+    // a refetch into "That one isn't here", which is the wrong sentence for
+    // something you just deleted on purpose. The toast carries the news out.
+    expect(await screen.findByText('Deleted for good.')).toBeInTheDocument();
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+
+/**
+ * The leak this closes, found in a browser pass: Anna, a viewer on the Japan
+ * trip, opened /entries/:id on somebody else's set-aside idea and was offered
+ * "Delete for good" — all the way into the confirmation, where the server
+ * finally said no.
+ *
+ * Two defaults met. /entries/:id renders outside any <TripRoleProvider>, so
+ * `useCanEdit()` returns the null role's answer, which is "yours, therefore
+ * editable"; and `my_role` is null on every idea, so the entry could not
+ * contradict it. Every case below therefore mounts a role that CAN edit — the
+ * point is that the destroy verb no longer takes that as permission to destroy.
+ *
+ * The rest of the leak is deliberately still here and asserted: the edit form
+ * and "Pick it back up" reach a viewer at this URL exactly as they did before
+ * this feature existed. Teaching this route to resolve a real trip role is the
+ * fix for that, and it is not one verb's worth of change.
+ */
+describe('EntryDetail — who is offered the destroy at /entries/:id', () => {
+  function setAside(id: number) {
+    const entry = db.entries.find((e) => e.id === id);
+    if (!entry) throw new Error(`Seeded entry ${id} has gone missing`);
+    entry.archived_at = new Date().toISOString();
+  }
+
+  /** Sarah did not write the seeded ideas, and holds no role on the trip. */
+  const SOMEONE_ELSE = 2;
+
+  it('refuses it to someone who neither wrote it nor holds a role on it', async () => {
+    setAside(IDEA.id);
+    signIn(SOMEONE_ELSE);
+    const panel = await openPanel('member');
+    const read = within(panel);
+
+    expect(read.queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
+    // The state is still described, and the pre-existing leak is untouched:
+    // the way back is still offered here, wrongly, as it was before.
+    expect(read.getByText('Set aside. It’s still here whenever you want it.')).toBeInTheDocument();
+    expect(read.getByRole('button', { name: 'Pick it back up' })).toBeInTheDocument();
+  });
+
+  /** Authorship is the one thing this screen can establish on an idea, and it
+   * is enough on its own — the seeded ideas are the demo user's. */
+  it('offers it to the person who wrote it', async () => {
+    setAside(IDEA.id);
+    signIn(1);
+    const panel = await openPanel('member');
+
+    expect(within(panel).getByRole('button', { name: 'Delete for good' })).toBeInTheDocument();
+  });
+
+  /**
+   * A trip is the one row the wire fills `my_role` in on, so it is the one
+   * place a real role can answer. Sarah did not create this trip — the button
+   * is the role's doing and nothing else.
+   */
+  it('offers it on a trip where a real role allows it', async () => {
+    setAside(TRIP.id);
+    signIn(SOMEONE_ELSE);
+    setRole(TRIP.id, SOMEONE_ELSE, 'owner');
+    const panel = await openPanel('member', TRIP);
+
+    expect(within(panel).getByRole('button', { name: 'Delete for good' })).toBeInTheDocument();
+  });
+
+  /** Same trip, same editable context, one different role — and a viewer's
+   * role is a real answer, so it is the answer. */
+  it('refuses it on a trip where a real role forbids it', async () => {
+    setAside(TRIP.id);
+    signIn(SOMEONE_ELSE);
+    setRole(TRIP.id, SOMEONE_ELSE, 'viewer');
+    const panel = await openPanel('member', TRIP);
+
+    expect(within(panel).queryByRole('button', { name: 'Delete for good' })).not.toBeInTheDocument();
   });
 });
 

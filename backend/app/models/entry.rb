@@ -26,7 +26,22 @@ class Entry < ApplicationRecord
   has_many :todos, foreign_key: :entry_id, inverse_of: :entry, dependent: :destroy
   has_many :trip_todos, class_name: "Todo", foreign_key: :trip_id, inverse_of: :trip, dependent: :destroy
   has_many :schedule_items_as_trip, class_name: "ScheduleItem", foreign_key: :trip_id, dependent: :destroy
-  has_many :schedule_items_as_entry, class_name: "ScheduleItem", foreign_key: :entry_id, dependent: :nullify
+  # A placement of a thing that no longer exists is a ghost row on the day, so it goes
+  # with the entry rather than being emptied out. A schedule_item is not a kept thing
+  # -- see doc/architecture.md section 2 -- which is what makes destroying it safe.
+  has_many :schedule_items_as_entry, class_name: "ScheduleItem", foreign_key: :entry_id, dependent: :destroy
+  # The other three inbound references, all of which carry a real FK constraint and
+  # none of which Entry declared before: without these, destroying an entry that is a
+  # bundle's chosen member or one end of a transport leg raised
+  # ActiveRecord::InvalidForeignKey outright. Nullify rather than destroy in all
+  # three: the bundle's placement survives with the choice inside it unmade, and the
+  # leg survives with one blank end rather than silently disappearing.
+  has_many :schedule_items_as_chosen_entry, class_name: "ScheduleItem", foreign_key: :chosen_entry_id,
+                                            inverse_of: :chosen_entry, dependent: :nullify
+  has_many :legs_from_here, class_name: "Entry", foreign_key: :from_entry_id,
+                            inverse_of: :from_entry, dependent: :nullify
+  has_many :legs_to_here, class_name: "Entry", foreign_key: :to_entry_id,
+                          inverse_of: :to_entry, dependent: :nullify
   has_many :trip_days, foreign_key: :trip_id, inverse_of: :trip, dependent: :destroy
   has_many :lodging_trip_days, class_name: "TripDay", foreign_key: :lodging_entry_id,
                                inverse_of: :lodging_entry, dependent: :nullify

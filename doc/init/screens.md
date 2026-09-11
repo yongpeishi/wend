@@ -7,8 +7,11 @@ records why things are the way they are; `status.md` records what is built.
 
 **The three principles decide every argument:**
 
-1. **Nothing is discarded.** Narrowing hides, never deletes. Every view has a way back to
-   the wider one. If you are about to write a "delete" button, write "set aside" instead.
+1. **Nothing is discarded in one step.** Narrowing hides, never deletes. Every view has a
+   way back to the wider one. If you are about to write a "delete" button, write "set
+   aside" instead — that holds on every screen a user works on. The one exception is the
+   set-aside list itself, where something already set aside can be deleted for good behind
+   a confirmation: see **Set aside, then delete for good** below.
 2. **Grouping is the mechanic.** Anything groupable ungroups just as cheaply. Any group
    forks. Two versions sit side by side until someone decides.
 3. **Legible before lovely.** Times, platforms, addresses read in bright sun, in a hurry.
@@ -90,7 +93,9 @@ Empty: "This one's still a daydream. Add the first thing you'd like to do."
 
 Slides over the board. Title, description, category picker, location (address + map pick),
 duration, source URL, notes. Then: parents ("appears in"), children, `VoteControl` with
-per-user breakdown, todo list, and the actions **Lift out of trip** and **Set aside**.
+per-user breakdown, todo list, and the actions **Lift out of trip** and **Set aside**. An
+entry that is already set aside shows **Pick it back up** and, quieter beside it, **Delete
+for good** — see the cross-cutting rule below.
 
 ---
 
@@ -198,9 +203,27 @@ These rules hold on every screen.
 - *Absorb*: fold one trip into another. From the trip header: "Bring another trip into this
   one" → picker → the absorbed trip becomes an idea under this one, keeping all its children.
 
-**Set aside, never delete.** Archiving is called "set aside" throughout. Every scope has a
-"Set aside · 4" affordance that reveals archived items with a one-tap "Pick it back up".
-There is no destroy path in the UI.
+**Set aside, then delete for good.** Archiving is called "set aside" throughout, and it is
+always one tap, never a dialog, always reversible. Every scope has a "Set aside · 4"
+affordance that reveals archived items with a one-tap "Pick it back up". The affordance
+stays visible when the scope is empty — collapsed, with one line: "Nothing set aside. Things
+you set aside land here, and you can delete them for good from here." That sentence is where
+someone looking for delete finds it.
+
+Beside "Pick it back up", on the right and quieter, sits **"Delete for good"**. It is the
+only destroy path in the product, and it appears nowhere else: no live item anywhere gains a
+delete control, and the verb is offered only on something already set aside. It opens a
+confirmation that names what goes — the votes and to-dos on the thing, and any other trip it
+sits in by name, because an idea in two trips is one row in both, not a copy in each. For a
+trip the confirmation states both numbers: how many ideas live only in it and go with it,
+and how many are also elsewhere and stay where they are. There is no undo and the
+confirmation says so rather than implying one; the toast afterwards is "Deleted for good."
+Bulk select never offers it — deleting several things at once is the shape of the accident
+this two-step exists to prevent.
+
+The surfaces that carry it are the four that show set-aside things: the board's "Set aside"
+disclosure, the plan panel's, "Saved for later" on `/`, and an entry's own detail page when
+it is set aside.
 
 **Filters hide, never remove.** Any narrowing renders its own escape next to it:
 `Showing 9 of 31 · See all`, where "See all" clears the filters. (The escape used to read
