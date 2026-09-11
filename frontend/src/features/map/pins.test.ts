@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { entriesWithCoordinates, entryToPin, pinStateForEntry, pinStateLabel } from './pins';
-import type { Entry } from '../../api/types';
+import type { Entry, EntryCategory } from '../../api/types';
 
 function makeEntry(overrides: Partial<Entry>): Entry {
   return {
@@ -67,14 +67,28 @@ describe('entriesWithCoordinates / entryToPin', () => {
     expect(entriesWithCoordinates(entries).map((e) => e.id)).toEqual([1]);
   });
 
-  it('carries id, title, position and state onto the pin', () => {
-    const entry = makeEntry({ id: 5, title: 'Nanzen-ji', lat: 35.01, lng: 135.76, scheduled: true });
+  it('carries id, title, position, state and category onto the pin', () => {
+    const entry = makeEntry({ id: 5, title: 'Nanzen-ji', lat: 35.01, lng: 135.76, scheduled: true, category: 'place' });
     expect(entryToPin(entry as Entry & { lat: number; lng: number })).toEqual({
       id: 5,
       title: 'Nanzen-ji',
       lat: 35.01,
       lng: 135.76,
       state: 'scheduled',
+      category: 'place',
     });
+  });
+
+  it('leaves an uncategorised entry uncategorised rather than inventing a category', () => {
+    const entry = makeEntry({ id: 6, title: 'A place we heard about', lat: 1, lng: 2, category: null });
+    expect(entryToPin(entry as Entry & { lat: number; lng: number }).category).toBeNull();
+  });
+
+  it('hands the category down verbatim — this is what categorises every map at once', () => {
+    const categories: EntryCategory[] = ['place', 'food', 'activity', 'lodging', 'transport', 'other'];
+    for (const category of categories) {
+      const entry = makeEntry({ id: 7, title: 'Somewhere', lat: 1, lng: 2, category });
+      expect(entryToPin(entry as Entry & { lat: number; lng: number }).category).toBe(category);
+    }
   });
 });

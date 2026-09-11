@@ -24,6 +24,20 @@ export function entriesWithCoordinates(entries: Entry[]): Entry[] {
   return entries.filter((e): e is Entry & { lat: number; lng: number } => e.lat !== null && e.lng !== null);
 }
 
+/**
+ * The one place an entry becomes a pin — which is why carrying `category`
+ * through here is the single change that categorises every map in the app:
+ * TripMap.tsx, TripBoard.tsx and Library.tsx all build their pins from this
+ * function. It is copied, not recomputed: the category is the trip's own word
+ * for the thing, and the map's job is to draw it, not to have an opinion.
+ */
 export function entryToPin(entry: Entry & { lat: number; lng: number }): MapPin {
-  return { id: entry.id, lat: entry.lat, lng: entry.lng, title: entry.title, state: pinStateForEntry(entry) };
+  return {
+    id: entry.id,
+    lat: entry.lat,
+    lng: entry.lng,
+    title: entry.title,
+    state: pinStateForEntry(entry),
+    category: entry.category,
+  };
 }
