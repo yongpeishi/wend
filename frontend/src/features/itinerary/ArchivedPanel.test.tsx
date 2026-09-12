@@ -18,6 +18,7 @@ function item(id: number, title: string): ItineraryItem {
     position: 0,
     entry: { id, kind: 'idea', title, category: 'place', duration_minutes: 120 },
     members: [],
+    member_times: [],
   };
 }
 

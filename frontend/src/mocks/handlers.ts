@@ -25,6 +25,7 @@ import {
   nextFreeName,
   now,
   parentIdsOf,
+  pruneMemberTimes,
   roleFor,
   seed,
   setRole,
@@ -32,6 +33,7 @@ import {
   toEntry,
   toEntryDetail,
   toEntrySummary,
+  toItineraryItem,
   toTripDay,
   tripAncestorId,
   tripDateShiftFor,
@@ -46,6 +48,7 @@ import type {
   EntryKind,
   Feedback,
   FeedbackScreenshot,
+  MemberTimeWritePayload,
   ScheduleItem,
   Todo,
   TripDayWritePayload,
@@ -431,6 +434,10 @@ function destroyPermanently(target: StoredEntry, destroyedDescendantIds: number[
   db.scheduleItems = db.scheduleItems.filter(
     (s) => !(s.entry_id !== null && gone.has(s.entry_id)) && !gone.has(s.trip_id),
   );
+  pruneMemberTimes();
+  // A hard-deleted member takes its stored hours with it (Entry has_many
+  // schedule_item_member_times, dependent: :destroy).
+  db.memberTimes = db.memberTimes.filter((t) => !gone.has(t.entry_id));
   for (const item of db.scheduleItems) {
     if (item.chosen_entry_id !== null && gone.has(item.chosen_entry_id)) item.chosen_entry_id = null;
   }
@@ -931,7 +938,44 @@ export const handlers = [
 
   http.delete('/api/schedule_items/:id', ({ params }) => {
     db.scheduleItems = db.scheduleItems.filter((s) => s.id !== Number(params.id));
+    pruneMemberTimes();
     return new HttpResponse(null, { status: 204 });
+  }),
+
+  // One member's hours inside a placed plan. Sparse: both nulls delete the
+  // row rather than storing an empty one, so `member_times` only ever lists
+  // members somebody actually timed. Mirrors ScheduleItemMemberTime's
+  // validations — the member must be a child of the item's bundle, and an end
+  // cannot come before its start.
+  http.patch('/api/schedule_items/:id/members/:entryId', async ({ params, request }) => {
+    const item = db.scheduleItems.find((s) => s.id === Number(params.id));
+    if (!item) return notFound();
+    const entryId = Number(params.entryId);
+    const entry = item.entry_id !== null ? findEntry(item.entry_id) : undefined;
+    if (entry?.kind !== 'bundle' || !childIdsOf(entry.id).includes(entryId)) {
+      return HttpResponse.json({ errors: { entry_id: ['must be a member of this plan'] } }, { status: 422 });
+    }
+
+    const body = (await request.json()) as { member_time?: Partial<MemberTimeWritePayload> };
+    const starts = body.member_time?.starts_at_minutes ?? null;
+    const ends = body.member_time?.ends_at_minutes ?? null;
+    if (starts !== null && ends !== null && ends < starts) {
+      return HttpResponse.json(
+        { errors: { ends_at_minutes: ['must be greater than or equal to starts_at_minutes'] } },
+        { status: 422 },
+      );
+    }
+
+    const existing = db.memberTimes.find((t) => t.schedule_item_id === item.id && t.entry_id === entryId);
+    if (starts === null && ends === null) {
+      db.memberTimes = db.memberTimes.filter((t) => t !== existing);
+    } else if (existing) {
+      existing.starts_at_minutes = starts;
+      existing.ends_at_minutes = ends;
+    } else {
+      db.memberTimes.push({ schedule_item_id: item.id, entry_id: entryId, starts_at_minutes: starts, ends_at_minutes: ends });
+    }
+    return HttpResponse.json({ schedule_item: toItineraryItem(item) });
   }),
 
   // ---- Itinerary ---------------------------------------------------------
@@ -993,7 +1037,12 @@ export const handlers = [
     const forked = addDayVersion(tripDay.id, nextForkName(tripDay.id), live.length);
     if (source) {
       itemsOfVersion(source.id).forEach((item, position) => {
-        db.scheduleItems.push({ ...item, id: allocateId(), day_version_id: forked.id, position });
+        const copy = { ...item, id: allocateId(), day_version_id: forked.id, position };
+        db.scheduleItems.push(copy);
+        // A copied plan keeps its members' hours too (DayVersion#copy_item!).
+        for (const time of db.memberTimes.filter((t) => t.schedule_item_id === item.id)) {
+          db.memberTimes.push({ ...time, schedule_item_id: copy.id });
+        }
       });
     }
     return HttpResponse.json({ trip_day: toTripDay(tripDay) }, { status: 201 });

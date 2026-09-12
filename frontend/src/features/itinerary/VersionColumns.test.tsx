@@ -25,6 +25,7 @@ function item(overrides: Partial<ItineraryItem> & { id: number }): ItineraryItem
     position: 0,
     entry: summary(7, 'Kinkaku-ji'),
     members: [],
+    member_times: [],
     ...overrides,
   };
 }

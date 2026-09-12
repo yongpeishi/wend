@@ -338,6 +338,7 @@ const BUNDLE: ItineraryItem = {
   members: [
     { id: 21, kind: 'idea', title: 'Fushimi Inari', category: 'place', duration_minutes: 120 },
   ],
+  member_times: [],
 };
 
 describe('TimeEditor, opened from a bundle band', () => {

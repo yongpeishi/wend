@@ -97,6 +97,18 @@ export interface StoredDayVersion {
   updated_at: string;
 }
 
+/**
+ * The hours one member of a placed plan was given — `schedule_item_member_times`.
+ * Sparse: a row exists only for a member somebody timed, and there is at most
+ * one per (item, member).
+ */
+export interface StoredMemberTime {
+  schedule_item_id: number;
+  entry_id: number;
+  starts_at_minutes: number | null;
+  ends_at_minutes: number | null;
+}
+
 let nextId = 1000;
 export function allocateId(): number {
   return nextId++;
@@ -109,12 +121,23 @@ export const db = {
   votes: [] as Vote[],
   todos: [] as Todo[],
   scheduleItems: [] as ScheduleItem[],
+  memberTimes: [] as StoredMemberTime[],
   tripDays: [] as StoredTripDay[],
   dayVersions: [] as StoredDayVersion[],
   feedbacks: [] as StoredFeedback[],
   memberships: [] as StoredMembership[],
   currentUserId: null as number | null,
 };
+
+/**
+ * Drop the member times of any schedule item that is no longer there — the
+ * mock's `dependent: :destroy`. Call it after every place `db.scheduleItems`
+ * shrinks, since a filter on that array cannot cascade on its own.
+ */
+export function pruneMemberTimes(): void {
+  const itemIds = new Set(db.scheduleItems.map((s) => s.id));
+  db.memberTimes = db.memberTimes.filter((t) => itemIds.has(t.schedule_item_id));
+}
 
 export function now(): string {
   return new Date().toISOString();
@@ -427,16 +450,20 @@ export function itemsOfVersion(versionId: number): ScheduleItem[] {
 
 export function toItineraryItem(item: ScheduleItem): ItineraryItem {
   const entry = item.entry_id !== null ? findEntry(item.entry_id) : undefined;
+  const memberIds = entry?.kind === 'bundle' ? childIdsOf(entry.id) : [];
   return {
     ...item,
     entry: entry ? toEntrySummary(entry) : null,
-    members:
-      entry?.kind === 'bundle'
-        ? childIdsOf(entry.id)
-            .map((id) => findEntry(id))
-            .filter((e): e is StoredEntry => Boolean(e))
-            .map(toEntrySummary)
-        : [],
+    members: memberIds
+      .map((id) => findEntry(id))
+      .filter((e): e is StoredEntry => Boolean(e))
+      .map(toEntrySummary),
+    // Sparse and in member order: only the members somebody timed, walked in
+    // link order so the list reads the same way `members` does.
+    member_times: memberIds.flatMap((entryId) => {
+      const time = db.memberTimes.find((t) => t.schedule_item_id === item.id && t.entry_id === entryId);
+      return time ? [{ entry_id: entryId, starts_at_minutes: time.starts_at_minutes, ends_at_minutes: time.ends_at_minutes }] : [];
+    }),
   };
 }
 
@@ -580,6 +607,7 @@ export function applyTripDateShift(shift: TripDateShift) {
   // Placements only. The Entry each one pointed at is untouched, which is what
   // puts those ideas back under "Not placed yet" rather than losing them.
   db.scheduleItems = db.scheduleItems.filter((s) => !(s.trip_id === tripId && dropped.has(s.day)));
+  pruneMemberTimes();
   const goneDayIds = new Set(db.tripDays.filter((d) => d.trip_id === tripId && dropped.has(d.day)).map((d) => d.id));
   db.tripDays = db.tripDays.filter((d) => !goneDayIds.has(d.id));
   db.dayVersions = db.dayVersions.filter((v) => !goneDayIds.has(v.trip_day_id));
@@ -969,6 +997,9 @@ export function seed() {
     item(4, day3.day, nightBundle.id, 18 * 60, 21 * 60, 0),
     item(5, day3.day, coffee.id, 9 * 60, 9 * 60 + 30, 0),
   ];
+  // Nobody has timed a member by default: the seeded bundles keep deriving
+  // their members' hours from the band and the members' durations.
+  db.memberTimes = [];
 }
 
 seed();

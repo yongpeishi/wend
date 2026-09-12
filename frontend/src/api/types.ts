@@ -230,11 +230,28 @@ export interface ScheduleItem {
 // archives its siblings rather than deleting them: `archived_at` means
 // "kept, but not the one we chose", and an archived version can be restored.
 
+/**
+ * A member of a placed plan that someone gave hours of its own. Sparse: a
+ * member with no row has no time set, and the UI says "No time yet" for it.
+ */
+export interface MemberTime {
+  entry_id: number;
+  /** Minutes from midnight, 0..1439. */
+  starts_at_minutes: number | null;
+  ends_at_minutes: number | null;
+}
+
 /** A ScheduleItem as the itinerary endpoints serialize it, with its entry inlined. */
 export interface ItineraryItem extends ScheduleItem {
   entry: EntrySummary | null;
   /** The bundle's direct children in link order. Empty unless entry.kind === 'bundle'. */
   members: EntrySummary[];
+  /**
+   * Stored hours for the members that have them, in member order. `[]` unless
+   * a bundle, and `[]` while nobody has timed a member. The key is always
+   * present on the wire.
+   */
+  member_times: MemberTime[];
 }
 
 /** One alternative plan for a single day. */
@@ -407,6 +424,12 @@ export type ScheduleItemWritePayload = Partial<
     | 'position'
   >
 >;
+
+/**
+ * PATCH /api/schedule_items/:id/members/:entry_id — one member's hours inside
+ * a placed plan. Sending both keys as null clears them (the sparse row goes).
+ */
+export type MemberTimeWritePayload = Pick<MemberTime, 'starts_at_minutes' | 'ends_at_minutes'>;
 
 /**
  * PATCH /api/trips/:trip_id/days/:day — the lodging is all a day owns directly.

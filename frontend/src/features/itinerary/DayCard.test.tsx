@@ -33,6 +33,7 @@ function item(overrides: Partial<ItineraryItem> & { id: number }): ItineraryItem
     position: 0,
     entry: summary(7, 'Fushimi Inari'),
     members: [],
+    member_times: [],
     ...overrides,
   };
 }

@@ -252,52 +252,83 @@ export function formatDuration(mins: number | null): string {
   return minutes === 0 ? `${hours} hr` : `${hours} hr ${minutes}`;
 }
 
-/** One member's share of its bundle's span. Both null when the bundle is untimed. */
-export interface DerivedSpan {
+/** One member's hours on the day, and where they came from. */
+export interface MemberSpan {
   startsAtMinutes: number | null;
   endsAtMinutes: number | null;
+  /**
+   * True when someone set these hours; false when derived from the band, or
+   * when there is nothing to show.
+   */
+  stored: boolean;
 }
 
+/** What a member shows when nobody has said, and nothing can be worked out. */
+const NO_TIME_YET: MemberSpan = { startsAtMinutes: null, endsAtMinutes: null, stored: false };
+
 /**
- * The hours each member of a placed bundle would get, DERIVED FOR DISPLAY ONLY.
+ * The hours each member of a placed bundle shows, one per member in member
+ * order.
  *
- * Nothing here is stored: a bundle sits on a day as one `schedule_item` with
- * one span, and its members have no rows of their own at all. But the design's
- * rule is that "a bundle member and a loose idea look identical"
- * (itinerary-decisions.md) — a member with an empty time column reads as an
- * indented orphan, not as one more thing on the day.
+ * A member's hours are STORED when someone set them (`member_times`, sparse —
+ * a row exists only for a member somebody timed) and DERIVED from the band
+ * only as a fallback. The rules, in order, and only the first that applies:
  *
- * So the band's span is divided between its members here, for display: in
- * `duration_minutes` proportion when every member has a usable one, evenly
- * otherwise; consecutive, non-overlapping slots; the last member lands exactly
- * on the bundle's end so rounding never leaves or steals a minute. The hours a
- * member shows therefore always add back up to the band above it.
+ * 1. Any member has stored hours -> every member shows its own stored row
+ *    (`stored: true`), and one without a row shows no time (`stored: false`).
+ *    The band's span is ignored entirely. One rule, always explainable: once
+ *    anyone has pinned a member, nothing is derived, so a shown time is never
+ *    ambiguous between "someone set that" and "arithmetic did".
+ * 2. The band itself is untimed (either end null) -> no member has a time.
+ * 3. Every member carries a real `duration_minutes` (> 0) -> the band's span
+ *    is divided between them in that proportion: consecutive, non-overlapping
+ *    slots, and the last member lands exactly on the band's end so rounding
+ *    never leaves or steals a minute. That split is a real statement about
+ *    the plan, so it is worth showing (`stored: false`).
+ * 4. Otherwise -> no member has a time. A zero or missing estimate used to
+ *    fall back to an even split; that was a statement nobody made, and the
+ *    honest thing to show is "No time yet" — the same words a loose untimed
+ *    idea uses, which is what keeps a member and a loose idea looking alike.
  */
 export function bundleMemberSpans(
-  item: Pick<ItineraryItem, 'starts_at_minutes' | 'ends_at_minutes' | 'members'>,
-): DerivedSpan[] {
+  item: Pick<ItineraryItem, 'starts_at_minutes' | 'ends_at_minutes' | 'members' | 'member_times'>,
+): MemberSpan[] {
   const { members } = item;
+
+  // Rule 1: stored hours win, and silence the band for every member.
+  if (item.member_times.length > 0) {
+    const byEntry = new Map(item.member_times.map((time) => [time.entry_id, time]));
+    return members.map((member) => {
+      const time = byEntry.get(member.id);
+      return time
+        ? { startsAtMinutes: time.starts_at_minutes, endsAtMinutes: time.ends_at_minutes, stored: true }
+        : { ...NO_TIME_YET };
+    });
+  }
+
+  // Rule 2: an untimed bundle hands its members no times either.
   const start = item.starts_at_minutes;
   const end = item.ends_at_minutes;
+  if (start === null || end === null) return members.map(() => ({ ...NO_TIME_YET }));
 
-  // An untimed bundle hands its members no times either.
-  if (start === null || end === null) return members.map(() => ({ startsAtMinutes: null, endsAtMinutes: null }));
-
-  const span = end - start;
+  // Rule 4: without a real estimate for every member there is nothing honest to derive.
   const estimates = members.map((member) => member.duration_minutes);
   const proportional = estimates.every((minutes): minutes is number => minutes !== null && minutes > 0);
-  const weights = proportional ? estimates : members.map(() => 1);
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  if (!proportional) return members.map(() => ({ ...NO_TIME_YET }));
+
+  // Rule 3: proportional split.
+  const span = end - start;
+  const total = estimates.reduce((sum, weight) => sum + weight, 0);
 
   let cursor = start;
   let running = 0;
   return members.map((_member, index) => {
-    running += weights[index];
+    running += estimates[index];
     // The last member always lands exactly on the end, so rounding never
     // leaves or steals a minute.
     const raw = index === members.length - 1 ? end : start + Math.round((span * running) / total);
     const finish = Math.min(Math.max(raw, cursor), end);
-    const slot = { startsAtMinutes: cursor, endsAtMinutes: finish };
+    const slot: MemberSpan = { startsAtMinutes: cursor, endsAtMinutes: finish, stored: false };
     cursor = finish;
     return slot;
   });
