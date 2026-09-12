@@ -9,7 +9,7 @@ export { useCreateLink, useDeleteLink, useReorderLinks, usePendingLinkChildIds }
 export { LINK_MUTATION_KEY } from './linkCache';
 export { useVote, useDeleteVote } from './votes';
 export { useTodos, useCreateTodo, useUpdateTodo, useDeleteTodo } from './todos';
-export { useSchedule, useCreateScheduleItem, useUpdateScheduleItem, useDeleteScheduleItem, formatMinutes } from './schedule';
+export { useSchedule, useCreateScheduleItem, useUpdateScheduleItem, useDeleteScheduleItem, useUpdateMemberTime, formatMinutes } from './schedule';
 export { useItinerary, useUpdateTripDay, useForkDay, useKeepVersion, useRestoreVersion, useArchiveVersion, useSwapDays } from './itinerary';
 export { useNearby } from './nearby';
 export { useMe, useSignIn, useSignUp, useSignOut } from './session';

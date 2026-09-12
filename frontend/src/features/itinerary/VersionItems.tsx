@@ -12,6 +12,13 @@ export interface VersionItemsProps {
   /** Opens the picker over the hours the gap leaves free. */
   onFill?: (slot: { start: number; end: number }) => void;
   onEditTime?: (itemId: number, startsAtMinutes: number | null, endsAtMinutes: number | null) => void;
+  /** One member's own hours inside a placed plan. Both nulls clear them. */
+  onEditMemberTime?: (
+    itemId: number,
+    entryId: number,
+    startsAtMinutes: number | null,
+    endsAtMinutes: number | null,
+  ) => void;
   onRemoveItem?: (itemId: number) => void;
   /** Archived versions are shown, not edited. */
   readOnly?: boolean;
@@ -37,6 +44,7 @@ export function VersionItems({
   items,
   onFill,
   onEditTime,
+  onEditMemberTime,
   onRemoveItem,
   readOnly = false,
   promptItemId = null,
@@ -64,6 +72,9 @@ export function VersionItems({
               item={item}
               readOnly={readOnly}
               onEditTime={onEditTime && ((start, end) => onEditTime(item.id, start, end))}
+              onEditMemberTime={
+                onEditMemberTime && ((entryId, start, end) => onEditMemberTime(item.id, entryId, start, end))
+              }
               onRemove={onRemoveItem && (() => onRemoveItem(item.id))}
             />
           ) : (

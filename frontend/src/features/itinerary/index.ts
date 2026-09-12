@@ -19,7 +19,7 @@ export {
   MIN_GAP_MINUTES,
   UNSAVED_VERSION_ID,
 } from './itineraryModel';
-export type { DerivedSpan, ItineraryDay, PoolEntry, Row } from './itineraryModel';
+export type { ItineraryDay, MemberSpan, PoolEntry, Row } from './itineraryModel';
 
 export { dayDroppableId, useDayDrop } from './useDayDrop';
 export type { ItineraryDragData } from './useDayDrop';

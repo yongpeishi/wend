@@ -195,6 +195,34 @@ under it, does exactly that, and nothing kept is lost.
 a bare `day`, cannot 500. The controller resolves the day's first live version on write,
 so no live row is left without one.
 
+### `schedule_item_member_times` — a plan's members, timed on one placement
+
+| column | type | notes |
+| --- | --- | --- |
+| id | integer PK | |
+| schedule_item_id | integer FK schedule_items, not null | the placement of the plan |
+| entry_id | integer FK entries, not null | one of the plan's members — must be a child of the placed bundle via `entry_links` |
+| starts_at_minutes | integer | 0..1439, same rules as `schedule_items` |
+| ends_at_minutes | integer | ≥ `starts_at_minutes` when both present |
+| created_at/updated_at | datetime | |
+
+Unique index `[schedule_item_id, entry_id]`. A plan (a bundle) placed on a day is still
+**one** `schedule_item`; its members are read off `entry_links` at render time and, by
+default, shown with hours derived from the band. When someone gives a member hours of its
+own they land here, on the *placement* — not on the entry, and not on the link. That is the
+same placement-vs-kept split one level down: a plan placed on two days, or on two versions
+of the same day, is timed separately each time, and a fork copies its own set (`copy_item!`).
+The rows are as disposable as the placement — they go with it (`dependent: :destroy`), and
+with a member that is deleted for good.
+
+The table is **sparse**: a row exists only for a member someone actually timed, so the
+common plan costs nothing here and there was nothing to backfill. "No time yet" is the
+absence of a row, and clearing both minutes over the API removes the row rather than
+storing a pair of nulls. Membership is validated on the model (`EntryLink.exists?` from
+the placed bundle to `entry_id`), which is also the trip-scoping check — a foreign entry
+cannot be a member of this trip's plan. The band's own span stays separately editable, and
+no containment rule ties the two together: gaps and overlaps are legal plans.
+
 ### `trip_days` — a date the trip has put something on
 
 | column | type | notes |
@@ -424,7 +452,18 @@ GET    /api/trips/:trip_id/schedule?day=YYYY-MM-DD   -> 200 { schedule_items: [S
 POST   /api/trips/:trip_id/schedule  { schedule_item: {...} }  -> 201
 PATCH  /api/schedule_items/:id                                 -> 200
 DELETE /api/schedule_items/:id                                 -> 204
+PATCH  /api/schedule_items/:schedule_item_id/members/:entry_id
+       { member_time: { starts_at_minutes, ends_at_minutes } } -> 200 { schedule_item: ItineraryItem }
 ```
+The members route times one member of a placed plan (`schedule_item_member_times`, §2).
+Both minutes may be null; **both null removes the row** — the table stays sparse. It
+answers with the whole item in its itinerary shape so the band re-renders from one reply.
+404 outside the caller's trips (the parent item's trip is the authority, exactly as for the
+bare PATCH); 422 in the usual `{ errors }` shape when the item is not a plan, when
+`entry_id` is not one of its members — one message for both, so ids cannot be probed — or
+when the minutes are out of range or reversed. `ScheduleItem` (the final-schedule shape)
+does not carry member times; only `ItineraryItem` does.
+
 `schedule_item` accepts `day_version_id` on both write paths. **Omit it and the item lands
 on that day's first live version**, creating the `trip_day` and its "Version A" if this is
 the first thing placed there — which is how the final-schedule screen, which knows nothing
@@ -564,7 +603,12 @@ ItineraryItem = {
   note: string | null,
   position: number,
   entry: EntrySummary | null,
-  members: [EntrySummary]           // [] unless entry.kind == "bundle"; link position order
+  members: [EntrySummary],          // [] unless entry.kind == "bundle"; link position order
+  member_times: [{                  // hours someone gave a member on THIS placement; sparse --
+    entry_id,                       // only members with a stored row, in `members` order.
+    starts_at_minutes: number | null,
+    ends_at_minutes: number | null  // always present; [] for a plain idea or an untimed plan
+  }]
 }
 ```
 

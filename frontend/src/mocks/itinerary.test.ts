@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { api, ApiError } from '../api/client';
 import { allocateId, db, findEntry, now } from './db';
 import { resetDb } from './handlers';
-import type { ScheduleItem, TripDay } from '../api/types';
+import type { ItineraryItem, ScheduleItem, TripDay } from '../api/types';
 
 // The MSW itinerary routes are the only backend the UI tests and the browser
 // dev server see, so the rules they stand in for — fork letters, keep/restore,
@@ -457,6 +457,139 @@ describe('POST /trips/:id/itinerary/swap_days', () => {
     });
     // Refused means unchanged.
     expect((await itinerary()).trip_days.map((d) => d.day)).toEqual([BUNDLE_DAY, TWO_VERSION_DAY, ARCHIVED_DAY]);
+  });
+});
+
+describe('member times', () => {
+  // The Nishiki market crawl's members, in link order.
+  const COFFEE_MEMBER_ID = 6;
+  const NISHIKI_MEMBER_ID = 7;
+  const TERAMACHI_MEMBER_ID = 8;
+
+  async function bundleDayItems(): Promise<[ItineraryItem, ItineraryItem]> {
+    const [nanzenji, bundle] = (await dayFor(BUNDLE_DAY)).versions[0]?.schedule_items ?? [];
+    if (!nanzenji || !bundle) throw new Error('the bundle day lost its seeded items');
+    return [nanzenji, bundle];
+  }
+
+  function setMemberTime(itemId: number, entryId: number, starts: number | null, ends: number | null) {
+    return api.patch<{ schedule_item: ItineraryItem }>(`/schedule_items/${itemId}/members/${entryId}`, {
+      member_time: { starts_at_minutes: starts, ends_at_minutes: ends },
+    });
+  }
+
+  it('lists no member times until somebody sets one, on a bundle and on a plain idea alike', async () => {
+    const [nanzenji, bundle] = await bundleDayItems();
+    expect(bundle.member_times).toEqual([]);
+    expect(nanzenji.member_times).toEqual([]);
+  });
+
+  it('stores a member’s hours and lists them in member order, however they were set', async () => {
+    const [, bundle] = await bundleDayItems();
+
+    await setMemberTime(bundle.id, TERAMACHI_MEMBER_ID, 12 * 60, 13 * 60);
+    const { schedule_item } = await setMemberTime(bundle.id, COFFEE_MEMBER_ID, 11 * 60, 11 * 60 + 30);
+
+    // The whole item answers, with every stored row on it.
+    expect(schedule_item.id).toBe(bundle.id);
+    expect(schedule_item.member_times).toEqual([
+      { entry_id: COFFEE_MEMBER_ID, starts_at_minutes: 11 * 60, ends_at_minutes: 11 * 60 + 30 },
+      { entry_id: TERAMACHI_MEMBER_ID, starts_at_minutes: 12 * 60, ends_at_minutes: 13 * 60 },
+    ]);
+    // Sparse: the member nobody timed has no row, and the itinerary agrees.
+    const [, again] = await bundleDayItems();
+    expect(again.member_times.map((t) => t.entry_id)).toEqual([COFFEE_MEMBER_ID, TERAMACHI_MEMBER_ID]);
+    expect(again.member_times.some((t) => t.entry_id === NISHIKI_MEMBER_ID)).toBe(false);
+  });
+
+  it('overwrites rather than duplicates when the same member is timed twice', async () => {
+    const [, bundle] = await bundleDayItems();
+    await setMemberTime(bundle.id, NISHIKI_MEMBER_ID, 11 * 60, 12 * 60);
+    const { schedule_item } = await setMemberTime(bundle.id, NISHIKI_MEMBER_ID, 11 * 60 + 15, null);
+
+    expect(schedule_item.member_times).toEqual([
+      { entry_id: NISHIKI_MEMBER_ID, starts_at_minutes: 11 * 60 + 15, ends_at_minutes: null },
+    ]);
+  });
+
+  it('clears the hours when both ends are null, and clearing nothing is fine', async () => {
+    const [, bundle] = await bundleDayItems();
+    await setMemberTime(bundle.id, COFFEE_MEMBER_ID, 11 * 60, 11 * 60 + 30);
+
+    const cleared = await setMemberTime(bundle.id, COFFEE_MEMBER_ID, null, null);
+    expect(cleared.schedule_item.member_times).toEqual([]);
+
+    const again = await setMemberTime(bundle.id, COFFEE_MEMBER_ID, null, null);
+    expect(again.schedule_item.member_times).toEqual([]);
+  });
+
+  it('refuses an entry that is not a member of the plan', async () => {
+    const [nanzenji, bundle] = await bundleDayItems();
+    // The 422 body is `{ errors: { entry_id: [...] } }`; the client lifts `errors` to `fieldErrors`.
+    const notAMember = { entry_id: ['Entry must be a member of this plan'] };
+
+    await expect(setMemberTime(bundle.id, NANZENJI_ID, 11 * 60, 12 * 60)).rejects.toMatchObject({
+      status: 422,
+      fieldErrors: notAMember,
+    });
+    // A plain idea has no members at all, so nothing can be one of them.
+    await expect(setMemberTime(nanzenji.id, COFFEE_MEMBER_ID, 11 * 60, 12 * 60)).rejects.toMatchObject({
+      status: 422,
+      fieldErrors: notAMember,
+    });
+    expect((await bundleDayItems())[1].member_times).toEqual([]);
+  });
+
+  it('refuses an end before its start', async () => {
+    const [, bundle] = await bundleDayItems();
+    await expect(setMemberTime(bundle.id, COFFEE_MEMBER_ID, 12 * 60, 11 * 60)).rejects.toMatchObject({
+      status: 422,
+      fieldErrors: { ends_at_minutes: ['Ends at minutes must be greater than or equal to starts_at_minutes'] },
+    });
+  });
+
+  it('404s an item that does not exist', async () => {
+    await expect(setMemberTime(999999, COFFEE_MEMBER_ID, 11 * 60, 12 * 60)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('copies the stored hours when the day is forked', async () => {
+    const [, bundle] = await bundleDayItems();
+    await setMemberTime(bundle.id, COFFEE_MEMBER_ID, 11 * 60, 11 * 60 + 30);
+
+    const { trip_day } = await api.post<{ trip_day: TripDay }>(`/trips/${TRIP_ID}/days/${BUNDLE_DAY}/versions`);
+    const copiedBundle = trip_day.versions[1]?.schedule_items.find((i) => i.entry?.kind === 'bundle');
+
+    expect(copiedBundle).toBeDefined();
+    expect(copiedBundle?.id).not.toBe(bundle.id);
+    expect(copiedBundle?.member_times).toEqual([
+      { entry_id: COFFEE_MEMBER_ID, starts_at_minutes: 11 * 60, ends_at_minutes: 11 * 60 + 30 },
+    ]);
+    // A copy, not a move: the original keeps its row too.
+    expect(db.memberTimes.filter((t) => t.entry_id === COFFEE_MEMBER_ID)).toHaveLength(2);
+  });
+
+  it('drops the stored hours when the member is unlinked from the plan', async () => {
+    const [, bundle] = await bundleDayItems();
+    await setMemberTime(bundle.id, COFFEE_MEMBER_ID, 11 * 60, 11 * 60 + 30);
+    await setMemberTime(bundle.id, TERAMACHI_MEMBER_ID, 12 * 60, 13 * 60);
+
+    await api.delete(`/entries/${bundle.entry_id}/links/${COFFEE_MEMBER_ID}`);
+
+    const [, again] = await bundleDayItems();
+    expect(again.members.map((m) => m.id)).toEqual([NISHIKI_MEMBER_ID, TERAMACHI_MEMBER_ID]);
+    // Only the unlinked member's row goes; the other keeps its hours.
+    expect(again.member_times).toEqual([
+      { entry_id: TERAMACHI_MEMBER_ID, starts_at_minutes: 12 * 60, ends_at_minutes: 13 * 60 },
+    ]);
+    expect(db.memberTimes.some((t) => t.entry_id === COFFEE_MEMBER_ID)).toBe(false);
+  });
+
+  it('drops the stored hours with the item they belonged to', async () => {
+    const [, bundle] = await bundleDayItems();
+    await setMemberTime(bundle.id, COFFEE_MEMBER_ID, 11 * 60, 11 * 60 + 30);
+
+    await api.delete(`/schedule_items/${bundle.id}`);
+    expect(db.memberTimes.filter((t) => t.schedule_item_id === bundle.id)).toEqual([]);
   });
 });
 

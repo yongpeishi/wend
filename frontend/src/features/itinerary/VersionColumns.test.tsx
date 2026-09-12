@@ -25,6 +25,7 @@ function item(overrides: Partial<ItineraryItem> & { id: number }): ItineraryItem
     position: 0,
     entry: summary(7, 'Kinkaku-ji'),
     members: [],
+    member_times: [],
     ...overrides,
   };
 }
@@ -68,6 +69,7 @@ function renderColumns(props: Partial<Parameters<typeof VersionColumns>[0]> = {}
         onKeep={props.onKeep ?? onKeep}
         onFill={props.onFill}
         onEditTime={props.onEditTime}
+        onEditMemberTime={props.onEditMemberTime}
         onRemoveItem={props.onRemoveItem}
         onAdd={props.onAdd}
         readOnly={props.readOnly}
@@ -157,6 +159,33 @@ describe('VersionColumns', () => {
     await user.click(within(columnB).getByRole('button', { name: 'Take Kinkaku-ji off this day' }));
 
     expect(onRemoveItem).toHaveBeenCalledWith(201);
+  });
+
+  // A plan's members can be timed inside either column, and the change names
+  // the item the plan is placed as — item ids are unique across versions, so
+  // that alone says which column it happened in.
+  it('times a plan’s member inside the column that holds it', async () => {
+    const user = userEvent.setup();
+    const onEditMemberTime = vi.fn();
+    const plan = item({
+      id: 202,
+      entry: summary(9, 'Osaka evening', 'bundle'),
+      starts_at_minutes: 18 * 60,
+      ends_at_minutes: 20 * 60,
+      members: [summary(10, 'Dotonbori'), summary(11, 'Kushikatsu')],
+    });
+    renderColumns({
+      versions: [VERSION_A, version({ id: 2, name: 'Version B', position: 1, schedule_items: [plan] })],
+      onEditMemberTime,
+    });
+
+    // Two 1-hour members share the two-hour band until one of them is timed.
+    await user.click(screen.getByRole('button', { name: 'Change the hours for Dotonbori, now 18:00–19:00' }));
+    await user.clear(screen.getByLabelText('Ends for Dotonbori'));
+    await user.type(screen.getByLabelText('Ends for Dotonbori'), '19:30');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(onEditMemberTime).toHaveBeenCalledWith(202, 10, 18 * 60, 19 * 60 + 30);
   });
 
   // Being able to see that a day is still two ways round is the whole of what

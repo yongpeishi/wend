@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import { queryKeys } from './queryKeys';
-import type { ScheduleItem, ScheduleItemWritePayload } from './types';
+import type { ItineraryItem, MemberTimeWritePayload, ScheduleItem, ScheduleItemWritePayload } from './types';
 
 export function useSchedule(tripId: number | undefined, day?: string) {
   return useQuery({
@@ -59,6 +59,25 @@ export function useDeleteScheduleItem() {
   const invalidate = useInvalidateSchedule();
   return useMutation({
     mutationFn: (id: number) => api.delete<void>(`/schedule_items/${id}`),
+    onSuccess: invalidate,
+  });
+}
+
+/**
+ * PATCH /api/schedule_items/:itemId/members/:entryId — the hours of one member
+ * inside a placed plan. Both nulls clear the member's stored hours. The whole
+ * item comes back with its `member_times` refreshed, and both screens'
+ * queries are invalidated because the item is a row on each.
+ */
+export function useUpdateMemberTime() {
+  const invalidate = useInvalidateSchedule();
+  return useMutation({
+    mutationFn: ({ itemId, entryId, starts_at_minutes, ends_at_minutes }: { itemId: number; entryId: number } & MemberTimeWritePayload) =>
+      api
+        .patch<{ schedule_item: ItineraryItem }>(`/schedule_items/${itemId}/members/${entryId}`, {
+          member_time: { starts_at_minutes, ends_at_minutes },
+        })
+        .then((r) => r.schedule_item),
     onSuccess: invalidate,
   });
 }

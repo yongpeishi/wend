@@ -42,6 +42,7 @@ function item(overrides: Partial<ItineraryItem> = {}): ItineraryItem {
     position: 0,
     entry: summary(),
     members: [],
+    member_times: [],
     ...overrides,
   };
 }
@@ -454,30 +455,28 @@ describe('bundleMemberSpans', () => {
     });
   }
 
+  const noTimeYet = { startsAtMinutes: null, endsAtMinutes: null, stored: false };
+
   it('divides the span in duration proportion when every member has one', () => {
     // 3 hours split 60/120 -> 1 hour, then 2 hours.
     expect(bundleMemberSpans(bundle('09:00', '12:00', [60, 120]))).toEqual([
-      { startsAtMinutes: at('09:00'), endsAtMinutes: at('10:00') },
-      { startsAtMinutes: at('10:00'), endsAtMinutes: at('12:00') },
+      { startsAtMinutes: at('09:00'), endsAtMinutes: at('10:00'), stored: false },
+      { startsAtMinutes: at('10:00'), endsAtMinutes: at('12:00'), stored: false },
     ]);
   });
 
-  it('divides it evenly when any member has no estimate at all', () => {
-    expect(bundleMemberSpans(bundle('09:00', '12:00', [60, null]))).toEqual([
-      { startsAtMinutes: at('09:00'), endsAtMinutes: at('10:30') },
-      { startsAtMinutes: at('10:30'), endsAtMinutes: at('12:00') },
-    ]);
+  it('shows no time yet for every member when any member has no estimate', () => {
+    // An even split would be a statement about the plan that nobody made.
+    expect(bundleMemberSpans(bundle('09:00', '12:00', [60, null]))).toEqual([noTimeYet, noTimeYet]);
   });
 
-  it('divides it evenly when an estimate is zero, which weighs nothing', () => {
-    expect(bundleMemberSpans(bundle('09:00', '11:00', [0, 60]))).toEqual([
-      { startsAtMinutes: at('09:00'), endsAtMinutes: at('10:00') },
-      { startsAtMinutes: at('10:00'), endsAtMinutes: at('11:00') },
-    ]);
+  it('shows no time yet for every member when an estimate is zero', () => {
+    expect(bundleMemberSpans(bundle('09:00', '11:00', [0, 60]))).toEqual([noTimeYet, noTimeYet]);
   });
 
   it('hands the last member the exact end, so rounding never loses a minute', () => {
-    const spans = bundleMemberSpans(bundle('09:00', '10:00', [null, null, null]));
+    // 60 minutes in thirds cannot land on whole minutes without rounding.
+    const spans = bundleMemberSpans(bundle('09:00', '10:00', [10, 10, 10]));
 
     expect(spans[0].startsAtMinutes).toBe(at('09:00'));
     expect(spans[2].endsAtMinutes).toBe(at('10:00'));
@@ -491,10 +490,7 @@ describe('bundleMemberSpans', () => {
       item({ starts_at_minutes: null, ends_at_minutes: null, members: [summary(), summary()] }),
     );
 
-    expect(spans).toEqual([
-      { startsAtMinutes: null, endsAtMinutes: null },
-      { startsAtMinutes: null, endsAtMinutes: null },
-    ]);
+    expect(spans).toEqual([noTimeYet, noTimeYet]);
   });
 
   it('has nothing to say about a thing with no members', () => {
@@ -507,6 +503,80 @@ describe('bundleMemberSpans', () => {
     for (const span of spans) {
       expect(span.endsAtMinutes!).toBeGreaterThanOrEqual(span.startsAtMinutes!);
     }
+  });
+
+  describe('when a member has stored hours', () => {
+    it('shows the stored hours instead of deriving from the band', () => {
+      const [coffee, market] = [summary({ duration_minutes: 30 }), summary({ duration_minutes: 90 })];
+      const spans = bundleMemberSpans(
+        item({
+          starts_at_minutes: at('09:00'),
+          ends_at_minutes: at('12:00'),
+          members: [coffee, market],
+          member_times: [
+            { entry_id: coffee.id, starts_at_minutes: at('10:15'), ends_at_minutes: at('10:45') },
+            { entry_id: market.id, starts_at_minutes: at('14:00'), ends_at_minutes: at('16:00') },
+          ],
+        }),
+      );
+
+      // Neither the band's edges nor the durations have any say now.
+      expect(spans).toEqual([
+        { startsAtMinutes: at('10:15'), endsAtMinutes: at('10:45'), stored: true },
+        { startsAtMinutes: at('14:00'), endsAtMinutes: at('16:00'), stored: true },
+      ]);
+    });
+
+    it('leaves an untimed member with no time, even though the band is timed', () => {
+      const [coffee, market] = [summary({ duration_minutes: 30 }), summary({ duration_minutes: 90 })];
+      const spans = bundleMemberSpans(
+        item({
+          starts_at_minutes: at('09:00'),
+          ends_at_minutes: at('12:00'),
+          members: [coffee, market],
+          member_times: [{ entry_id: market.id, starts_at_minutes: at('10:00'), ends_at_minutes: at('11:30') }],
+        }),
+      );
+
+      // Once anyone is pinned, nothing is derived: the coffee does not inherit
+      // the band's leftover morning.
+      expect(spans).toEqual([
+        noTimeYet,
+        { startsAtMinutes: at('10:00'), endsAtMinutes: at('11:30'), stored: true },
+      ]);
+    });
+
+    it('keeps member order whatever order the stored rows arrive in', () => {
+      const [first, second, third] = [summary(), summary(), summary()];
+      const spans = bundleMemberSpans(
+        item({
+          starts_at_minutes: at('09:00'),
+          ends_at_minutes: at('12:00'),
+          members: [first, second, third],
+          member_times: [
+            { entry_id: third.id, starts_at_minutes: at('11:00'), ends_at_minutes: at('12:00') },
+            { entry_id: first.id, starts_at_minutes: at('09:00'), ends_at_minutes: at('09:30') },
+          ],
+        }),
+      );
+
+      expect(spans.map((span) => span.startsAtMinutes)).toEqual([at('09:00'), null, at('11:00')]);
+      expect(spans.map((span) => span.stored)).toEqual([true, false, true]);
+    });
+
+    it('shows a stored row even on an untimed band, and one with only a start', () => {
+      const member = summary();
+      const spans = bundleMemberSpans(
+        item({
+          starts_at_minutes: null,
+          ends_at_minutes: null,
+          members: [member],
+          member_times: [{ entry_id: member.id, starts_at_minutes: at('20:00'), ends_at_minutes: null }],
+        }),
+      );
+
+      expect(spans).toEqual([{ startsAtMinutes: at('20:00'), endsAtMinutes: null, stored: true }]);
+    });
   });
 });
 

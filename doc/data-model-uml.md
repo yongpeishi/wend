@@ -1,6 +1,6 @@
 # Wend backend — data model (UML)
 
-Source of truth: `backend/db/schema.rb` (schema version `2026_09_07_120000`, SQLite) and `backend/app/models/`.
+Source of truth: `backend/db/schema.rb` (schema version `2026_09_12_120000`, SQLite) and `backend/app/models/`.
 Product-level narrative lives in [tech-data-model.md](tech-data-model.md); architecture rules in [architecture.md](architecture.md).
 
 ## The one thing to know first
@@ -95,6 +95,14 @@ classDiagram
         +int position
     }
 
+    class ScheduleItemMemberTime {
+        +int starts_at_minutes  0..1439
+        +int ends_at_minutes
+        [unique schedule_item_id + entry_id]
+        [entry must be a child of the placed bundle]
+        [sparse: a row only for a member someone timed]
+    }
+
     class Feedback {
         +text message
         +string url
@@ -139,6 +147,8 @@ classDiagram
     %% ── Itinerary layers ────────────────────────────
     TripDay "1" *-- "0..*" DayVersion
     DayVersion "0..1" --> "0..*" ScheduleItem : nullify
+    ScheduleItem "1" *-- "0..*" ScheduleItemMemberTime : a plan's members, timed on this placement
+    Entry "1" *-- "0..*" ScheduleItemMemberTime : the member (destroy)
 ```
 
 Legend: `*--` composition = `dependent: :destroy` (child dies with parent); `-->` = plain reference,
@@ -166,6 +176,8 @@ optional or `dependent: :nullify` as labelled. `$` marks class-level methods. `[
 | Entry → TripDay | `trip_days.lodging_entry_id` | optional | nullify |
 | TripDay → DayVersion | `day_versions.trip_day_id` | 1 : many | destroy |
 | DayVersion → ScheduleItem | `schedule_items.day_version_id` | optional | nullify |
+| ScheduleItem → ScheduleItemMemberTime | `schedule_item_member_times.schedule_item_id` (NOT NULL) | 1 : many, one per member | destroy — the hours are part of the placement; `copy_item!` copies them on fork |
+| Entry → ScheduleItemMemberTime | `schedule_item_member_times.entry_id` (NOT NULL) | 1 : many; must be a child of the placed bundle | destroy — a member deleted for good takes its hours with it |
 
 ## Domain layers, top to bottom
 
@@ -186,7 +198,10 @@ optional or `dependent: :nullify` as labelled. `$` marks class-level methods. `[
    from midnight, no timezones). A schedule item points at kept things rather than being a kept thing, so
    it is hard-destroyed freely — including when the entry it places is destroyed for good (`:destroy`, not
    `:nullify`: a placement of a row that no longer exists is a ghost on the day). Entries have their own
-   destroy path now, two-step (see invariants); `DayVersion` deliberately does not.
+   destroy path now, two-step (see invariants); `DayVersion` deliberately does not. One level down,
+   `ScheduleItemMemberTime` holds the hours a placed plan's members were given — on the placement,
+   never on the entry or the link, so two placements of one plan are timed separately and a fork
+   copies its own set. Sparse: a row exists only for a member someone timed.
 6. **Out of band** — `Feedback` (in-app bug reports), deliberately not an Entry; `EntryDeletion`, the
    append-only stub a destroyed Entry leaves behind (`user_id`, `entry_id`, `kind`, `title`,
    `descendants_destroyed`, `deleted_at`) so that "where did my trip go?" has an answer. No UI, no read

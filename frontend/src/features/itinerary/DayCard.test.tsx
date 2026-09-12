@@ -33,6 +33,7 @@ function item(overrides: Partial<ItineraryItem> & { id: number }): ItineraryItem
     position: 0,
     entry: summary(7, 'Fushimi Inari'),
     members: [],
+    member_times: [],
     ...overrides,
   };
 }
@@ -48,6 +49,12 @@ const BUNDLE_ITEM = item({
   ends_at_minutes: 12 * 60 + 30,
   members: [summary(21, 'Fushimi Inari'), summary(22, 'Daiso, Kyoto Station')],
 });
+
+/** The same plan once somebody has timed one member: Fushimi Inari has hours of its own, Daiso has none. */
+const TIMED_MEMBER_ITEM: ItineraryItem = {
+  ...BUNDLE_ITEM,
+  member_times: [{ entry_id: 21, starts_at_minutes: 9 * 60, ends_at_minutes: 11 * 60 }],
+};
 
 const LOOSE_ITEM = item({
   id: 51,
@@ -78,6 +85,7 @@ const HANDLERS = () => ({
   onAddItem: vi.fn(),
   onCreateItem: vi.fn(),
   onEditTime: vi.fn(),
+  onEditMemberTime: vi.fn(),
   onRemoveItem: vi.fn(),
   onSetLodging: vi.fn(),
 });
@@ -111,8 +119,8 @@ describe('DayCard — the open day', () => {
 
   // "Every idea is one 15px regular line with its time in mono at a fixed
   // 104px column. A bundle member and a loose idea look identical."
-  // (itinerary-decisions.md). The hours are derived, never stored: each member
-  // shows its share of the band's span.
+  // (itinerary-decisions.md). Until somebody times a member, the hours are
+  // derived: each member shows its share of the band's span.
   it('gives every bundle member its share of the band’s hours', () => {
     renderCard();
 
@@ -121,7 +129,19 @@ describe('DayCard — the open day', () => {
     expect(screen.getByText('10:15–12:30')).toBeInTheDocument();
   });
 
-  it('leaves a member blank when the bundle itself has no hours yet', () => {
+  // Once anyone has set a member's hours, nothing is derived any more: the
+  // timed member shows what was set, and its untimed sibling says so in the
+  // same words a loose untimed idea uses, rather than wearing an invented time.
+  it('shows a member’s own hours once set, and no invented ones for its sibling', () => {
+    renderCard({ day: day({ versions: [version(1, 'Version A', [TIMED_MEMBER_ITEM])] }) });
+
+    expect(screen.getByText('09:00–11:00')).toBeInTheDocument();
+    expect(screen.getByText('No time yet')).toBeInTheDocument();
+    expect(screen.queryByText('08:00–10:15')).not.toBeInTheDocument();
+    expect(screen.queryByText('10:15–12:30')).not.toBeInTheDocument();
+  });
+
+  it('says a member has no time yet when the bundle itself has no hours', () => {
     renderCard({
       day: day({
         versions: [
@@ -132,6 +152,8 @@ describe('DayCard — the open day', () => {
 
     expect(screen.getByText('Daiso, Kyoto Station')).toBeInTheDocument();
     expect(screen.queryByText(/08:00/)).not.toBeInTheDocument();
+    // The band and both its members: one untimed thing, said the same way three times.
+    expect(screen.getAllByText('No time yet')).toHaveLength(3);
   });
 
   it('draws the hole between two things', () => {
@@ -312,6 +334,65 @@ describe('DayCard — editing what is on the day', () => {
     await user.click(screen.getByRole('button', { name: 'Set the hours' }));
 
     expect(handlers.onEditTime).toHaveBeenCalledWith(51, 19 * 60, 20 * 60);
+  });
+
+  // A member's time column is its control too, exactly as a loose idea's is.
+  // The editor opens on the share the column was showing, and what is saved
+  // goes to the member by its own entry id, on this placement of the plan.
+  it('changes a member’s hours from its own time column, prefilled with its share', async () => {
+    const user = userEvent.setup();
+    const handlers = renderCard();
+
+    await user.click(screen.getByRole('button', { name: 'Change the hours for Fushimi Inari, now 08:00–10:15' }));
+    expect(screen.getByLabelText('Starts for Fushimi Inari')).toHaveValue('08:00');
+    expect(screen.getByLabelText('Ends for Fushimi Inari')).toHaveValue('10:15');
+
+    await user.clear(screen.getByLabelText('Ends for Fushimi Inari'));
+    await user.type(screen.getByLabelText('Ends for Fushimi Inari'), '11:00');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(handlers.onEditMemberTime).toHaveBeenCalledWith(50, 21, 8 * 60, 11 * 60);
+    expect(handlers.onEditTime).not.toHaveBeenCalled();
+    // Closed again, with the row back in its place.
+    expect(screen.queryByLabelText('Starts for Fushimi Inari')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Change the hours for Fushimi Inari, now 08:00–10:15' }),
+    ).toBeInTheDocument();
+  });
+
+  it('offers to set the hours of a member that has none yet', async () => {
+    const user = userEvent.setup();
+    const handlers = renderCard({ day: day({ versions: [version(1, 'Version A', [TIMED_MEMBER_ITEM])] }) });
+
+    await user.click(screen.getByRole('button', { name: 'Set the hours for Daiso, Kyoto Station' }));
+    await user.type(screen.getByLabelText('Starts for Daiso, Kyoto Station'), '11:30');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(handlers.onEditMemberTime).toHaveBeenCalledWith(50, 22, 11 * 60 + 30, null);
+  });
+
+  it('closes a member’s editor on cancel without writing anything', async () => {
+    const user = userEvent.setup();
+    const handlers = renderCard();
+
+    await user.click(screen.getByRole('button', { name: 'Change the hours for Fushimi Inari, now 08:00–10:15' }));
+    await user.click(screen.getByRole('button', { name: 'Leave it' }));
+
+    expect(handlers.onEditMemberTime).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Starts for Fushimi Inari')).not.toBeInTheDocument();
+  });
+
+  // Without the callback the column is a reading: the member's hours are
+  // still there, just not something this card can change. The band's own
+  // span stays the band's control regardless.
+  it('keeps a member’s time column plain when there is nowhere to send a change', () => {
+    renderCard({ onEditMemberTime: undefined });
+
+    expect(screen.getByText('08:00–10:15')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /the hours for Fushimi Inari/ })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Change the hours for Tuesday south, now 08:00–12:30' }),
+    ).toBeInTheDocument();
   });
 
   it('takes a thing off the day without touching the idea itself', async () => {
@@ -569,6 +650,16 @@ describe('DayCard — read only', () => {
     expect(screen.queryByRole('button', { name: /off this day$/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /the hours for/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Swap/ })).not.toBeInTheDocument();
+  });
+
+  // A member's time column is a control only for someone who can write: a
+  // viewer reads the member's hours in the same column, as text.
+  it('shows a member’s own hours without offering to change them', () => {
+    renderCard({ readOnly: true, day: day({ versions: [version(1, 'Version A', [TIMED_MEMBER_ITEM])] }) });
+
+    expect(screen.getByText('09:00–11:00')).toBeInTheDocument();
+    expect(screen.getByText('No time yet')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /the hours for/ })).not.toBeInTheDocument();
   });
 
   // Where you sleep is a fact about the night, so it stays — as text, not as

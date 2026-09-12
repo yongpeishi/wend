@@ -176,7 +176,8 @@ export function TimePrompt({ title, dayName, suggestions, onSave, onDismiss }: T
           label={`Starts for ${title}`}
           className={styles.timeInput}
           value={start}
-          placeholder="09:00"
+          // A mask, not an example, as on TimeEditor — see the note there.
+          placeholder="hh:mm"
           inputMode="numeric"
           autoFocus
           error={showing?.field === 'start' ? showing.message : undefined}
@@ -194,7 +195,7 @@ export function TimePrompt({ title, dayName, suggestions, onSave, onDismiss }: T
           label={`Ends for ${title}`}
           className={styles.timeInput}
           value={end}
-          placeholder="10:30"
+          placeholder="hh:mm"
           inputMode="numeric"
           error={showing?.field === 'end' ? showing.message : undefined}
           onChange={(event) => {

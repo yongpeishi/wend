@@ -155,7 +155,10 @@ export function TimeEditor({ startsAtMinutes, endsAtMinutes, onSave, onCancel, t
           label={`Starts${suffix}`}
           className={styles.timeInput}
           value={start}
-          placeholder="09:00"
+          // A mask, not an example: a plausible `09:00` in an empty box reads
+          // as the time that will be saved. The same shape Input's empty date
+          // wears (`dd/mm/yyyy`), and the CSS sets it italic for the same reason.
+          placeholder="hh:mm"
           inputMode="numeric"
           autoFocus
           error={showing?.field === 'start' ? showing.message : undefined}
@@ -172,7 +175,7 @@ export function TimeEditor({ startsAtMinutes, endsAtMinutes, onSave, onCancel, t
           label={`Ends${suffix}`}
           className={styles.timeInput}
           value={end}
-          placeholder="10:30"
+          placeholder="hh:mm"
           inputMode="numeric"
           error={showing?.field === 'end' ? showing.message : undefined}
           onChange={(event) => {

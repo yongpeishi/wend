@@ -14,6 +14,16 @@ class EntryLink < ApplicationRecord
   validate :not_self_referential
   validate :no_cycles
 
+  # A placed bundle's members may carry hours of their own (ScheduleItemMemberTime,
+  # keyed by placement + member). Once this link goes the child is no longer a
+  # member, so any such row on any placement of this parent names a member that
+  # is not there: invisible on the itinerary, and a trap for DayVersion#copy_item!.
+  # Take them out with the link. Every path that removes a link -- the API's
+  # unlink, lift's parent_links.destroy_all, and Entry's dependent: :destroy
+  # cascades -- goes through destroy, so this fires for all of them; nothing
+  # delete_alls entry_links.
+  after_destroy :prune_member_times
+
   # Appends after the parent's current last child. `|| -1` makes the first
   # child land at 0, so positions stay a dense 0-based run that the ordered
   # child walks assume.
@@ -22,6 +32,15 @@ class EntryLink < ApplicationRecord
   end
 
   private
+
+  # Only the rows that named THIS pair: the same child timed inside another
+  # bundle, or on a placement of another bundle, is untouched. delete_all is
+  # right here -- the rows have no callbacks or dependents of their own.
+  def prune_member_times
+    ScheduleItemMemberTime
+      .where(entry_id: child_id, schedule_item_id: ScheduleItem.where(entry_id: parent_id).select(:id))
+      .delete_all
+  end
 
   def not_self_referential
     return if parent_id.blank? || child_id.blank?

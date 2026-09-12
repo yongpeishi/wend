@@ -34,6 +34,16 @@
   font-family: var(--font-mono);
 }
 
+/* The empty field's `hh:mm` is a mask, not a time. Muted alone is not enough
+   to say so in the mono face — a muted `09:00` still reads as a time somebody
+   set — so it goes italic as well, the same muted-italic Input gives an empty
+   date's `dd/mm/yyyy`. An empty field and a filled one must never be confused
+   here: a member row opens this editor with nothing in it whenever it has no
+   hours yet. */
+.timeInput::placeholder {
+  font-style: italic;
+}
+
 .actions {
   display: flex;
   gap: var(--space-2);

@@ -49,6 +49,10 @@ Rails.application.routes.draw do
     post "trips/:trip_id/schedule", to: "schedule_items#create"
     patch "schedule_items/:id", to: "schedule_items#update"
     delete "schedule_items/:id", to: "schedule_items#destroy"
+    # The hours of one member of a placed plan. Addressed by placement and
+    # entry, never by a row id of its own: the client knows which band and
+    # which member it is looking at, and both nulls take the row away again.
+    patch "schedule_items/:schedule_item_id/members/:entry_id", to: "schedule_item_member_times#update"
 
     # Itinerary. `:day` is a date, not an id: until the first write there is no
     # trip_day row to address, so these routes create one on demand.

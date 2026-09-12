@@ -100,9 +100,11 @@ class DayVersion < ApplicationRecord
   end
 
   # Copy a schedule_item into this version: same entry, same times, same note,
-  # same slot in the order. Used by TripDay#fork!.
+  # same slot in the order -- and, for a plan, the hours each of its members
+  # was given, so the fork starts as an exact copy of the day it came from.
+  # Used by TripDay#fork!.
   def copy_item!(item)
-    schedule_items.create!(
+    copy = schedule_items.create!(
       trip_id: item.trip_id,
       entry_id: item.entry_id,
       chosen_entry_id: item.chosen_entry_id,
@@ -112,5 +114,23 @@ class DayVersion < ApplicationRecord
       note: item.note,
       position: item.position
     )
+    times = item.member_times.to_a
+    return copy if times.empty?
+
+    # Only the rows that still name a member. EntryLink prunes them on unlink,
+    # so a stale row should not exist -- but a fork must never fail over one
+    # the itinerary does not even show. One membership lookup per item, not
+    # one validation walk per row.
+    member_ids = EntryLink.where(parent_id: item.entry_id).pluck(:child_id).to_set
+    times.each do |time|
+      next unless member_ids.include?(time.entry_id)
+
+      copy.member_times.create!(
+        entry_id: time.entry_id,
+        starts_at_minutes: time.starts_at_minutes,
+        ends_at_minutes: time.ends_at_minutes
+      )
+    end
+    copy
   end
 end
