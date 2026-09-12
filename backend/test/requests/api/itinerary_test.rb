@@ -68,6 +68,46 @@ class Api::ItineraryTest < ActionDispatch::IntegrationTest
     assert_equal ["Ramen", "Kaiseki"], items.last["members"].map { |m| m["title"] }
   end
 
+  test "GET itinerary carries member_times in member order, and [] on a plain idea" do
+    bundle = bundle_with_members!(["Ramen", "Kaiseki", "Tea"])
+    ramen, _kaiseki, tea = bundle.children.to_a
+    trip_day = day!
+    version = trip_day.first_live_version
+    version.schedule_items.create!(trip: @trip, entry: @idea, day: trip_day.day, starts_at_minutes: 540)
+    band = version.schedule_items.create!(trip: @trip, entry: bundle, day: trip_day.day,
+                                          starts_at_minutes: 1110, ends_at_minutes: 1200)
+    # Timed out of member order, with the middle member left alone: the
+    # response follows the links, and only carries the members someone timed.
+    band.member_times.create!(entry: tea, starts_at_minutes: 1170, ends_at_minutes: 1200)
+    band.member_times.create!(entry: ramen, starts_at_minutes: 1110, ends_at_minutes: nil)
+
+    get "/api/trips/#{@trip.id}/itinerary"
+    assert_response :success
+    items = JSON.parse(response.body)["trip_days"].sole["versions"].first["schedule_items"]
+
+    assert_equal [], items.first["member_times"]
+    assert_equal(
+      [
+        { "entry_id" => ramen.id, "starts_at_minutes" => 1110, "ends_at_minutes" => nil },
+        { "entry_id" => tea.id, "starts_at_minutes" => 1170, "ends_at_minutes" => 1200 }
+      ],
+      items.last["member_times"]
+    )
+  end
+
+  test "GET itinerary carries an empty member_times for a plan nobody has timed" do
+    bundle = bundle_with_members!(["Ramen", "Kaiseki"])
+    trip_day = day!
+    trip_day.first_live_version.schedule_items.create!(trip: @trip, entry: bundle, day: trip_day.day)
+
+    get "/api/trips/#{@trip.id}/itinerary"
+    assert_response :success
+    item = JSON.parse(response.body)["trip_days"].sole["versions"].first["schedule_items"].sole
+
+    assert_equal ["Ramen", "Kaiseki"], item["members"].map { |m| m["title"] }
+    assert_equal [], item["member_times"]
+  end
+
   test "GET itinerary requires a signed-in user" do
     delete "/api/session"
     get "/api/trips/#{@trip.id}/itinerary"

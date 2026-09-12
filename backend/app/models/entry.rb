@@ -30,6 +30,11 @@ class Entry < ApplicationRecord
   # with the entry rather than being emptied out. A schedule_item is not a kept thing
   # -- see doc/architecture.md section 2 -- which is what makes destroying it safe.
   has_many :schedule_items_as_entry, class_name: "ScheduleItem", foreign_key: :entry_id, dependent: :destroy
+  # The hours this entry was given as a member of a placed plan. Stored on the
+  # placement, so they are as disposable as a schedule_item: a member that is
+  # destroyed for good takes its hours with it rather than leaving a row that
+  # names nothing. (EntryPermanentDeletion destroys row by row, so this fires.)
+  has_many :schedule_item_member_times, foreign_key: :entry_id, inverse_of: :entry, dependent: :destroy
   # The other three inbound references, all of which carry a real FK constraint and
   # none of which Entry declared before: without these, destroying an entry that is a
   # bundle's chosen member or one end of a transport leg raised

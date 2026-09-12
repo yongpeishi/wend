@@ -15,6 +15,11 @@ class ScheduleItem < ApplicationRecord
   # in practice nothing new lands here without one.
   belongs_to :day_version, optional: true, inverse_of: :schedule_items
 
+  # When the placed entry is a plan (a bundle), the hours its members were
+  # given on THIS placement. Sparse -- a member nobody timed has no row. These
+  # are as much a placement as the item itself, so they go with it.
+  has_many :member_times, class_name: "ScheduleItemMemberTime", inverse_of: :schedule_item, dependent: :destroy
+
   # Two different questions get asked of these rows, and answering both with
   # "every schedule_item for the day" is the bug this pair of scopes exists to
   # stop. Neither ever counts an ARCHIVED version: that is a plan the user

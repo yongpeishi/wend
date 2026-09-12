@@ -229,6 +229,10 @@ class Api::AuthorizationTest < ActionDispatch::IntegrationTest
         patch "/api/schedule_items/#{@item.id}", params: { schedule_item: { starts_at_minutes: 600 } }, as: :json
       } ],
       "api/schedule_items#destroy" => [ :denied, -> { delete "/api/schedule_items/#{@item.id}" } ],
+      "api/schedule_item_member_times#update" => [ :denied, lambda {
+        patch "/api/schedule_items/#{@item.id}/members/#{@idea.id}",
+              params: { member_time: { starts_at_minutes: 600, ends_at_minutes: 660 } }, as: :json
+      } ],
 
       "api/itineraries#index" => [ :denied, -> { get "/api/trips/#{@trip.id}/itinerary" } ],
       "api/itineraries#swap_days" => [ :denied, lambda {

@@ -29,9 +29,15 @@ class ItineraryItemSerializer
       links = bundle_ids.empty? ? [] : EntryLink.where(parent_id: bundle_ids).order(:position, :id).to_a
       children = Entry.where(id: links.map(&:child_id)).index_by(&:id)
 
+      # Only a plan can have timed members, so only the items placing one are
+      # asked. One query for the whole list, then item -> entry -> row.
+      bundle_item_ids = items.select { |item| bundle_ids.include?(item.entry_id) }.map(&:id)
+      times = bundle_item_ids.empty? ? [] : ScheduleItemMemberTime.where(schedule_item_id: bundle_item_ids).to_a
+
       {
         entries: entries,
-        members: links.group_by(&:parent_id).transform_values { |ls| ls.filter_map { |l| children[l.child_id] } }
+        members: links.group_by(&:parent_id).transform_values { |ls| ls.filter_map { |l| children[l.child_id] } },
+        member_times: times.group_by(&:schedule_item_id).transform_values { |ts| ts.index_by(&:entry_id) }
       }
     end
 
@@ -39,6 +45,9 @@ class ItineraryItemSerializer
 
     def render(item, context)
       entry = context[:entries][item.entry_id]
+      # Members only for a bundle -- a plain idea breaks into nothing.
+      members = entry&.bundle? ? Array(context[:members][entry.id]) : []
+      times = context[:member_times][item.id] || {}
 
       {
         "id" => item.id,
@@ -52,8 +61,13 @@ class ItineraryItemSerializer
         "note" => item.note,
         "position" => item.position,
         "entry" => EntrySerializer.summary(entry),
-        # Members only for a bundle -- a plain idea breaks into nothing.
-        "members" => (entry&.bundle? ? Array(context[:members][entry.id]).map { |m| EntrySerializer.summary(m) } : [])
+        "members" => members.map { |m| EntrySerializer.summary(m) },
+        # The hours members were given on this placement, in the same order as
+        # `members` and only for those someone timed -- sparse, like the table.
+        # Always present: [] is "nobody timed anything", not "no such key".
+        "member_times" => members.filter_map { |m| times[m.id] }.map do |t|
+          { "entry_id" => t.entry_id, "starts_at_minutes" => t.starts_at_minutes, "ends_at_minutes" => t.ends_at_minutes }
+        end
       }
     end
   end

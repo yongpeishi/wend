@@ -68,6 +68,30 @@ class DayVersionTest < ActiveSupport::TestCase
     assert_equal [version_b.id, @version_a.id], @trip_day.live_versions.reload.map(&:id)
   end
 
+  test "fork! copies the hours a plan's members were given, as rows of the copy's own" do
+    bundle = create_bundle(created_by: @user)
+    link!(parent: @trip, child: bundle)
+    ramen = create_idea(title: "Ramen", created_by: @user)
+    kaiseki = create_idea(title: "Kaiseki", created_by: @user)
+    link!(parent: bundle, child: ramen, position: 0)
+    link!(parent: bundle, child: kaiseki, position: 1)
+    item = @version_a.schedule_items.create!(trip: @trip, entry: bundle, day: @trip_day.day,
+                                             starts_at_minutes: 540, ends_at_minutes: 720)
+    item.member_times.create!(entry: ramen, starts_at_minutes: 540, ends_at_minutes: 600)
+    item.member_times.create!(entry: kaiseki, starts_at_minutes: 660, ends_at_minutes: nil)
+
+    version_b = @trip_day.fork!
+    copy = version_b.schedule_items.sole
+
+    assert_not_equal item.id, copy.id
+    assert_equal [[ramen.id, 540, 600], [kaiseki.id, 660, nil]],
+                 copy.member_times.order(:id).map { |t| [t.entry_id, t.starts_at_minutes, t.ends_at_minutes] }
+
+    # Its own rows, not shared ones: re-timing the copy leaves the source alone.
+    copy.member_times.find_by!(entry_id: ramen.id).update!(ends_at_minutes: 630)
+    assert_equal 600, item.member_times.find_by!(entry_id: ramen.id).ends_at_minutes
+  end
+
   test "a fork after a keep keeps climbing the letters" do
     version_b = @trip_day.fork!
     version_b.keep!
