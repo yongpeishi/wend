@@ -130,13 +130,20 @@ export const db = {
 };
 
 /**
- * Drop the member times of any schedule item that is no longer there — the
- * mock's `dependent: :destroy`. Call it after every place `db.scheduleItems`
- * shrinks, since a filter on that array cannot cascade on its own.
+ * Drop every member time that has lost its reason to exist — the mock's
+ * `dependent: :destroy`, plus the rule that a row is only ever about a member
+ * of the placed plan. A row goes when its schedule item is gone, or when its
+ * entry is no longer linked under that item's bundle (unlinked, lifted, or
+ * hard-deleted). Call it after every place `db.scheduleItems` or `db.links`
+ * shrinks, since a filter on those arrays cannot cascade on its own.
  */
 export function pruneMemberTimes(): void {
-  const itemIds = new Set(db.scheduleItems.map((s) => s.id));
-  db.memberTimes = db.memberTimes.filter((t) => itemIds.has(t.schedule_item_id));
+  const itemsById = new Map(db.scheduleItems.map((s) => [s.id, s]));
+  db.memberTimes = db.memberTimes.filter((t) => {
+    const item = itemsById.get(t.schedule_item_id);
+    if (!item || item.entry_id === null) return false;
+    return childIdsOf(item.entry_id).includes(t.entry_id);
+  });
 }
 
 export function now(): string {

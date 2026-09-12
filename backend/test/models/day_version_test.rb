@@ -92,6 +92,26 @@ class DayVersionTest < ActiveSupport::TestCase
     assert_equal 600, item.member_times.find_by!(entry_id: ramen.id).ends_at_minutes
   end
 
+  test "fork! skips a stale member-time row rather than failing over it" do
+    bundle = create_bundle(created_by: @user)
+    link!(parent: @trip, child: bundle)
+    ramen = create_idea(title: "Ramen", created_by: @user)
+    link!(parent: bundle, child: ramen)
+    stranger = create_idea(title: "Never a member", created_by: @user)
+    item = @version_a.schedule_items.create!(trip: @trip, entry: bundle, day: @trip_day.day)
+    item.member_times.create!(entry: ramen, starts_at_minutes: 540, ends_at_minutes: 600)
+    # EntryLink prunes these on unlink, so the only way to get one is around the
+    # model -- the way a row from before that rule, or a bug, would have left it.
+    ScheduleItemMemberTime.insert!({ schedule_item_id: item.id, entry_id: stranger.id, starts_at_minutes: 900 })
+
+    version_b = @trip_day.fork!
+    copy = version_b.schedule_items.sole
+
+    assert_equal [ramen.id], copy.member_times.map(&:entry_id)
+    # The source is left as it was; a fork reads, it does not tidy.
+    assert_equal 2, item.member_times.count
+  end
+
   test "a fork after a keep keeps climbing the letters" do
     version_b = @trip_day.fork!
     version_b.keep!

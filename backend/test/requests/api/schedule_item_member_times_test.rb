@@ -151,6 +151,20 @@ class Api::ScheduleItemMemberTimesTest < ActionDispatch::IntegrationTest
     assert_equal ["Entry must be a member of this plan"], JSON.parse(response.body).dig("errors", "entry_id")
   end
 
+  test "taking a timed member out of the plan takes its hours off the itinerary too" do
+    patch_member(@item, @ramen, 540, 600)
+    patch_member(@item, @kaiseki, 660, 720)
+
+    delete "/api/entries/#{@bundle.id}/links/#{@ramen.id}"
+    assert_response :no_content
+
+    get "/api/trips/#{@trip.id}/itinerary"
+    item = JSON.parse(response.body)["trip_days"].sole["versions"].first["schedule_items"].sole
+    assert_equal ["Kaiseki"], item["members"].map { |m| m["title"] }
+    assert_equal [@kaiseki.id], item["member_times"].map { |t| t["entry_id"] }
+    assert_equal [@kaiseki.id], ScheduleItemMemberTime.pluck(:entry_id)
+  end
+
   test "a trip member, not only the owner, may time a member" do
     collaborator = create_user
     member!(trip: @trip, user: collaborator, role: "member")

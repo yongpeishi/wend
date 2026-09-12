@@ -434,10 +434,10 @@ function destroyPermanently(target: StoredEntry, destroyedDescendantIds: number[
   db.scheduleItems = db.scheduleItems.filter(
     (s) => !(s.entry_id !== null && gone.has(s.entry_id)) && !gone.has(s.trip_id),
   );
+  // Both cascades at once: a placement that went, and a hard-deleted member
+  // whose link went with it (Entry has_many schedule_item_member_times,
+  // dependent: :destroy).
   pruneMemberTimes();
-  // A hard-deleted member takes its stored hours with it (Entry has_many
-  // schedule_item_member_times, dependent: :destroy).
-  db.memberTimes = db.memberTimes.filter((t) => !gone.has(t.entry_id));
   for (const item of db.scheduleItems) {
     if (item.chosen_entry_id !== null && gone.has(item.chosen_entry_id)) item.chosen_entry_id = null;
   }
@@ -704,6 +704,7 @@ export const handlers = [
     if (!entry) return HttpResponse.json({ error: 'Not found' }, { status: 404 });
     entry.kind = 'trip';
     db.links = db.links.filter((l) => l.child_id !== entry.id);
+    pruneMemberTimes();
     // Lifting an idea into a trip makes it yours to run.
     if (db.currentUserId !== null) setRole(entry.id, db.currentUserId, 'owner');
     return HttpResponse.json({ entry: toEntry(entry, db.currentUserId) });
@@ -770,6 +771,8 @@ export const handlers = [
   http.delete('/api/entries/:id/links/:childId', async ({ params }) => {
     await mockDelay();
     db.links = db.links.filter((l) => !(l.parent_id === Number(params.id) && l.child_id === Number(params.childId)));
+    // A member taken out of a plan takes its stored hours on that plan with it.
+    pruneMemberTimes();
     return new HttpResponse(null, { status: 204 });
   }),
 
@@ -953,7 +956,8 @@ export const handlers = [
     const entryId = Number(params.entryId);
     const entry = item.entry_id !== null ? findEntry(item.entry_id) : undefined;
     if (entry?.kind !== 'bundle' || !childIdsOf(entry.id).includes(entryId)) {
-      return HttpResponse.json({ errors: { entry_id: ['must be a member of this plan'] } }, { status: 422 });
+      // Full messages, as the real backend renders them (`errors.to_hash(true)`).
+      return HttpResponse.json({ errors: { entry_id: ['Entry must be a member of this plan'] } }, { status: 422 });
     }
 
     const body = (await request.json()) as { member_time?: Partial<MemberTimeWritePayload> };
@@ -961,7 +965,7 @@ export const handlers = [
     const ends = body.member_time?.ends_at_minutes ?? null;
     if (starts !== null && ends !== null && ends < starts) {
       return HttpResponse.json(
-        { errors: { ends_at_minutes: ['must be greater than or equal to starts_at_minutes'] } },
+        { errors: { ends_at_minutes: ['Ends at minutes must be greater than or equal to starts_at_minutes'] } },
         { status: 422 },
       );
     }

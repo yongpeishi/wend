@@ -526,7 +526,7 @@ describe('member times', () => {
   it('refuses an entry that is not a member of the plan', async () => {
     const [nanzenji, bundle] = await bundleDayItems();
     // The 422 body is `{ errors: { entry_id: [...] } }`; the client lifts `errors` to `fieldErrors`.
-    const notAMember = { entry_id: ['must be a member of this plan'] };
+    const notAMember = { entry_id: ['Entry must be a member of this plan'] };
 
     await expect(setMemberTime(bundle.id, NANZENJI_ID, 11 * 60, 12 * 60)).rejects.toMatchObject({
       status: 422,
@@ -544,7 +544,7 @@ describe('member times', () => {
     const [, bundle] = await bundleDayItems();
     await expect(setMemberTime(bundle.id, COFFEE_MEMBER_ID, 12 * 60, 11 * 60)).rejects.toMatchObject({
       status: 422,
-      fieldErrors: { ends_at_minutes: ['must be greater than or equal to starts_at_minutes'] },
+      fieldErrors: { ends_at_minutes: ['Ends at minutes must be greater than or equal to starts_at_minutes'] },
     });
   });
 
@@ -566,6 +566,22 @@ describe('member times', () => {
     ]);
     // A copy, not a move: the original keeps its row too.
     expect(db.memberTimes.filter((t) => t.entry_id === COFFEE_MEMBER_ID)).toHaveLength(2);
+  });
+
+  it('drops the stored hours when the member is unlinked from the plan', async () => {
+    const [, bundle] = await bundleDayItems();
+    await setMemberTime(bundle.id, COFFEE_MEMBER_ID, 11 * 60, 11 * 60 + 30);
+    await setMemberTime(bundle.id, TERAMACHI_MEMBER_ID, 12 * 60, 13 * 60);
+
+    await api.delete(`/entries/${bundle.entry_id}/links/${COFFEE_MEMBER_ID}`);
+
+    const [, again] = await bundleDayItems();
+    expect(again.members.map((m) => m.id)).toEqual([NISHIKI_MEMBER_ID, TERAMACHI_MEMBER_ID]);
+    // Only the unlinked member's row goes; the other keeps its hours.
+    expect(again.member_times).toEqual([
+      { entry_id: TERAMACHI_MEMBER_ID, starts_at_minutes: 12 * 60, ends_at_minutes: 13 * 60 },
+    ]);
+    expect(db.memberTimes.some((t) => t.entry_id === COFFEE_MEMBER_ID)).toBe(false);
   });
 
   it('drops the stored hours with the item they belonged to', async () => {

@@ -105,6 +105,33 @@ class ScheduleItemMemberTimeTest < ActiveSupport::TestCase
     assert_difference("ScheduleItemMemberTime.count", -2) { @item.destroy! }
   end
 
+  test "unlinking a member from the plan removes its hours on every placement of that plan, and nothing else" do
+    other_item = ScheduleItem.create!(trip: @trip, entry: @bundle, day: "2026-10-13")
+    other_bundle = create_bundle(title: "Elsewhere", created_by: @user)
+    link!(parent: @trip, child: other_bundle)
+    link!(parent: other_bundle, child: @ramen)
+    other_bundle_item = ScheduleItem.create!(trip: @trip, entry: other_bundle, day: "2026-10-13")
+
+    @item.member_times.create!(entry: @ramen, starts_at_minutes: 540)
+    @item.member_times.create!(entry: @kaiseki, starts_at_minutes: 600)
+    other_item.member_times.create!(entry: @ramen, starts_at_minutes: 555)
+    other_bundle_item.member_times.create!(entry: @ramen, starts_at_minutes: 570)
+
+    assert_difference("ScheduleItemMemberTime.count", -2) do
+      EntryLink.find_by!(parent: @bundle, child: @ramen).destroy!
+    end
+    # Kaiseki is still a member; Ramen is still in the other bundle.
+    assert_equal [@kaiseki.id], @item.member_times.reload.map(&:entry_id)
+    assert_equal [], other_item.member_times.reload.to_a
+    assert_equal [@ramen.id], other_bundle_item.member_times.reload.map(&:entry_id)
+  end
+
+  test "lifting a member out into its own trip removes its hours, since it leaves every parent" do
+    @item.member_times.create!(entry: @ramen, starts_at_minutes: 540)
+
+    assert_difference("ScheduleItemMemberTime.count", -1) { @ramen.parent_links.destroy_all }
+  end
+
   test "deleting a member for good takes its hours with it and leaves the others alone" do
     @item.member_times.create!(entry: @ramen, starts_at_minutes: 540)
     @item.member_times.create!(entry: @kaiseki, starts_at_minutes: 600)

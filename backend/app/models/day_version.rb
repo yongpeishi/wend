@@ -114,7 +114,17 @@ class DayVersion < ApplicationRecord
       note: item.note,
       position: item.position
     )
-    item.member_times.each do |time|
+    times = item.member_times.to_a
+    return copy if times.empty?
+
+    # Only the rows that still name a member. EntryLink prunes them on unlink,
+    # so a stale row should not exist -- but a fork must never fail over one
+    # the itinerary does not even show. One membership lookup per item, not
+    # one validation walk per row.
+    member_ids = EntryLink.where(parent_id: item.entry_id).pluck(:child_id).to_set
+    times.each do |time|
+      next unless member_ids.include?(time.entry_id)
+
       copy.member_times.create!(
         entry_id: time.entry_id,
         starts_at_minutes: time.starts_at_minutes,
