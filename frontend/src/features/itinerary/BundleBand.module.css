@@ -102,9 +102,10 @@
   padding: 11px 13px;
 }
 
-/* The same fixed 104px mono column as ItemLine, holding the member's derived
-   share of the bundle's span. Identical geometry is the point: a bundle member
-   and a loose idea are the same kind of thing on the day. */
+/* The same fixed 104px mono column as ItemLine, holding the member's own
+   hours — stored, or its derived share of the bundle's span. Identical
+   geometry is the point: a bundle member and a loose idea are the same kind
+   of thing on the day. */
 .memberTime {
   flex: none;
   width: 104px;
@@ -112,6 +113,31 @@
   font-size: var(--text-min-size);
   color: var(--text-muted);
   text-align: left;
+}
+
+/* The member's time is its control, as on ItemLine: clicking it opens the
+   editor in place of the row. Same 32px pointer floor as .spanButton, for the
+   same reason — a 48px control would set the height of every member row. */
+.memberTimeButton {
+  background: none;
+  border: none;
+  padding: 0;
+  min-height: 32px;
+  cursor: pointer;
+  transition: opacity var(--motion-fade-duration) var(--motion-fade-ease);
+}
+
+.memberTimeButton:hover {
+  opacity: 0.7;
+}
+
+.memberTimeButton:active {
+  opacity: 0.55;
+}
+
+.memberTimeButton:focus-visible {
+  outline: var(--focus-width) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 .memberTitle {

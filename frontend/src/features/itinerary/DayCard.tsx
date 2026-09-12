@@ -55,6 +55,17 @@ export interface DayCardProps {
    */
   onCreateItem?: (versionId: number, title: string, slot: { start: number; end: number } | null) => void;
   onEditTime: (itemId: number, startsAtMinutes: number | null, endsAtMinutes: number | null) => void;
+  /**
+   * One member's own hours inside a placed plan, by the item and the member's
+   * entry id. Both nulls clear them. Omitted, a member's time column is a
+   * reading and not a control.
+   */
+  onEditMemberTime?: (
+    itemId: number,
+    entryId: number,
+    startsAtMinutes: number | null,
+    endsAtMinutes: number | null,
+  ) => void;
   onRemoveItem: (itemId: number) => void;
   /** Both keys together: one clears the other, and both null clears the night. */
   onSetLodging: (value: { lodging_entry_id: number | null; lodging_label: string | null }) => void;
@@ -118,6 +129,7 @@ export function DayCard({
   onAddItem,
   onCreateItem,
   onEditTime,
+  onEditMemberTime,
   onRemoveItem,
   onSetLodging,
   onSwapDay,
@@ -239,6 +251,7 @@ export function DayCard({
           dayLabel={day.label}
           onKeep={onKeepVersion}
           onEditTime={onEditTime}
+          onEditMemberTime={onEditMemberTime}
           onRemoveItem={onRemoveItem}
           onAdd={(versionId) => setPicker({ versionId, slot: null })}
           onFill={(versionId, slot) => setPicker({ versionId, slot })}
@@ -254,6 +267,7 @@ export function DayCard({
             <VersionItems
               items={firstVersion.schedule_items}
               onEditTime={onEditTime}
+              onEditMemberTime={onEditMemberTime}
               onRemoveItem={onRemoveItem}
               onFill={(slot) => setPicker({ versionId: firstVersion.id, slot })}
               readOnly={readOnly}

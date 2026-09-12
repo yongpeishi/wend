@@ -313,9 +313,10 @@ describe('TimeEditor', () => {
 });
 
 /**
- * A bundle's hours are changed from the band, not from a member line — so the
- * band is the second way into this editor, and the rules have to hold on that
- * way in too. DayCard.test.tsx covers the loose-idea way in.
+ * A bundle's hours are changed from the band, and each member's own hours from
+ * its line inside the band — so the band is the second and third way into this
+ * editor, and the rules have to hold on those ways in too. DayCard.test.tsx
+ * covers the loose-idea way in.
  */
 const BUNDLE: ItineraryItem = {
   id: 50,
@@ -368,5 +369,24 @@ describe('TimeEditor, opened from a bundle band', () => {
     await user.click(screen.getByRole('button', { name: 'Set the hours' }));
 
     expect(onEditTime).toHaveBeenCalledWith(9 * 60, 17 * 60);
+  });
+
+  // The member's editor opens on the share the column was showing — the one
+  // member here takes the whole band, 08:00–12:30 — and saves to the member
+  // by its entry id, never to the band.
+  it('sets one member’s own hours from its line, prefilled with what it was showing', async () => {
+    const user = userEvent.setup();
+    const onEditTime = vi.fn();
+    const onEditMemberTime = vi.fn();
+    render(<BundleBand item={BUNDLE} onEditTime={onEditTime} onEditMemberTime={onEditMemberTime} />);
+
+    await user.click(screen.getByRole('button', { name: 'Change the hours for Fushimi Inari, now 08:00–12:30' }));
+    expect(screen.getByLabelText('Starts for Fushimi Inari')).toHaveValue('08:00');
+
+    await retype(user, '09:00', '10:30', ' for Fushimi Inari');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    expect(onEditMemberTime).toHaveBeenCalledWith(21, 9 * 60, 10 * 60 + 30);
+    expect(onEditTime).not.toHaveBeenCalled();
   });
 });

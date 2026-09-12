@@ -16,6 +16,13 @@ export interface VersionColumnsProps {
   onKeep: (versionId: number) => void;
   onFill?: (versionId: number, slot: { start: number; end: number }) => void;
   onEditTime?: (itemId: number, startsAtMinutes: number | null, endsAtMinutes: number | null) => void;
+  /** One member's own hours inside a placed plan. Both nulls clear them. */
+  onEditMemberTime?: (
+    itemId: number,
+    entryId: number,
+    startsAtMinutes: number | null,
+    endsAtMinutes: number | null,
+  ) => void;
   onRemoveItem?: (itemId: number) => void;
   onAdd?: (versionId: number) => void;
   /** Something from the rail was dropped on one column. Must be in a `<DndContext>`. */
@@ -64,6 +71,7 @@ export function VersionColumns({
   onKeep,
   onFill,
   onEditTime,
+  onEditMemberTime,
   onRemoveItem,
   onAdd,
   onDropItem,
@@ -83,6 +91,7 @@ export function VersionColumns({
           onKeep={onKeep}
           onFill={onFill}
           onEditTime={onEditTime}
+          onEditMemberTime={onEditMemberTime}
           onRemoveItem={onRemoveItem}
           onAdd={onAdd}
           onDropItem={onDropItem}
@@ -106,6 +115,7 @@ function VersionColumn({
   onKeep,
   onFill,
   onEditTime,
+  onEditMemberTime,
   onRemoveItem,
   onAdd,
   onDropItem,
@@ -138,6 +148,7 @@ function VersionColumn({
           items={items}
           onFill={onFill && ((slot) => onFill(version.id, slot))}
           onEditTime={onEditTime}
+          onEditMemberTime={onEditMemberTime}
           onRemoveItem={onRemoveItem}
           readOnly={readOnly}
           promptItemId={promptItemId}

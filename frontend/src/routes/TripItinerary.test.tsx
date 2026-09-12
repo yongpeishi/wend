@@ -761,6 +761,46 @@ describe('TripItinerary — asked on arrival', () => {
 });
 
 /**
+ * Feedback #7 (b): a member of a placed plan can be given hours of its own.
+ * Day 1's market crawl runs 11:00–13:00 with members of 30, 60 and 30
+ * minutes, so until anyone times one they read 11:00–11:30, 11:30–12:30 and
+ * 12:30–13:00 — derived. The moment one is set, the other two stop being
+ * derived and say so. Pinned end to end through the real MSW API, the way the
+ * loose-idea time edit above is.
+ */
+describe('TripItinerary — timing a plan’s members', () => {
+  it('sets one member’s hours through its own column, and the siblings stop pretending', async () => {
+    const user = userEvent.setup();
+    renderItinerary();
+    await screen.findByText('Day 1 · Mon 2');
+    await openDay(user, 'Day 1 · Mon 2');
+    const day1 = dayBox('2026-11-02');
+
+    // The derived share is what the column shows, and what the editor opens on.
+    await user.click(
+      within(day1).getByRole('button', { name: 'Change the hours for Coffee at Weekenders, now 11:00–11:30' }),
+    );
+    expect(screen.getByLabelText('Starts for Coffee at Weekenders')).toHaveValue('11:00');
+    await user.clear(screen.getByLabelText('Ends for Coffee at Weekenders'));
+    await user.type(screen.getByLabelText('Ends for Coffee at Weekenders'), '11:45');
+    await user.click(screen.getByRole('button', { name: 'Set the hours' }));
+
+    // PATCHed to the member's own endpoint: the row comes back with its stored
+    // hours, and its untimed siblings no longer wear a share of the band.
+    expect(
+      await within(day1).findByRole('button', { name: 'Change the hours for Coffee at Weekenders, now 11:00–11:45' }),
+    ).toBeInTheDocument();
+    expect(within(day1).getByRole('button', { name: 'Set the hours for Nishiki market' })).toBeInTheDocument();
+    expect(within(day1).getByRole('button', { name: 'Set the hours for Teramachi arcade' })).toBeInTheDocument();
+    expect(within(day1).queryByText('11:30–12:30')).not.toBeInTheDocument();
+    // The band's own span is untouched by a member's hours.
+    expect(
+      within(day1).getByRole('button', { name: 'Change the hours for Nishiki market crawl, now 11:00–13:00' }),
+    ).toBeInTheDocument();
+  });
+});
+
+/**
  * Feedback #25: "itinerary building should be able to add ideas".
  *
  * The picker could only ever offer what the Ideas board already held, so the

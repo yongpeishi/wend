@@ -26,7 +26,7 @@ import { useToast } from '../components/Toast';
 import { api } from '../api/client';
 import { useChangeTripDates, useCreateEntry, useEntries } from '../api/entries';
 import { queryKeys } from '../api/queryKeys';
-import { useCreateScheduleItem, useDeleteScheduleItem } from '../api/schedule';
+import { useCreateScheduleItem, useDeleteScheduleItem, useUpdateMemberTime } from '../api';
 import {
   useForkDay,
   useItinerary,
@@ -175,6 +175,7 @@ export function TripItinerary() {
   const createItem = useCreateScheduleItem(trip.id);
   const deleteItem = useDeleteScheduleItem();
   const editItemHours = useEditItemHours();
+  const updateMemberTime = useUpdateMemberTime();
 
   const onError = useCallback(() => show(SAVE_FAILED, 'error'), [show]);
 
@@ -584,6 +585,12 @@ export function TripItinerary() {
                     }
                     onEditTime={(itemId, startsAtMinutes, endsAtMinutes) =>
                       editItemHours.mutate({ itemId, starts_at_minutes: startsAtMinutes, ends_at_minutes: endsAtMinutes }, { onError })
+                    }
+                    onEditMemberTime={(itemId, entryId, startsAtMinutes, endsAtMinutes) =>
+                      updateMemberTime.mutate(
+                        { itemId, entryId, starts_at_minutes: startsAtMinutes, ends_at_minutes: endsAtMinutes },
+                        { onError },
+                      )
                     }
                     onRemoveItem={(itemId) =>
                       deleteItem.mutate(itemId, {
