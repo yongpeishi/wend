@@ -73,6 +73,13 @@ export function DayRow({
         </span>
 
         <span className={styles.middle}>
+          {day.lodgingTitle && (
+            <span className={styles.lodging}>
+              <Bed size={15} strokeWidth={1.5} aria-hidden="true" className={styles.bed} />
+              <span className={styles.lodgingTitle}>{day.lodgingTitle}</span>
+            </span>
+          )}
+
           <span className={styles.summary} data-empty={summary ? undefined : true}>
             {summary || 'Nothing here yet'}
           </span>
@@ -81,13 +88,6 @@ export function DayRow({
             <Tag tone="saved" className={styles.status}>
               {day.versions.length} versions · not settled
             </Tag>
-          )}
-
-          {day.lodgingTitle && (
-            <span className={styles.lodging}>
-              <Bed size={15} strokeWidth={1.5} aria-hidden="true" className={styles.bed} />
-              <span className={styles.lodgingTitle}>{day.lodgingTitle}</span>
-            </span>
           )}
 
           {hours && <span className={styles.hours}>{hours}</span>}
